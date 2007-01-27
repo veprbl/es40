@@ -239,13 +239,13 @@ CDPR::CDPR(CSystem * c) : CSystemComponent(c)
 //	3009:300B	RMC Rev Level of RMC first byte is letter Rev [x/t/v] second 2 bytes are major/minor.
 //				This is the rev level of the RMC on-chip code.
 	ram[0x3009] = 'V';
-	ram[0x300a] = 0x02;
-	ram[0x300b] = 0x08;
+	ram[0x300a] = 0x01;
+	ram[0x300b] = 0x00;
 //	300C:300E	RMC Rev Level of RMC first byte is letter Rev [x/t/v] second 2 bytes are major/minor.
 //				This is the rev level of the RMC flash code.
 	ram[0x300c] = 'V';
-	ram[0x300d] = 0x02;
-	ram[0x300e] = 0x08;
+	ram[0x300d] = 0x01;
+	ram[0x300e] = 0x00;
 //	300F:3010 300F RMC Revision Field of the DPR Structure
 
 //	3400 SROM Size of Bcache in MB
