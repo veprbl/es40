@@ -36,6 +36,7 @@
 #include <stdlib.h>
 #endif
 
+
 inline void write_printable_s(char * dest, char * org)
 {
   while (*org)
@@ -543,7 +544,7 @@ void CTraceEngine::read_procfile(char *filename)
 
 void CTraceEngine::trace_dev(char * text)
 {
-  fprintf(current_trace_file,text);
+  fprintf(current_trace_file, "%s", text);
 }
 
 FILE * CTraceEngine::trace_file()
