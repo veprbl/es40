@@ -54,6 +54,8 @@
 #include <malloc.h>
 #include <time.h>
 
+#ifdef _WIN32
+
 #if _MSC_VER < 1400
 inline void gmtime_s(struct tm * t1, time_t * t2)
 {
@@ -62,6 +64,15 @@ inline void gmtime_s(struct tm * t1, time_t * t2)
   memcpy(t1,t3,sizeof(struct tm));
 }
 #endif //_MSC_VER
+
+inline bool isblank(char c)
+{
+  if ( c == ' ' || c == '\t' || c == '\n' || c == '\r' )
+    return true;
+  return false;
+}
+
+#endif
 
 #define ES40 1
 
