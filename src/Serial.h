@@ -45,6 +45,10 @@ public:
 	virtual ~CSerial();
 	void receive(const char* data);
 
+#ifndef _WIN32
+	void DoClock();
+#endif
+
 private:
 	u8 bTHR;
 	u8 bRDR;
@@ -58,11 +62,18 @@ private:
     u8 bLSR;
     u8 bMSR;
     u8 bSPR;
+#ifdef _WIN32
 	class CTelnet * cTelnet;
+#else
+	int listenSocket;
+	int connectSocket;
+	int serial_cycles;
+#endif
 	char rcvBuffer[1024];
 	int rcvW;
 	int rcvR;
 	int iNumber;
+
 };
 
 #endif // !defined(AFX_SERIAL_H__7FD919DE_84AC_4364_A682_0BE164142E9B__INCLUDED_)

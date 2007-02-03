@@ -11,6 +11,7 @@ OBJS = AliM1543C.o \
         Flash.o \
         FloppyController.o \
         Port80.o \
+	Serial.o \
         StdAfx.o \
         SystemComponent.o \
         System.o \

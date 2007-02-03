@@ -28,14 +28,31 @@
 
 #include "StdAfx.h"
 #include "Serial.h"
-#include "windows/telnet.h"
 #include "System.h"
-#include <process.h>
 #include "AliM1543C.h"
+
+#ifdef _WIN32
+#include "windows/telnet.h"
+#include <process.h>
+
+CRITICAL_SECTION critSection;
+#else
+#include <arpa/inet.h>
+#include <arpa/telnet.h>
+#include <netinet/in.h>
+#include <sys/select.h>
+#include <sys/time.h>
+#include <unistd.h>
+
+#define SERIAL_BASE 21264
+#define RECV_TICKS 100000
+
+#endif
+
+
 
 extern CAliM1543C * ali;
 
-CRITICAL_SECTION critSection;
 
 bool bStopping = false;
 int  iCounter  = 0;
@@ -50,12 +67,9 @@ bool bStop     = false;
 CSerial::CSerial(CSystem * c, int number) : CSystemComponent(c)
 {
 	c->RegisterMemory (this, 0, X64(00000801fc0003f8) - (0x100*number), 8);
+#ifdef _WIN32
 	InitializeCriticalSection( &critSection );
 	cTelnet = new CTelnet(8000+number, this);
-	iNumber = number;
-
-	rcvW = 0;
-	rcvR = 0;
 
 		// start the server
 	if ( !cTelnet->start() )
@@ -75,6 +89,61 @@ CSerial::CSerial(CSystem * c, int number) : CSystemComponent(c)
 	sprintf(s,"This is serial port #%d on AlphaSim\r\n",number);
 	cTelnet->write(s);
 
+#else
+	c->RegisterClock(this);
+	
+	struct sockaddr_in Address;
+	socklen_t nAddressSize=sizeof(struct sockaddr_in);
+
+	listenSocket = socket(AF_INET,SOCK_STREAM,0);
+	Address.sin_addr.s_addr=INADDR_ANY;
+	Address.sin_port=htons(SERIAL_BASE+number);
+	Address.sin_family=AF_INET;
+
+	int optval = 1;
+	setsockopt(listenSocket,SOL_SOCKET,SO_REUSEADDR, &optval,sizeof(optval));
+	bind(listenSocket,(struct sockaddr *)&Address,sizeof(Address));
+	listen(listenSocket,5);
+
+	// start the server
+	printf("%%SRL-I-WAIT: Waiting for connection on port %d.\n",number+SERIAL_BASE);
+	connectSocket = accept(listenSocket,(struct sockaddr*)&Address,&nAddressSize);
+
+	printf("%%SRL-I-INIT: Serial Interface %d emulator initialized.\n",number);
+	printf("%%SRL-I-ADDRESS: Serial Interface %d on telnet port %d.\n",number,number+SERIAL_BASE);
+
+	// Send some control characters to the telnet client to handle 
+	// character-at-a-time mode.  
+	char *telnet_options="%c%c%c";
+	char buffer[8];
+
+	sprintf(buffer,telnet_options,IAC,DO,TELOPT_ECHO);
+	this->write(buffer);
+
+	sprintf(buffer,telnet_options,IAC,DO,TELOPT_NAWS);
+	write(buffer);
+
+	sprintf(buffer,telnet_options,IAC,DO,TELOPT_LFLOW);
+	this->write(buffer);
+
+	sprintf(buffer,telnet_options,IAC,WILL,TELOPT_ECHO);
+	this->write(buffer);
+
+	sprintf(buffer,telnet_options,IAC,WILL,TELOPT_SGA);
+	this->write(buffer);
+
+	char s[100];
+	sprintf(s,"This is serial port #%d on AlphaSim\r\n",number);
+	this->write(s);
+
+	serial_cycles = 0;
+#endif
+
+	iNumber = number;
+
+	rcvW = 0;
+	rcvR = 0;
+
     bLCR = 0x00;
 	bLSR = 0x60; // THRE, TSRE
 	bMSR = 0x30; // CTS, DSR
@@ -83,9 +152,10 @@ CSerial::CSerial(CSystem * c, int number) : CSystemComponent(c)
 
 CSerial::~CSerial()
 {
+#ifdef _WIN32
 	cTelnet->stop();
 	free(cTelnet);
-
+#endif
 }
 
 u64 CSerial::ReadMem(int index, u64 address, int dsize)
@@ -171,7 +241,11 @@ void CSerial::WriteMem(int index, u64 address, int dsize, u64 data)
         else
         {
 		    sprintf(s,"%c",d);
+#ifdef _WIN32
 		    cTelnet->write(s);
+#else
+		    write(s);
+#endif
 		    sprintf(trcbuffer,"Write character %02x (%c) on serial port %d\n",d,d,iNumber);
 		    cSystem->trace->trace_dev(trcbuffer);
             if (bIER & 0x2)
@@ -213,7 +287,11 @@ void CSerial::WriteMem(int index, u64 address, int dsize, u64 data)
 
 void CSerial::write(char *s)
 {
+#ifdef _WIN32
 	cTelnet->write(s);
+#else
+	send(connectSocket,s,strlen(s)+1,0);
+#endif
 }
 
 void CSerial::receive(const char* data)
@@ -238,3 +316,29 @@ void CSerial::receive(const char* data)
         }
 	}
 }
+
+#ifndef _WIN32
+
+void CSerial::DoClock() {
+  fd_set readset;
+  char buffer[FIFO_SIZE+1];
+  ssize_t size;
+  struct timeval tv;
+
+  serial_cycles++;
+  if(serial_cycles >= RECV_TICKS) {
+    FD_ZERO(&readset);
+    FD_SET(connectSocket,&readset);
+    tv.tv_sec=0;
+    tv.tv_usec=0;
+    if(select(connectSocket+1,&readset,NULL,NULL,&tv) > 0) {
+      size = read(connectSocket,&buffer,FIFO_SIZE);
+      buffer[size+1]=0; // force null termination.
+      this->receive((const char*)&buffer);
+    }
+    serial_cycles=0;
+  }
+}
+
+
+#endif
