@@ -44,13 +44,14 @@
 
 
 //#define DO_LISTING 1
-//#define DO_TRACE 1
-#define DO_SAVESTATE "c:\\console.vms"
-//#define DO_SAVESTATE "c:\\console2.vms"
-//#define DO_LOADSTATE "c:\\console.vms"
-//#define DO_LOADSTATE "c:\\console2.vms"
-//#define RUN_CYCLES 200*1000*1000
+#define DO_TRACE 1
+//#define DO_SAVESTATE "console.vms"
+//#define DO_SAVESTATE "console2.vms"
+#define DO_LOADSTATE "console.vms"
+//#define DO_LOADSTATE "console2.vms"
+#define RUN_CYCLES 8*1000*1000
 //#define RUN_GT X64(400000)
+//#define RUN_LT X64(400000)
 //#define DO_SETPC X64(200000)
 //#define DO_SETPC X64(0)
 
@@ -122,8 +123,8 @@ int main(int argc, char* argv[])
   cpu[0]->set_debug(false);
   cpu[0]->set_list(false);
 
-  systm->trace->read_procfile("..\\..\\es40.csv");
-  systm->trace->read_procfile("..\\..\\vms83.csv");
+  systm->trace->read_procfile("es40.csv");
+  systm->trace->read_procfile("vms83.csv");
 
   printf("%%SYS-I-INITEND: System initialization complete.\n");
 
@@ -204,11 +205,6 @@ int main(int argc, char* argv[])
 
   for(i=0;;i++)
     {
-#ifdef DO_TRACE
-      //		if ((i%25000000)==0)
-      //			systm->DumpMemory(i);
-#endif
-
 #ifdef RUN_CYCLES
       if (i >= RUN_CYCLES)
 	break;
@@ -217,6 +213,10 @@ int main(int argc, char* argv[])
 #ifdef RUN_GT
       if ((cpu[0]->pc&~X64(3)) > RUN_GT)
 	break;
+#endif
+#ifdef RUN_LT
+	if ((cpu[0]->pc&~X64(3)) < RUN_LT)
+	  break;
 #endif
 
       systm->DoClock();
@@ -319,7 +319,7 @@ int main(int argc, char* argv[])
       fclose(ff);
     }
 
-  ff = fopen(systm->GetConfig("rom.flash","flash.rom"),"wb");
+  ff = fopen(systm->GetConfig("rom.dpr","dpr.rom"),"wb");
   if (ff)
     {
       dpr->SaveState(ff);

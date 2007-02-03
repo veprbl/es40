@@ -36,13 +36,6 @@
 #include <stdlib.h>
 #endif
 
-inline char printable(char c)
-{
-  if (c<32 || c>126)
-    return '.';
-  return c;
-}
-
 inline void write_printable_s(char * dest, char * org)
 {
   while (*org)

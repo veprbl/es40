@@ -56,11 +56,7 @@ CSystem::CSystem(unsigned int membits)
   c$DIM[2] = 0;
   c$DIM[3] = 0;
   c$DRIR = 0;
-#ifdef DS15
-  c$CSC = X64(0042444014153800); 
-#else
   c$CSC = X64(0042444014157803);
-#endif
   c$TRR = X64(0000000000003103);
   c$TDR = X64(F37FF37FF37FF37F);
 
@@ -1066,13 +1062,14 @@ char path[][40]={
 
 
 char *CSystem::FindConfig() {
-  char *filename;
+  char *filename = 0;
   FILE *f;
-  for(int i = 0 ; ; i++) {
+  for(int i = 0 ; path[i] ; i++) {
     filename=path[i];
-    f=fopen(filename,"r");
+    f=fopen(path[i],"r");
     if(f != NULL) {
       fclose(f);
+	  filename = path[i];
       break;
     }
   }
@@ -1153,4 +1150,5 @@ char *CSystem::GetConfig(char *key, char *defval) {
       return asConfig[i]->value;
     }
   }
+  return defval;
 }

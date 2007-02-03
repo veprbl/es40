@@ -80,8 +80,8 @@ CSerial::CSerial(CSystem * c, int number) : CSystemComponent(c)
 
   // start the client
   char s[100];
-  sprintf(s,"telnet://localhost:%d/",base+number);
-  _spawnl(P_NOWAIT,"putty.exe","putty.exe",s,NULL);
+//  sprintf(s,"telnet://localhost:%d/",base+number);
+//  _spawnl(P_NOWAIT,"putty.exe","putty.exe",s,NULL);
 
   // wait until connection
   for (;!cTelnet->getLoggedOn();) ;
@@ -183,12 +183,8 @@ u64 CSerial::ReadMem(int index, u64 address, int dsize)
 	      bRDR = rcvBuffer[rcvR];
 	      rcvR++;
 	      if (rcvR == FIFO_SIZE)
-		rcvR = 0;
-	      if(isprint(bRDR)) {
-		sprintf(trcbuffer,"Read character %02x (%c) on serial port %d\n",bRDR,bRDR,iNumber);
-	      } else {
-		sprintf(trcbuffer,"Read character %02x () on serial port %d\n",bRDR,iNumber);
-	      }
+		    rcvR = 0;
+		  sprintf(trcbuffer,"Read character %02x (%c) on serial port %d\n",bRDR,printable(bRDR),iNumber);
 	      cSystem->trace->trace_dev(trcbuffer);
 	    }
 	  else

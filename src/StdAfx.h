@@ -53,8 +53,7 @@
 #include <string.h>
 #include <malloc.h>
 #include <time.h>
-
-#ifdef _WIN32
+#include <ctype.h>
 
 #if _MSC_VER < 1400
 inline void gmtime_s(struct tm * t1, time_t * t2)
@@ -65,17 +64,21 @@ inline void gmtime_s(struct tm * t1, time_t * t2)
 }
 #endif //_MSC_VER
 
+#ifdef _WIN32
 inline bool isblank(char c)
 {
   if ( c == ' ' || c == '\t' || c == '\n' || c == '\r' )
     return true;
   return false;
 }
-
 #endif
 
-#define ES40 1
-
+inline char printable(char c)
+{
+  if (isprint(c))
+	  return c;
+  return '.';
+}
 
 // TODO: reference additional headers your program requires here
 

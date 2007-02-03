@@ -126,10 +126,6 @@ CAliM1543C::CAliM1543C(CSystem * c): CSystemComponent(c)
       pic_asserted[i] = 0;
     }
 
-#ifdef DS15
-  c->RegisterMemory(this, 9, X64(00000801fe006800), 0x100);
-#endif
-#ifdef ES40
   c->RegisterMemory(this, 9, X64(00000801fe007800), 0x100);
   cSystem->RegisterMemory(this,14, X64(00000801fc0001f0), 8);
   cSystem->RegisterMemory(this,16, X64(00000801fc0003f4), 4);
@@ -137,7 +133,6 @@ CAliM1543C::CAliM1543C(CSystem * c): CSystemComponent(c)
   cSystem->RegisterMemory(this,17, X64(00000801fc000374), 4);
   cSystem->RegisterMemory(this,18, X64(00000801fc00f000), 8);
   cSystem->RegisterMemory(this,19, X64(00000801fc00f008), 8);
-#endif
 
   for (i=0;i<256;i++)
     {

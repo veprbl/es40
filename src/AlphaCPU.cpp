@@ -170,13 +170,6 @@ CAlphaCPU::~CAlphaCPU()
 
 }
 
-inline char printable(char c)
-{
-  if (c<32 || c>126)
-    return '.';
-  return c;
-}
-
 #define SEXT_8(x)  ((x&      X64(ff)) | (((x&      X64(ff))>>7 )?X64(ffffffffffffff00):0))
 #define SEXT_12(x) ((x&     X64(fff)) | (((x&     X64(fff))>>11)?X64(fffffffffffff000):0))
 #define SEXT_13(x) ((x&    X64(1fff)) | (((x&    X64(1fff))>>12)?X64(ffffffffffffe000):0))
