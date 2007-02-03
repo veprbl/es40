@@ -91,7 +91,9 @@ int main(int argc, char* argv[])
 	systm = new CSystem(27); // 128 MB
 //	systm = new CSystem(29); // 512 MB
 
-	systm->load_ROM2("..\\..\\cl67srmrom.exe",0x240,X64(900000),2);
+	systm->LoadConfig(systm->FindConfig());
+
+	systm->load_ROM2(systm->GetConfig("rom.srm","cl67srmrom.exe"),0x240,X64(900000),2);
 
 	cpu[0] = new CAlphaCPU(systm);
 
@@ -176,13 +178,13 @@ int main(int argc, char* argv[])
 	cpu[0]->pc = DO_SETPC;
 #endif
 
-	ff = fopen("c:\\flash.rom","rb");
+	ff = fopen(systm->GetConfig("rom.flash","flash.rom"),"rb");
 	if (ff)
 	{
 		srom->RestoreState(ff);
 		fclose(ff);
 	}
-	ff = fopen("c:\\dpr.rom","rb");
+	ff = fopen(systm->GetConfig("rom.dpr","dpr.rom"),"rb");
 	if (ff)
 	{
 		dpr->RestoreState(ff);
@@ -293,14 +295,14 @@ int main(int argc, char* argv[])
 #endif
 
 
-	ff = fopen("c:\\flash.rom","wb");
+    ff = fopen(systm->GetConfig("rom.flash","flash.rom"),"wb");
 	if (ff)
 	{
 		srom->SaveState(ff);
 		fclose(ff);
 	}
 
-	ff = fopen("c:\\dpr.rom","wb");
+	ff = fopen(systm->GetConfig("rom.flash","flash.rom"),"wb");
 	if (ff)
 	{
 		dpr->SaveState(ff);

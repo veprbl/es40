@@ -63,6 +63,13 @@ struct SROM_data
     char tp[4];
 };
 
+struct SConfig {
+  char *key;
+  char *value;
+};
+
+
+
 class CSystem  
 {
 public:
@@ -86,9 +93,17 @@ public:
 	int RegisterCPU(class CAlphaCPU * cpu);
 	
 	CSystem(unsigned int membits);
+	void ResetMem(unsigned int membits);
+
 	virtual ~CSystem();
 	unsigned int iNumMemoryBits;
 	CTraceEngine * trace;
+
+	char *FindConfig();
+	void LoadConfig(char *filename);
+	char *GetConfig(char *key);
+	char *GetConfig(char *key, char *defval);
+
 
 private:
 	unsigned int iNumCPUs;
@@ -121,6 +136,12 @@ private:
     struct SROM_data * asROMs[10];
     unsigned int iNumROMs;
 	class CAlphaCPU * acCPUs[4];
+
+
+	struct SConfig *asConfig[30];
+	int iNumConfig;
+
+
 };
 
 #endif // !defined(AFX_SYSTEM_H__210AB1B2_9C79_4C34_856A_D52C82CDD3E8__INCLUDED_)

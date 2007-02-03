@@ -30,6 +30,8 @@
 #include "System.h"
 #include "AlphaCPU.h"
 
+#include <ctype.h>
+
 #ifndef _WIN32
 #define _strdup strdup
 #endif
@@ -115,6 +117,12 @@ CSystem::~CSystem()
 	for (i=0;i<iNumComponents;i++)
 		delete acComponents[i];
 	delete trace;
+}
+
+void CSystem::ResetMem(unsigned int membits) {
+  free(memory);
+  iNumMemoryBits=membits;
+  memory = calloc(1<<iNumMemoryBits,1);
 }
 
 int CSystem::RegisterComponent(CSystemComponent *component)
@@ -1033,4 +1041,116 @@ void CSystem::DumpMemory(unsigned int filenum)
 
 	fwrite(mem,1,x*sizeof(int),f);
 	fclose(f);
+}
+
+// Search "standard" locations for a configuration file.  This
+// will be port specific.
+
+#ifdef _WIN32
+  char path[][40]={
+    ".\\es40.cfg",
+    "c:\\es40.cfg",
+    "c:\\windows\\es40.cfg",
+    0
+  };
+#else
+  char path[][40]={
+    "./es40.cfg",
+    "/etc/es40.cfg",
+    "/usr/etc/es40.cfg",
+    "/usr/local/etc/es40.cfg",
+    0
+  };
+#endif
+
+
+
+char *CSystem::FindConfig() {
+  char *filename;
+  FILE *f;
+  for(int i = 0 ; ; i++) {
+    filename=path[i];
+    f=fopen(filename,"r");
+    if(f != NULL) {
+      fclose(f);
+      break;
+    }
+  }
+  return filename;
+}
+
+
+void CSystem::LoadConfig(char *filename) {
+  char linebuf[121];
+  char *p, *keyp, *valp, *key, *val;
+  struct SConfig *conf;
+
+  printf("%%SYS-I-READCFG: Reading configuration file '%s'\n",filename);
+  iNumConfig=0;
+  FILE *f = fopen(filename,"r");
+  while(!feof(f)) {
+    fgets(linebuf,120,f);
+    // terminate the line at the comment char, if any.
+    if(p=strchr(linebuf,'#')) *p=0;
+    
+    // if the line has an =, it is a config line.
+    if(p=strchr(linebuf,'=')) {
+      *p=0;
+      keyp = linebuf;
+      valp = p+1;
+
+      // find start of key
+      while(isblank(*keyp) && *keyp!=0) 
+        keyp++;
+      p=keyp;
+      // find end of variable
+      while(!isblank(*p) && *p !=0) 
+        p++;
+      *p=0;
+
+      // find start of value
+      while(isblank(*valp) && *valp!=0) 
+        valp++;
+      p=valp;
+      // find end of value
+      while(!isblank(*p) && *p != '\n' && *p != '\r' && *p !=0) 
+        p++;
+      *p=0;
+
+      // keyp and valp now point to valid strings for the variable
+      // name and value name, respectively
+      conf = (struct SConfig*)malloc(sizeof(struct SConfig));
+      
+      val = (char *)malloc(strlen(valp)+1);
+      key = (char *)malloc(strlen(keyp)+1);
+      strcpy(val,valp);
+      strcpy(key,keyp);
+
+      conf->value=val;
+      conf->key=key;
+      
+      asConfig[iNumConfig++]=conf;
+    } else {
+      //printf("Ignored Config Line:  %s\n",linebuf);
+    }
+  }
+  fclose(f);
+  printf("%%SYS-I-READCFG: Successful.  %d configuration variables read.\n",iNumConfig);
+
+  //  for(int x = 0; x<iNumConfig; x++) {
+  //   printf("'%s'='%s'\n",asConfig[x]->key,asConfig[x]->value);
+  // }
+
+}
+
+char *CSystem::GetConfig(char *key) {
+  return GetConfig(key,NULL);
+}
+
+char *CSystem::GetConfig(char *key, char *defval) {
+  for(int i=0;i<iNumConfig;i++) {
+    if(strcmp(asConfig[i]->key,key)==0) {
+      return asConfig[i]->value;
+    }
+  }
 }

@@ -31,7 +31,7 @@
 #include "System.h"
 
 static FILE * f_ide;
-static FILE * f_img[2];
+static FILE * f_img[4];
 
 //////////////////////////////////////////////////////////////////////
 // Construction/Destruction
