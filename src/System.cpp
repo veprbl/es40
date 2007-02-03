@@ -30,6 +30,11 @@
 #include "System.h"
 #include "AlphaCPU.h"
 
+#ifndef _WIN32
+#define _strdup strdup
+#endif
+
+
 //////////////////////////////////////////////////////////////////////
 // Construction/Destruction
 //////////////////////////////////////////////////////////////////////
@@ -783,13 +788,13 @@ void CSystem::interrupt(int number, bool assert)
     {
 //        if (!(c$DRIR & (1i64<<number)))
 //            printf("%%TYP-I-INTERRUPT: Interrupt %d asserted.\n",number);
-        c$DRIR |= (1i64<<number);
+      c$DRIR |= (X64(1)<<number);
     }
     else
     {
 //        if (c$DRIR & (1i64<<number))
 //            printf("%%TYP-I-INTERRUPT: Interrupt %d deasserted.\n",number);
-        c$DRIR &= ~(1i64<<number);
+      c$DRIR &= ~(X64(1)<<number);
     }
     for (i=0;i<iNumCPUs;i++)
     {

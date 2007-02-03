@@ -46,10 +46,13 @@
 #endif
 
 #include <stdio.h>
+#ifdef _WIN32
 #include <afx.h>
 #include <winsock.h>
+#endif
 #include <string.h>
 #include <malloc.h>
+#include <time.h>
 
 #if _MSC_VER < 1400
 inline void gmtime_s(struct tm * t1, time_t * t2)

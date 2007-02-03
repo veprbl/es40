@@ -29,6 +29,7 @@
 #if !defined(__DATATYPES_H__)
 #define __DATATYPES_H__
 
+#ifdef _WIN32
 
 #define u8 unsigned char
 #define u16 unsigned short
@@ -41,8 +42,26 @@
 #define s64 signed __int64
 
 #define X64(a) 0x##a##ui64
+
+#else
+#include <stdint.h>
+#define u8 uint8_t
+#define u16 uint16_t
+#define u32 uint32_t
+#define u64 uint64_t
+
+#define s8 int8_t
+#define s16 int16_t
+#define s32 int32_t
+#define s64 int64_t
+
+#define X64(a) 0x##a##ll
+
+#endif
+
 #define X32(a) 0x##a
 #define X16(a) 0x##a
 #define X8(a) 0x##a
+
 
 #endif //__DATATYPES_H__

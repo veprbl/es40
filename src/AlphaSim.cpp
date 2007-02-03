@@ -67,21 +67,26 @@ int main(int argc, char* argv[])
 #endif
 
     u64 loadat;
-
+#ifdef _WIN32
     LARGE_INTEGER beginning;
 	LARGE_INTEGER before;
 	LARGE_INTEGER after;
 	LARGE_INTEGER diff;
 	LARGE_INTEGER freq;
+#else
+	u64 beginning, before, after, diff;
+#endif
 	double seconds;
 	double ops_per_sec;
     FILE * ff;
 
     printf("%%SYS-I-INITSTART: System initialization started.\n");
 
-	SetThreadAffinityMask(GetCurrentThread(), 1);
+#ifdef _WIN32	
+        SetThreadAffinityMask(GetCurrentThread(), 1);
 
 	QueryPerformanceFrequency(&freq);
+#endif
 
 	systm = new CSystem(27); // 128 MB
 //	systm = new CSystem(29); // 512 MB
@@ -148,7 +153,10 @@ int main(int argc, char* argv[])
     bool tick1 = true;
 
 	char prf[300];
+#ifdef _WIN32
 	QueryPerformanceCounter(&before);
+#endif
+
     beginning = before;
 
 #ifdef DO_LOADSTATE
@@ -251,11 +259,14 @@ int main(int argc, char* argv[])
 			printf(".");
         if ((i&0x1ffff)==0 && i)
 		{
+#ifdef _WIN32
 			QueryPerformanceCounter(&after);
             diff.QuadPart = after.QuadPart-before.QuadPart;
 			
 			seconds = (after.QuadPart - before.QuadPart)/(double)freq.QuadPart;
+#else
 
+#endif
 			before=after;
 
 			ops_per_sec = 0x20000 / seconds;
@@ -268,8 +279,12 @@ int main(int argc, char* argv[])
 		    srl[1]->write(prf);
 		}
 	}
+#ifdef _WIN32
 	QueryPerformanceCounter(&after);
 	seconds = (after.QuadPart - beginning.QuadPart)/(double)freq.QuadPart;
+#else
+
+#endif
 	ops_per_sec = i / seconds;
     printf("%d instructions skipped. Time elapsed: %e sec. Avg. speed: %e ins/sec.              \n\n",i,seconds,ops_per_sec);
 

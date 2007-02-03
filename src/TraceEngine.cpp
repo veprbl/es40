@@ -31,6 +31,11 @@
 #include "AlphaCPU.h"
 #include "System.h"
 
+#ifndef _WIN32
+#define _strdup strdup
+#include <stdlib.h>
+#endif
+
 inline char printable(char c)
 {
 	if (c<32 || c>126)
