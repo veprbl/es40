@@ -37,6 +37,12 @@
 #include "AliM1543C.h"
 #include "DPR.h"
 
+#ifndef _WIN32
+#include <sys/time.h>
+#include <stdlib.h>
+#endif
+
+
 //#define DO_LISTING 1
 //#define DO_TRACE 1
 #define DO_SAVESTATE "c:\\console.vms"
@@ -74,7 +80,8 @@ int main(int argc, char* argv[])
 	LARGE_INTEGER diff;
 	LARGE_INTEGER freq;
 #else
-	u64 beginning, before, after, diff;
+	struct timeval beginning, before, after;
+	double t1, t2;
 #endif
 	double seconds;
 	double ops_per_sec;
@@ -157,9 +164,13 @@ int main(int argc, char* argv[])
 	char prf[300];
 #ifdef _WIN32
 	QueryPerformanceCounter(&before);
+	beginning = before;
+#else
+	gettimeofday(&beginning,NULL);
+	gettimeofday(&before,NULL);
 #endif
 
-    beginning = before;
+
 
 #ifdef DO_LOADSTATE
     systm->RestoreState(DO_LOADSTATE);
@@ -267,6 +278,10 @@ int main(int argc, char* argv[])
 			
 			seconds = (after.QuadPart - before.QuadPart)/(double)freq.QuadPart;
 #else
+			gettimeofday(&after,NULL);
+			t1 = ((double)(before.tv_sec*1000000)+(double)before.tv_usec)/1000000;
+			t2 = ((double)(after.tv_sec*1000000)+(double)after.tv_usec)/1000000;
+			seconds = t2 - t1;
 
 #endif
 			before=after;
@@ -285,7 +300,9 @@ int main(int argc, char* argv[])
 	QueryPerformanceCounter(&after);
 	seconds = (after.QuadPart - beginning.QuadPart)/(double)freq.QuadPart;
 #else
-
+	t1 = ((double)(beginning.tv_sec*1000000)+(double)beginning.tv_usec)/1000000;
+	t2 = ((double)(after.tv_sec*1000000)+(double)after.tv_usec)/1000000;
+	seconds = t2 - t1;
 #endif
 	ops_per_sec = i / seconds;
     printf("%d instructions skipped. Time elapsed: %e sec. Avg. speed: %e ins/sec.              \n\n",i,seconds,ops_per_sec);

@@ -842,14 +842,14 @@ void CSystem::PCI_WriteMem(int pcibus, u32 address, int dsize, u64 data)
 	  if (      (p$WSBA[pcibus][j] & 1)									// window enabled...
 		   && ! ((address ^ p$WSBA[pcibus][j]) & 0xfff00000 & ~p$WSM[pcibus][j]))	// address in range...
 	  {
-		  a = (address & ((p$WSM[pcibus][j] & 0xfff00000) | 0xfffff)) + (p$TBA[pcibus][j] & 0x3fffc0000);
+	    a = (address & ((p$WSM[pcibus][j] & X64(fff00000)) | 0xfffff)) + (p$TBA[pcibus][j] & X64(3fffc0000));
 //		  printf("PCI memory address %08x translated to %08x%08x\n",address, (u32)(a>>32),(u32)a);
 		  WriteMem(a, dsize, data);
           return;
 	  }
 	}
 
-    WriteMem(0x80000000000 | (pcibus * 0x200000000) | (u64)address, dsize, data);
+	WriteMem(X64(80000000000) | (pcibus * X64(200000000)) | (u64)address, dsize, data);
     
 
 }
@@ -877,13 +877,13 @@ u64 CSystem::PCI_ReadMem(int pcibus, u32 address, int dsize)
 	  if (      (p$WSBA[pcibus][j] & 1)									// window enabled...
 		   && ! ((address ^ p$WSBA[pcibus][j]) & 0xfff00000 & ~p$WSM[pcibus][j]))	// address in range...
 	  {
-		  a = (address & ((p$WSM[pcibus][j] & 0xfff00000) | 0xfffff)) + (p$TBA[pcibus][j] & 0x3fffc0000);
+	    a = (address & ((p$WSM[pcibus][j] & X64(fff00000)) | 0xfffff)) + (p$TBA[pcibus][j] & X64(3fffc0000));
 //		  printf("PCI memory address %08x translated to %08x%08x\n",address, (u32)(a>>32),(u32)a);
 		  return ReadMem(a, dsize);
 	  }
 	}
 
-    return ReadMem(0x80000000000 | (pcibus * 0x200000000) | (u64)address, dsize);
+	return ReadMem(X64(80000000000) | (pcibus * X64(200000000)) | (u64)address, dsize);
 
 }
 

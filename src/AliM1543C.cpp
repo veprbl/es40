@@ -458,7 +458,7 @@ u8 CAliM1543C::toy_read(u64 address)
     char trcbuffer[1000];
 
 //	printf("%%ALI-I-READTOY: read port %02x: 0x%02x\n", (u32)(0x70 + address), toy_access_ports[address]);
-	sprintf(trcbuffer,"%%ALI-I-READTOY: read port %02x: 0x%02x\n", (u32)(0x70 + address), toy_access_ports[address]);
+    sprintf(trcbuffer,"xALI-I-READTOY: read port %02x: 0x%02x\n", (u32)(0x70 + address), toy_access_ports[address]);
     cSystem->trace->trace_dev(trcbuffer);
 
 	return (u8)toy_access_ports[address];
@@ -472,7 +472,7 @@ void CAliM1543C::toy_write(u64 address, u8 data)
     char trcbuffer[1000];
 
 //	printf("%%ALI-I-WRITETOY: write port %02x: 0x%02x\n", (u32)(0x70 + address), data);
-	sprintf(trcbuffer,"%%ALI-I-WRITETOY: write port %02x: 0x%02x\n", (u32)(0x70 + address), data);
+	sprintf(trcbuffer,"xALI-I-WRITETOY: write port %02x: 0x%02x\n", (u32)(0x70 + address), data);
     cSystem->trace->trace_dev(trcbuffer);
 
     toy_access_ports[address] = (u8)data;
@@ -527,7 +527,9 @@ void CAliM1543C::toy_write(u64 address, u8 data)
                 toy_stored_data[8] = (u8)((((stime.tm_mon+1)/10)<<4) | ((stime.tm_mon+1)%10));
                 toy_stored_data[9] = (u8)((((stime.tm_year%100)/10)<<4) | ((stime.tm_year%100)%10));
             }
-        }
+	}
+	/* bdw:  I'm getting a 0x17 as data, which should copy some data 
+	   to port 0x71.  However, there's nothing there.  Problem? */
 		toy_access_ports[1] = toy_stored_data[data & 0x7f];
 		break;
 	case 1:

@@ -25,4 +25,5 @@ all: $(OBJS)
 	$(LD) $(LDFLAGS) -o es40 $(OBJS)
 
 clean:
-	rm -f es40 *.o
+	rm -f es40 *.o *.trc
+
