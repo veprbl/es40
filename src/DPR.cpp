@@ -41,7 +41,7 @@ CDPR::CDPR(CSystem * c) : CSystemComponent(c)
 {
 	int i;
 
-	c->RegisterMemory(this, 0, 0x0000080110000000,0x100000); // 16KB
+	c->RegisterMemory(this, 0, X64(0000080110000000),0x100000); // 16KB
     printf("%%DPR-I-INIT: Dual-Port RAM emulator initialized.\n");
     memset(ram,0,16*1024);
 	//

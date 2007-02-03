@@ -35,7 +35,7 @@
 
 CPort80::CPort80(CSystem * c) : CSystemComponent(c)
 {
-	c->RegisterMemory(this, 0, 0x00000801fc000080,1);
+	c->RegisterMemory(this, 0, X64(00000801fc000080),1);
 	p80 = 0;
 }
 

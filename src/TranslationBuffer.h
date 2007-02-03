@@ -111,16 +111,16 @@ inline void CTranslationBuffer::write_pte(int number, u64 value, int asn)
 		switch (entry[next_entry].gh)
 		{
 		case 0:
-			v_mask = 0x0000ffffffffe000i64;  
+			v_mask = X64(0000ffffffffe000);  
 			break;
 		case 1:
-			v_mask = 0x0000ffffffff0000i64;
+			v_mask = X64(0000ffffffff0000);
 			break;
 		case 2:
-			v_mask = 0x0000fffffff80000i64;
+			v_mask = X64(0000fffffff80000);
 			break;
 		case 3:
-			v_mask = 0x0000ffffffc00000i64;
+			v_mask = X64(0000ffffffc00000);
 			break;
 		}
 		entry[next_entry].virt = (temp_tag[number] & v_mask);
@@ -175,20 +175,20 @@ inline int CTranslationBuffer::FindEntry(u64 virt, int asn)
 		switch (entry[i].gh)
 		{
 		case 0:
-			v_mask = 0x0000ffffffffe000i64;
-			p_mask = 0x0000000000001fffi64;
+			v_mask = X64(0000ffffffffe000);
+			p_mask = X64(0000000000001fff);
 			break;
 		case 1:
-			v_mask = 0x0000ffffffff0000i64;
-			p_mask = 0x000000000000ffffi64;
+			v_mask = X64(0000ffffffff0000);
+			p_mask = X64(000000000000ffff);
 			break;
 		case 2:
-			v_mask = 0x0000fffffff80000i64;
-			p_mask = 0x000000000007ffffi64;
+			v_mask = X64(0000fffffff80000);
+			p_mask = X64(000000000007ffff);
 			break;
 		case 3:
-			v_mask = 0x0000ffffffc00000i64;
-			p_mask = 0x00000000003fffffi64;
+			v_mask = X64(0000ffffffc00000);
+			p_mask = X64(00000000003fffff);
 			break;
 		}
 
@@ -215,20 +215,20 @@ inline int CTranslationBuffer::convert_address(u64 virt, u64 *phys, u8 access, b
 		if (   (((virt>>46)&3) == 2)
 			&& (spe&4))
 		{
-			*phys = virt & 0x00000fffffffffffi64;
+			*phys = virt & X64(00000fffffffffff);
 			return 0;
 		}
 		else if (   (((virt>>41)&0x7f) == 0x7e)
 				 && (spe & 2))
 		{
-			*phys =   (virt & 0x000001ffffffffffi64) 
-				   | ((virt & 0x0000010000000000i64) * 6);
+			*phys =   (virt & X64(000001ffffffffff)) 
+				   | ((virt & X64(0000010000000000)) * 6);
 			return 0;
 		}
 		else if (   (((virt>>30)&0x3ffff) == 0x3fffe)
 				 && (spe & 1))
 		{
-			*phys = virt & 0x000000003fffffffi64;
+			*phys = virt & X64(000000003fffffff);
 			return 0;
 		}
 	}
@@ -244,10 +244,18 @@ inline int CTranslationBuffer::convert_address(u64 virt, u64 *phys, u8 access, b
 
 	*phys = (entry[i].phys & v_mask) | (virt & p_mask);
 
-//	if (((*phys) & 0x00000fffffffffffi64) != (virt & 0x00000fffffffffffi64))
+//	if (((*phys) & X64(00000fffffffffff)) != (virt & X64(00000fffffffffff)))
 //	{
+#ifdef _WIN32
 //		printf("*** %s VIRT: %016I64x translates to PHYS %016I64x\n",bIBOX?"IBOX":"MBOX",virt,*phys);
+#else
+//		printf("*** %s VIRT: %016llx translates to PHYS %016llx\n",bIBOX?"IBOX":"MBOX",virt,*phys);
+#endif
+#ifdef _WIN32
 //		fprintf(systm->trace->trace_file(),"*** %s VIRT: %016I64x translates to PHYS %016I64x\n",bIBOX?"IBOX":"MBOX",virt,*phys);
+#else
+//		fprintf(systm->trace->trace_file(),"*** %s VIRT: %016llx translates to PHYS %016llx\n",bIBOX?"IBOX":"MBOX",virt,*phys);
+#endif
 //	}
 
 	return 0;

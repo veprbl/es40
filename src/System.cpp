@@ -43,24 +43,24 @@ CSystem::CSystem(unsigned int membits)
 	iNumROMs = 0;
 	iNumMemoryBits = membits;
 
-	c$MISC = 0x0000000800000000;
+	c$MISC = X64(0000000800000000);
 	c$DIM[0] = 0;
 	c$DIM[1] = 0;
 	c$DIM[2] = 0;
 	c$DIM[3] = 0;
     c$DRIR = 0;
 #ifdef DS15
-	c$CSC = 0x0042444014153800; 
+	c$CSC = X64(0042444014153800); 
 #else
-    c$CSC = 0x0042444014157803;
+    c$CSC = X64(0042444014157803);
 #endif
-	c$TRR = 0x0000000000003103;
-	c$TDR = 0xF37FF37FF37FF37F;
+	c$TRR = X64(0000000000003103);
+	c$TDR = X64(F37FF37FF37FF37F);
 
-	d$STR = 0x2525252525252525;
+	d$STR = X64(2525252525252525);
 
-	p$PCTL[0] = 0x0000104401440081;
-	p$PCTL[1] = 0x0000504401440081;
+	p$PCTL[0] = X64(0000104401440081);
+	p$PCTL[1] = X64(0000504401440081);
 
 	p$PERRMASK[0] = 0;
 	p$PERRMASK[1] = 0;
@@ -179,7 +179,7 @@ void CSystem::WriteMem(u64 address, int dsize, u64 data)
 	void * p;
     char trcbuffer[1000];
 
-	a = address & 0x00000fffffffffff;
+	a = address & X64(00000fffffffffff);
 
 	if (a>>iNumMemoryBits)
 	{
@@ -194,20 +194,20 @@ void CSystem::WriteMem(u64 address, int dsize, u64 data)
 
 		switch (a)
 		{
-        case 0x00000801a0000000: // CSC
-            c$CSC        &= ~0x0777777fff3f0000;
-            c$CSC |= (data & 0x0777777fff3f0000);
+        case X64(00000801a0000000): // CSC
+            c$CSC        &= ~X64(0777777fff3f0000);
+            c$CSC |= (data & X64(0777777fff3f0000));
             return;
-		case 0x00000801a0000080: // MISC
-			c$MISC |= (data & 0x00000f0000f0f000);	// W1S
-			c$MISC &=~(data & 0x0000000010000ff0);	// W1C
-			if       (data & 0x0000000001000000)
-			c$MISC &=~        0x0000000000ff0000;	//Arbitration Clear
-			if    (!(c$MISC & 0x00000000000f0000))
-			c$MISC |= (data & 0x00000000000f0000);	//Arbitration try
+		case X64(00000801a0000080): // MISC
+			c$MISC |= (data & X64(00000f0000f0f000));	// W1S
+			c$MISC &=~(data & X64(0000000010000ff0));	// W1C
+			if       (data & X64(0000000001000000))
+			c$MISC &=~        X64(0000000000ff0000);	//Arbitration Clear
+			if    (!(c$MISC & X64(00000000000f0000)))
+			c$MISC |= (data & X64(00000000000f0000));	//Arbitration try
 
 			// stop interval timer interrupt
-			if        (data & 0x00000000000000f0)
+			if        (data & X64(00000000000000f0))
 			{
 				for (i=0;i<iNumCPUs;i++)
 				{
@@ -220,137 +220,145 @@ void CSystem::WriteMem(u64 address, int dsize, u64 data)
 			}			
 			return;
 
-		case 0x00000801a0000200:
+		case X64(00000801a0000200):
 			c$DIM[0] = data;
 			return;
-		case 0x00000801a0000240:
+		case X64(00000801a0000240):
 			c$DIM[1] = data;
 			return;
-		case 0x00000801a0000600:
+		case X64(00000801a0000600):
 			c$DIM[2] = data;
 			return;
-		case 0x00000801a0000640:
+		case X64(00000801a0000640):
 			c$DIM[3] = data;
 			return;
 
-        case 0x0000080180000000:
-            p$WSBA[0][0] = data & 0x00000000fff00003;
+        case X64(0000080180000000):
+            p$WSBA[0][0] = data & X64(00000000fff00003);
             return;
-        case 0x0000080180000040:
-            p$WSBA[0][1] = data & 0x00000000fff00003;
+        case X64(0000080180000040):
+            p$WSBA[0][1] = data & X64(00000000fff00003);
             return;
-        case 0x0000080180000080:
-            p$WSBA[0][2] = data & 0x00000000fff00003;
+        case X64(0000080180000080):
+            p$WSBA[0][2] = data & X64(00000000fff00003);
             return;
-        case 0x00000801800000c0:
-            p$WSBA[0][3] = data & 0x00000080fff00003;
+        case X64(00000801800000c0):
+            p$WSBA[0][3] = data & X64(00000080fff00003);
             return;
-        case 0x0000080380000000:
-            p$WSBA[1][0] = data & 0x00000000fff00003;
+        case X64(0000080380000000):
+            p$WSBA[1][0] = data & X64(00000000fff00003);
             return;
-        case 0x0000080380000040:
-            p$WSBA[1][1] = data & 0x00000000fff00003;
+        case X64(0000080380000040):
+            p$WSBA[1][1] = data & X64(00000000fff00003);
             return;
-        case 0x0000080380000080:
-            p$WSBA[1][2] = data & 0x00000000fff00003;
+        case X64(0000080380000080):
+            p$WSBA[1][2] = data & X64(00000000fff00003);
             return;
-        case 0x00000803800000c0:
-            p$WSBA[1][3] = data & 0x00000080fff00003;
+        case X64(00000803800000c0):
+            p$WSBA[1][3] = data & X64(00000080fff00003);
             return;
-        case 0x0000080180000100:
-            p$WSM[0][0] = data & 0x00000000fff00000;
+        case X64(0000080180000100):
+            p$WSM[0][0] = data & X64(00000000fff00000);
             return;
-        case 0x0000080180000140:
-            p$WSM[0][1] = data & 0x00000000fff00000;
+        case X64(0000080180000140):
+            p$WSM[0][1] = data & X64(00000000fff00000);
             return;
-        case 0x0000080180000180:
-            p$WSM[0][2] = data & 0x00000000fff00000;
+        case X64(0000080180000180):
+            p$WSM[0][2] = data & X64(00000000fff00000);
             return;
-        case 0x00000801800001c0:
-            p$WSM[0][3] = data & 0x00000000fff00000;
+        case X64(00000801800001c0):
+            p$WSM[0][3] = data & X64(00000000fff00000);
             return;
-        case 0x0000080380000100:
-            p$WSM[1][0] = data & 0x00000000fff00000;
+        case X64(0000080380000100):
+            p$WSM[1][0] = data & X64(00000000fff00000);
             return;
-        case 0x0000080380000140:
-            p$WSM[1][1] = data & 0x00000000fff00000;
+        case X64(0000080380000140):
+            p$WSM[1][1] = data & X64(00000000fff00000);
             return;
-        case 0x0000080380000180:
-            p$WSM[1][2] = data & 0x00000000fff00000;
+        case X64(0000080380000180):
+            p$WSM[1][2] = data & X64(00000000fff00000);
             return;
-        case 0x00000803800001c0:
-            p$WSM[1][3] = data & 0x00000000fff00000;
+        case X64(00000803800001c0):
+            p$WSM[1][3] = data & X64(00000000fff00000);
             return;
-        case 0x0000080180000200:
-            p$TBA[0][0] = data & 0x00000007fffffc00;
+        case X64(0000080180000200):
+            p$TBA[0][0] = data & X64(00000007fffffc00);
             return;
-        case 0x0000080180000240:
-            p$TBA[0][1] = data & 0x00000007fffffc00;
+        case X64(0000080180000240):
+            p$TBA[0][1] = data & X64(00000007fffffc00);
             return;
-        case 0x0000080180000280:
-            p$TBA[0][2] = data & 0x00000007fffffc00;
+        case X64(0000080180000280):
+            p$TBA[0][2] = data & X64(00000007fffffc00);
             return;
-        case 0x00000801800002c0:
-            p$TBA[0][3] = data & 0x00000007fffffc00;
+        case X64(00000801800002c0):
+            p$TBA[0][3] = data & X64(00000007fffffc00);
             return;
-        case 0x0000080380000200:
-            p$TBA[1][0] = data & 0x00000007fffffc00;
+        case X64(0000080380000200):
+            p$TBA[1][0] = data & X64(00000007fffffc00);
             return;
-        case 0x0000080380000240:
-            p$TBA[1][1] = data & 0x00000007fffffc00;
+        case X64(0000080380000240):
+            p$TBA[1][1] = data & X64(00000007fffffc00);
             return;
-        case 0x0000080380000280:
-            p$TBA[1][2] = data & 0x00000007fffffc00;
+        case X64(0000080380000280):
+            p$TBA[1][2] = data & X64(00000007fffffc00);
             return;
-        case 0x00000803800002c0:
-            p$TBA[1][3] = data & 0x00000007fffffc00;
+        case X64(00000803800002c0):
+            p$TBA[1][3] = data & X64(00000007fffffc00);
             return;
-		case 0x0000080180000300:
-			p$PCTL[0] &=         0xffffe300f0300000;
-			p$PCTL[0] |= (data & 0x00001cff0fcfffff);
+		case X64(0000080180000300):
+			p$PCTL[0] &=         X64(ffffe300f0300000);
+			p$PCTL[0] |= (data & X64(00001cff0fcfffff));
 			return;
-		case 0x0000080380000300:
-			p$PCTL[1] &=         0xffffe300f0300000;
-			p$PCTL[1] |= (data & 0x00001cff0fcfffff);
+		case X64(0000080380000300):
+			p$PCTL[1] &=         X64(ffffe300f0300000);
+			p$PCTL[1] |= (data & X64(00001cff0fcfffff));
 			return;
-		case 0x0000080180000340:
+		case X64(0000080180000340):
 			p$PLAT[0] = data;
 			return;
-		case 0x0000080380000340:
+		case X64(0000080380000340):
 			p$PLAT[1] = data;
 			return;		
-		case 0x0000080180000400:
+		case X64(0000080180000400):
 			p$PERRMASK[0] = data;
 			return;
-		case 0x0000080380000400:
+		case X64(0000080380000400):
 			p$PERRMASK[1] = data;
 			return;
-		case 0x00000801300003c0:
+		case X64(00000801300003c0):
 			tig$HaltA = (u8)(data&0xff);
 			return;
-		case 0x00000801300005c0:
+		case X64(00000801300005c0):
 			tig$HaltB = (u8)(data&0xff);
 			return;
-		case 0x0000080130000040:
+		case X64(0000080130000040):
 			tig$FwWrite = (u8)(data&0xff);
 			return;
-		case 0x0000080130000100:
+		case X64(0000080130000100):
 			// soft reset
 			printf("Soft reset: %02x\n",data);
 			return;
 		//PERROR registers
-		case 0x00000801800003c0:
-		case 0x00000803800003c0:
+		case X64(00000801800003c0):
+		case X64(00000803800003c0):
 		//TLBIA
-		case 0x00000801800004c0:
-		case 0x00000803800004c0:
+		case X64(00000801800004c0):
+		case X64(00000803800004c0):
 		// PCI reset
-		case 0x0000080180000800:
-		case 0x0000080380000800:
+		case X64(0000080180000800):
+		case X64(0000080380000800):
 			return;
 		default:
+#ifdef _WIN32
 			printf("Failed memwrite (%02d bits: %016I64x) to %016I64x (PC:%016I64x)         \n",dsize, data,address,acCPUs[0]->pc);
+#else
+			printf("Failed memwrite (%02d bits: %016llx) to %016llx (PC:%016llx)         \n",dsize, data,address,acCPUs[0]->pc);
+#endif
+#ifdef _WIN32
 			sprintf(trcbuffer,"Failed memwrite (%02d bits: %016I64x) to %016I64x (PC:%016I64x)         \n",dsize, data,address,acCPUs[0]->pc);
+#else
+			sprintf(trcbuffer,"Failed memwrite (%02d bits: %016llx) to %016llx (PC:%016llx)         \n",dsize, data,address,acCPUs[0]->pc);
+#endif
             trace->trace_dev(trcbuffer);
 			return;
 		}
@@ -383,7 +391,7 @@ u64 CSystem::ReadMem(u64 address, int dsize)
 	void * p;
     char trcbuffer[1000];
 
-	a = address & 0x00000fffffffffff;
+	a = address & X64(00000fffffffffff);
 	if (a>>iNumMemoryBits)
 	{
 		// Non memory
@@ -398,18 +406,18 @@ u64 CSystem::ReadMem(u64 address, int dsize)
 		{
 
 		// PError registers
-		case 0x00000801800003c0:
-		case 0x00000803800003c0:
+		case X64(00000801800003c0):
+		case X64(00000803800003c0):
 
-        case 0x00000801a0000000:
+        case X64(00000801a0000000):
             return c$CSC;
-		case 0x00000801a0000080:
+		case X64(00000801a0000080):
 			return c$MISC;
-		case 0x00000801a0000100:
+		case X64(00000801a0000100):
 			return   ((iNumMemoryBits-23)<<12); //size
-		case 0x00000801a0000140:
-		case 0x00000801a0000180:
-		case 0x00000801a00001c0:
+		case X64(00000801a0000140):
+		case X64(00000801a0000180):
+		case X64(00000801a00001c0):
 			return 0;
 			// WE PUT ALL OUR MEMORY IN A SINGLE ARRAY FOR NOW...
 			// memory arrays
@@ -417,100 +425,108 @@ u64 CSystem::ReadMem(u64 address, int dsize)
 //				   | ((iNumMemoryBits-25)<<12) //size
 //				   | ( (((a>>6)&3)<<(iNumMemoryBits-2)) & 0x7ff000000);	// address
 
-		case 0x00000801a0000200:
+		case X64(00000801a0000200):
 			return c$DIM[0];
-		case 0x00000801a0000240:
+		case X64(00000801a0000240):
 			return c$DIM[1];
-		case 0x00000801a0000600:
+		case X64(00000801a0000600):
 			return c$DIM[2];
-		case 0x00000801a0000640:
+		case X64(00000801a0000640):
 			return c$DIM[3];
-        case 0x00000801a0000280:
+        case X64(00000801a0000280):
             return c$DRIR & c$DIM[0];
-        case 0x00000801a00002c0:
+        case X64(00000801a00002c0):
             return c$DRIR & c$DIM[1];
-        case 0x00000801a0000680:
+        case X64(00000801a0000680):
             return c$DRIR & c$DIM[2];
-        case 0x00000801a00006c0:
+        case X64(00000801a00006c0):
             return c$DRIR & c$DIM[3];
-        case 0x00000801a0000300:
+        case X64(00000801a0000300):
             return c$DRIR;
 
-		case 0x0000080180000300:
+		case X64(0000080180000300):
 			return p$PCTL[0];
-		case 0x0000080380000300:
+		case X64(0000080380000300):
 			return p$PCTL[1];
-		case 0x0000080180000400:
+		case X64(0000080180000400):
 			return p$PERRMASK[0];
-		case 0x0000080380000400:
+		case X64(0000080380000400):
 			return p$PERRMASK[1];
 
-        case 0x0000080180000000:
+        case X64(0000080180000000):
             return p$WSBA[0][0];
-        case 0x0000080180000040:
+        case X64(0000080180000040):
             return p$WSBA[0][1];
-        case 0x0000080180000080:
+        case X64(0000080180000080):
             return p$WSBA[0][2];
-        case 0x00000801800000c0:
+        case X64(00000801800000c0):
             return p$WSBA[0][3];
-        case 0x0000080380000000:
+        case X64(0000080380000000):
             return p$WSBA[1][0];
-        case 0x0000080380000040:
+        case X64(0000080380000040):
             return p$WSBA[1][1];
-        case 0x0000080380000080:
+        case X64(0000080380000080):
             return p$WSBA[1][2];
-        case 0x00000803800000c0:
+        case X64(00000803800000c0):
             return p$WSBA[1][3];
-        case 0x0000080180000100:
+        case X64(0000080180000100):
             return p$WSM[0][0];
-        case 0x0000080180000140:
+        case X64(0000080180000140):
             return p$WSM[0][1];
-        case 0x0000080180000180:
+        case X64(0000080180000180):
             return p$WSM[0][2];
-        case 0x00000801800001c0:
+        case X64(00000801800001c0):
             return p$WSM[0][3];
-        case 0x0000080380000100:
+        case X64(0000080380000100):
             return p$WSM[1][0];
-        case 0x0000080380000140:
+        case X64(0000080380000140):
             return p$WSM[1][1];
-        case 0x0000080380000180:
+        case X64(0000080380000180):
             return p$WSM[1][2];
-        case 0x00000803800001c0:
+        case X64(00000803800001c0):
             return p$WSM[1][3];
-        case 0x0000080180000200:
+        case X64(0000080180000200):
             return p$TBA[0][0];
-        case 0x0000080180000240:
+        case X64(0000080180000240):
             return p$TBA[0][1];
-        case 0x0000080180000280:
+        case X64(0000080180000280):
             return p$TBA[0][2];
-        case 0x00000801800002c0:
+        case X64(00000801800002c0):
             return p$TBA[0][3];
-        case 0x0000080380000200:
+        case X64(0000080380000200):
             return p$TBA[1][0];
-        case 0x0000080380000240:
+        case X64(0000080380000240):
             return p$TBA[1][1];
-        case 0x0000080380000280:
+        case X64(0000080380000280):
             return p$TBA[1][2];
-        case 0x00000803800002c0:
+        case X64(00000803800002c0):
             return p$TBA[1][3];
 
-		case 0x00000801b0000880:
+		case X64(00000801b0000880):
 			// DCHIP revisions
-			return 0x0101010101010101;
+			return X64(0101010101010101);
 
-		case 0x0000080138000180:
+		case X64(0000080138000180):
 			// Arbiter revision
 			return 0xfe;
-		case 0x0000080130000040:
+		case X64(0000080130000040):
 			return tig$FwWrite;
-		case 0x00000801300003c0:
+		case X64(00000801300003c0):
 			return tig$HaltA;
-		case 0x00000801300005c0:
+		case X64(00000801300005c0):
 			return tig$HaltB;
 
 		default:
+#ifdef _WIN32
 			printf("Failed memread (%02d bits) to %016I64x (PC:%016I64x)              \n",dsize, address,acCPUs[0]->pc);
+#else
+			printf("Failed memread (%02d bits) to %016llx (PC:%016llx)              \n",dsize, address,acCPUs[0]->pc);
+#endif
+#ifdef _WIN32
 			sprintf(trcbuffer,"Failed memread (%02d bits) to %016I64x (PC:%016I64x)              \n",dsize, address,acCPUs[0]->pc);
+#else
+			sprintf(trcbuffer,"Failed memread (%02d bits) to %016llx (PC:%016llx)              \n",dsize, address,acCPUs[0]->pc);
+#endif
             trace->trace_dev(trcbuffer);
 			return 0;
 //			return 0x77; // 7f
@@ -777,12 +793,12 @@ void CSystem::interrupt(int number, bool assert)
     }
     for (i=0;i<iNumCPUs;i++)
     {
-        if (c$DRIR & c$DIM[i] & 0x00ffffffffffffff)
+        if (c$DRIR & c$DIM[i] & X64(00ffffffffffffff))
             acCPUs[i]->irq_h(1,true);
         else
             acCPUs[i]->irq_h(1,false);
 
-        if (c$DRIR & c$DIM[i] & 0xfc00000000000000)
+        if (c$DRIR & c$DIM[i] & X64(fc00000000000000))
             acCPUs[i]->irq_h(0,true);
         else
             acCPUs[i]->irq_h(0,false);

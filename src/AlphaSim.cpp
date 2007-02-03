@@ -260,7 +260,11 @@ int main(int argc, char* argv[])
 
 			ops_per_sec = 0x20000 / seconds;
 			
+#ifdef _WIN32
 			sprintf(prf,"\r%dK | %8I64x | %16I64x (%16I64x) | %e i/s",i/1000,cpu[0]->pc,cpu[0]->last_write_loc,cpu[0]->last_write_val,ops_per_sec);
+#else
+			sprintf(prf,"\r%dK | %8llx | %16llx (%16llx) | %e i/s",i/1000,cpu[0]->pc,cpu[0]->last_write_loc,cpu[0]->last_write_val,ops_per_sec);
+#endif
 		    srl[1]->write(prf);
 		}
 	}

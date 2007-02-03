@@ -50,7 +50,7 @@ extern CAlphaCPU * cpu[4];
 
 CFlash::CFlash(CSystem * c) : CSystemComponent(c)
 {
-	c->RegisterMemory(this, 0, 0x0000080100000000,0x8000000); // 2MB
+	c->RegisterMemory(this, 0, X64(0000080100000000),0x8000000); // 2MB
     printf("%%FLS-I-INIT: Flash ROM emulator initialized.\n");
     memset(Flash,0xff,2*1024*1024);
 	mode = MODE_READ;

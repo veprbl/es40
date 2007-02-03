@@ -49,7 +49,7 @@ bool bStop     = false;
 
 CSerial::CSerial(CSystem * c, int number) : CSystemComponent(c)
 {
-	c->RegisterMemory (this, 0, 0x00000801fc0003f8 - (0x100*number), 8);
+	c->RegisterMemory (this, 0, X64(00000801fc0003f8) - (0x100*number), 8);
 	InitializeCriticalSection( &critSection );
 	cTelnet = new CTelnet(8000+number, this);
 	iNumber = number;

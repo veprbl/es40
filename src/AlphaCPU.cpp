@@ -294,7 +294,11 @@ cSystem->trace->trace(this, current_pc,pc,down,up,(char*)0,0); }
         {                                                                       \
 			u64 xx_upto;														\
 			int xx_result;														\
+#ifdef _WIN32 \
 			xx_result = sscanf(&(funcname[6]),"%I64x",&xx_upto);				\
+#else \
+			xx_result = sscanf(&(funcname[6]),"%llx",&xx_upto);				\
+#endif \
 			if (xx_result==1)													\
 			{																	\
 				pc = current_pc;												\
@@ -314,7 +318,11 @@ cSystem->trace->trace(this, current_pc,pc,down,up,(char*)0,0); }
 			int  stringlen;														\
 			u64 xx_upto;														\
 			int xx_result;														\
+#ifdef _WIN32 \
 			xx_result = sscanf(&(funcname[7]),"%I64x",&xx_upto);				\
+#else \
+			xx_result = sscanf(&(funcname[7]),"%llx",&xx_upto);				\
+#endif \
 			if (xx_result==1)													\
 			{																	\
 				pc = current_pc;												\
@@ -338,7 +346,11 @@ cSystem->trace->trace(this, current_pc,pc,down,up,(char*)0,0); }
             while (   (pc==current_pc)                                          \
                    || !cSystem->trace->get_fnc_name(pc,&funcname) )             \
 			{																	\
+#ifdef _WIN32 \
                 printf("%08x: %016I64x\n",(u32)pc, cSystem->ReadMem(pc,64));    \
+#else \
+                printf("%08x: %016llx\n",(u32)pc, cSystem->ReadMem(pc,64));    \
+#endif \
                 pc += 8;                                                        \
 			}																	\
             return;                                                             \
@@ -350,7 +362,11 @@ cSystem->trace->trace(this, current_pc,pc,down,up,(char*)0,0); }
             while (   (pc==current_pc)                                          \
                    || !cSystem->trace->get_fnc_name(pc,&funcname) )             \
 			{																	\
+#ifdef _WIN32 \
                 printf("%08x: %08I64x\n",(u32)pc, cSystem->ReadMem(pc,32));     \
+#else \
+                printf("%08x: %08llx\n",(u32)pc, cSystem->ReadMem(pc,32));     \
+#endif \
                 pc += 4;                                                        \
 			}																	\
             return;                                                             \

@@ -45,7 +45,7 @@ CAliM1543C::CAliM1543C(CSystem * c): CSystemComponent(c)
 	f_img[0] = fopen("\\vms83.iso","rb");
 	f_img[1] = fopen("\\vms73.iso","rb");
 
-	c->RegisterMemory(this, 1, 0x00000801fc000060,8);
+	c->RegisterMemory(this, 1, X64(00000801fc000060),8);
     kb_intState = 0;
     kb_Status = 0;
     kb_Output = 0;
@@ -53,7 +53,7 @@ CAliM1543C::CAliM1543C(CSystem * c): CSystemComponent(c)
 	kb_Input = 0;
     reg_61 = 0;
 
-	c->RegisterMemory(this, 2, 0x00000801fc000070, 4);
+	c->RegisterMemory(this, 2, X64(00000801fc000070), 4);
 	for (i=0;i<4;i++)
         toy_access_ports[i] = 0;
 	for (i=0;i<256;i++)
@@ -68,7 +68,7 @@ CAliM1543C::CAliM1543C(CSystem * c): CSystemComponent(c)
 		fclose(toyf);
 	}
 
-    c->RegisterMemory(this, 3, 0x00000801fe003800,0x100);
+    c->RegisterMemory(this, 3, X64(00000801fe003800),0x100);
 
     for (i=0;i<256;i++) 
 	{
@@ -110,14 +110,14 @@ CAliM1543C::CAliM1543C(CSystem * c): CSystemComponent(c)
 									isa_config_mask[0x5b] = 0x03;
 									// ...
 									
-	c->RegisterMemory(this, 6, 0x00000801fc000040, 4);
+	c->RegisterMemory(this, 6, X64(00000801fc000040), 4);
 	c->RegisterClock(this);
 	pit_clock = 0;
 	pit_enable = false;
 
-	c->RegisterMemory(this, 7, 0x00000801fc000020, 2);
-	c->RegisterMemory(this, 8, 0x00000801fc0000a0, 2);
-	c->RegisterMemory(this, 20, 0x00000801f8000000, 1);
+	c->RegisterMemory(this, 7, X64(00000801fc000020), 2);
+	c->RegisterMemory(this, 8, X64(00000801fc0000a0), 2);
+	c->RegisterMemory(this, 20, X64(00000801f8000000), 1);
 	for(i=0;i<2;i++)
 	{
 		pic_mode[i] = 0;
@@ -127,16 +127,16 @@ CAliM1543C::CAliM1543C(CSystem * c): CSystemComponent(c)
 	}
 
 #ifdef DS15
-    c->RegisterMemory(this, 9, 0x00000801fe006800, 0x100);
+    c->RegisterMemory(this, 9, X64(00000801fe006800), 0x100);
 #endif
 #ifdef ES40
-    c->RegisterMemory(this, 9, 0x00000801fe007800, 0x100);
-	cSystem->RegisterMemory(this,14, 0x00000801fc0001f0, 8);
-	cSystem->RegisterMemory(this,16, 0x00000801fc0003f4, 4);
-	cSystem->RegisterMemory(this,15, 0x00000801fc000170, 8);
-	cSystem->RegisterMemory(this,17, 0x00000801fc000374, 4);
-	cSystem->RegisterMemory(this,18, 0x00000801fc00f000, 8);
-	cSystem->RegisterMemory(this,19, 0x00000801fc00f008, 8);
+    c->RegisterMemory(this, 9, X64(00000801fe007800), 0x100);
+	cSystem->RegisterMemory(this,14, X64(00000801fc0001f0), 8);
+	cSystem->RegisterMemory(this,16, X64(00000801fc0003f4), 4);
+	cSystem->RegisterMemory(this,15, X64(00000801fc000170), 8);
+	cSystem->RegisterMemory(this,17, X64(00000801fc000374), 4);
+	cSystem->RegisterMemory(this,18, X64(00000801fc00f000), 8);
+	cSystem->RegisterMemory(this,19, X64(00000801fc00f008), 8);
 #endif
 
     for (i=0;i<256;i++)
@@ -222,7 +222,7 @@ CAliM1543C::CAliM1543C(CSystem * c): CSystemComponent(c)
 
 
 
-	c->RegisterMemory(this, 11, 0x00000801fe009800, 0x100);
+	c->RegisterMemory(this, 11, X64(00000801fe009800), 0x100);
     for (i=0;i<256;i++)
 	{
 		usb_config_data[i] = 0;
@@ -250,8 +250,8 @@ CAliM1543C::CAliM1543C(CSystem * c): CSystemComponent(c)
 									usb_config_mask[0x3f] = 0xff;
 
 
-	c->RegisterMemory(this, 12, 0x00000801fc000000, 16);
-	c->RegisterMemory(this, 13, 0x00000801fc0000c0, 32);
+	c->RegisterMemory(this, 12, X64(00000801fc000000), 16);
+	c->RegisterMemory(this, 13, X64(00000801fc0000c0), 32);
 
     printf("%%ALI-I-INIT: ALi M1543C chipset emulator initialized.\n");
     printf("%%ALI-I-IMPL: Implemented: keyboard, port 61, toy clock, isa bridge, flash ROM.\n");
@@ -387,8 +387,16 @@ u8 CAliM1543C::kb_read(u64 address)
 		data = 0;
 		break;
     }
+#ifdef _WIN32
     printf("%%ALI-I-KBDREAD: %02I64x read from Keyboard port %02x\n",data,address+0x60);
+#else
+    printf("%%ALI-I-KBDREAD: %02llx read from Keyboard port %02x\n",data,address+0x60);
+#endif
+#ifdef _WIN32
     sprintf(trcbuffer,"%%ALI-I-READ: %02I64x read from Keyboard port %02x\n",data,address+0x60);
+#else
+    sprintf(trcbuffer,"%%ALI-I-READ: %02llx read from Keyboard port %02x\n",data,address+0x60);
+#endif
 	cSystem->trace->trace_dev(trcbuffer);
 	return data;
 }
@@ -397,8 +405,16 @@ void CAliM1543C::kb_write(u64 address, u8 data)
 {
 	char trcbuffer[1000];
 
+#ifdef _WIN32
 	printf("%%ALI-I-KBDWRITE: %02I64x written to Keyboard port %02x\n",data,address+0x60);
+#else
+	printf("%%ALI-I-KBDWRITE: %02llx written to Keyboard port %02x\n",data,address+0x60);
+#endif
+#ifdef _WIN32
 	sprintf(trcbuffer,"%%ALI-I-WRITE: %02I64x written to Keyboard port %02x\n",data,address+0x60);
+#else
+	sprintf(trcbuffer,"%%ALI-I-WRITE: %02llx written to Keyboard port %02x\n",data,address+0x60);
+#endif
 	cSystem->trace->trace_dev(trcbuffer);
     switch (address)
     {
@@ -791,30 +807,30 @@ void CAliM1543C::ide_config_write(u64 address, int dsize, u64 data)
 	{
 	case 0x10:
 		// command
-		cSystem->RegisterMemory(this,14, 0x00000801fc000000 + (data&0x00fffffe), 8);
+		cSystem->RegisterMemory(this,14, X64(00000801fc000000) + (data&0x00fffffe), 8);
 		fprintf(f_ide,"%%ALI-IDESET: IDE 0 command I/O base set to 0x%x\n",data);
 		return;
 	case 0x14:
 		// control
-		cSystem->RegisterMemory(this,16, 0x00000801fc000000 + (data&0x00fffffe), 4);
+		cSystem->RegisterMemory(this,16, X64(00000801fc000000) + (data&0x00fffffe), 4);
 		fprintf(f_ide,"%%ALI-IDESET: IDE 0 control I/O base set to 0x%x\n",data);
 		return;
 	case 0x18:
 		// command
-		cSystem->RegisterMemory(this,15, 0x00000801fc000000 + (data&0x00fffffe), 8);
+		cSystem->RegisterMemory(this,15, X64(00000801fc000000) + (data&0x00fffffe), 8);
 		fprintf(f_ide,"%%ALI-IDESET: IDE 1 command I/O base set to 0x%x\n",data);
 		return;
 	case 0x1c:
 		// control
-		cSystem->RegisterMemory(this,17, 0x00000801fc000000 + (data&0x00fffffe), 4);
+		cSystem->RegisterMemory(this,17, X64(00000801fc000000) + (data&0x00fffffe), 4);
 		fprintf(f_ide,"%%ALI-IDESET: IDE 1 control I/O base set to 0x%x\n",data);
 		return;
 	case 0x20:
 		// bus master control
-		cSystem->RegisterMemory(this,18, 0x00000801fc000000 + (data&0x00fffffe), 8);
+		cSystem->RegisterMemory(this,18, X64(00000801fc000000) + (data&0x00fffffe), 8);
 		fprintf(f_ide,"%%ALI-IDESET: IDE 0 busmaster I/O base set to 0x%x\n",data);
 		// bus master control
-		cSystem->RegisterMemory(this,19, 0x00000801fc000000 + (data&0x00fffffe) + 8, 8);
+		cSystem->RegisterMemory(this,19, X64(00000801fc000000) + (data&0x00fffffe) + 8, 8);
 		fprintf(f_ide,"%%ALI-IDESET: IDE 1 busmaster I/O base set to 0x%x\n",data + 8);
 		return;
 	}

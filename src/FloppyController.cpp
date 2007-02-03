@@ -36,7 +36,7 @@
 
 CFloppyController::CFloppyController(CSystem * c, int id) : CSystemComponent(c)
 {
-	c->RegisterMemory(this, 0, 0x00000801fc0003f0 - (0x80 * id), 8);
+	c->RegisterMemory(this, 0, X64(00000801fc0003f0) - (0x80 * id), 8);
 	iMode = 0;
 	iID = id;
 	iActiveRegister = 0;
