@@ -26,9 +26,9 @@
   *
   **/
 
-#include "stdafx.h"
+#include "StdAfx.h"
 #include "AliM1543C.h"
-#include "system.h"
+#include "System.h"
 
 static FILE * f_ide;
 static FILE * f_img[2];

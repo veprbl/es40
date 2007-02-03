@@ -26,10 +26,10 @@
   *
   **/
 
-#include "stdafx.h"
+#include "StdAfx.h"
 #include "DPR.h"
 #include "System.h"
-#include "serial.h"
+#include "Serial.h"
 
 extern CSerial * srl[2];
 

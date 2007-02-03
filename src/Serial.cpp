@@ -26,12 +26,12 @@
   *
   **/
 
-#include "stdafx.h"
+#include "StdAfx.h"
 #include "Serial.h"
 #include "windows/telnet.h"
-#include "system.h"
+#include "System.h"
 #include <process.h>
-#include "alim1543c.h"
+#include "AliM1543C.h"
 
 extern CAliM1543C * ali;
 

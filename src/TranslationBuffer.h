@@ -35,7 +35,7 @@
 #endif // _MSC_VER > 1000
 
 #include "datatypes.h"
-#include "system.h"
+#include "System.h"
 
 extern CSystem * systm;
 

@@ -29,7 +29,7 @@
 #if !defined(AFX_ALIM1543C_H__5BBD124D_A76C_43E5_B08D_57B89582A31C__INCLUDED_)
 #define AFX_ALIM1543C_H__5BBD124D_A76C_43E5_B08D_57B89582A31C__INCLUDED_
 
-#include "systemcomponent.h"
+#include "SystemComponent.h"
 
 #if _MSC_VER > 1000
 #pragma once

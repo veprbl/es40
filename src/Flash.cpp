@@ -26,10 +26,10 @@
   *
   **/
 
-#include "stdafx.h"
+#include "StdAfx.h"
 #include "Flash.h"
-#include "system.h"
-#include "alphacpu.h"
+#include "System.h"
+#include "AlphaCPU.h"
 
 #define MODE_READ 0
 #define MODE_STEP1 1

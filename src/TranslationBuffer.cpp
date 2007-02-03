@@ -27,7 +27,7 @@
   *
   **/
 
-#include "stdafx.h"
+#include "StdAfx.h"
 #include "TranslationBuffer.h"
 #include "AlphaCPU.h"
 

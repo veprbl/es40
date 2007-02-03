@@ -25,9 +25,9 @@
   * PORT80.CPP contains the code for the emulated Port 80 devices.
   *
   **/
-#include "stdafx.h"
+#include "StdAfx.h"
 #include "Port80.h"
-#include "system.h"
+#include "System.h"
 
 //////////////////////////////////////////////////////////////////////
 // Construction/Destruction

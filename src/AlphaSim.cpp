@@ -26,16 +26,16 @@
   *
   **/
 
-#include "stdafx.h"
-#include "system.h"
+#include "StdAfx.h"
+#include "System.h"
 #include "memory.h"
-#include "alphacpu.h"
-#include "serial.h"
-#include "port80.h"
-#include "floppycontroller.h"
-#include "flash.h"
-#include "alim1543c.h"
-#include "dpr.h"
+#include "AlphaCPU.h"
+#include "Serial.h"
+#include "Port80.h"
+#include "FloppyController.h"
+#include "Flash.h"
+#include "AliM1543C.h"
+#include "DPR.h"
 
 //#define DO_LISTING 1
 //#define DO_TRACE 1

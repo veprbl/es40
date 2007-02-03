@@ -26,7 +26,7 @@
   *
   **/
 
-#include "stdafx.h"
+#include "StdAfx.h"
 #include "TraceEngine.h"
 #include "AlphaCPU.h"
 #include "System.h"

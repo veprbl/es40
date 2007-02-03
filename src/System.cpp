@@ -26,9 +26,9 @@
   *
   **/
 
-#include "stdafx.h"
+#include "StdAfx.h"
 #include "System.h"
-#include "alphacpu.h"
+#include "AlphaCPU.h"
 
 //////////////////////////////////////////////////////////////////////
 // Construction/Destruction

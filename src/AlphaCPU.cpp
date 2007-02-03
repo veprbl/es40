@@ -26,7 +26,7 @@
   *
   **/
 
-#include "stdafx.h"
+#include "StdAfx.h"
 #include "AlphaCPU.h"
 
 // INTERRUPT VECTORS

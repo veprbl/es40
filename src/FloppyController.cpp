@@ -26,9 +26,9 @@
   *
   **/
 
-#include "stdafx.h"
+#include "StdAfx.h"
 #include "FloppyController.h"
-#include "system.h"
+#include "System.h"
 
 //////////////////////////////////////////////////////////////////////
 // Construction/Destruction
