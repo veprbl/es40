@@ -73,6 +73,7 @@ class CSerial : public CSystemComponent
   int rcvW;
   int rcvR;
   int iNumber;
+  bool bInitialized;
 
 };
 

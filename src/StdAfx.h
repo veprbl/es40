@@ -49,6 +49,8 @@
 #ifdef _WIN32
 #include <afx.h>
 #include <winsock.h>
+#else
+#include <unistd.h>
 #endif
 #include <string.h>
 #include <malloc.h>
@@ -70,6 +72,18 @@ inline bool isblank(char c)
   if ( c == ' ' || c == '\t' || c == '\n' || c == '\r' )
     return true;
   return false;
+}
+#endif
+
+#ifdef _WIN32
+inline void sleep_ms(DWORD ms)
+{
+	Sleep(ms);
+}
+#else
+inline void sleep_ms(int ms)
+{
+	usleep(ms*1000);
 }
 #endif
 

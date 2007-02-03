@@ -69,29 +69,20 @@ bool bStop     = false;
 CSerial::CSerial(CSystem * c, int number) : CSystemComponent(c)
 {
   int base = atoi(c->GetConfig("serial.base","8000"));
+  char s[100];
+  int i;
+
   c->RegisterMemory (this, 0, X64(00000801fc0003f8) - (0x100*number), 8);
+
+  bInitialized = false;
+
+// Start Telnet server
+
 #ifdef _WIN32
   InitializeCriticalSection( &critSection );
   cTelnet = new CTelnet(base+number, this);
-
-  // start the server
   if ( !cTelnet->start() )
     return;
-
-  // start the client
-  char s[100];
-//  sprintf(s,"telnet://localhost:%d/",base+number);
-//  _spawnl(P_NOWAIT,"putty.exe","putty.exe",s,NULL);
-
-  // wait until connection
-  for (;!cTelnet->getLoggedOn();) ;
-
-  printf("%%SRL-I-INIT: Serial Interface %d emulator initialized.\n",number);
-  printf("%%SRL-I-ADDRESS: Serial Interface %d on telnet port %d.\n",number,number+base);
-
-  sprintf(s,"This is serial port #%d on AlphaSim\r\n",number);
-  cTelnet->write(s);
-
 #else
   c->RegisterClock(this);
 	
@@ -107,13 +98,17 @@ CSerial::CSerial(CSystem * c, int number) : CSystemComponent(c)
   setsockopt(listenSocket,SOL_SOCKET,SO_REUSEADDR, &optval,sizeof(optval));
   bind(listenSocket,(struct sockaddr *)&Address,sizeof(Address));
   listen(listenSocket,5);
+#endif
 
-  // start the server
   printf("%%SRL-I-WAIT: Waiting for connection on port %d.\n",number+base);
-  connectSocket = accept(listenSocket,(struct sockaddr*)&Address,&nAddressSize);
 
-  printf("%%SRL-I-INIT: Serial Interface %d emulator initialized.\n",number);
-  printf("%%SRL-I-ADDRESS: Serial Interface %d on telnet port %d.\n",number,number+base);
+
+//  Wait until we have a connection
+
+#ifdef _WIN32
+  for (;!cTelnet->getLoggedOn();) ;
+#else
+  connectSocket = accept(listenSocket,(struct sockaddr*)&Address,&nAddressSize);
 
   // Send some control characters to the telnet client to handle 
   // character-at-a-time mode.  
@@ -135,12 +130,28 @@ CSerial::CSerial(CSystem * c, int number) : CSystemComponent(c)
   sprintf(buffer,telnet_options,IAC,WILL,TELOPT_SGA);
   this->write(buffer);
 
-  char s[100];
+  serial_cycles = 0;
+#endif
+
   sprintf(s,"This is serial port #%d on AlphaSim\r\n",number);
   this->write(s);
 
-  serial_cycles = 0;
+// Eat all characters that come in in the first second
+
+  for (i=0;i<100;i++)
+  {
+	sleep_ms(10);
+#ifndef _WIN32
+	this->DoClock();
 #endif
+  }
+
+  bInitialized = true;
+
+
+  printf("%%SRL-I-INIT: Serial Interface %d emulator initialized.\n",number);
+  printf("%%SRL-I-ADDRESS: Serial Interface %d on telnet port %d.\n",number,number+base);
+
 
   iNumber = number;
 
@@ -307,21 +318,21 @@ void CSerial::receive(const char* data)
 
   x = (char *) data;
 
-  while (*x)
-    {
-      //		if (	(rcvW==rcvR-1)					// overflow...
-      //			||  ((rcvR==0) && (rcvW==3)))
-      //			break;
+  if (bInitialized)
+  {
+	while (*x)
+	{
       rcvBuffer[rcvW++] = *x;
-      if (rcvW == FIFO_SIZE)
-	rcvW = 0;
+	  if (rcvW == FIFO_SIZE)
+	    rcvW = 0;
       x++;
       if (bIER & 0x1)
-        {
-	  bIIR = (bIIR>0x04)?bIIR:0x04;
-	  ali->pic_interrupt(0, 4 - iNumber);
-        }
+	  {
+	    bIIR = (bIIR>0x04)?bIIR:0x04;
+	    ali->pic_interrupt(0, 4 - iNumber);
+      }
     }
+  }
 }
 
 #ifndef _WIN32
