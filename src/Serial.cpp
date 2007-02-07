@@ -39,6 +39,14 @@
 #include <process.h>
 
 CRITICAL_SECTION critSection;
+
+#define	IAC	255		/* interpret as command: */
+#define	DO	253		/* please, you use option */
+#define	WILL	251		/* I will use option */
+#define TELOPT_ECHO	1	/* echo */
+#define	TELOPT_SGA	3	/* suppress go ahead */
+#define	TELOPT_NAWS	31	/* window size */
+#define	TELOPT_LFLOW	33	/* remote flow control */
 #else
 #include <arpa/inet.h>
 #include <arpa/telnet.h>
@@ -110,6 +118,9 @@ CSerial::CSerial(CSystem * c, int number) : CSystemComponent(c)
 #else
   connectSocket = accept(listenSocket,(struct sockaddr*)&Address,&nAddressSize);
 
+  serial_cycles = 0;
+#endif
+
   // Send some control characters to the telnet client to handle 
   // character-at-a-time mode.  
   char *telnet_options="%c%c%c";
@@ -129,9 +140,6 @@ CSerial::CSerial(CSystem * c, int number) : CSystemComponent(c)
 
   sprintf(buffer,telnet_options,IAC,WILL,TELOPT_SGA);
   this->write(buffer);
-
-  serial_cycles = 0;
-#endif
 
   sprintf(s,"This is serial port #%d on AlphaSim\r\n",number);
   this->write(s);
@@ -176,7 +184,6 @@ u64 CSerial::ReadMem(int index, u64 address, int dsize)
 {
   dsize;
   index;
-  char trcbuffer[1000];
 
   u8 d;
 
@@ -195,13 +202,11 @@ u64 CSerial::ReadMem(int index, u64 address, int dsize)
 	      rcvR++;
 	      if (rcvR == FIFO_SIZE)
 		    rcvR = 0;
-		  sprintf(trcbuffer,"Read character %02x (%c) on serial port %d\n",bRDR,printable(bRDR),iNumber);
-	      cSystem->trace->trace_dev(trcbuffer);
+		  TRC_DEV4("Read character %02x (%c) on serial port %d\n",bRDR,printable(bRDR),iNumber);
 	    }
 	  else
             {
-	      sprintf(trcbuffer,"Read past FIFO on serial port %d\n",iNumber);
-	      cSystem->trace->trace_dev(trcbuffer);
+	      TRC_DEV2("Read past FIFO on serial port %d\n",iNumber);
             }
 	  return bRDR;
         }
@@ -243,7 +248,6 @@ void CSerial::WriteMem(int index, u64 address, int dsize, u64 data)
   u8 d;
   char s[5];
   d = (u8)data;
-  char trcbuffer[500];
 
   switch (address)
     {
@@ -260,12 +264,7 @@ void CSerial::WriteMem(int index, u64 address, int dsize, u64 data)
 #else
 	  write(s);
 #endif
-	  if(isprint(d)) {
-	    sprintf(trcbuffer,"Write character %02x (%c) on serial port %d\n",d,d,iNumber);
-	  } else {
-	    sprintf(trcbuffer,"Write character %02x () on serial port %d\n",d,iNumber);
-	  }
-	  cSystem->trace->trace_dev(trcbuffer);
+	  TRC_DEV4("Write character %02x (%c) on serial port %d\n",d,printable(d),iNumber);
 	  if (bIER & 0x2)
             {
 	      bIIR = (bIIR>0x02)?bIIR:0x02;
