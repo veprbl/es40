@@ -145,7 +145,7 @@ CSerial::CSerial(CSystem * c, int number) : CSystemComponent(c)
   this->write(s);
 
 // Eat all characters that come in in the first second
-
+#if 0
   for (i=0;i<100;i++)
   {
 	sleep_ms(10);
@@ -153,6 +153,7 @@ CSerial::CSerial(CSystem * c, int number) : CSystemComponent(c)
 	this->DoClock();
 #endif
   }
+#endif // 0
 
   bInitialized = true;
 
@@ -321,11 +322,11 @@ void CSerial::receive(const char* data)
   {
 	while (*x)
 	{
-      rcvBuffer[rcvW++] = *x;
+	  rcvBuffer[rcvW++] = *x;
 	  if (rcvW == FIFO_SIZE)
 	    rcvW = 0;
-      x++;
-      if (bIER & 0x1)
+	  x++;
+	  if (bIER & 0x1)
 	  {
 	    bIIR = (bIIR>0x04)?bIIR:0x04;
 	    ali->pic_interrupt(0, 4 - iNumber);
@@ -338,7 +339,9 @@ void CSerial::receive(const char* data)
 
 void CSerial::DoClock() {
   fd_set readset;
-  char buffer[FIFO_SIZE+1];
+  unsigned char buffer[FIFO_SIZE+1];
+  unsigned char cbuffer[FIFO_SIZE+1];  // cooked buffer
+  unsigned char *b, *c;
   ssize_t size;
   struct timeval tv;
 
@@ -351,7 +354,35 @@ void CSerial::DoClock() {
     if(select(connectSocket+1,&readset,NULL,NULL,&tv) > 0) {
       size = read(connectSocket,&buffer,FIFO_SIZE);
       buffer[size+1]=0; // force null termination.
-      this->receive((const char*)&buffer);
+      b=buffer;
+      c=cbuffer;
+      while(b - buffer < size) {
+	if(*b == IAC) {
+	  if(*(b+1) == IAC) { // escaped IAC.
+	    b++;
+	  } else if(*(b+1) >= WILL) { // will/won't/do/don't
+	    b+=3;  // skip this byte, and following two. (telnet escape)
+	    continue;
+	  } else if(*(b+1) == SB) { // skip until IAC SE
+	    b+=2; // now we're at start of subnegotiation.
+	    while(*b!=IAC && *(b+1)!=SE) b++;
+	    b+=2;
+	    continue;
+	  } else if(*(b+1) == BREAK) { // break (== halt button?)
+	    b+=2;
+	    continue;
+	  } else if(*(b+1) == AYT) { // are you there?
+	    
+	  } else { // misc single byte command.
+	    b+=2;
+	    continue;
+	  }
+	}
+	*c=*b;
+	c++; b++;
+      }
+      *c=0; // null terminate it.
+      this->receive((const char*)&cbuffer);
     }
     serial_cycles=0;
   }
