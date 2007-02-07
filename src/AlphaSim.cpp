@@ -38,6 +38,7 @@
 #include "DPR.h"
 #include "TraceEngine.h"
 
+
 #ifndef _WIN32
 #include <sys/time.h>
 #include <stdlib.h>
@@ -64,6 +65,27 @@ CFloppyController * fc[2];
 CFlash * srom;
 CAliM1543C * ali = 0;
 CDPR * dpr = 0;
+
+
+// "standard" locations for a configuration file.  This
+// will be port specific.
+#ifdef _WIN32
+char path[][40]={
+  ".\\es40.cfg",
+  "c:\\es40.cfg",
+  "c:\\windows\\es40.cfg",
+  0
+};
+#else
+char path[][40]={
+  "./es40.cfg",
+  "/etc/es40.cfg",
+  "/usr/etc/es40.cfg",
+  "/usr/local/etc/es40.cfg",
+  0
+};
+#endif
+
 
 int main(int argc, char* argv[])
 {
@@ -97,14 +119,30 @@ int main(int argc, char* argv[])
   QueryPerformanceFrequency(&freq);
 #endif
 
-  systm = new CSystem(27); // 128 MB
-  //	systm = new CSystem(29); // 512 MB
+  if(argc == 2) {
+    systm = new CSystem(argv[1]);
+  } else {
+    char *filename = 0;
+    FILE *f;
+    for(int i = 0 ; path[i] ; i++) {
+      filename=path[i];
+      f=fopen(path[i],"r");
+      if(f != NULL) {
+	fclose(f);
+	filename = path[i];
+	break;
+      }
+    }
+    if(filename==NULL) {
+      printf("%%SYS-E-CONFIG:  Configuration file not found.\n");
+      exit(1);
+    }
+    systm = new CSystem(filename);
+  }
 
 #ifdef IDB
   trc = new CTraceEngine(systm);
 #endif
-
-  systm->LoadConfig(systm->FindConfig());
 
   systm->load_ROM2(systm->GetConfig("rom.srm","cl67srmrom.exe"),0x240,X64(900000),2);
 
