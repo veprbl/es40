@@ -31,6 +31,7 @@
 #include "AlphaCPU.h"
 
 #include <ctype.h>
+#include <stdlib.h>
 
 #ifndef _WIN32
 #define _strdup strdup
@@ -41,14 +42,16 @@
 // Construction/Destruction
 //////////////////////////////////////////////////////////////////////
 
-CSystem::CSystem(unsigned int membits)
+CSystem::CSystem(char *filename)
 {
+  this->LoadConfig(filename);
+
   iNumComponents = 0;
   iNumClocks = 0;
   iNumMemories = 0;
   iNumCPUs = 0;
   iNumROMs = 0;
-  iNumMemoryBits = membits;
+  iNumMemoryBits = atoi(this->GetConfig("memory.bits","27"));
 
   c$MISC = X64(0000000800000000);
   c$DIM[0] = 0;
@@ -1023,42 +1026,6 @@ void CSystem::DumpMemory(unsigned int filenum)
   fclose(f);
 }
 
-// Search "standard" locations for a configuration file.  This
-// will be port specific.
-
-#ifdef _WIN32
-char path[][40]={
-  ".\\es40.cfg",
-  "c:\\es40.cfg",
-  "c:\\windows\\es40.cfg",
-  0
-};
-#else
-char path[][40]={
-  "./es40.cfg",
-  "/etc/es40.cfg",
-  "/usr/etc/es40.cfg",
-  "/usr/local/etc/es40.cfg",
-  0
-};
-#endif
-
-
-
-char *CSystem::FindConfig() {
-  char *filename = 0;
-  FILE *f;
-  for(int i = 0 ; path[i] ; i++) {
-    filename=path[i];
-    f=fopen(path[i],"r");
-    if(f != NULL) {
-      fclose(f);
-	  filename = path[i];
-      break;
-    }
-  }
-  return filename;
-}
 
 
 void CSystem::LoadConfig(char *filename) {
@@ -1069,6 +1036,10 @@ void CSystem::LoadConfig(char *filename) {
   printf("%%SYS-I-READCFG: Reading configuration file '%s'\n",filename);
   iNumConfig=0;
   FILE *f = fopen(filename,"r");
+  if(f==NULL) {
+    printf("%%SYS-E-READCFG: Configuration file cannot be read.\n");
+    return;
+  }
   while(!feof(f)) {
     fgets(linebuf,120,f);
     // terminate the line at the comment char, if any.

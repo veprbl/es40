@@ -92,7 +92,7 @@ class CSystem
   int RegisterComponent(CSystemComponent * component);
   int RegisterCPU(class CAlphaCPU * cpu);
 	
-  CSystem(unsigned int membits);
+  CSystem(char *filename);
   void ResetMem(unsigned int membits);
 
   virtual ~CSystem();
