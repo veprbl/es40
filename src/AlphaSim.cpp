@@ -36,6 +36,7 @@
 #include "Flash.h"
 #include "AliM1543C.h"
 #include "DPR.h"
+#include "TraceEngine.h"
 
 #ifndef _WIN32
 #include <sys/time.h>
@@ -44,12 +45,12 @@
 
 
 //#define DO_LISTING 1
-#define DO_TRACE 1
+//#define DO_TRACE 1
 //#define DO_SAVESTATE "console.vms"
 //#define DO_SAVESTATE "console2.vms"
-#define DO_LOADSTATE "console.vms"
+//#define DO_LOADSTATE "console.vms"
 //#define DO_LOADSTATE "console2.vms"
-#define RUN_CYCLES 8*1000*1000
+//#define RUN_CYCLES 8*1000*1000
 //#define RUN_GT X64(400000)
 //#define RUN_LT X64(400000)
 //#define DO_SETPC X64(200000)
@@ -99,6 +100,10 @@ int main(int argc, char* argv[])
   systm = new CSystem(27); // 128 MB
   //	systm = new CSystem(29); // 512 MB
 
+#ifdef IDB
+  trc = new CTraceEngine(systm);
+#endif
+
   systm->LoadConfig(systm->FindConfig());
 
   systm->load_ROM2(systm->GetConfig("rom.srm","cl67srmrom.exe"),0x240,X64(900000),2);
@@ -123,8 +128,10 @@ int main(int argc, char* argv[])
   cpu[0]->set_debug(false);
   cpu[0]->set_list(false);
 
-  systm->trace->read_procfile("es40.csv");
-  systm->trace->read_procfile("vms83.csv");
+#ifdef IDB
+  trc->read_procfile("es40.csv");
+  trc->read_procfile("vms83.csv");
+#endif
 
   printf("%%SYS-I-INITEND: System initialization complete.\n");
 

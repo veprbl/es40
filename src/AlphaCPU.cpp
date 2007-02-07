@@ -50,6 +50,8 @@
 #define CPU_TYPE_MAJOR 12
 #define CPU_TYPE_MINOR 6
 
+#ifdef IDB
+
 char * PAL_NAME[] = {
   "HALT"		,"CFLUSH"   ,"DRAINA"		,"LDQP"			,"STQP"			,"SWPCTX"		,"MFPR_ASN"		,"MTPR_ASTEN"	,
   "MTPR_ASTSR","CSERVE"   ,"SWPPAL"		,"MFPR_FEN"		,"MTPR_FEN"		,"MTPR_IPIR"	,"MFPR_IPL"		,"MTPR_IPL"	,
@@ -70,6 +72,8 @@ char * PAL_NAME[] = {
   "AMOVRR"	,"AMOVRM"	,"INSQHILR"		,"INSQTILR"		,"INSQHIQR"		,"INSQTIQR"		,"REMQHILR"		,"REMQTILR"		,
   "REMQHIQR"	,"REMQTIQR"	,"GENTRAP"		,"AB"			,"AC"			,"AD"			,"CLRFEN"		,"AF"			,
   "B0","B1","B2","B3","B4","B5","B6","B7","B8","B9","BA","BB","BC","BD","BE","BF"};
+
+#endif
 
 //////////////////////////////////////////////////////////////////////
 // Construction/Destruction
@@ -177,24 +181,39 @@ CAlphaCPU::~CAlphaCPU()
 #define SEXT_21(x) ((x&  X64(1fffff)) | (((x&  X64(1fffff))>>20)?X64(ffffffffffe00000):0))
 #define SEXT_32(x) ((x&X64(ffffffff)) | (((x&X64(ffffffff))>>31)?X64(ffffffff00000000):0))
 
+#ifdef IDB
+
 #define TRC_(down,up,x,y) {					\
     if (bTrace)							\
-      cSystem->trace->trace(this, current_pc,pc,down,up,x,y); }
+      trc->trace(this, current_pc,pc,down,up,x,y); }
 
 #define TRC(down,up) {							\
     if (bTrace)								\
-      cSystem->trace->trace(this, current_pc,pc,down,up,(char*)0,0); }
+      trc->trace(this, current_pc,pc,down,up,(char*)0,0); }
 
 #define TRC_BR {							\
-    if (bTrace) cSystem->trace->trace_br(this, current_pc,pc); }
+    if (bTrace) trc->trace_br(this, current_pc,pc); }
 
 #define GO_PAL(offset) {					\
     exc_addr = current_pc;					\
     pc =  pal_base | offset | 1;				\
     if ((offset==DTBM_SINGLE || offset==ITB_MISS) && bTrace)	\
-      cSystem->trace->set_waitfor(this, exc_addr&~X64(3));	\
+      trc->set_waitfor(this, exc_addr&~X64(3));	\
     else							\
       TRC_(true,false,"GO_PAL %04x",offset); }
+
+#else
+
+#define TRC_(down,up,x,y) ;
+#define TRC(down,up) ;
+#define TRC_BR ;
+#define GO_PAL(offset) {					\
+    exc_addr = current_pc;					\
+    pc = pal_base | offset | 1; }
+
+#endif
+
+
 
 #define DISP_12 (SEXT_12(ins))
 #define DISP_13 (SEXT_13(ins))
@@ -265,9 +284,11 @@ CAlphaCPU::~CAlphaCPU()
 
 #define V_2 ( (ins&0x1000)?((ins>>13)&0xff):r[REG_2] )
 
+#ifdef IDB
+
 #define DEBUG_XX							\
   char * funcname = 0;							\
-  if (cSystem->trace->get_fnc_name(current_pc&~X64(3),&funcname))	\
+  if (trc->get_fnc_name(current_pc&~X64(3),&funcname))	\
     {									\
       if (bListOnly && !strcmp(funcname,""))				\
         {								\
@@ -329,7 +350,7 @@ CAlphaCPU::~CAlphaCPU()
 	  printf("\n%s:\n",&(funcname[5]));				\
 	  pc = current_pc;						\
 	  while (   (pc==current_pc)					\
-		    || !cSystem->trace->get_fnc_name(pc,&funcname) )	\
+		    || !trc->get_fnc_name(pc,&funcname) )	\
 	    {								\
 	      printf("%08x: %016I64x\n",(u32)pc, cSystem->ReadMem(pc,64)); \
 	      pc += 8;							\
@@ -341,7 +362,7 @@ CAlphaCPU::~CAlphaCPU()
 	  printf("\n%s:\n",&(funcname[5]));				\
 	  pc = current_pc;						\
 	  while (   (pc==current_pc)					\
-		    || !cSystem->trace->get_fnc_name(pc,&funcname) )	\
+		    || !trc->get_fnc_name(pc,&funcname) )	\
 	    {								\
 	      printf("%08x: %08I64x\n",(u32)pc, cSystem->ReadMem(pc,32)); \
 	      pc += 4;							\
@@ -467,7 +488,7 @@ CAlphaCPU::~CAlphaCPU()
       bool dbg_y = false;					\
       DEBUG_XX							\
 	printf("%s r%d, ", a, REG_1&31);			\
-      if (cSystem->trace->get_fnc_name(dbg_x,&funcname))	\
+      if (trc->get_fnc_name(dbg_x,&funcname))	\
 	printf("%s\n",funcname);				\
       else							\
 	printf ("...%08x\n", dbg_x);				\
@@ -527,6 +548,29 @@ CAlphaCPU::~CAlphaCPU()
 	printf(" ==> %08x%08x", (u32)(r[REG_2]>>32), (u32)(r[REG_2]));	\
       printf("\n");							\
     }
+
+#else
+
+#define UNKNOWN1 ;
+#define UNKNOWN2 ;
+#define DEBUG_LD_ST(a) ;
+#define DEBUG_HW(a,b) ;
+#define DEBUG_OP(a) ;
+#define DEBUG_OP_R1(a) ;
+#define DEBUG_OP_R3(a) ;
+#define DEBUG_OP_F1_R3(a) ;
+#define DEBUG_OP_R23(a) ;
+#define DEBUG_BR(a) ;
+#define DEBUG_JMP(a) ;
+#define DEBUG_RET(a) ;
+#define DEBUG_fnc(a) ;
+#define DEBUG_PAL ;
+#define DEBUG_(a) ;
+#define DEBUG_MFPR(a) ;
+#define DEBUG_MTPR(a) ;
+
+#endif
+
 
 void CAlphaCPU::DoClock()
 {

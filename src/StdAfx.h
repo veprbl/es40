@@ -75,6 +75,15 @@ inline bool isblank(char c)
 }
 #endif
 
+#ifdef __DECCXX
+inline bool isblank(char c)
+{
+  if ( c == ' ' || c == '\t' || c == '\n' || c == '\r' )
+    return true;
+  return false;
+}
+#endif
+
 #ifdef _WIN32
 inline void sleep_ms(DWORD ms)
 {

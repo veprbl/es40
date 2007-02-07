@@ -97,7 +97,6 @@ class CSystem
 
   virtual ~CSystem();
   unsigned int iNumMemoryBits;
-  CTraceEngine * trace;
 
   char *FindConfig();
   void LoadConfig(char *filename);

@@ -291,13 +291,11 @@ u64 CDPR::ReadMem(int index, u64 address, int dsize)
   dsize;
   index;
   u64 data = 0;
-  char trcbuffer [1000];
   int a = (int)(address>>6);
 
   data = ram[a];
 
-  sprintf(trcbuffer,"%%DPR-I-READ: Dual-Port RAM read @ 0x%08x: 0x%02x\n",a,(u32)(data&0xff));
-  cSystem->trace->trace_dev(trcbuffer);
+  TRC_DEV3("%%DPR-I-READ: Dual-Port RAM read @ 0x%08x: 0x%02x\n",a,(u32)(data&0xff));
   return data;
 }
 
@@ -306,11 +304,10 @@ void CDPR::WriteMem(int index, u64 address, int dsize, u64 data)
   dsize;
   index;
   int i;
-  char trcbuffer [1000];
   int a = (int)(address>>6);
-  sprintf(trcbuffer,"%%DPR-I-WRITE: Dual-Port RAM write 0x%08x 0x%02x:\n",a,(u32)(data&0xff));
-  cSystem->trace->trace_dev(trcbuffer);
+  char trcbuffer[1000];
 
+  TRC_DEV3("%%DPR-I-WRITE: Dual-Port RAM write 0x%08x 0x%02x:\n",a,(u32)(data&0xff));
 
   // FOR COMMANDS:
   //
@@ -413,18 +410,13 @@ void CDPR::WriteMem(int index, u64 address, int dsize, u64 data)
 	      for(i=0;i<ram[0xf9]+1;i++)
 		{
 		  ram[ram[0xfb]*0x100 + ram[0xfa] + i] = ram[0x3500 + ram[0xfa] + i];			
-		  sprintf(trcbuffer,"%%DPR-I-FRU: FRU data %02x @ FRU %02x set to %02x\n",ram[0xfa]+i,ram[0xfb],ram[0x3500 + ram[0xfa]+i]);
-		  cSystem->trace->trace_dev(trcbuffer);
+		  TRC_DEV4("%%DPR-I-FRU: FRU data %02x @ FRU %02x set to %02x\n",ram[0xfa]+i,ram[0xfb],ram[0x3500 + ram[0xfa]+i]);
 		}
 	      ram[0xfc] = 0;
 	      break;
 	    default:
-	      sprintf(trcbuffer,"%%DPR-I-RMC: RMC Command given: %02x\r\n",ram[0xfe]);
-	      cSystem->trace->trace_dev(trcbuffer);
-	      srl[0]->write(trcbuffer);
-	      sprintf(trcbuffer,"%%DPR-I-RMC: f9:%02x fb-fa:%02x%02x\r\n",ram[0xf9],ram[0xfb],ram[0xfa]);
-	      cSystem->trace->trace_dev(trcbuffer);
-	      srl[0]->write(trcbuffer);
+	      TRC_DEV2("%%DPR-I-RMC: RMC Command given: %02x\r\n",ram[0xfe]);
+	      TRC_DEV4("%%DPR-I-RMC: f9:%02x fb-fa:%02x%02x\r\n",ram[0xf9],ram[0xfb],ram[0xfa]);
 	      ram[0xfc] = 0x80;
 	    }
 	  break;
@@ -433,21 +425,17 @@ void CDPR::WriteMem(int index, u64 address, int dsize, u64 data)
 	  break;
 	case 3:
 	  // OCP-Write
-	  sprintf(trcbuffer,"%%DPR-I-OCP: OCP Text set to \"0123456789abcdef\"\r\n");
+	  sprintf(trcbuffer,"%%%%DPR-I-OCP: OCP Text set to \"0123456789abcdef\"\r\n");
 	  memcpy(trcbuffer+29,&(ram[0x3500]),16);
 	  //			srl[0]->write(trcbuffer);
-	  cSystem->trace->trace_dev(trcbuffer);
+	  TRC_DEV(trcbuffer);
 	  ram[0xfc] = 0;
 	  break;
 	case 0xf0:
 	  ram[0xfc] = 0;
 	default:
-	  sprintf(trcbuffer,"%%DPR-I-RMC: RMC Command given: %02x\r\n",ram[0xfe]);
-	  cSystem->trace->trace_dev(trcbuffer);
-	  srl[0]->write(trcbuffer);
-	  sprintf(trcbuffer,"%%DPR-I-RMC: f9:%02x fb-fa:%02x%02x\r\n",ram[0xf9],ram[0xfb],ram[0xfa]);
-	  cSystem->trace->trace_dev(trcbuffer);
-	  srl[0]->write(trcbuffer);
+	  TRC_DEV2("%%DPR-I-RMC: RMC Command given: %02x\r\n",ram[0xfe]);
+	  TRC_DEV4("%%DPR-I-RMC: f9:%02x fb-fa:%02x%02x\r\n",ram[0xf9],ram[0xfb],ram[0xfa]);
 	  ram[0xfc] = 0x81;
 	}
       break;

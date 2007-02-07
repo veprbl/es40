@@ -101,8 +101,6 @@ CSystem::CSystem(unsigned int membits)
 
   memory = calloc(1<<iNumMemoryBits,1);
 
-  trace = new CTraceEngine(this);
-
   printf("%%TYP-I-INIT: 21272 Typhoon chipset emulator initialized.\n");
   printf("%%TYP-I-CONF: 21272 Typhoon config: 1 Cchip, 8 DChip, 2 PChip.\n");
 }
@@ -112,7 +110,6 @@ CSystem::~CSystem()
   unsigned int i;
   for (i=0;i<iNumComponents;i++)
     delete acComponents[i];
-  delete trace;
 }
 
 void CSystem::ResetMem(unsigned int membits) {
@@ -359,16 +356,10 @@ void CSystem::WriteMem(u64 address, int dsize, u64 data)
 	  return;
 	default:
 #ifdef _WIN32
-	  printf("Failed memwrite (%02d bits: %016I64x) to %016I64x (PC:%016I64x)         \n",dsize, data,address,acCPUs[0]->pc);
+	  TRC_DEV5("Failed memwrite (%02d bits: %016I64x) to %016I64x (PC:%016I64x)         \n",dsize, data,address,acCPUs[0]->pc);
 #else
-	  printf("Failed memwrite (%02d bits: %016llx) to %016llx (PC:%016llx)         \n",dsize, data,address,acCPUs[0]->pc);
+	  TRC_DEV5("Failed memwrite (%02d bits: %016llx) to %016llx (PC:%016llx)         \n",dsize, data,address,acCPUs[0]->pc);
 #endif
-#ifdef _WIN32
-	  sprintf(trcbuffer,"Failed memwrite (%02d bits: %016I64x) to %016I64x (PC:%016I64x)         \n",dsize, data,address,acCPUs[0]->pc);
-#else
-	  sprintf(trcbuffer,"Failed memwrite (%02d bits: %016llx) to %016llx (PC:%016llx)         \n",dsize, data,address,acCPUs[0]->pc);
-#endif
-	  trace->trace_dev(trcbuffer);
 	  return;
 	}
     }
@@ -398,7 +389,6 @@ u64 CSystem::ReadMem(u64 address, int dsize)
   u64 a;
   unsigned int i;
   void * p;
-  char trcbuffer[1000];
 
   a = address & X64(00000fffffffffff);
   if (a>>iNumMemoryBits)
@@ -527,16 +517,10 @@ u64 CSystem::ReadMem(u64 address, int dsize)
 
 	default:
 #ifdef _WIN32
-	  printf("Failed memread (%02d bits) to %016I64x (PC:%016I64x)              \n",dsize, address,acCPUs[0]->pc);
+	  TRC_DEV4("Failed memread (%02d bits) to %016I64x (PC:%016I64x)              \n",dsize, address,acCPUs[0]->pc);
 #else
-	  printf("Failed memread (%02d bits) to %016llx (PC:%016llx)              \n",dsize, address,acCPUs[0]->pc);
+	  TRC_DEV4("Failed memread (%02d bits) to %016llx (PC:%016llx)              \n",dsize, address,acCPUs[0]->pc);
 #endif
-#ifdef _WIN32
-	  sprintf(trcbuffer,"Failed memread (%02d bits) to %016I64x (PC:%016I64x)              \n",dsize, address,acCPUs[0]->pc);
-#else
-	  sprintf(trcbuffer,"Failed memread (%02d bits) to %016llx (PC:%016llx)              \n",dsize, address,acCPUs[0]->pc);
-#endif
-	  trace->trace_dev(trcbuffer);
 	  return 0;
 	  //			return 0x77; // 7f
 	}

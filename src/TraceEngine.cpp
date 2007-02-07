@@ -26,6 +26,8 @@
  *
  **/
 
+#ifdef IDB
+
 #include "StdAfx.h"
 #include "TraceEngine.h"
 #include "AlphaCPU.h"
@@ -36,6 +38,7 @@
 #include <stdlib.h>
 #endif
 
+CTraceEngine * trc;
 
 inline void write_printable_s(char * dest, char * org)
 {
@@ -551,3 +554,5 @@ FILE * CTraceEngine::trace_file()
 {
   return current_trace_file;
 }
+
+#endif // IDB

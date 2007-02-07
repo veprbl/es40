@@ -28,6 +28,8 @@
 
 #pragma once
 
+#ifdef IDB
+
 #include "datatypes.h"
 
 struct STraceFunction {
@@ -79,3 +81,21 @@ class CTraceEngine
   FILE * trace_file();
   void trace_dev(char * text);
 };
+
+extern CTraceEngine * trc;
+
+#define TRC_DEV(a) { char t [1000]; sprintf(t, a); trc->trace_dev(t); }
+#define TRC_DEV2(a,b) {char t [1000]; sprintf(t,a,b); trc->trace_dev(t); }
+#define TRC_DEV3(a,b,c) {char t [1000]; sprintf(t,a,b,c); trc->trace_dev(t); }
+#define TRC_DEV4(a,b,c,d) {char t [1000]; sprintf(t,a,b,c,d); trc->trace_dev(t); }
+#define TRC_DEV5(a,b,c,d,e) {char t [1000]; sprintf(t,a,b,c,d,e); trc->trace_dev(t); }
+
+#else //IDB
+
+#define TRC_DEV(a) ;
+#define TRC_DEV2(a,b) ;
+#define TRC_DEV3(a,b,c) ;
+#define TRC_DEV4(a,b,c,d) ;
+#define TRC_DEV5(a,b,c,d,e) ;
+
+#endif

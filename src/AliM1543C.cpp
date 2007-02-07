@@ -367,7 +367,6 @@ void CAliM1543C::WriteMem(int index, u64 address, int dsize, u64 data)
 u8 CAliM1543C::kb_read(u64 address)
 {
   u8 data;
-  char trcbuffer[1000];
 
   switch (address)
     {
@@ -382,35 +381,22 @@ u8 CAliM1543C::kb_read(u64 address)
       data = 0;
       break;
     }
+  
 #ifdef _WIN32
-  printf("%%ALI-I-KBDREAD: %02I64x read from Keyboard port %02x\n",data,address+0x60);
+  TRC_DEV3("%%ALI-I-KBDREAD: %02I64x read from Keyboard port %02x\n",data,address+0x60);
 #else
-  printf("%%ALI-I-KBDREAD: %02llx read from Keyboard port %02x\n",data,address+0x60);
+  TRC_DEV3("%%ALI-I-KBDREAD: %02llx read from Keyboard port %02x\n",data,address+0x60);
 #endif
-#ifdef _WIN32
-  sprintf(trcbuffer,"%%ALI-I-READ: %02I64x read from Keyboard port %02x\n",data,address+0x60);
-#else
-  sprintf(trcbuffer,"%%ALI-I-READ: %02llx read from Keyboard port %02x\n",data,address+0x60);
-#endif
-  cSystem->trace->trace_dev(trcbuffer);
   return data;
 }
 
 void CAliM1543C::kb_write(u64 address, u8 data)
 {
-  char trcbuffer[1000];
-
 #ifdef _WIN32
-  printf("%%ALI-I-KBDWRITE: %02I64x written to Keyboard port %02x\n",data,address+0x60);
+  TRC_DEV3("%%ALI-I-KBDWRITE: %02I64x written to Keyboard port %02x\n",data,address+0x60);
 #else
-  printf("%%ALI-I-KBDWRITE: %02llx written to Keyboard port %02x\n",data,address+0x60);
+  TRC_DEV3("%%ALI-I-KBDWRITE: %02llx written to Keyboard port %02x\n",data,address+0x60);
 #endif
-#ifdef _WIN32
-  sprintf(trcbuffer,"%%ALI-I-WRITE: %02I64x written to Keyboard port %02x\n",data,address+0x60);
-#else
-  sprintf(trcbuffer,"%%ALI-I-WRITE: %02llx written to Keyboard port %02x\n",data,address+0x60);
-#endif
-  cSystem->trace->trace_dev(trcbuffer);
   switch (address)
     {
       //    case 0:
@@ -431,7 +417,7 @@ void CAliM1543C::kb_write(u64 address, u8 data)
 	  kb_Status |= 0x01;
 	  return;
         default:
-	  printf("%%ALI-W-UNKCMD: Unknown keyboard command: %02x\n", kb_Command);
+	      TRC_DEV2("%%ALI-W-UNKCMD: Unknown keyboard command: %02x\n", kb_Command);
 	  return;
         }
     }
@@ -450,25 +436,17 @@ void CAliM1543C::reg_61_write(u8 data)
 
 u8 CAliM1543C::toy_read(u64 address)
 {
-  char trcbuffer[1000];
-
-  //	printf("%%ALI-I-READTOY: read port %02x: 0x%02x\n", (u32)(0x70 + address), toy_access_ports[address]);
-  sprintf(trcbuffer,"xALI-I-READTOY: read port %02x: 0x%02x\n", (u32)(0x70 + address), toy_access_ports[address]);
-  cSystem->trace->trace_dev(trcbuffer);
+  TRC_DEV3("%%ALI-I-READTOY: read port %02x: 0x%02x\n", (u32)(0x70 + address), toy_access_ports[address]);
 
   return (u8)toy_access_ports[address];
-    
 }
 
 void CAliM1543C::toy_write(u64 address, u8 data)
 {
   time_t ltime;
   struct tm stime;
-  char trcbuffer[1000];
 
-  //	printf("%%ALI-I-WRITETOY: write port %02x: 0x%02x\n", (u32)(0x70 + address), data);
-  sprintf(trcbuffer,"xALI-I-WRITETOY: write port %02x: 0x%02x\n", (u32)(0x70 + address), data);
-  cSystem->trace->trace_dev(trcbuffer);
+  TRC_DEV3("%%ALI-I-WRITETOY: write port %02x: 0x%02x\n", (u32)(0x70 + address), data);
 
   toy_access_ports[address] = (u8)data;
 
@@ -477,7 +455,6 @@ void CAliM1543C::toy_write(u64 address, u8 data)
     case 0:
       if ((data&0x7f)<14)
         {
-	  printf("%%ALI-I-CLOCK: Updating clock registers.\n");
 	  toy_stored_data[0x0d] = 0x80; // data is geldig!
 	  // update clock.......
 	  time (&ltime);
@@ -562,15 +539,11 @@ u64 CAliM1543C::isa_config_read(u64 address, int dsize)
       data = (u64)(*((u64*)x));
       break;
     }
-  printf("%%ALI-ISAREAD: ISA config read @ 0x%02x: 0x%x\n",(u32)address,data);
   return data;
-
 }
 
 void CAliM1543C::isa_config_write(u64 address, int dsize, u64 data)
 {
-  printf("%%ALI-ISAWRITE: ISA config write @ 0x%02x: 0x%x\n",(u32)address,data);
-
   void * x;
   void * y;
 
@@ -600,14 +573,12 @@ u8 CAliM1543C::pit_read(u64 address)
 
   data = 0;
 
-  printf("%%ALI-I-WRITEPIT: read port %02x: 0x%02x\n", (u32)(0x40 + address), data);
   return data;
 }
 
 void CAliM1543C::pit_write(u64 address, u8 data)
 {
   pit_enable = true;
-  printf("%%ALI-I-WRITEPIT: write port %02x: 0x%02x\n", (u32)(0x40 + address), data);
 }
 
 void CAliM1543C::DoClock()
@@ -634,7 +605,6 @@ u8 CAliM1543C::pic_read(int index, u64 address)
   if (address == 1) 
     data = pic_mask[index];
 
-  //	printf("%%ALI-I-READPIC: read port %d on PIC %d: 0x%02x\n", (u32)(address), index, data);
   return data;
 }
 
@@ -664,7 +634,6 @@ void CAliM1543C::pic_write(int index, u64 address, u8 data)
   int level;
   int op;
 
-  //	printf("%%ALI-I-WRITEPIC: write port %d on PIC %d: 0x%02x\n",  (u32)(address),index, data);
   switch(address)
     {
     case 0:
@@ -685,7 +654,6 @@ void CAliM1543C::pic_write(int index, u64 address, u8 data)
 	    {
 	    case 1:
 	      //non-specific EOI
-	      //					printf("%%ALI-I-EOI: all interrupts ended on PIC %d\n",index);
 	      pic_asserted[index] = 0;
 	      if (index==0)
 		cSystem->interrupt(55,false);
@@ -697,7 +665,6 @@ void CAliM1543C::pic_write(int index, u64 address, u8 data)
 	      // BIG HACK: deassert all interrupts instead of just one...
 	      //
 	      pic_asserted[index] = 0;
-	      //					printf("%%ALI-I-EOI: interrupt %d ended on PIC %d. Asserted = %02x\n",  level,index,pic_asserted[index]);
 	      if ((index==0) && (!pic_asserted[0]))
 		cSystem->interrupt(55,false);
 	      break;				
@@ -727,7 +694,6 @@ void CAliM1543C::pic_write(int index, u64 address, u8 data)
 
 void CAliM1543C::pic_interrupt(int index, int intno)
 {
-  //	printf("%%ALI-I-IRQ: incoming interrupt %d on PIC %d\n",  intno,index);
   // do we have this interrupt enabled?
   if (pic_mask[index] & (1<<intno))
     return;
@@ -764,16 +730,12 @@ u64 CAliM1543C::ide_config_read(u64 address, int dsize)
       data = (u64)(*((u64*)x));
       break;
     }
-  printf("%%ALI-IDEREAD: IDE config read @ 0x%02x: 0x%x\n",(u32)address,data);
-  fprintf(f_ide,"%%ALI-IDEREAD: IDE config read @ 0x%02x: 0x%x\n",(u32)address,data);
   return data;
 
 }
 
 void CAliM1543C::ide_config_write(u64 address, int dsize, u64 data)
 {
-  printf("%%ALI-IDEWRITE: IDE config write @ 0x%02x: 0x%x\n",(u32)address,data);
-  fprintf(f_ide,"%%ALI-IDEWRITE: IDE config write @ 0x%02x: 0x%x\n",(u32)address,data);
 
   void * x;
   void * y;
@@ -805,30 +767,24 @@ void CAliM1543C::ide_config_write(u64 address, int dsize, u64 data)
       case 0x10:
 	// command
 	cSystem->RegisterMemory(this,14, X64(00000801fc000000) + (data&0x00fffffe), 8);
-	fprintf(f_ide,"%%ALI-IDESET: IDE 0 command I/O base set to 0x%x\n",data);
 	return;
       case 0x14:
 	// control
 	cSystem->RegisterMemory(this,16, X64(00000801fc000000) + (data&0x00fffffe), 4);
-	fprintf(f_ide,"%%ALI-IDESET: IDE 0 control I/O base set to 0x%x\n",data);
 	return;
       case 0x18:
 	// command
 	cSystem->RegisterMemory(this,15, X64(00000801fc000000) + (data&0x00fffffe), 8);
-	fprintf(f_ide,"%%ALI-IDESET: IDE 1 command I/O base set to 0x%x\n",data);
 	return;
       case 0x1c:
 	// control
 	cSystem->RegisterMemory(this,17, X64(00000801fc000000) + (data&0x00fffffe), 4);
-	fprintf(f_ide,"%%ALI-IDESET: IDE 1 control I/O base set to 0x%x\n",data);
 	return;
       case 0x20:
 	// bus master control
 	cSystem->RegisterMemory(this,18, X64(00000801fc000000) + (data&0x00fffffe), 8);
-	fprintf(f_ide,"%%ALI-IDESET: IDE 0 busmaster I/O base set to 0x%x\n",data);
 	// bus master control
 	cSystem->RegisterMemory(this,19, X64(00000801fc000000) + (data&0x00fffffe) + 8, 8);
-	fprintf(f_ide,"%%ALI-IDESET: IDE 1 busmaster I/O base set to 0x%x\n",data + 8);
 	return;
       }
 }
@@ -866,8 +822,7 @@ u64 CAliM1543C::ide_command_read(int index, u64 address)
       data = ide_status[index];
       break;
     }
-  fprintf(f_ide,"%%ALI-I-READIDECMD: read port %d on IDE command %d: 0x%02x\n", (u32)(address), index, data);
-  fprintf(cSystem->trace->trace_file(),"%%ALI-I-READIDECMD: read port %d on IDE command %d: 0x%02x\n", (u32)(address), index, data);
+  TRC_DEV4("%%ALI-I-READIDECMD: read port %d on IDE command %d: 0x%02x\n", (u32)(address), index, data);
   return data;
 }
 
@@ -875,8 +830,7 @@ void CAliM1543C::ide_command_write(int index, u64 address, u64 data)
 {
   int lba;
 
-  fprintf(f_ide,"%%ALI-I-WRITEIDECMD: write port %d on IDE command %d: 0x%02x\n",  (u32)(address),index, data);
-  fprintf(cSystem->trace->trace_file(),"%%ALI-I-WRITEIDECMD: write port %d on IDE command %d: 0x%02x\n",  (u32)(address),index, data);
+  TRC_DEV4("%%ALI-I-WRITEIDECMD: write port %d on IDE command %d: 0x%02x\n",  (u32)(address),index, data);
 
   ide_command[index][address]=(u8)data;
 	
@@ -972,8 +926,7 @@ void CAliM1543C::ide_command_write(int index, u64 address, u64 data)
 	      break;
 	    case 0x20: // read sector
 	      lba =      *((int*)(&(ide_command[index][3]))) & 0x0fffffff;
-	      fprintf(f_ide,"Read %d sectors from LBA %d\n",ide_command[index][2]?ide_command[index][2]:256,lba);
-	      fprintf(cSystem->trace->trace_file(),"Read %d sectors from LBA %d\n",ide_command[index][2]?ide_command[index][2]:256,lba);
+	      TRC_DEV3("Read %d sectors from LBA %d\n",ide_command[index][2]?ide_command[index][2]:256,lba);
 	      fseek(f_img[index],lba*512,0);
 	      fread(&(ide_data[index][0]),1,512,f_img[index]);
 	      ide_data_ptr[index] = 0;
@@ -994,15 +947,13 @@ u64 CAliM1543C::ide_control_read(int index, u64 address)
   data = 0;
   if (address==2) data = ide_status[index];
 
-  fprintf(f_ide,"%%ALI-I-READIDECTL: read port %d on IDE control %d: 0x%02x\n", (u32)(address), index, data);
-  fprintf(cSystem->trace->trace_file(),"%%ALI-I-READIDECTL: read port %d on IDE control %d: 0x%02x\n", (u32)(address), index, data);
+  TRC_DEV4("%%ALI-I-READIDECTL: read port %d on IDE control %d: 0x%02x\n", (u32)(address), index, data);
   return data;
 }
 
 void CAliM1543C::ide_control_write(int index, u64 address, u64 data)
 {
-  fprintf(f_ide,"%%ALI-I-WRITEIDECTL: write port %d on IDE control %d: 0x%02x\n",  (u32)(address),index, data);
-  fprintf(cSystem->trace->trace_file(),"%%ALI-I-WRITEIDECTL: write port %d on IDE control %d: 0x%02x\n",  (u32)(address),index, data);
+  TRC_DEV4("%%ALI-I-WRITEIDECTL: write port %d on IDE control %d: 0x%02x\n",  (u32)(address),index, data);
 }
 
 u64 CAliM1543C::ide_busmaster_read(int index, u64 address)
@@ -1011,15 +962,13 @@ u64 CAliM1543C::ide_busmaster_read(int index, u64 address)
 
   data = 0;
 
-  fprintf(f_ide,"%%ALI-I-READIDEBM: read port %d on IDE bus master %d: 0x%02x\n", (u32)(address), index, data);
-  fprintf(cSystem->trace->trace_file(),"%%ALI-I-READIDEBM: read port %d on IDE bus master %d: 0x%02x\n", (u32)(address), index, data);
+  TRC_DEV4("%%ALI-I-READIDEBM: read port %d on IDE bus master %d: 0x%02x\n", (u32)(address), index, data);
   return data;
 }
 
 void CAliM1543C::ide_busmaster_write(int index, u64 address, u64 data)
 {
-  fprintf(f_ide,"%%ALI-I-WRITEIDEBM: write port %d on IDE bus master %d: 0x%02x\n",  (u32)(address),index, data);
-  fprintf(cSystem->trace->trace_file(),"%%ALI-I-WRITEIDEBM: write port %d on IDE bus master %d: 0x%02x\n",  (u32)(address),index, data);
+  TRC_DEV4("%%ALI-I-WRITEIDEBM: write port %d on IDE bus master %d: 0x%02x\n",  (u32)(address),index, data);
 }
 
 
@@ -1046,15 +995,12 @@ u64 CAliM1543C::usb_config_read(u64 address, int dsize)
       data = (u64)(*((u64*)x));
       break;
     }
-  printf("%%ALI-USBREAD: USB config read @ 0x%02x: 0x%x\n",(u32)address,data);
   return data;
 
 }
 
 void CAliM1543C::usb_config_write(u64 address, int dsize, u64 data)
 {
-  printf("%%ALI-USBWRITE: USB config write @ 0x%02x: 0x%x\n",(u32)address,data);
-
   void * x;
   void * y;
 
@@ -1085,13 +1031,11 @@ u8 CAliM1543C::dma_read(int index, u64 address)
 
   data = 0;
 
-  printf("%%ALI-I-READDMA: read port %d on DMA %d: 0x%02x\n", (u32)(address), index, data);
   return data;
 }
 
 void CAliM1543C::dma_write(int index, u64 address, u8 data)
 {
-  printf("%%ALI-I-WRITEDMA: write port %d on DMA %d: 0x%02x\n",  (u32)(address),index, data);
 }
 
 
