@@ -1,4 +1,4 @@
-/** ES40 emulator.
+/* ES40 emulator.
  * Copyright (C) 2007 by Camiel Vanderhoeven
  *
  * Website: www.camicom.com
@@ -23,17 +23,22 @@
  * the general public.
  * 
  * FLASH.H contains the definitions for the emulated Flash ROM devices.
- *
- **/
+ */
 
-#if !defined(AFX_FLASH_H__150F29CB_DA72_455A_82C7_B0DE48DFAE52__INCLUDED_)
-#define AFX_FLASH_H__150F29CB_DA72_455A_82C7_B0DE48DFAE52__INCLUDED_
+#if !defined(__FLASH_H__)
+#define __FLASH_H__
 
 #if _MSC_VER > 1000
 #pragma once
 #endif // _MSC_VER > 1000
 
 #include "SystemComponent.h"
+
+/**
+ * Flash memory.
+ * Flash memory is only used for storing configuration data (such as SRM console variables),
+ * it is not used for firmware.
+ **/
 
 class CFlash : public CSystemComponent  
 {
@@ -55,4 +60,4 @@ class CFlash : public CSystemComponent
   virtual void RestoreState(FILE * f);
 };
 
-#endif // !defined(AFX_FLASH_H__150F29CB_DA72_455A_82C7_B0DE48DFAE52__INCLUDED_)
+#endif // !defined(__FLASH_H__)

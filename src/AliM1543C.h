@@ -1,4 +1,4 @@
-/** ES40 emulator.
+/* ES40 emulator.
  * Copyright (C) 2007 by Camiel Vanderhoeven
  *
  * Website: www.camicom.com
@@ -23,17 +23,22 @@
  * the general public.
  * 
  * ALIM1543C.H contains the definitions for the emulated Ali M1543C chipset devices.
- *
- **/
+ */
 
-#if !defined(AFX_ALIM1543C_H__5BBD124D_A76C_43E5_B08D_57B89582A31C__INCLUDED_)
-#define AFX_ALIM1543C_H__5BBD124D_A76C_43E5_B08D_57B89582A31C__INCLUDED_
+#if !defined(__ALIM1543C_H__)
+#define __ALIM1543C_H__
 
 #include "SystemComponent.h"
 
 #if _MSC_VER > 1000
 #pragma once
 #endif // _MSC_VER > 1000
+
+/**
+ * Emulated ALi M1543C multi-function device.
+ * The ALi M1543C device provides i/o and glue logic support to the system: ISA, USB, IDE, DMA, 
+ * Interrupt, Timer, TOY clock.
+ **/
 
 class CAliM1543C : public CSystemComponent  
 {
@@ -124,4 +129,4 @@ class CAliM1543C : public CSystemComponent
   int ide_sectors[2];
 };
 
-#endif // !defined(AFX_ALIM1543C_H__5BBD124D_A76C_43E5_B08D_57B89582A31C__INCLUDED_)
+#endif // !defined(__ALIM1543C_H__)

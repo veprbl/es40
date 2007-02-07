@@ -1,4 +1,4 @@
-/** ES40 emulator.
+/* ES40 emulator.
  * Copyright (C) 2007 by Camiel Vanderhoeven
  *
  * Website: www.camicom.com
@@ -23,17 +23,20 @@
  * the general public.
  * 
  * FLOPPYCONTROLLER.H contains the definitions for the emulated Floppy Controller devices.
- *
- **/
+ */
 
-#if !defined(AFX_FLOPPYCONTROLLER_H__74E3B236_5AD5_4474_B453_16D6F657488F__INCLUDED_)
-#define AFX_FLOPPYCONTROLLER_H__74E3B236_5AD5_4474_B453_16D6F657488F__INCLUDED_
+#if !defined(__FLOPPYCONTROLLER_H__)
+#define __FLOPPYCONTROLLER_H__
 
 #if _MSC_VER > 1000
 #pragma once
 #endif // _MSC_VER > 1000
 
 #include "SystemComponent.h"
+
+/**
+ * Floppy-drive controller.
+ **/
 
 class CFloppyController : public CSystemComponent  
 {
@@ -50,4 +53,4 @@ class CFloppyController : public CSystemComponent
   int iID;
 };
 
-#endif // !defined(AFX_FLOPPYCONTROLLER_H__74E3B236_5AD5_4474_B453_16D6F657488F__INCLUDED_)
+#endif // !defined(__FLOPPYCONTROLLER_H__)

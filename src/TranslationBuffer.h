@@ -1,4 +1,4 @@
-/** ES40 emulator.
+/* ES40 emulator.
  * Copyright (C) 2007 by Camiel Vanderhoeven
  *
  * Website: www.camicom.com
@@ -24,11 +24,10 @@
  * 
  * TRANSLATIONBUFFER.H contains the definitions for the emulated on-cpu instruction and
  * data translation buffers.
- *
- **/
+ */
 
-#if !defined(AFX_TRANSLATIONBUFFER_H__E75DBD2A_5880_474E_85DA_F88BC5A2F07E__INCLUDED_)
-#define AFX_TRANSLATIONBUFFER_H__E75DBD2A_5880_474E_85DA_F88BC5A2F07E__INCLUDED_
+#if !defined(__TRANSLATIONBUFFER_H__)
+#define __TRANSLATIONBUFFER_H__
 
 #if _MSC_VER > 1000
 #pragma once
@@ -58,17 +57,27 @@ extern CSystem * systm;
 #define ACCESS_BIT	8
 #define FAULT_BIT   1
 
+/**
+ * Translation Buffer Entry.
+ * A translation buffer entry provides the mapping from a page of virtual memory to a page of physical memory.
+ **/
 
 struct STBEntry {
-  u64 virt;
-  u64 phys;
-  int asn;
-  u8 gh;
-  bool asm_bit;
-  bool access[2][4];	// [read/write][current mode]
-  bool fault[2];      // [read/write]
-  bool valid;
+  u64 virt;		/**< Virtual address of page*/
+  u64 phys;		/**< Physical address of page*/
+  int asn;		/**< Address Space Number*/
+  u8 gh;		/**< Granularity Hint*/
+  bool asm_bit;		/**< Address Space Match bit*/
+  bool access[2][4];	/**< Access permitted [read/write][current mode]*/
+  bool fault[2];        /**< Fault on access [read/write]*/
+  bool valid;		/**< Valid entry*/
 };
+
+/**
+ * Translation Buffer.
+ * The translation buffers are two on-chip translation units for translating virtual addresses to physical
+ * memory. Each Alpha CPU has one translation buffers for instructions, and one for data.
+ **/
 
 class CTranslationBuffer  
 {
@@ -291,4 +300,4 @@ inline void CTranslationBuffer::InvalidateSingle(u64 address, int asn)
   entry[i].valid = false;
 }
 
-#endif // !defined(AFX_TRANSLATIONBUFFER_H__E75DBD2A_5880_474E_85DA_F88BC5A2F07E__INCLUDED_)
+#endif // !defined(__TRANSLATIONBUFFER_H__)

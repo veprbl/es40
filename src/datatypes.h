@@ -1,4 +1,4 @@
-/** ES40 emulator.
+/* ES40 emulator.
  * Copyright (C) 2007 by Camiel Vanderhoeven
  *
  * Website: www.camicom.com
@@ -22,9 +22,9 @@
  * and receiving any modifications you may make to the source code that might serve
  * the general public.
  * 
- * DATATYPES.H contains the datatype definitions for use with Microsoft Visual C++.
- *
- **/
+ * DATATYPES.H contains the datatype definitions for use with Microsoft Visual C++
+ * and Linux.
+ */
 
 #if !defined(__DATATYPES_H__)
 #define __DATATYPES_H__

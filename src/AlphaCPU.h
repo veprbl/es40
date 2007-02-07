@@ -1,4 +1,4 @@
-/** ES40 emulator.
+/* ES40 emulator.
  * Copyright (C) 2007 by Camiel Vanderhoeven
  *
  * Website: www.camicom.com
@@ -16,18 +16,19 @@
  * 
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, 
+ * USA.
  * 
- * Although this is not required, the author would appreciate being notified of, 
- * and receiving any modifications you may make to the source code that might serve
- * the general public.
+ * Although this is not required, the author would appreciate being notified 
+ * of, and receiving any modifications you may make to the source code that 
+ * might serve the general public.
  * 
- * ALPHACPU.H contains the code for the emulated DecChip 21264CB EV68 Alpha processor.
- *
- **/
+ * ALPHACPU.H contains the code for the emulated DecChip 21264CB EV68 Alpha 
+ * processor.
+ */
 
-#if !defined(AFX_ALPHACPU_H__11FB7045_D1CC_4808_9629_7D8BEABDE36A__INCLUDED_)
-#define AFX_ALPHACPU_H__11FB7045_D1CC_4808_9629_7D8BEABDE36A__INCLUDED_
+#if !defined(__ALPHACPU_H__)
+#define __ALPHACPU_H__
 
 #if _MSC_VER > 1000
 #pragma once
@@ -37,22 +38,24 @@
 #include "System.h"
 #include "TranslationBuffer.h"
 
-
-
+/**
+ * Instruction cache entry.
+ * An instruction cache entry contains the address and address space number
+ * (ASN) + 16 32-bit instructions.
+ **/
+ 
 struct SICache {
-  int asn;
-  u32 data[16];
-  u64 address;
-  bool valid;
+  int asn;		/**< Address Space Number*/
+  u32 data[16];		/**< Actual cached instructions*/
+  u64 address;		/**< Address of first instruction*/
+  bool valid;		/**< Valid cache entry*/
 };
-/*
-  struct STraceFunction {
-  u32 address;
-  char * fn_name;
-  char * fn_arglist;
-  bool step_over;
-  };
-*/
+
+/**
+ * Emulated CPU.
+ * The CPU emulated is the DECchip 21264CB Alpha Processor (EV68).
+ **/
+
 class CAlphaCPU : public CSystemComponent  
 {
  public:
@@ -143,8 +146,8 @@ class CAlphaCPU : public CSystemComponent
   bool bIntrFlag;
   bool bDebug;
   u64 current_pc;
-  struct SICache icache[1024];
-  int next_icache;
+  struct SICache icache[1024];		/**< Instruction cache entries*/
+  int next_icache;			/**< Number of next cache entry to use*/
   int get_icache(u64 address, u32 * data);
   bool bListOnly;
   void go_pal(u32 pal_offset);
@@ -157,89 +160,6 @@ class CAlphaCPU : public CSystemComponent
   CTranslationBuffer * itb;
   CTranslationBuffer * dtb;
 };
-
-enum ins_format {none, mem, br, op, fp, pal, palmem, palreg, palrei, jmp, fpmem, fpbr, memf1, memf2, op_f1r3, op_f1};
-
-struct SOperands
-{
-  int opcode;
-  int subcode;
-  int r1;
-  int r2;
-  int r3;
-  int f1;
-  int f2;
-  int f3;
-  u64 v1;
-  u64 v2;
-  int bit_12;
-  u64 disp;
-  u64 address;
-  int function;
-  int size;
-  bool sext;
-  bool address_only;
-  bool locking;
-  bool lt; 
-  bool eq;
-  bool gt;
-  bool lbc;
-  bool lbs;
-  bool overflow;
-  bool scale4;
-  bool scale8;
-  bool not2;
-  bool high;
-  bool right;
-  bool arithmetic;
-  bool unaligned;
-  bool physical;
-  bool alternate;
-  bool vpte;
-  bool wr_check;
-  enum ins_format format;
-  int index;
-};
-
-struct SOpcode
-{
-  int opcode;
-  char * mnemonic;
-  enum ins_format format;
-  void  (* function)(CAlphaCPU*, struct SOperands *);
-
-  int size;
-  union {
-    bool sext;
-    bool lt;
-    bool not2;
-    bool high;
-    bool right;
-  };
-  union {
-    bool address_only;
-    bool eq;
-    bool overflow;
-    bool arithmetic;
-  };
-  union {
-    bool locking;
-    bool gt;
-    bool scale4;
-  };
-  union {
-    bool lbc;
-    bool scale8;
-    bool unaligned;
-  };
-  bool lbs;
-    
-  // Multi-level OPCODES:
-  int sub_bitmask;
-  int sub_shr;
-  struct SOpcode * sub_code;
-};
-
 
 inline void CAlphaCPU::set_debug(bool dbg)
 {
@@ -374,4 +294,4 @@ inline void CAlphaCPU::irq_h(int number, bool assert)
 
 
 
-#endif // !defined(AFX_ALPHACPU_H__11FB7045_D1CC_4808_9629_7D8BEABDE36A__INCLUDED_)
+#endif // !defined(__ALPHACPU_H__)

@@ -1,4 +1,4 @@
-/** ES40 emulator.
+/* ES40 emulator.
  * Copyright (C) 2007 by Camiel Vanderhoeven
  *
  * Website: www.camicom.com
@@ -23,17 +23,20 @@
  * the general public.
  * 
  * DPR.H contains the definitions for the emulated Dual Port Ram and RMC devices.
- *
- **/
+ */
 
-#if !defined(AFX_DPR_H__5C2022CF_00AC_4D41_A064_FDDD591BA722__INCLUDED_)
-#define AFX_DPR_H__5C2022CF_00AC_4D41_A064_FDDD591BA722__INCLUDED_
+#if !defined(__DPR_H__)
+#define __DPR_H__
 
 #if _MSC_VER > 1000
 #pragma once
 #endif // _MSC_VER > 1000
 
 #include "SystemComponent.h"
+
+/**
+ * Emulated dual-port RAM and management controller.
+ **/
 
 class CDPR : public CSystemComponent  
 {
@@ -51,4 +54,4 @@ class CDPR : public CSystemComponent
   u8 ram[16*1024];
 };
 
-#endif // !defined(AFX_DPR_H__5C2022CF_00AC_4D41_A064_FDDD591BA722__INCLUDED_)
+#endif // !defined(__DPR_H__)

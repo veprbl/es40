@@ -1,4 +1,4 @@
-/** ES40 emulator.
+/* ES40 emulator.
  * Copyright (C) 2007 by Camiel Vanderhoeven
  *
  * Website: www.camicom.com
@@ -24,8 +24,7 @@
  * 
  * TRANSLATIONBUFFER.CPP contains the code for the emulated on-cpu instruction and
  * data translation buffers.
- *
- **/
+ */
 
 #include "StdAfx.h"
 #include "TranslationBuffer.h"
@@ -34,6 +33,11 @@
 //////////////////////////////////////////////////////////////////////
 // Construction/Destruction
 //////////////////////////////////////////////////////////////////////
+
+/**
+ * Constructor.
+ * Creates a translation buffer and invalidates all entries.
+ **/
 
 CTranslationBuffer::CTranslationBuffer(class CAlphaCPU * c, bool ibox)
 {
@@ -45,18 +49,20 @@ CTranslationBuffer::CTranslationBuffer(class CAlphaCPU * c, bool ibox)
   temp_tag[1] = 0;
 
   InvalidateAll();
-
-  if (ibox)
-    printf("%%ITB-I-INIT: IBOX Page Translation Buffer for CPU %d initialized.\n",c->get_cpuid());
-  else
-    printf("%%DTB-I-INIT: MBOX Page Translation Buffer for CPU %d initialized.\n",c->get_cpuid());
 }
+
+/**
+ * Destructor.
+ **/
 
 CTranslationBuffer::~CTranslationBuffer()
 {
 
 }
 
+/**
+ * Save state to a Virtual Machine State file.
+ **/
 
 void CTranslationBuffer::SaveState(FILE *f)
 {
@@ -65,6 +71,10 @@ void CTranslationBuffer::SaveState(FILE *f)
   fwrite(&next_entry,1,sizeof(int),f);
   fwrite(temp_tag,1,2*8,f);
 }
+
+/**
+ * Restore state from a Virtual Machine State file.
+ **/
 
 void CTranslationBuffer::RestoreState(FILE *f)
 {
