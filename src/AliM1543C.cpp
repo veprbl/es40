@@ -32,6 +32,7 @@
 
 static FILE * f_ide;
 static FILE * f_img[4];
+static char * f_dev[4];
 
 //////////////////////////////////////////////////////////////////////
 // Construction/Destruction
@@ -40,10 +41,28 @@ static FILE * f_img[4];
 CAliM1543C::CAliM1543C(CSystem * c): CSystemComponent(c)
 {
   int i;
+  char buffer[64];
 
-  f_ide = fopen("ide.trc","w");
-  f_img[0] = fopen("\\vms83.iso","rb");
-  f_img[1] = fopen("\\vms73.iso","rb");
+  f_ide = fopen(c->GetConfig("disk.trace","ide.trc"),"w");
+
+  for(i=0;i<4;i++) {
+    char *filename;
+    sprintf(buffer,"disk.%d",i);
+    filename=c->GetConfig(buffer,NULL);
+    f_img[i]=fopen(filename,"rb");
+    if(f_img[i] != NULL) {
+      printf("%%IDE-I-MOUNT: Device '%s' mounted on IDE %d\n",filename,i);
+      char *p=(char *)malloc(strlen(filename)+1);
+      strcpy(p,filename);
+      f_dev[i]=p;
+    } else {
+      if(filename != NULL) 
+	printf("%%IDE-E-MOUNT: Cannot mount '%s'\n",filename);
+    }
+  }
+  
+  //  f_img[0] = fopen("\\vms83.iso","rb");
+  //  f_img[1] = fopen("\\vms73.iso","rb");
 
   c->RegisterMemory(this, 1, X64(00000801fc000060),8);
   kb_intState = 0;
@@ -871,6 +890,7 @@ void CAliM1543C::ide_command_write(int index, u64 address, u64 data)
 	      ide_data[index][24] = 0x2020;
 	      ide_data[index][25] = 0x2020;
 	      ide_data[index][26] = 0x2020;
+#if 0
 	      ide_data[index][27] = 'Op';	// model name
 	      ide_data[index][28] = 'en';
 	      ide_data[index][29] = 'VM';
@@ -894,6 +914,28 @@ void CAliM1543C::ide_command_write(int index, u64 address, u64 data)
 	      ide_data[index][44] = 0x2020;
 	      ide_data[index][45] = 0x2020;
 	      ide_data[index][46] = 0x2020;
+#else
+	      // clear the name
+	      for(int x=27;x<47;x++) {
+		ide_data[index][x]=0x2020;
+	      }
+	      if(f_dev[index] != NULL) {
+		int l = strlen(f_dev[index]);
+		char *dname = (char *)malloc(l+1);
+		char t = ' ';
+		strcpy(dname,f_dev[index]);
+		l = l > 40? 40 : l;
+		dname[l+1]=0x20;  
+		for(int x=0; x<=l; x+=2) {
+		  t = dname[x];
+		  dname[x]=dname[x+1];
+		  dname[x+1]=t;
+		}
+		strncpy((char *)(&ide_data[index][27]),dname,l);
+		free(dname);
+	      }
+#endif
+
 	      ide_data[index][47] = 1;		// read/write multiples
 	      ide_data[index][48] = 0;		// double-word IO transfers supported
 	      ide_data[index][49] = 0x0202;		// capability LBA
