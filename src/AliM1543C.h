@@ -36,8 +36,16 @@
 
 /**
  * Emulated ALi M1543C multi-function device.
- * The ALi M1543C device provides i/o and glue logic support to the system: ISA, USB, IDE, DMA, 
- * Interrupt, Timer, TOY clock.
+ * The ALi M1543C device provides i/o and glue logic support to the system: 
+ * ISA, USB, IDE, DMA, Interrupt, Timer, TOY Clock. 
+ *
+ * Known shortcomings:
+ *   - IDE
+ *     - disk images are not checked for size, so size is not always correctly 
+ *       reported.
+ *     - IDE disks can be read but not written.
+ *     .
+ *   .
  **/
 
 class CAliM1543C : public CSystemComponent  
@@ -127,6 +135,9 @@ class CAliM1543C : public CSystemComponent
   bool ide_writing[2];
   bool ide_reading[2];
   int ide_sectors[2];
+  int ide_selected[2];
+  FILE * ide_img[2][2];		/**< disk images opened. */
+  char * ide_dev[2][2];		/**< disk image filenames. */
 };
 
 #endif // !defined(__ALIM1543C_H__)
