@@ -89,13 +89,6 @@ char path[][40]={
 
 int main(int argc, char* argv[])
 {
-  argv;
-  argc;
-
-#if _MSC_VER >= 1400
-  SetPriorityClass(GetCurrentProcess(), BELOW_NORMAL_PRIORITY_CLASS);
-#endif
-
   u64 loadat;
 #ifdef _WIN32
   LARGE_INTEGER beginning;
@@ -287,35 +280,8 @@ int main(int argc, char* argv[])
 	     )
 	cpu[0]->pc += 4;
 
-      // generate a tick when the processor's waiting for it...
-
-      //		if ( cpu[0]->pc==X64(68cb4)
-      //  		  || cpu[0]->pc==X64(68cb5) )
-      //		{
-      //			cpu[0]->r[0] = 833 * 1000 * 1000; // cpu freq
-      //			cpu[0]->pc += 4;
-      //		}
-
-      // HACK
-      if ( cpu[0]->pc==X64(2000e850)
-	   || cpu[0]->pc==X64(2000e851) )
-	cpu[0]->r[0]++;
-
-
-      //		if ( cpu[0]->pc==X64(6896c)
-      //		  || cpu[0]->pc==X64(6896d) )
-      //        {
-      //            systm->trace->trace_dev("*** CC upped by 0xfedcba98 ***\n");
-      //            cpu[0]->cc += 0xfedcba98; //(u32)(cpu[0]->r[17]);
-      //         if (cyp)
-      //			   cyp->instant_tick();
-      //		   else
-      //			   ali->instant_tick();
-      //        }
 #endif
 
-      if (!i)
-	printf(".");
       if ((i&0x1ffff)==0 && i)
 	{
 #ifdef _WIN32

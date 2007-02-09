@@ -1,4 +1,4 @@
-/** ES40 emulator.
+/* ES40 emulator.
  * Copyright (C) 2007 by Camiel Vanderhoeven
  *
  * Website: www.camicom.com
@@ -23,8 +23,7 @@
  * the general public.
  * 
  * FLOPPYCONTROLLER.CPP contains the code for the emulated Floppy Controller devices.
- *
- **/
+ */
 
 #include "StdAfx.h"
 #include "FloppyController.h"

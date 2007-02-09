@@ -1,4 +1,4 @@
-/** ES40 emulator.
+/* ES40 emulator.
  * Copyright (C) 2007 by Camiel Vanderhoeven
  *
  * Website: www.camicom.com
@@ -23,8 +23,7 @@
  * the general public.
  * 
  * FLASH.CPP contains the code for the emulated Flash ROM devices.
- *
- **/
+ */
 
 #include "StdAfx.h"
 #include "Flash.h"
@@ -44,9 +43,9 @@
 
 extern CAlphaCPU * cpu[4];
 
-//////////////////////////////////////////////////////////////////////
-// Construction/Destruction
-//////////////////////////////////////////////////////////////////////
+/**
+ * Constructor.
+ **/
 
 CFlash::CFlash(CSystem * c) : CSystemComponent(c)
 {
@@ -56,10 +55,20 @@ CFlash::CFlash(CSystem * c) : CSystemComponent(c)
   mode = MODE_READ;
 }
 
+/**
+ * Destructor.
+ **/
+
 CFlash::~CFlash()
 {
 
 }
+
+/**
+ * Read a byte from flashmemory.
+ * Normally, this returns one byte from flash, however, after some commands
+ * sent to the flash-rom, this returns identification of status information.
+ **/
 
 u64 CFlash::ReadMem(int index, u64 address, int dsize)
 {
@@ -98,6 +107,10 @@ u64 CFlash::ReadMem(int index, u64 address, int dsize)
 
   return data;
 }
+
+/**
+ * Write command or programming data to flash-rom.
+ **/
 
 void CFlash::WriteMem(int index, u64 address, int dsize, u64 data)
 {
@@ -186,14 +199,20 @@ void CFlash::WriteMem(int index, u64 address, int dsize, u64 data)
 }
 
 
-// Save component state to file
+/**
+ * Save component state to file.
+ **/
+
 void CFlash::SaveState(FILE * f)
 {
   fwrite(Flash,2*1024*1024,1,f);
   fwrite(&mode,sizeof(int),1,f);
 }
 
-// Restore component state from file
+/**
+ * Restore component state from file.
+ **/
+
 void CFlash::RestoreState(FILE * f)
 {
   fread(Flash,2*1024*1024,1,f);

@@ -1,4 +1,4 @@
-/** ES40 emulator.
+/* ES40 emulator.
  * Copyright (C) 2007 by Camiel Vanderhoeven
  *
  * Website: www.camicom.com
@@ -23,8 +23,7 @@
  * the general public.
  * 
  * SERIAL.H contains the definitions for the emulated Serial Port devices.
- *
- **/
+ */
 
 #if !defined(AFX_SERIAL_H__7FD919DE_84AC_4364_A682_0BE164142E9B__INCLUDED_)
 #define AFX_SERIAL_H__7FD919DE_84AC_4364_A682_0BE164142E9B__INCLUDED_

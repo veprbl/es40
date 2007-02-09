@@ -1,4 +1,4 @@
-/** ES40 emulator.
+/* ES40 emulator.
  * Copyright (C) 2007 by Camiel Vanderhoeven
  *
  * Website: www.camicom.com
@@ -23,8 +23,7 @@
  * the general public.
  * 
  * PORT80.H contains the definitions for the emulated Floppy Controller devices.
- *
- **/
+ */
 
 #if !defined(AFX_PORT80_H__C93A4910_DB8A_4AF8_A890_5724EFB9C654__INCLUDED_)
 #define AFX_PORT80_H__C93A4910_DB8A_4AF8_A890_5724EFB9C654__INCLUDED_

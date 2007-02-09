@@ -22,10 +22,13 @@
  * Although this is not required, the author would appreciate being notified 
  * of, and receiving any modifications you may make to the source code that 
  * might serve the general public.
- * 
- * ALPHACPU.H contains the code for the emulated DecChip 21264CB EV68 Alpha 
- * processor.
  */
+ 
+/**
+ * \file AlphaCPU.H 
+ * \brief AlphaCPU.H contains the code for the emulated DecChip 21264CB EV68 Alpha processor.
+ * \author Camiel Vanderhoeven
+ **/
 
 #if !defined(__ALPHACPU_H__)
 #define __ALPHACPU_H__

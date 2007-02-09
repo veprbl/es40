@@ -1,4 +1,4 @@
-/** ES40 emulator.
+/* ES40 emulator.
  * Copyright (C) 2007 by Camiel Vanderhoeven
  *
  * Website: www.camicom.com
@@ -23,8 +23,7 @@
  * the general public.
  * 
  * DPR.CPP contains the code for the emulated Dual Port Ram and RMC devices.
- *
- **/
+ */
 
 #include "StdAfx.h"
 #include "DPR.h"

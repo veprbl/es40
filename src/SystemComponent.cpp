@@ -1,4 +1,4 @@
-/** ES40 emulator.
+/* ES40 emulator.
  * Copyright (C) 2007 by Camiel Vanderhoeven
  *
  * Website: www.camicom.com
@@ -24,8 +24,7 @@
  * 
  * SYSTEMCOMPONENT.CPP contains the code for the base class for devices that connect 
  * to the emulated Typhoon Chipset devices.
- *
- **/
+ */
 
 #include "StdAfx.h"
 #include "SystemComponent.h"

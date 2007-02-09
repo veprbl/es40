@@ -1,4 +1,4 @@
-/** ES40 emulator.
+/* ES40 emulator.
  * Copyright (C) 2007 by Camiel Vanderhoeven
  *
  * Website: www.camicom.com
@@ -25,8 +25,7 @@
  * stdafx.h : include file for standard system include files,
  * or project specific include files that are used frequently, but
  * are changed infrequently
- *
- **/
+ */
 
 #if !defined(AFX_STDAFX_H__E45CEFB7_CE00_44EB_ADFF_B17622633B52__INCLUDED_)
 #define AFX_STDAFX_H__E45CEFB7_CE00_44EB_ADFF_B17622633B52__INCLUDED_
