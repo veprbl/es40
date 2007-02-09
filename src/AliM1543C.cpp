@@ -1,4 +1,4 @@
-/** ES40 emulator.
+/* ES40 emulator.
  * Copyright (C) 2007 by Camiel Vanderhoeven
  *
  * Website: www.camicom.com
@@ -23,8 +23,7 @@
  * the general public.
  * 
  * ALIM1543C.CPP contains the code for the emulated Ali M1543C chipset devices.
- *
- **/
+ */
 
 #include "StdAfx.h"
 #include "AliM1543C.h"
@@ -49,15 +48,18 @@ CAliM1543C::CAliM1543C(CSystem * c): CSystemComponent(c)
     char *filename;
     sprintf(buffer,"disk.%d",i);
     filename=c->GetConfig(buffer,NULL);
-    f_img[i]=fopen(filename,"rb");
-    if(f_img[i] != NULL) {
-      printf("%%IDE-I-MOUNT: Device '%s' mounted on IDE %d\n",filename,i);
-      char *p=(char *)malloc(strlen(filename)+1);
-      strcpy(p,filename);
-      f_dev[i]=p;
-    } else {
-      if(filename != NULL) 
-	printf("%%IDE-E-MOUNT: Cannot mount '%s'\n",filename);
+    if (filename)
+    {
+      f_img[i]=fopen(filename,"rb");
+      if(f_img[i] != NULL) {
+        printf("%%IDE-I-MOUNT: Device '%s' mounted on IDE %d\n",filename,i);
+        char *p=(char *)malloc(strlen(filename)+1);
+        strcpy(p,filename);
+        f_dev[i]=p;
+      } else {
+        if(filename != NULL) 
+	  printf("%%IDE-E-MOUNT: Cannot mount '%s'\n",filename);
+      }
     }
   }
   
@@ -848,6 +850,7 @@ u64 CAliM1543C::ide_command_read(int index, u64 address)
 void CAliM1543C::ide_command_write(int index, u64 address, u64 data)
 {
   int lba;
+  int x;
 
   TRC_DEV4("%%ALI-I-WRITEIDECMD: write port %d on IDE command %d: 0x%02x\n",  (u32)(address),index, data);
 
@@ -890,33 +893,9 @@ void CAliM1543C::ide_command_write(int index, u64 address, u64 data)
 	      ide_data[index][24] = 0x2020;
 	      ide_data[index][25] = 0x2020;
 	      ide_data[index][26] = 0x2020;
-#if 0
-	      ide_data[index][27] = 'Op';	// model name
-	      ide_data[index][28] = 'en';
-	      ide_data[index][29] = 'VM';
-	      ide_data[index][30] = 'S ';
-	      if (index==0)
-		ide_data[index][31] = '8.';
-	      else
-		ide_data[index][31] = '7.';
-	      ide_data[index][32] = '3 ';
-	      ide_data[index][33] = '  ';
-	      ide_data[index][34] = '  ';
-	      ide_data[index][35] = '  ';
-	      ide_data[index][36] = '  ';
-	      ide_data[index][37] = 0x2020;
-	      ide_data[index][38] = 0x2020;
-	      ide_data[index][39] = 0x2020;
-	      ide_data[index][40] = 0x2020;
-	      ide_data[index][41] = 0x2020;
-	      ide_data[index][42] = 0x2020;
-	      ide_data[index][43] = 0x2020;
-	      ide_data[index][44] = 0x2020;
-	      ide_data[index][45] = 0x2020;
-	      ide_data[index][46] = 0x2020;
-#else
-	      // clear the name
-	      for(int x=27;x<47;x++) {
+
+		  // clear the name
+	      for(x=27;x<47;x++) {
 		ide_data[index][x]=0x2020;
 	      }
 	      if(f_dev[index] != NULL) {
@@ -934,7 +913,6 @@ void CAliM1543C::ide_command_write(int index, u64 address, u64 data)
 		strncpy((char *)(&ide_data[index][27]),dname,l);
 		free(dname);
 	      }
-#endif
 
 	      ide_data[index][47] = 1;		// read/write multiples
 	      ide_data[index][48] = 0;		// double-word IO transfers supported

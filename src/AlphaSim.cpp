@@ -1,4 +1,4 @@
-/** ES40 emulator.
+/* ES40 emulator.
  * Copyright (C) 2007 by Camiel Vanderhoeven
  *
  * Website: www.camicom.com
@@ -23,8 +23,7 @@
  * the general public.
  * 
  * ALPHASIM.CPP defines the entry point for the application.
- *
- **/
+ */
 
 #include "StdAfx.h"
 #include "System.h"
@@ -56,6 +55,7 @@
 //#define RUN_LT X64(400000)
 //#define DO_SETPC X64(200000)
 //#define DO_SETPC X64(0)
+//#define DO_DISASM 1
 
 CSystem * systm;
 CAlphaCPU * cpu[4];
@@ -162,9 +162,6 @@ int main(int argc, char* argv[])
   loadat = systm->Select_ROM();
   cpu[0]->pc = loadat+1;
   cpu[0]->set_PAL_BASE(loadat);
-  cpu[0]->set_trace(false);
-  cpu[0]->set_debug(false);
-  cpu[0]->set_list(false);
 
 #ifdef IDB
   trc->read_procfile("es40.csv");
@@ -222,13 +219,17 @@ int main(int argc, char* argv[])
   systm->RestoreState(DO_LOADSTATE);
 #endif
 
+#ifdef DO_DISASM
+  bDisassemble = true;
+#endif
+
 #ifdef DO_TRACE
-  cpu[0]->set_trace(true);
+  bTrace = true;
 #endif
 
 #ifdef DO_LISTING
-  cpu[0]->set_debug(true);
-  cpu[0]->set_list(true);
+  bDisassemble = true;
+  bListing = true;
 #endif
 
 #ifdef DO_SETPC
@@ -334,9 +335,9 @@ int main(int argc, char* argv[])
 	  ops_per_sec = 0x20000 / seconds;
 			
 #ifdef _WIN32
-	  sprintf(prf,"\r%dK | %8I64x | %16I64x (%16I64x) | %e i/s",i/1000,cpu[0]->pc,cpu[0]->last_write_loc,cpu[0]->last_write_val,ops_per_sec);
+	  sprintf(prf,"\r%dK | %8I64x | %e i/s",i/1000,cpu[0]->pc,ops_per_sec);
 #else
-	  sprintf(prf,"\r%dK | %8llx | %16llx (%16llx) | %e i/s",i/1000,cpu[0]->pc,cpu[0]->last_write_loc,cpu[0]->last_write_val,ops_per_sec);
+	  sprintf(prf,"\r%dK | %8llx | %e i/s",i/1000,cpu[0]->pc,ops_per_sec);
 #endif
 	  srl[1]->write(prf);
 	}

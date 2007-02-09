@@ -1,4 +1,4 @@
-/** ES40 emulator.
+/* ES40 emulator.
  * Copyright (C) 2007 by Camiel Vanderhoeven
  *
  * Website: www.camicom.com
@@ -23,8 +23,7 @@
  * the general public.
  * 
  * TRACEENGINE.CPP contains the code for the cpu tracing engine.
- *
- **/
+ */
 
 #ifdef IDB
 
@@ -554,5 +553,10 @@ FILE * CTraceEngine::trace_file()
 {
   return current_trace_file;
 }
+
+bool bTrace = false;
+bool bListing = false;
+bool bDisassemble = false;
+
 
 #endif // IDB

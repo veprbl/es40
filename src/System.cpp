@@ -1,4 +1,4 @@
-/** ES40 emulator.
+/* ES40 emulator.
  * Copyright (C) 2007 by Camiel Vanderhoeven
  *
  * Website: www.camicom.com
@@ -23,8 +23,7 @@
  * the general public.
  * 
  * SYSTEM.CPP contains the code for the emulated Typhoon Chipset devices.
- *
- **/
+ */
 
 #include "StdAfx.h"
 #include "System.h"
@@ -186,7 +185,6 @@ void CSystem::WriteMem(u64 address, int dsize, u64 data)
   u64 a;
   unsigned int i;
   void * p;
-  char trcbuffer[1000];
 
   a = address & X64(00000fffffffffff);
 

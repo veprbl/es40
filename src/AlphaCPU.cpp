@@ -1,4 +1,4 @@
-/** ES40 emulator.
+/* ES40 emulator.
  * Copyright (C) 2007 by Camiel Vanderhoeven
  *
  * Website: www.camicom.com
@@ -23,8 +23,7 @@
  * the general public.
  * 
  * ALPHACPU.CPP contains the code for the emulated DecChip 21264CB EV68 Alpha processor.
- *
- **/
+ */
 
 #include "StdAfx.h"
 #include "AlphaCPU.h"
@@ -75,9 +74,9 @@ char * PAL_NAME[] = {
 
 #endif
 
-//////////////////////////////////////////////////////////////////////
-// Construction/Destruction
-//////////////////////////////////////////////////////////////////////
+/**
+ * Constructor.
+ **/
 
 CAlphaCPU::CAlphaCPU(CSystem * system) : CSystemComponent (system)
 {
@@ -88,15 +87,7 @@ CAlphaCPU::CAlphaCPU(CSystem * system) : CSystemComponent (system)
   cSystem->RegisterClock(this);
 
   pc = 0;
-  /*	trclvl = 0;
-    trcfncs = 0;
-    trchide = -1;
-    trc_waitfor = 0;
-  */
-  bListOnly = false;
-  bDebug=false;
   bIntrFlag = false;
-  bTrace = false;
 
   for(i=0;i<64;i++) 
     {
@@ -137,8 +128,6 @@ CAlphaCPU::CAlphaCPU(CSystem * system) : CSystemComponent (system)
   i_ctl_vptb = 0;
   i_stat = 0;
   ier = 0;
-  last_write_loc = 0;
-  last_write_val = 0;
   mm_stat = 0;
   pal_base = 0;
   pc = 0;
@@ -168,6 +157,10 @@ CAlphaCPU::CAlphaCPU(CSystem * system) : CSystemComponent (system)
     
   printf("%%CPU-I-INIT: Alpha AXP 21264 EV68 processor %d initialized.\n", iProcNum);
 }
+
+/**
+ * Destructor.
+ **/
 
 CAlphaCPU::~CAlphaCPU()
 {
@@ -239,35 +232,45 @@ CAlphaCPU::~CAlphaCPU()
 
 #define ALIGN_PHYS(a) (phys_address & ~((u64)((a)-1)))
 
-/*****
- * Normal variants of read and write actions
+/**
+ * Normal variant of read action
  * In reality, these would generate an alignment trap, and the exception
  * handler would put things straight. Instead, to speed things up, we'll
- * just perform the read/write as requested using the unaligned address.
- *****/
+ * just perform the read as requested using the unaligned address.
+ **/
 
 #define READ_PHYS(size)				\
   cSystem->ReadMem(phys_address, size)
 
-#define WRITE_PHYS(data,size) {				\
-    cSystem->WriteMem(phys_address, size, data);	\
-    last_write_loc = phys_address;			\
-    last_write_val = data; }
+/**
+ * Normal variant of write action
+ * In reality, these would generate an alignment trap, and the exception
+ * handler would put things straight. Instead, to speed things up, we'll
+ * just perform the write as requested using the unaligned address.
+ **/
 
-/*****
- * NO-TRAP (NT) variants of read and write actions.
- * Thesse are used for HW_LD and HW_ST, where alignment traps are 
- * inhibited. We'll align the adress and read/write using the aligned
+#define WRITE_PHYS(data,size)			\
+  cSystem->WriteMem(phys_address, size, data)
+
+/**
+ * NO-TRAP (NT) variants of read action.
+ * This is used for HW_LD, where alignment traps are 
+ * inhibited. We'll align the adress and read using the aligned
  * address.
- *****/
+ **/
 
 #define READ_PHYS_NT(size)			\
   cSystem->ReadMem(ALIGN_PHYS((size)/8), size)
 
-#define WRITE_PHYS_NT(data,size) {				\
-    cSystem->WriteMem(ALIGN_PHYS((size)/8), size, data);	\
-    last_write_loc = ALIGN_PHYS((size)/8);			\
-    last_write_val = data; }
+/**
+ * NO-TRAP (NT) variants of write action.
+ * This is used for HW_ST, where alignment traps are 
+ * inhibited. We'll align the adress and write using the aligned
+ * address.
+ **/
+
+#define WRITE_PHYS_NT(data,size) 				\
+    cSystem->WriteMem(ALIGN_PHYS((size)/8), size, data)
 
 
 #define REG_1 (((ins>>21) & 0x1f) + (((pc&1) && (((ins>>21)&0xc)==0x4) && sde)?32:0))
@@ -290,7 +293,7 @@ CAlphaCPU::~CAlphaCPU()
   char * funcname = 0;							\
   if (trc->get_fnc_name(current_pc&~X64(3),&funcname))	\
     {									\
-      if (bListOnly && !strcmp(funcname,""))				\
+      if (bListing && !strcmp(funcname,""))				\
         {								\
 	  printf("%08x: \"%s\"\n",(u32)current_pc,			\
 		 cSystem->PtrToMem(current_pc));		        \
@@ -299,12 +302,12 @@ CAlphaCPU::~CAlphaCPU()
 	  while (pc < 0x600000 && cSystem->ReadMem(pc,32)==0) pc += 4;	\
 	  return;							\
         }								\
-      else if (bListOnly && !strcmp(funcname,"!SKIP"))			\
+      else if (bListing && !strcmp(funcname,"!SKIP"))			\
         {								\
 	  while (pc < 0x600000 && cSystem->ReadMem(pc,32)==0) pc += 4;	\
 	  return;							\
         }								\
-      else if (bListOnly && !strncmp(funcname,"!CHAR-",6))		\
+      else if (bListing && !strncmp(funcname,"!CHAR-",6))		\
         {								\
 	  u64 xx_upto;							\
 	  int xx_result;						\
@@ -322,7 +325,7 @@ CAlphaCPU::~CAlphaCPU()
 	      return;							\
 	    }								\
         }								\
-      else if (bListOnly && !strncmp(funcname,"!LCHAR-",7))		\
+      else if (bListing && !strncmp(funcname,"!LCHAR-",7))		\
         {								\
 	  char stringval[300];						\
 	  int  stringlen;						\
@@ -345,7 +348,7 @@ CAlphaCPU::~CAlphaCPU()
 	      return;							\
 	    }								\
         }								\
-      else if (bListOnly && !strncmp(funcname,"!X64-",5))		\
+      else if (bListing && !strncmp(funcname,"!X64-",5))		\
         {								\
 	  printf("\n%s:\n",&(funcname[5]));				\
 	  pc = current_pc;						\
@@ -357,7 +360,7 @@ CAlphaCPU::~CAlphaCPU()
 	    }								\
 	  return;							\
         }								\
-      else if (bListOnly && !strncmp(funcname,"!X32-",5))		\
+      else if (bListing&& !strncmp(funcname,"!X32-",5))		\
         {								\
 	  printf("\n%s:\n",&(funcname[5]));				\
 	  pc = current_pc;						\
@@ -369,59 +372,59 @@ CAlphaCPU::~CAlphaCPU()
 	    }								\
 	  return;							\
         }								\
-      else if (bListOnly && !strncmp(funcname,":",1))			\
+      else if (bListing && !strncmp(funcname,":",1))			\
 	printf("%s:\n",funcname);					\
       else								\
 	printf("\n%s:\n",funcname);					\
     }									\
   printf("%08x: ", (u32)current_pc);					\
-  if (bListOnly)							\
+  if (bListing)							\
     printf("%08x %c%c%c%c: ", (u32)ins,					\
 	   printable((char)(ins)),     printable((char)(ins>>8)),	\
 	   printable((char)(ins>>16)), printable((char)(ins>>24)));
 
 #define UNKNOWN1					\
-  if (bDebug)						\
+  if (bDisassemble)					\
     {							\
       DEBUG_XX						\
-	if (bListOnly)					\
-	  printf("\n");					\
-	else						\
+      if (DO_ACTION)					\
 	  printf("Unknown opcode: %02x\n", opcode);	\
+	else						\
+	  printf("\n");					\
     }
 
 #define UNKNOWN2							\
-  if (bDebug)								\
+  if (bDisassemble)							\
     {									\
       DEBUG_XX								\
-	if (bListOnly)							\
-	  printf("\n");							\
-	else								\
+	if (DO_ACTION)							\
 	  printf("Unknown opcode: %02x.%02x\n", opcode, function);	\
+	else								\
+	  printf("\n");							\
     }
 
 #define DEBUG_LD_ST(a)							\
-  if (bDebug)								\
+  if (bDisassemble)							\
     {									\
       DEBUG_XX								\
 	printf("%s r%d, %04xH(r%d)", a, REG_1&31, (u32)DISP_16, REG_2&31); \
-      if (!bListOnly)							\
+      if (DO_ACTION)							\
 	printf(" ==> %08x%08x", (u32)(r[REG_1]>>32), (u32)(r[REG_1]));	\
       printf("\n");							\
     }
 
 #define DEBUG_HW(a,b)							\
-  if (bDebug)								\
+  if (bDisassemble)								\
     {									\
       DEBUG_XX								\
 	printf("%s r%d, %04xH(r%d)%s", a, REG_1&31, (u32)DISP_12, REG_2&31, b); \
-      if (!bListOnly)							\
+      if (DO_ACTION)							\
 	printf(" ==> %08x%08x",(u32)(r[REG_1]>>32), (u32)(r[REG_1]));	\
       printf("\n");							\
     }
 
 #define DEBUG_OP(a)							\
-  if (bDebug)								\
+  if (bDisassemble)								\
     {									\
       DEBUG_XX								\
 	printf("%s r%d, ", a, REG_1&31);				\
@@ -430,43 +433,43 @@ CAlphaCPU::~CAlphaCPU()
       else								\
 	printf("r%d",REG_2&31);						\
       printf(", r%d", REG_3&31);					\
-      if (!bListOnly)							\
+      if (DO_ACTION)							\
 	printf(" ==> %08x%08x", (u32)(r[REG_3]>>32), (u32)(r[REG_3]));	\
       printf("\n");							\
     }
 
 #define DEBUG_OP_R1(a)							\
-  if (bDebug)								\
+  if (bDisassemble)								\
     {									\
       DEBUG_XX								\
 	printf("%s r%d", a, REG_1&31);					\
-      if (!bListOnly)							\
+      if (DO_ACTION)							\
 	printf(" ==> %08x%08x", (u32)(r[REG_1]>>32), (u32)(r[REG_1]));	\
       printf("\n");							\
     }
 
 #define DEBUG_OP_R3(a)							\
-  if (bDebug)								\
+  if (bDisassemble)								\
     {									\
       DEBUG_XX								\
 	printf("%s r%d", a, REG_3&31);					\
-      if (!bListOnly)							\
+      if (DO_ACTION)							\
 	printf(" ==> %08x%08x", (u32)(r[REG_3]>>32), (u32)(r[REG_3]));	\
       printf("\n");							\
     }
 
 #define DEBUG_OP_F1_R3(a)						\
-  if (bDebug)								\
+  if (bDisassemble)								\
     {									\
       DEBUG_XX								\
 	printf("%s f%d, r%d", a, FREG_1, REG_3&31);			\
-      if (!bListOnly)							\
+      if (DO_ACTION)							\
 	printf(" ==> %08x%08x", (u32)(r[REG_3]>>32), (u32)(r[REG_3]));	\
       printf("\n");							\
     }
 
 #define DEBUG_OP_R23(a)							\
-  if (bDebug)								\
+  if (bDisassemble)								\
     {									\
       DEBUG_XX								\
 	printf("%s ", a);						\
@@ -475,14 +478,14 @@ CAlphaCPU::~CAlphaCPU()
       else								\
 	printf("r%d",REG_2&31);						\
       printf(", r%d", REG_3&31);					\
-      if (!bListOnly)							\
+      if (DO_ACTION)							\
 	printf(" ==> %08x%08x", (u32)(r[REG_3]>>32), (u32)(r[REG_3]));	\
       printf("\n");							\
     }
 
 
 #define DEBUG_BR(a)						\
-  if (bDebug)							\
+  if (bDisassemble)							\
     {								\
       u64 dbg_x = (current_pc + 4 + (DISP_21 * 4))&~X64(3);	\
       bool dbg_y = false;					\
@@ -495,56 +498,56 @@ CAlphaCPU::~CAlphaCPU()
     }
 
 #define DEBUG_JMP(a)					\
-  if (bDebug)						\
+  if (bDisassemble)						\
     {							\
       DEBUG_XX						\
 	printf("%s r%d, r%d\n", a, REG_1&31, REG_2&31);	\
     }
 
 #define DEBUG_RET(a)				\
-  if (bDebug)					\
+  if (bDisassemble)					\
     {						\
       DEBUG_XX					\
 	printf("%s r%d\n", a, REG_2&31);	\
     }
 
 #define DEBUG_fnc(a)				\
-  if (bDebug)					\
+  if (bDisassemble)					\
     {						\
       DEBUG_XX					\
 	printf("%s %02xH\n", a, function);	\
     }
 
 #define DEBUG_PAL					\
-  if (bDebug)						\
+  if (bDisassemble)						\
     {							\
       DEBUG_XX						\
 	printf("CALL_PAL %s\n", PAL_NAME[function]);	\
     }
 
 #define DEBUG_(a)				\
-  if (bDebug)					\
+  if (bDisassemble)					\
     {						\
       DEBUG_XX					\
 	printf("%s\n", a);			\
     }
 
 #define DEBUG_MFPR(a)							\
-  if (bDebug)								\
+  if (bDisassemble)								\
     {									\
       DEBUG_XX								\
 	printf("HW_MFPR r%d, %s", REG_1&31, a);				\
-      if (!bListOnly)							\
+      if (DO_ACTION)							\
 	printf(" ==> %08x%08x", (u32)(r[REG_1]>>32), (u32)(r[REG_1]));	\
       printf("\n");							\
     }
 
 #define DEBUG_MTPR(a)							\
-  if (bDebug)								\
+  if (bDisassemble)								\
     {									\
       DEBUG_XX								\
 	printf("HW_MTPR r%d, %s", REG_2&31, a);				\
-      if (!bListOnly)							\
+      if (DO_ACTION)							\
 	printf(" ==> %08x%08x", (u32)(r[REG_2]>>32), (u32)(r[REG_2]));	\
       printf("\n");							\
     }
@@ -571,6 +574,12 @@ CAlphaCPU::~CAlphaCPU()
 
 #endif
 
+/**
+ * Called each clock-cycle.
+ * This is where the actual CPU emulation takes place. Each clocktick, one instruction
+ * is processed by the processor. The instruction pipeline is not emulated, things are
+ * complicated enough as it is.
+ **/
 
 void CAlphaCPU::DoClock()
 {
@@ -590,8 +599,7 @@ void CAlphaCPU::DoClock()
 
   current_pc = pc;
 
-
-  if (!bListOnly)
+  if (DO_ACTION)
     {
       // check for interrupts
       if ((!(pc&X64(1))) && (eien & eir))
@@ -600,14 +608,8 @@ void CAlphaCPU::DoClock()
 	  GO_PAL(INTERRUPT);
 	  return;
 	}
-    }
 
-  if (bListOnly)
-    {
-      ins = (u32)(cSystem->ReadMem(pc,32));
-    }
-  else
-    {
+      // get next instruction
       result = get_icache(pc,&ins);
       if (result)
 	{
@@ -623,17 +625,24 @@ void CAlphaCPU::DoClock()
 	  return;
 	}
     }
+  else
+    {
+      ins = (u32)(cSystem->ReadMem(pc,32));
+    }
 
   pc+=4;
   r[31] = 0;
 
-  if (cc_ena && !bListOnly)
+  if (cc_ena)
+  {
+    if (DO_ACTION)
     {
       if (pc>X64(600000))
 	cc+=X64(1654321);
       else
 	cc+=83;
     }
+  }
 
   opcode = ins >>26;
 
@@ -642,31 +651,38 @@ void CAlphaCPU::DoClock()
     case 0x00: // CALL_PAL
       function = ins&0x1fffffff;
       if (   (   (function < 0x40) 
-		 && ((cm != 0) && !bListOnly))
+		 && ((cm != 0)
+
+		 && DO_ACTION
+
+		 ))
 	     || (   (function > 0x3f)
     		    && (function < 0x80))
 	     || (function > 0xbf))
 	{
 	  UNKNOWN2
-	    if (!bListOnly)
-	      {
-		GO_PAL(OPCDEC);
-	      }
+	  if (DO_ACTION)
+	    {
+
+	      GO_PAL(OPCDEC);
+
+	    }
 	  return;
 	}
-      if (!bListOnly)
+      if (DO_ACTION)
 	{
 	  if (function == 0x92) // REI
-	    lock_flag = false;
+		  lock_flag = false;
 	  r[32+23] = pc;
 	  pc = pal_base
-	    | X64(1)<<13 
-	    | (u64)(function & 0x80) <<5 
-	    | (u64)(function & 0x3f) << 6
-	    | 1;
+	    | (X64(1)<<13 )
+	    | (((u64)(function & 0x80)) <<5 )
+	    | (((u64)(function & 0x3f)) << 6 )
+	    | X64(1);
+
 	}
       DEBUG_PAL;
-      if (!bListOnly)
+      if (DO_ACTION)
 	{
 	  TRC(true,false);
 	}
@@ -676,58 +692,66 @@ void CAlphaCPU::DoClock()
       r[REG_1] = r[REG_2] + DISP_16;
       DEBUG_LD_ST("LDA");
       return;
+
     case 0x09: // LDAH
       r[REG_1] = r[REG_2] + (DISP_16<<16);
       DEBUG_LD_ST("LDAH");
       return;
+
     case 0x0a: // LDBU
-      if (!bListOnly)
+      if (DO_ACTION)
 	{
 	  DATA_PHYS(r[REG_2] + DISP_16, ACCESS_READ, true, false, false);
 	  r[REG_1] = READ_PHYS(8);
 	}
       DEBUG_LD_ST("LDBU");
       return;
+
     case 0x0b: // LDQ_U
-      if (!bListOnly)
+      if (DO_ACTION)
 	{
-	  DATA_PHYS((r[REG_2] + DISP_16)& ~7, ACCESS_READ, true, false, false);
+	  DATA_PHYS((r[REG_2] + DISP_16)& ~X64(7), ACCESS_READ, true, false, false);
 	  r[REG_1] = READ_PHYS(64);
 	}
       DEBUG_LD_ST("LDQ_U");
       return;
+
     case 0x0c: // LDWU
-      if (!bListOnly)
+      if (DO_ACTION)
 	{
 	  DATA_PHYS(r[REG_2] + DISP_16, ACCESS_READ, true, false, false);
 	  r[REG_1] = READ_PHYS(16);
 	}
       DEBUG_LD_ST("LDWU");
       return;
+
     case 0x0d: // STW
-      if (!bListOnly)
+      if (DO_ACTION)
 	{
 	  DATA_PHYS(r[REG_2] + DISP_16, ACCESS_WRITE, true, false, false);
 	  WRITE_PHYS(r[REG_1],16);
 	}
       DEBUG_LD_ST("STW");
       return;
+
     case 0x0e: // STB
-      if (!bListOnly)
+      if (DO_ACTION)
 	{
 	  DATA_PHYS(r[REG_2] + DISP_16, ACCESS_WRITE, true, false, false);
 	  WRITE_PHYS(r[REG_1],8);
 	}
       DEBUG_LD_ST("STB");
       return;
+
     case 0x0f: // STQ_U
-      if (!bListOnly)
+      if (DO_ACTION)
 	{
-	  DATA_PHYS((r[REG_2] + DISP_16)& ~7, ACCESS_WRITE, true, false, false);
+	  DATA_PHYS((r[REG_2] + DISP_16)& ~X64(7), ACCESS_WRITE, true, false, false);
 	  WRITE_PHYS(r[REG_1],64);
 	}
       DEBUG_LD_ST("STQ_U");
       return;
+
     case 0x10: // op
       function = (ins>>5) & 0x7f;
       switch (function)
@@ -816,6 +840,7 @@ void CAlphaCPU::DoClock()
 	  return;
         }
       break;
+
     case 0x11: // op
       function = (ins>>5) & 0x7f;
       switch (function)
@@ -896,6 +921,7 @@ void CAlphaCPU::DoClock()
 	  UNKNOWN2;
 	  return;
         }
+
     case 0x12:
       function = (ins>>5) & 0x7f;
       switch (function)
@@ -949,8 +975,7 @@ void CAlphaCPU::DoClock()
 	  DEBUG_OP("INSQL");
 	  return;
         case 0x30: // ZAP
-	  r[REG_3] = r[REG_1] & (  
-				 ((V_2&  1)?0:              X64(ff))
+	  r[REG_3] = r[REG_1] & (  ((V_2&  1)?0:              X64(ff))
 				 | ((V_2&  2)?0:            X64(ff00))
 				 | ((V_2&  4)?0:          X64(ff0000))
 				 | ((V_2&  8)?0:        X64(ff000000))
@@ -961,8 +986,7 @@ void CAlphaCPU::DoClock()
 	  DEBUG_OP("ZAP");
 	  return;
         case 0x31: // ZAPNOT
-	  r[REG_3] = r[REG_1] & (  
-				 ((V_2&  1)?              X64(ff):0)
+	  r[REG_3] = r[REG_1] & (  ((V_2&  1)?              X64(ff):0)
 				 | ((V_2&  2)?            X64(ff00):0)
 				 | ((V_2&  4)?          X64(ff0000):0)
 				 | ((V_2&  8)?        X64(ff000000):0)
@@ -982,11 +1006,11 @@ void CAlphaCPU::DoClock()
 	  return;
         case 0x3c: // SRA
 	  r[REG_3] = r[REG_1] >> (V_2 & 63) |
-	    ((r[REG_1]>>63)?(X64(ffffffffffffffff)<<(64-(V_2&63))):0);
+	    ((r[REG_1]>>63)?(X64(ffffffffffffffff)<<(64-(V_2 & 63))):0);
 	  DEBUG_OP("SRA");
 	  return;
         case 0x52: //MSKWH
-	  r[REG_3] = r[REG_1] & ~(X64(ffff)>>(64-((V_2&7)*8)));
+	  r[REG_3] = r[REG_1] & ~(X64(ffff)>>(64-((V_2 & 7)*8)));
 	  DEBUG_OP("MSKWH");
 	  return;
         case 0x57: // INSWH
@@ -1025,6 +1049,7 @@ void CAlphaCPU::DoClock()
 	  UNKNOWN2;
 	  return;
         }
+
     case 0x13:
       function = (ins>>5) & 0x7f;
       switch (function)
@@ -1065,6 +1090,7 @@ void CAlphaCPU::DoClock()
 	  UNKNOWN2;
 	  return;
 	}
+
     case 0x17:
       function = (ins>>5) & 0x7ff;
       switch (function)
@@ -1079,6 +1105,7 @@ void CAlphaCPU::DoClock()
 	  UNKNOWN2;
 	  return;
 	}
+
     case 0x18:
       function = (ins & 0xffff);
       switch (function)
@@ -1113,6 +1140,7 @@ void CAlphaCPU::DoClock()
 	  UNKNOWN2;
 	  return;
 	}
+
     case 0x19: // HW_MFPR
       function = (ins>>8) & 0xff;
       if ((function & 0xc0) == 0x40)
@@ -1143,27 +1171,27 @@ void CAlphaCPU::DoClock()
         case 0x09: // CM
         case 0x0a: // IER
         case 0x0b: // IER_CM
-	  r[REG_1] = ((u64)eien << 33)
-	    | ((u64)slen << 32)
-	    | ((u64)cren << 31)
-	    | ((u64)pcen << 29)
-	    | ((u64)sien << 14)
-	    | ((u64)asten << 13)
-	    | ((u64)cm<<3);
+	  r[REG_1] = (((u64)eien) << 33)
+	    | (((u64)slen) << 32)
+	    | (((u64)cren) << 31)
+	    | (((u64)pcen) << 29)
+	    | (((u64)sien) << 14)
+	    | (((u64)asten) << 13)
+	    | (((u64)cm) << 3);
 	  DEBUG_MFPR("IER_CM");
 	  return;
         case 0x0c: // SIRR
-	  r[REG_1] = (u64)sir << 14;
+	  r[REG_1] = ((u64)sir) << 14;
 	  DEBUG_MFPR("SIRR");
 	  return;
         case 0x0d: // ISUM
-	  r[REG_1] = ((u64)(eir & eien) << 33)
-	    | ((u64)(slr & slen) << 32)
-	    | ((u64)(crr & cren) << 31)
-	    | ((u64)(pcr & pcen) << 29)
-	    | ((u64)(sir & sien) << 14)
-	    | ((u64)( ((X64(1)<<(cm+1))-1) & aster & astrr & (asten * 0x3)) << 3)
-	    | ((u64)( ((X64(1)<<(cm+1))-1) & aster & astrr & (asten * 0xc)) << 7);
+	  r[REG_1] = (((u64)(eir & eien)) << 33)
+	    | (((u64)(slr & slen)) << 32)
+	    | (((u64)(crr & cren)) << 31)
+	    | (((u64)(pcr & pcen)) << 29)
+	    | (((u64)(sir & sien)) << 14)
+	    | (((u64)( ((X64(1)<<(cm+1))-1) & aster & astrr & (asten * 0x3))) << 3)
+	    | (((u64)( ((X64(1)<<(cm+1))-1) & aster & astrr & (asten * 0xc))) << 7);
 	  DEBUG_MFPR("ISUM");
 	  return;
         case 0x0f: // EXC_SUM
@@ -1176,12 +1204,12 @@ void CAlphaCPU::DoClock()
 	  return;
         case 0x11: // i_ctl
 	  r[REG_1] = i_ctl_other
-	    | (CPU_CHIP_ID<<24)
-	    | i_ctl_vptb
-	    | ((u64)i_ctl_va_mode << 15)
+	    | (((u64)CPU_CHIP_ID)<<24)
+	    | (u64)i_ctl_vptb
+	    | (((u64)i_ctl_va_mode) << 15)
 	    | (hwe?X64(1)<<12:0)
 	    | (sde?X64(1)<<7:0)
-	    | ((u64)i_ctl_spe << 3);
+	    | (((u64)i_ctl_spe) << 3);
 	  DEBUG_MFPR("I_CTL");
 	  return;
         case 0x14: // PCTR_CTL
@@ -1202,11 +1230,10 @@ void CAlphaCPU::DoClock()
 	  return;
         case 0x2b: // C_DATA
 	  r[REG_1] = 0;
-	  printf("C_DATA read\n");
 	  DEBUG_MFPR("C_DATA");
 	  return;
         case 0xc0: // CC
-	  r[REG_1] = ((u64)cc_offset << 32)
+	  r[REG_1] = (((u64)cc_offset) << 32)
 	    |  cc;
 	  DEBUG_MFPR("CC");
 	  return;
@@ -1224,27 +1251,28 @@ void CAlphaCPU::DoClock()
         }
 
     case 0x1a: // JMP...
-      if (!bListOnly)
+      if (DO_ACTION)
 	{
-	  temp_64 = r[REG_2] & ~3;;
-	  r[REG_1] = pc & ~3;
+	  temp_64 = r[REG_2] & ~X64(3);
+	  r[REG_1] = pc & ~X64(3);
 	  pc = temp_64 | (pc & 3);
 	}
       DEBUG_JMP("JMP");
-      if (!bListOnly)
+      if (DO_ACTION)
 	{
 	  if (REG_1==31)
 	    TRC(false, true)
 	    else
 	      TRC(true, true)
-		}
+	}
       return;
+
     case 0x1b: // HW_LD
       function = (ins>>12) & 0xf;
       switch(function)
         {
         case 0: // longword physical
-	  if (!bListOnly)
+	  if (DO_ACTION)
 	    {
 	      phys_address = r[REG_2] + DISP_12;
 	      r[REG_1] = READ_PHYS_NT(32);
@@ -1252,7 +1280,7 @@ void CAlphaCPU::DoClock()
 	  DEBUG_HW("HW_LDL","/Phys");
 	  return;
         case 1: // quadword physical
-	  if (!bListOnly)
+	  if (DO_ACTION)
 	    {
 	      phys_address = r[REG_2] + DISP_12;
 	      r[REG_1] = READ_PHYS_NT(64);
@@ -1260,7 +1288,7 @@ void CAlphaCPU::DoClock()
 	  DEBUG_HW("HW_LDQ","/Phys");
 	  return;
         case 2: // longword physical locked
-	  if (!bListOnly)
+	  if (DO_ACTION)
 	    {
 	      lock_flag = true;
 	      phys_address = r[REG_2] + DISP_12;
@@ -1269,7 +1297,7 @@ void CAlphaCPU::DoClock()
 	  DEBUG_HW("HW_LDL","/Phys/Lock");
 	  return;
         case 3: // quadword physical locked
-	  if (!bListOnly)
+	  if (DO_ACTION)
 	    {
 	      lock_flag = true;
 	      phys_address = r[REG_2] + DISP_12;
@@ -1278,7 +1306,7 @@ void CAlphaCPU::DoClock()
 	  DEBUG_HW("HW_LDQ","/Phys/Lock");
 	  return;
         case 4: // longword virtual vpte               //chk //alt  //vpte
-	  if (!bListOnly)
+	  if (DO_ACTION)
 	    {
 	      DATA_PHYS(r[REG_2] + DISP_12, ACCESS_READ, true, false, true);
 	      r[REG_1] = READ_PHYS_NT(32);
@@ -1286,7 +1314,7 @@ void CAlphaCPU::DoClock()
 	  DEBUG_HW("HW_LDL","/Vpte");
 	  return;
         case 5: // quadword virtual vpte               //chk //alt  //vpte
-	  if (!bListOnly)
+	  if (DO_ACTION)
 	    {
 	      DATA_PHYS(r[REG_2] + DISP_12, ACCESS_READ, true, false, true);
 	      r[REG_1] = READ_PHYS_NT(64);
@@ -1294,7 +1322,7 @@ void CAlphaCPU::DoClock()
 	  DEBUG_HW("HW_LDQ","/Vpte");
 	  return;
         case 8: // longword virtual
-	  if (!bListOnly)
+	  if (DO_ACTION)
 	    {
 	      DATA_PHYS(r[REG_2] + DISP_12, ACCESS_READ, false, false, false);
 	      r[REG_1] = READ_PHYS_NT(32);
@@ -1302,7 +1330,7 @@ void CAlphaCPU::DoClock()
 	  DEBUG_HW("HW_LDL","");
 	  return;
         case 9: // quadword virtual
-	  if (!bListOnly)
+	  if (DO_ACTION)
 	    {
 	      DATA_PHYS(r[REG_2] + DISP_12, ACCESS_READ, false, false, false);
 	      r[REG_1] = READ_PHYS_NT(64);
@@ -1310,7 +1338,7 @@ void CAlphaCPU::DoClock()
 	  DEBUG_HW("HW_LDQ","");
 	  return;
         case 10: // longword virtual check
-	  if (!bListOnly)
+	  if (DO_ACTION)
 	    {
 	      DATA_PHYS(r[REG_2] + DISP_12, ACCESS_READ, true, false, false);
 	      r[REG_1] = READ_PHYS_NT(32);
@@ -1318,7 +1346,7 @@ void CAlphaCPU::DoClock()
 	  DEBUG_HW("HW_LDL","/Chk");
 	  return;
         case 11: // quadword virtual check
-	  if (!bListOnly)
+	  if (DO_ACTION)
 	    {
 	      DATA_PHYS(r[REG_2] + DISP_12, ACCESS_READ, true, false, false);
 	      r[REG_1] = READ_PHYS_NT(64);
@@ -1326,7 +1354,7 @@ void CAlphaCPU::DoClock()
 	  DEBUG_HW("HW_LDQ","/Chk");
 	  return;
         case 12: // longword virtual alt
-	  if (!bListOnly)
+	  if (DO_ACTION)
 	    {
 	      DATA_PHYS(r[REG_2] + DISP_12, ACCESS_READ, false, true, false);
 	      r[REG_1] = READ_PHYS_NT(32);
@@ -1334,7 +1362,7 @@ void CAlphaCPU::DoClock()
 	  DEBUG_HW("HW_LDL","/Alt");
 	  return;
         case 13: // quadword virtual alt
-	  if (!bListOnly)
+	  if (DO_ACTION)
 	    {
 	      DATA_PHYS(r[REG_2] + DISP_12, ACCESS_READ, false, true, false);
 	      r[REG_1] = READ_PHYS_NT(64);
@@ -1342,7 +1370,7 @@ void CAlphaCPU::DoClock()
 	  DEBUG_HW("HW_LDQ","/Alt");
 	  return;
         case 14: // longword virtual alt check
-	  if (!bListOnly)
+	  if (DO_ACTION)
 	    {
 	      DATA_PHYS(r[REG_2] + DISP_12, ACCESS_READ, true, true, false);
 	      r[REG_1] = READ_PHYS_NT(32);
@@ -1350,7 +1378,7 @@ void CAlphaCPU::DoClock()
 	  DEBUG_HW("HW_LDL","/Alt/Chk");
 	  return;
         case 15: // quadword virtual alt check
-	  if (!bListOnly)
+	  if (DO_ACTION)
 	    {
 	      DATA_PHYS(r[REG_2] + DISP_12, ACCESS_READ, true, true, false);
 	      r[REG_1] = READ_PHYS_NT(64);
@@ -1629,9 +1657,9 @@ void CAlphaCPU::DoClock()
 	  DEBUG_MTPR("SIRR");
 	  return;
         case 0x0e: // HW_INT_CLR
-	  pcr &= ~((r[REG_2]>>29)&3);
-	  crr &= ~((r[REG_2]>>31)&1);
-	  slr &= ~((r[REG_2]>>32)&1);
+	  pcr &= ~((r[REG_2]>>29)&X64(3));
+	  crr &= ~((r[REG_2]>>31)&X64(1));
+	  slr &= ~((r[REG_2]>>32)&X64(1));
 	  DEBUG_MTPR("HW_INT_CLT");
 	  return;
         case 0x10: // PAL_BASE
@@ -1709,11 +1737,9 @@ void CAlphaCPU::DoClock()
 	  DEBUG_MTPR("DC_STAT");
 	  return;
         case 0x2b: // C_DATA
-	  printf("C_DATA write\n");
 	  DEBUG_MTPR("C_DATA");
 	  return;
         case 0x2c: // C_SHIFT
-	  printf("C_SHIFT write\n");
 	  DEBUG_MTPR("C_SHIFT");
 	  return;
         case 0xa0: // DTB_TAG1
@@ -1759,13 +1785,14 @@ void CAlphaCPU::DoClock()
 	  UNKNOWN2;
 	  return;
         }
+
     case 0x1e: // HW_RET
-      if (!bListOnly)
+      if (DO_ACTION)
 	{
 	  pc = r[REG_2];
 	}
       DEBUG_RET("HW_RET");
-      if (!bListOnly)
+      if (DO_ACTION)
 	{
 	  TRC(false, true);
 	}
@@ -1776,7 +1803,7 @@ void CAlphaCPU::DoClock()
       switch(function)
         {
         case 0: // longword physical
-	  if (!bListOnly)
+	  if (DO_ACTION)
 	    {
 	      phys_address = r[REG_2] + DISP_12;
 	      WRITE_PHYS_NT(r[REG_1],32);
@@ -1784,7 +1811,7 @@ void CAlphaCPU::DoClock()
 	  DEBUG_HW("HW_STL","/Phys");
 	  return;
         case 1: // quadword physical
-	  if (!bListOnly)
+	  if (DO_ACTION)
 	    {
 	      phys_address = r[REG_2] + DISP_12;
 	      WRITE_PHYS_NT(r[REG_1],64);
@@ -1792,7 +1819,7 @@ void CAlphaCPU::DoClock()
 	  DEBUG_HW("HW_STQ","/Phys");
 	  return;
         case 2: // longword physical conditional
-	  if (!bListOnly)
+	  if (DO_ACTION)
 	    {
 	      if (lock_flag)
 		{
@@ -1805,7 +1832,7 @@ void CAlphaCPU::DoClock()
 	  DEBUG_HW("HW_STL","/Phys/Cond");
 	  return;
         case 3: // quadword physical conditional
-	  if (!bListOnly)
+	  if (DO_ACTION)
 	    {
 	      if (lock_flag)
 		{
@@ -1818,7 +1845,7 @@ void CAlphaCPU::DoClock()
 	  DEBUG_HW("HW_STQ","/Phys/Cond");
 	  return;
         case 4: // longword virtual                   //chk //alt  //vpte
-	  if (!bListOnly)
+	  if (DO_ACTION)
 	    {
 	      DATA_PHYS(r[REG_2] + DISP_12, ACCESS_READ, false, false, false);
 	      WRITE_PHYS_NT(r[REG_1],32);
@@ -1826,7 +1853,7 @@ void CAlphaCPU::DoClock()
 	  DEBUG_HW("HW_STL","");
 	  return;
         case 5: // quadword virtual                    //chk //alt  //vpte
-	  if (!bListOnly)
+	  if (DO_ACTION)
 	    {
 	      DATA_PHYS(r[REG_2] + DISP_12, ACCESS_READ, false, false, false);
 	      WRITE_PHYS_NT(r[REG_1],64);
@@ -1834,7 +1861,7 @@ void CAlphaCPU::DoClock()
 	  DEBUG_HW("HW_STQ","");
 	  return;
         case 12: // longword virtual alt
-	  if (!bListOnly)
+	  if (DO_ACTION)
 	    {
 	      DATA_PHYS(r[REG_2] + DISP_12, ACCESS_READ, false, true, false);
 	      WRITE_PHYS_NT(r[REG_1],32);
@@ -1842,7 +1869,7 @@ void CAlphaCPU::DoClock()
 	  DEBUG_HW("HW_STL","/Alt");
 	  return;
         case 13: // quadword virtual alt
-	  if (!bListOnly)
+	  if (DO_ACTION)
 	    {
 	      DATA_PHYS(r[REG_2] + DISP_12, ACCESS_READ, false, true, false);
 	      WRITE_PHYS_NT(r[REG_1],64);
@@ -1855,23 +1882,25 @@ void CAlphaCPU::DoClock()
         }
 
     case 0x28: // LDL
-      if (!bListOnly)
+      if (DO_ACTION)
 	{
 	  DATA_PHYS(r[REG_2] + DISP_16, ACCESS_READ, true, false, false);
 	  r[REG_1] = SEXT_32(READ_PHYS(32));
 	}
       DEBUG_LD_ST("LDL");
       return;
+
     case 0x29: // LDQ
-      if (!bListOnly)
+      if (DO_ACTION)
 	{
 	  DATA_PHYS(r[REG_2] + DISP_16, ACCESS_READ, true, false, false);
 	  r[REG_1] = READ_PHYS(64);
 	}
       DEBUG_LD_ST("LDQ");
       return;
+
     case 0x2a: // LDL_L
-      if (!bListOnly)
+      if (DO_ACTION)
 	{
 	  lock_flag = true;
 	  DATA_PHYS(r[REG_2] + DISP_16, ACCESS_READ, true, false, false);
@@ -1879,8 +1908,9 @@ void CAlphaCPU::DoClock()
 	}
       DEBUG_LD_ST("LDL_L");
       return;
+
     case 0x2b: // LDQ_L
-      if (!bListOnly)
+      if (DO_ACTION)
 	{
 	  lock_flag = true;
 	  DATA_PHYS(r[REG_2] + DISP_16, ACCESS_READ, true, false, false);
@@ -1888,24 +1918,27 @@ void CAlphaCPU::DoClock()
 	}
       DEBUG_LD_ST("LDQ_L");
       return;
+
     case 0x2c: // STL
-      if (!bListOnly)
+      if (DO_ACTION)
 	{
 	  DATA_PHYS(r[REG_2] + DISP_16, ACCESS_WRITE, true, false, false);
 	  WRITE_PHYS(r[REG_1],32);
 	}
       DEBUG_LD_ST("STL");
       return;
+
     case 0x2d: // STQ
-      if (!bListOnly)
+      if (DO_ACTION)
 	{
 	  DATA_PHYS(r[REG_2] + DISP_16, ACCESS_WRITE, true, false, false);
 	  WRITE_PHYS(r[REG_1],64);
 	}
       DEBUG_LD_ST("STQ");
       return;
+
     case 0x2e: // STL_C
-      if (!bListOnly)
+      if (DO_ACTION)
 	{
 	  if (lock_flag)
 	    {
@@ -1917,8 +1950,9 @@ void CAlphaCPU::DoClock()
 	}
       DEBUG_LD_ST("STL_C");
       return;
+
     case 0x2f: // STQ_C
-      if (!bListOnly)
+      if (DO_ACTION)
 	{
 	  if (lock_flag)
 	    {
@@ -1930,36 +1964,39 @@ void CAlphaCPU::DoClock()
 	}
       DEBUG_LD_ST("STQ_C");
       return;
+
     case 0x30: // BR
-      if (!bListOnly)
+      if (DO_ACTION)
 	{
-	  r[REG_1] = pc & ~3;
+	  r[REG_1] = pc & ~X64(3);
 	  pc += (DISP_21 * 4);
 	}
       DEBUG_BR("BR");
-      if (!bListOnly)
+      if (DO_ACTION)
 	{
 	  TRC_BR;
 	}
       return;
+
     case 0x34: // BSR
-      if (!bListOnly)
+      if (DO_ACTION)
 	{
-	  r[REG_1] = pc & ~3;
+	  r[REG_1] = pc & ~X64(3);
 	  pc += (DISP_21 * 4);
 	}
       DEBUG_BR("BSR");
-      if (!bListOnly)
+      if (DO_ACTION)
 	{
 	  if (REG_1==31)
 	    TRC(false, true)
 	    else
 	      TRC(true, true)
-		}
+	}
       return;
+
     case 0x38: // BLBC
       DEBUG_BR("BLBC");
-      if (!bListOnly)
+      if (DO_ACTION)
 	{
 	  if (!(r[REG_1] & 1))
 	    {
@@ -1968,9 +2005,10 @@ void CAlphaCPU::DoClock()
 	    }
 	}
       return;
+
     case 0x39: // BEQ
       DEBUG_BR("BEQ");
-      if (!bListOnly)
+      if (DO_ACTION)
 	{
 	  if (!r[REG_1])
 	    {
@@ -1979,9 +2017,10 @@ void CAlphaCPU::DoClock()
 	    }
 	}
       return;
+
     case 0x3a: // BLT
       DEBUG_BR("BLT");
-      if (!bListOnly)
+      if (DO_ACTION)
 	{
 	  if ((s64)r[REG_1]<0)
 	    {
@@ -1990,9 +2029,10 @@ void CAlphaCPU::DoClock()
 	    }
 	}
       return;
+
     case 0x3b: // BLE
       DEBUG_BR("BLE");
-      if (!bListOnly)
+      if (DO_ACTION)
 	{
 	  if ((s64)r[REG_1]<=0)
 	    {
@@ -2001,9 +2041,10 @@ void CAlphaCPU::DoClock()
 	    }
 	}
       return;
+
     case 0x3c: // BLBS
       DEBUG_BR("BLBS");
-      if (!bListOnly)
+      if (DO_ACTION)
 	{
 	  if (r[REG_1] & 1)
 	    {
@@ -2012,9 +2053,10 @@ void CAlphaCPU::DoClock()
 	    }
 	}
       return;
+
     case 0x3d: // BNE
       DEBUG_BR("BNE");
-      if (!bListOnly)
+      if (DO_ACTION)
 	{
 	  if (r[REG_1])
 	    {
@@ -2023,9 +2065,10 @@ void CAlphaCPU::DoClock()
 	    }
 	}
       return;
+
     case 0x3e: // BGE
       DEBUG_BR("BGE");
-      if (!bListOnly)
+      if (DO_ACTION)
 	{
 	  if ((s64)r[REG_1]>=0)
 	    {
@@ -2034,9 +2077,10 @@ void CAlphaCPU::DoClock()
 	    }
 	}
       return;
+
     case 0x3f: // BGT
       DEBUG_BR("BGT");
-      if (!bListOnly)
+      if (DO_ACTION)
 	{
 	  if ((s64)r[REG_1]>0)
 	    {
@@ -2191,11 +2235,6 @@ void CAlphaCPU::RestoreState(FILE *f)
 
   itb->RestoreState(f);
   dtb->RestoreState(f);
-}
-
-void CAlphaCPU::set_list(bool list)
-{
-  bListOnly = list;
 }
 
 u64 CAlphaCPU::get_r(int i, bool translate)

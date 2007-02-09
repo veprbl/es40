@@ -1,4 +1,4 @@
-/** ES40 emulator.
+/* ES40 emulator.
  * Copyright (C) 2007 by Camiel Vanderhoeven
  *
  * Website: www.camicom.com
@@ -23,8 +23,7 @@
  * the general public.
  * 
  * TRACEENGINE.H contains the definitions for the cpu tracing engine.
- *
- **/
+ */
 
 #pragma once
 
@@ -82,13 +81,20 @@ class CTraceEngine
   void trace_dev(char * text);
 };
 
+extern bool bTrace;
+extern bool bListing;
+extern bool bDisassemble;
+
+
 extern CTraceEngine * trc;
 
-#define TRC_DEV(a) { char t [1000]; sprintf(t, a); trc->trace_dev(t); }
-#define TRC_DEV2(a,b) {char t [1000]; sprintf(t,a,b); trc->trace_dev(t); }
-#define TRC_DEV3(a,b,c) {char t [1000]; sprintf(t,a,b,c); trc->trace_dev(t); }
-#define TRC_DEV4(a,b,c,d) {char t [1000]; sprintf(t,a,b,c,d); trc->trace_dev(t); }
-#define TRC_DEV5(a,b,c,d,e) {char t [1000]; sprintf(t,a,b,c,d,e); trc->trace_dev(t); }
+#define TRC_DEV(a) { if (bTrace) { char t [1000]; sprintf(t, a); trc->trace_dev(t); } }
+#define TRC_DEV2(a,b) { if (bTrace) { char t [1000]; sprintf(t,a,b); trc->trace_dev(t); } }
+#define TRC_DEV3(a,b,c) { if (bTrace) { char t [1000]; sprintf(t,a,b,c); trc->trace_dev(t); } }
+#define TRC_DEV4(a,b,c,d) { if (bTrace) { char t [1000]; sprintf(t,a,b,c,d); trc->trace_dev(t); } }
+#define TRC_DEV5(a,b,c,d,e) { if (bTrace) { char t [1000]; sprintf(t,a,b,c,d,e); trc->trace_dev(t); } }
+
+#define DO_ACTION !bListing
 
 #else //IDB
 
@@ -97,5 +103,7 @@ extern CTraceEngine * trc;
 #define TRC_DEV3(a,b,c) ;
 #define TRC_DEV4(a,b,c,d) ;
 #define TRC_DEV5(a,b,c,d,e) ;
+
+#define DO_ACTION 1
 
 #endif

@@ -64,17 +64,10 @@ class CAlphaCPU : public CSystemComponent
   void irq_h(int number, bool assert);
   int get_cpuid();
   u64 pal_base;
-  void set_trace(bool trace);
-  /*	void trace(u64 f, u64 t, bool down, bool up, char * x, int y);
-    void trace_br(u64 f, u64 t);
-    void trace_add_function(u64 address, char * fn_name, char * fn_arglist, bool step_over);
-  */	int get_i_spe();
+  int get_i_spe();
   int get_d_spe();
-  u64 last_write_loc;
-  u64 last_write_val;
   void flush_icache();
-  void set_debug(bool dbg);
-  void set_list(bool list);
+
   void set_PAL_BASE(u64 pb);
   int get_altcm();
   int get_cm();
@@ -82,7 +75,7 @@ class CAlphaCPU : public CSystemComponent
   virtual void DoClock();
   CAlphaCPU(CSystem * system);
   virtual ~CAlphaCPU();
-  u64 pc;
+  u64 pc;			/**< Program counter */
   u64 get_r(int i, bool translate);
   u64 get_prbr(void);
 
@@ -93,7 +86,7 @@ class CAlphaCPU : public CSystemComponent
     u64 trc_waitfor;
     struct STraceFunction trcfnc[5000]; 
   */	u32 cc;
-  u64 r[64];
+  u64 r[64];			/**< Integer registers (0-31 normal, 32-63 shadow) */
 
  private:
   u64 dc_stat;
@@ -141,15 +134,12 @@ class CAlphaCPU : public CSystemComponent
   u64 va_form(u64 address, int va_ctl, u64 ptbr);
   u64 exc_addr;
   u64 pmpc;
-  bool bTrace;
   u64 fpcr;
   bool bIntrFlag;
-  bool bDebug;
   u64 current_pc;
   struct SICache icache[1024];		/**< Instruction cache entries*/
   int next_icache;			/**< Number of next cache entry to use*/
   int get_icache(u64 address, u32 * data);
-  bool bListOnly;
   void go_pal(u32 pal_offset);
 	
   bool lock_flag;
@@ -161,10 +151,6 @@ class CAlphaCPU : public CSystemComponent
   CTranslationBuffer * dtb;
 };
 
-inline void CAlphaCPU::set_debug(bool dbg)
-{
-  bDebug = dbg;
-}
 
 inline void CAlphaCPU::flush_icache()
 {
@@ -246,11 +232,6 @@ inline int CAlphaCPU::get_icache(u64 address, u32 * data)
   if (next_icache==1024)
     next_icache = 0;
   return 0;
-}
-
-inline void CAlphaCPU::set_trace(bool trace)
-{
-  bTrace = trace;
 }
 
 inline u64 CAlphaCPU::va_form(u64 address, int va_ctl, u64 ptbr)

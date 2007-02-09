@@ -79,7 +79,7 @@ CSerial::CSerial(CSystem * c, int number) : CSystemComponent(c)
   int base = atoi(c->GetConfig("serial.base","8000"));
   char s[100];
   int i;
-
+  
   c->RegisterMemory (this, 0, X64(00000801fc0003f8) - (0x100*number), 8);
 
   bInitialized = false;
@@ -145,7 +145,7 @@ CSerial::CSerial(CSystem * c, int number) : CSystemComponent(c)
   this->write(s);
 
 // Eat all characters that come in in the first second
-#if 0
+//#if 0
   for (i=0;i<100;i++)
   {
 	sleep_ms(10);
@@ -153,7 +153,7 @@ CSerial::CSerial(CSystem * c, int number) : CSystemComponent(c)
 	this->DoClock();
 #endif
   }
-#endif // 0
+//#endif // 0
 
   bInitialized = true;
 
