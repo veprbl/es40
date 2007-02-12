@@ -157,6 +157,8 @@ class CAlphaCPU : public CSystemComponent
   CTranslationBuffer * dtb;	/**< Data-Stream Translation Buffer [HRM p 2-13] */
 };
 
+#define RREG(a) (((a) & 0x1f) + (((pc&1) && (((a)&0xc)==0x4) && sde)?32:0))
+
 /**
  * Empty the instruction cache.
  **/
@@ -338,6 +340,34 @@ inline void CAlphaCPU::next_pc()
 inline void CAlphaCPU::set_pc(u64 p_pc)
 {
 	pc = p_pc;
+}
+
+/**
+ * Get a register value.
+ * If \a translate is true, use shadow registers if currently enabled.
+ **/
+
+inline u64 CAlphaCPU::get_r(int i, bool translate)
+{
+  if (translate)
+    return r[RREG(i)];
+  else
+    return r[i];
+}
+
+/**
+ * Get the processor base register.
+ * A bit fuzzy...
+ **/
+
+inline u64 CAlphaCPU::get_prbr(void)
+{
+  if (r[21+32] && (   (r[21+32]+0xa8)< (128*1024*1024)))
+    {
+      return cSystem->ReadMem(r[21+32] + 0xa8,64);
+    }
+  else
+    return cSystem->ReadMem(0x70a8 + (0x200 * get_cpuid()),64);
 }
 
 #endif // !defined(__ALPHACPU_H__)

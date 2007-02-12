@@ -32,6 +32,7 @@
 
 #include "StdAfx.h"
 #include "AlphaCPU.h"
+#include "cpu_debug.h"
 
 // INTERRUPT VECTORS
 #define DTBM_DOUBLE_3 X64(100)
@@ -64,31 +65,6 @@
 #define X64_WORD	X64(ffff)
 #define X64_LONG	X64(ffffffff)
 #define X64_QUAD	X64(ffffffffffffffff)
-
-#ifdef IDB
-
-char * PAL_NAME[] = {
-  "HALT"		,"CFLUSH"   ,"DRAINA"		,"LDQP"			,"STQP"			,"SWPCTX"		,"MFPR_ASN"		,"MTPR_ASTEN"	,
-  "MTPR_ASTSR","CSERVE"   ,"SWPPAL"		,"MFPR_FEN"		,"MTPR_FEN"		,"MTPR_IPIR"	,"MFPR_IPL"		,"MTPR_IPL"	,
-  "MFPR_MCES"	,"MTPR_MCES","MFPR_PCBB"	,"MFPR_PRBR"	,"MTPR_PRBR"	,"MFPR_PTBR"	,"MFPR_SCBB"	,"MTPR_SCBB"	,
-  "MTPR_SIRR" ,"MFPR_SISR","MFPR_TBCHK"	,"MTPR_TBIA"	,"MTPR_TBIAP"	,"MTPR_TBIS"	,"MFPR_ESP"		,"MTPR_ESP"	,
-  "MFPR_SSP"	,"MTPR_SSP" ,"MFPR_USP"		,"MTPR_USP"		,"MTPR_TBISD"	,"MTPR_TBISI"	,"MFPR_ASTEN"	,"MFPR_ASTSR"	,
-  "28"        ,"MFPR_VPTB","MTPR_VPTB"	,"MTPR_PERFMON"	,"2C"			,"2D"			,"MTPR_DATFX"	,"2F"			,
-  "30"		,"31"		,"32"			,"33"			,"34"			,"35"			,"36"			,"37"			,
-  "38"		,"39"		,"3A"			,"3B"			,"3C"			,"3D"			,"WTINT"		,"MFPR_WHAMI"	,
-  "-"			,"-"		,"-"			,"-"			,"-"			,"-"			,"-"			,"-"			,"-","-","-","-","-","-","-","-",
-  "-"			,"-"		,"-"			,"-"			,"-"			,"-"			,"-"			,"-"			,"-","-","-","-","-","-","-","-",
-  "-"			,"-"		,"-"			,"-"			,"-"			,"-"			,"-"			,"-"			,"-","-","-","-","-","-","-","-",
-  "-"			,"-"		,"-"			,"-"			,"-"			,"-"			,"-"			,"-"			,"-","-","-","-","-","-","-","-",
-  "BPT"		,"BUGCHK"	,"CHME"			,"CHMK"			,"CHMS"			,"CHMU"			,"IMB"			,"INSQHIL"		,
-  "INSQTIL"	,"INSQHIQ"	,"INSQTIQ"		,"INSQUEL"		,"INSQUEQ"		,"INSQUEL/D"	,"INSQUEQ/D"	,"PROBER"		,
-  "PROBEW"	,"RD_PS"	,"REI"			,"REMQHIL"		,"REMQTIL"		,"REMQHIQ"		,"REMQTIQ"		,"REMQUEL"		,
-  "REMQUEQ"	,"REMQUEL/D","REMQUEQ/D"	,"SWASTEN"		,"WR_PS_SW"		,"RSCC"			,"READ_UNQ"		,"WRITE_UNQ"	,
-  "AMOVRR"	,"AMOVRM"	,"INSQHILR"		,"INSQTILR"		,"INSQHIQR"		,"INSQTIQR"		,"REMQHILR"		,"REMQTILR"		,
-  "REMQHIQR"	,"REMQTIQR"	,"GENTRAP"		,"AB"			,"AC"			,"AD"			,"CLRFEN"		,"AF"			,
-  "B0","B1","B2","B3","B4","B5","B6","B7","B8","B9","BA","BB","BC","BD","BE","BF"};
-
-#endif
 
 /**
  * Constructor.
@@ -182,51 +158,17 @@ CAlphaCPU::~CAlphaCPU()
 
 }
 
-#define SEXT_8(x)  ((x&      X64_BYTE) | (((x&      X64_BYTE)>>7 )?X64(ffffffffffffff00):0))
-#define SEXT_12(x) ((x&     X64(fff)) | (((x&     X64(fff))>>11)?X64(fffffffffffff000):0))
-#define SEXT_13(x) ((x&    X64(1fff)) | (((x&    X64(1fff))>>12)?X64(ffffffffffffe000):0))
-#define SEXT_16(x) ((x&    X64_WORD) | (((x&    X64_WORD)>>15)?X64(ffffffffffff0000):0))
-#define SEXT_21(x) ((x&  X64(1fffff)) | (((x&  X64(1fffff))>>20)?X64(ffffffffffe00000):0))
-#define SEXT_32(x) ((x&X64_LONG) | (((x&X64_LONG)>>31)?X64(ffffffff00000000):0))
+/**
+ * Sign-extend \a bits - bit value \a x to a 64-bit signed value.
+ **/
 
-#ifdef IDB
+#define SEXT(x,bits) (((x)&((X64(1)<<(bits))-1)) | \
+	( (((x)>>((bits)-1))&1) ? (X64_QUAD-((X64(1)<<(bits))-1)) : 0 ) )
 
-#define TRC_(down,up,x,y) {					\
-    if (bTrace)							\
-      trc->trace(this, current_pc,pc,down,up,x,y); }
-
-#define TRC(down,up) {							\
-    if (bTrace)								\
-      trc->trace(this, current_pc,pc,down,up,(char*)0,0); }
-
-#define TRC_BR {							\
-    if (bTrace) trc->trace_br(this, current_pc,pc); }
-
-#define GO_PAL(offset) {					\
-    exc_addr = current_pc;					\
-    pc =  pal_base | offset | 1;				\
-    if ((offset==DTBM_SINGLE || offset==ITB_MISS) && bTrace)	\
-      trc->set_waitfor(this, exc_addr&~X64(3));	\
-    else							\
-      TRC_(true,false,"GO_PAL %04x",offset); }
-
-#else
-
-#define TRC_(down,up,x,y) ;
-#define TRC(down,up) ;
-#define TRC_BR ;
-#define GO_PAL(offset) {					\
-    exc_addr = current_pc;					\
-    pc = pal_base | offset | 1; }
-
-#endif
-
-
-
-#define DISP_12 (SEXT_12(ins))
-#define DISP_13 (SEXT_13(ins))
-#define DISP_16 (SEXT_16(ins))
-#define DISP_21 (SEXT_21(ins))
+#define DISP_12 (SEXT(ins,12))
+#define DISP_13 (SEXT(ins,13))
+#define DISP_16 (SEXT(ins,16))
+#define DISP_21 (SEXT(ins,21))
 
 #define DATA_PHYS(addr,access,check,alt,vpte) {				\
     int dp_result;							\
@@ -287,306 +229,15 @@ CAlphaCPU::~CAlphaCPU()
 #define WRITE_PHYS_NT(data,size) 				\
     cSystem->WriteMem(ALIGN_PHYS((size)/8), size, data)
 
-
-#define REG_1 (((ins>>21) & 0x1f) + (((pc&1) && (((ins>>21)&0xc)==0x4) && sde)?32:0))
-#define REG_2 (((ins>>16) & 0x1f) + (((pc&1) && (((ins>>16)&0xc)==0x4) && sde)?32:0))
-#define REG_3 (( ins      & 0x1f) + (((pc&1) && (( ins     &0xc)==0x4) && sde)?32:0))
-
-#define RREG(a) (((a) & 0x1f) + (((pc&1) && (((a)&0xc)==0x4) && sde)?32:0))
-
+#define REG_1 RREG(ins>>21)
+#define REG_2 RREG(ins>>16)
+#define REG_3 RREG(ins)
 
 #define FREG_1 ((ins>>21) & 0x1f)
 #define FREG_2 ((ins>>16) & 0x1f)
 #define FREG_3 ( ins      & 0x1f)
 
-
 #define V_2 ( (ins&0x1000)?((ins>>13)&0xff):r[REG_2] )
-
-#ifdef IDB
-
-#define DEBUG_XX							\
-  char * funcname = 0;							\
-  if (trc->get_fnc_name(current_pc&~X64(3),&funcname))	\
-    {									\
-      if (bListing && !strcmp(funcname,""))				\
-        {								\
-	  printf("%08x: \"%s\"\n",(u32)current_pc,			\
-		 cSystem->PtrToMem(current_pc));		        \
-	  pc = (current_pc + strlen(cSystem->PtrToMem(current_pc)) + 4)	\
-	    & ~X64(3);							\
-	  while (pc < 0x600000 && cSystem->ReadMem(pc,32)==0) pc += 4;	\
-	  return;							\
-        }								\
-      else if (bListing && !strcmp(funcname,"!SKIP"))			\
-        {								\
-	  while (pc < 0x600000 && cSystem->ReadMem(pc,32)==0) pc += 4;	\
-	  return;							\
-        }								\
-      else if (bListing && !strncmp(funcname,"!CHAR-",6))		\
-        {								\
-	  u64 xx_upto;							\
-	  int xx_result;						\
-	  xx_result = sscanf(&(funcname[6]),"%I64x",&xx_upto);		\
-	  if (xx_result==1)						\
-	    {								\
-	      pc = current_pc;						\
-	      while (pc < xx_upto)					\
-		{							\
-		  printf("%08x: \"%s\"\n",(u32)pc, cSystem->PtrToMem(pc)); \
-		  pc += strlen(cSystem->PtrToMem(pc));			\
-		  while (pc < xx_upto && cSystem->ReadMem(pc,8)==0)	\
-		    pc++;						\
-		}							\
-	      return;							\
-	    }								\
-        }								\
-      else if (bListing && !strncmp(funcname,"!LCHAR-",7))		\
-        {								\
-	  char stringval[300];						\
-	  int  stringlen;						\
-	  u64 xx_upto;							\
-	  int xx_result;						\
-	  xx_result = sscanf(&(funcname[7]),"%I64x",&xx_upto);		\
-	  if (xx_result==1)						\
-	    {								\
-	      pc = current_pc;						\
-	      while (pc < xx_upto)					\
-		{							\
-		  stringlen = (int)cSystem->ReadMem(pc++,8);		\
-		  memset(stringval,0,300);				\
-		  strncpy(stringval,cSystem->PtrToMem(pc),stringlen);	\
-		  printf("%08x: \"%s\"\n",(u32)pc-1, stringval);	\
-		  pc += stringlen;					\
-		  while (pc < xx_upto && cSystem->ReadMem(pc,8)==0)	\
-		    pc++;						\
-		}							\
-	      return;							\
-	    }								\
-        }								\
-      else if (bListing && !strncmp(funcname,"!X64-",5))		\
-        {								\
-	  printf("\n%s:\n",&(funcname[5]));				\
-	  pc = current_pc;						\
-	  while (   (pc==current_pc)					\
-		    || !trc->get_fnc_name(pc,&funcname) )	\
-	    {								\
-	      printf("%08x: %016I64x\n",(u32)pc, cSystem->ReadMem(pc,64)); \
-	      pc += 8;							\
-	    }								\
-	  return;							\
-        }								\
-      else if (bListing&& !strncmp(funcname,"!X32-",5))		\
-        {								\
-	  printf("\n%s:\n",&(funcname[5]));				\
-	  pc = current_pc;						\
-	  while (   (pc==current_pc)					\
-		    || !trc->get_fnc_name(pc,&funcname) )	\
-	    {								\
-	      printf("%08x: %08I64x\n",(u32)pc, cSystem->ReadMem(pc,32)); \
-	      pc += 4;							\
-	    }								\
-	  return;							\
-        }								\
-      else if (bListing && !strncmp(funcname,":",1))			\
-	printf("%s:\n",funcname);					\
-      else								\
-	printf("\n%s:\n",funcname);					\
-    }									\
-  printf("%08x: ", (u32)current_pc);					\
-  if (bListing)							\
-    printf("%08x %c%c%c%c: ", (u32)ins,					\
-	   printable((char)(ins)),     printable((char)(ins>>8)),	\
-	   printable((char)(ins>>16)), printable((char)(ins>>24)));
-
-#define UNKNOWN1					\
-  if (bDisassemble)					\
-    {							\
-      DEBUG_XX						\
-      if (DO_ACTION)					\
-	  printf("Unknown opcode: %02x\n", opcode);	\
-	else						\
-	  printf("\n");					\
-    }
-
-#define UNKNOWN2							\
-  if (bDisassemble)							\
-    {									\
-      DEBUG_XX								\
-	if (DO_ACTION)							\
-	  printf("Unknown opcode: %02x.%02x\n", opcode, function);	\
-	else								\
-	  printf("\n");							\
-    }
-
-#define DEBUG_LD_ST(a)							\
-  if (bDisassemble)							\
-    {									\
-      DEBUG_XX								\
-	printf("%s r%d, %04xH(r%d)", a, REG_1&31, (u32)DISP_16, REG_2&31); \
-      if (DO_ACTION)							\
-	printf(" ==> %08x%08x", (u32)(r[REG_1]>>32), (u32)(r[REG_1]));	\
-      printf("\n");							\
-    }
-
-#define DEBUG_HW(a,b)							\
-  if (bDisassemble)								\
-    {									\
-      DEBUG_XX								\
-	printf("%s r%d, %04xH(r%d)%s", a, REG_1&31, (u32)DISP_12, REG_2&31, b); \
-      if (DO_ACTION)							\
-	printf(" ==> %08x%08x",(u32)(r[REG_1]>>32), (u32)(r[REG_1]));	\
-      printf("\n");							\
-    }
-
-#define DEBUG_OP(a)							\
-  if (bDisassemble)								\
-    {									\
-      DEBUG_XX								\
-	printf("%s r%d, ", a, REG_1&31);				\
-      if (ins&0x1000)							\
-	printf("%02xH",V_2);						\
-      else								\
-	printf("r%d",REG_2&31);						\
-      printf(", r%d", REG_3&31);					\
-      if (DO_ACTION)							\
-	printf(" ==> %08x%08x", (u32)(r[REG_3]>>32), (u32)(r[REG_3]));	\
-      printf("\n");							\
-    }
-
-#define DEBUG_OP_R1(a)							\
-  if (bDisassemble)								\
-    {									\
-      DEBUG_XX								\
-	printf("%s r%d", a, REG_1&31);					\
-      if (DO_ACTION)							\
-	printf(" ==> %08x%08x", (u32)(r[REG_1]>>32), (u32)(r[REG_1]));	\
-      printf("\n");							\
-    }
-
-#define DEBUG_OP_R3(a)							\
-  if (bDisassemble)								\
-    {									\
-      DEBUG_XX								\
-	printf("%s r%d", a, REG_3&31);					\
-      if (DO_ACTION)							\
-	printf(" ==> %08x%08x", (u32)(r[REG_3]>>32), (u32)(r[REG_3]));	\
-      printf("\n");							\
-    }
-
-#define DEBUG_OP_F1_R3(a)						\
-  if (bDisassemble)								\
-    {									\
-      DEBUG_XX								\
-	printf("%s f%d, r%d", a, FREG_1, REG_3&31);			\
-      if (DO_ACTION)							\
-	printf(" ==> %08x%08x", (u32)(r[REG_3]>>32), (u32)(r[REG_3]));	\
-      printf("\n");							\
-    }
-
-#define DEBUG_OP_R23(a)							\
-  if (bDisassemble)								\
-    {									\
-      DEBUG_XX								\
-	printf("%s ", a);						\
-      if								\
-	(ins&0x1000) printf("%02xH",V_2);				\
-      else								\
-	printf("r%d",REG_2&31);						\
-      printf(", r%d", REG_3&31);					\
-      if (DO_ACTION)							\
-	printf(" ==> %08x%08x", (u32)(r[REG_3]>>32), (u32)(r[REG_3]));	\
-      printf("\n");							\
-    }
-
-
-#define DEBUG_BR(a)						\
-  if (bDisassemble)							\
-    {								\
-      u64 dbg_x = (current_pc + 4 + (DISP_21 * 4))&~X64(3);	\
-      DEBUG_XX							\
-	printf("%s r%d, ", a, REG_1&31);			\
-      if (trc->get_fnc_name(dbg_x,&funcname))	\
-	printf("%s\n",funcname);				\
-      else							\
-	printf ("...%08x\n", dbg_x);				\
-    }
-
-#define DEBUG_JMP(a)					\
-  if (bDisassemble)						\
-    {							\
-      DEBUG_XX						\
-	printf("%s r%d, r%d\n", a, REG_1&31, REG_2&31);	\
-    }
-
-#define DEBUG_RET(a)				\
-  if (bDisassemble)					\
-    {						\
-      DEBUG_XX					\
-	printf("%s r%d\n", a, REG_2&31);	\
-    }
-
-#define DEBUG_fnc(a)				\
-  if (bDisassemble)					\
-    {						\
-      DEBUG_XX					\
-	printf("%s %02xH\n", a, function);	\
-    }
-
-#define DEBUG_PAL					\
-  if (bDisassemble)						\
-    {							\
-      DEBUG_XX						\
-	printf("CALL_PAL %s\n", PAL_NAME[function]);	\
-    }
-
-#define DEBUG_(a)				\
-  if (bDisassemble)					\
-    {						\
-      DEBUG_XX					\
-	printf("%s\n", a);			\
-    }
-
-#define DEBUG_MFPR(a)							\
-  if (bDisassemble)								\
-    {									\
-      DEBUG_XX								\
-	printf("HW_MFPR r%d, %s", REG_1&31, a);				\
-      if (DO_ACTION)							\
-	printf(" ==> %08x%08x", (u32)(r[REG_1]>>32), (u32)(r[REG_1]));	\
-      printf("\n");							\
-    }
-
-#define DEBUG_MTPR(a)							\
-  if (bDisassemble)								\
-    {									\
-      DEBUG_XX								\
-	printf("HW_MTPR r%d, %s", REG_2&31, a);				\
-      if (DO_ACTION)							\
-	printf(" ==> %08x%08x", (u32)(r[REG_2]>>32), (u32)(r[REG_2]));	\
-      printf("\n");							\
-    }
-
-#else
-
-#define UNKNOWN1 ;
-#define UNKNOWN2 ;
-#define DEBUG_LD_ST(a) ;
-#define DEBUG_HW(a,b) ;
-#define DEBUG_OP(a) ;
-#define DEBUG_OP_R1(a) ;
-#define DEBUG_OP_R3(a) ;
-#define DEBUG_OP_F1_R3(a) ;
-#define DEBUG_OP_R23(a) ;
-#define DEBUG_BR(a) ;
-#define DEBUG_JMP(a) ;
-#define DEBUG_RET(a) ;
-#define DEBUG_fnc(a) ;
-#define DEBUG_PAL ;
-#define DEBUG_(a) ;
-#define DEBUG_MFPR(a) ;
-#define DEBUG_MTPR(a) ;
-
-#endif
 
 /**
  * Called each clock-cycle.
@@ -772,19 +423,19 @@ void CAlphaCPU::DoClock()
       switch (function)
         {
         case 0x00: // ADDL
-	  r[REG_3] = SEXT_32(r[REG_1] + V_2);
+	  r[REG_3] = SEXT(r[REG_1] + V_2,32);
 	  DEBUG_OP("ADDL");
 	  return;
         case 0x02: // S4ADDL
-	  r[REG_3] = SEXT_32((r[REG_1]*4) + V_2);
+	  r[REG_3] = SEXT((r[REG_1]*4) + V_2,32);
 	  DEBUG_OP("S4ADDL");
 	  return;
         case 0x09: // SUBL
-	  r[REG_3] = SEXT_32(r[REG_1] - V_2);
+	  r[REG_3] = SEXT(r[REG_1] - V_2,32);
 	  DEBUG_OP("SUBL");
 	  return;
         case 0x0b: // S4SUBL
-	  r[REG_3] = SEXT_32((r[REG_1]*4) - V_2);
+	  r[REG_3] = SEXT((r[REG_1]*4) - V_2,32);
 	  DEBUG_OP("S4SUBL");
 	  return;
         case 0x0f:  // CMPBGE
@@ -799,11 +450,11 @@ void CAlphaCPU::DoClock()
 	  DEBUG_OP("CMPBGE");
 	  return;
         case 0x12: // S8ADDL
-	  r[REG_3] = SEXT_32((r[REG_1]*8) + V_2);
+	  r[REG_3] = SEXT((r[REG_1]*8) + V_2,32);
 	  DEBUG_OP("S8ADDL");
 	  return;
         case 0x1b: // S8SUBL
-	  r[REG_3] = SEXT_32((r[REG_1]*8) - V_2);
+	  r[REG_3] = SEXT((r[REG_1]*8) - V_2,32);
 	  DEBUG_OP("S8SUBL");
 	  return;
         case 0x1d: // CMPULT
@@ -1070,7 +721,7 @@ void CAlphaCPU::DoClock()
       switch (function)
         {
 	case 0x00: // MULL
-	  r[REG_3] = SEXT_32((u32)r[REG_1]*(u32)V_2);
+	  r[REG_3] = SEXT((u32)r[REG_1]*(u32)V_2,32);
 	  DEBUG_OP("MULL");
 	  return;
 	case 0x20: // MULQ
@@ -1410,11 +1061,11 @@ void CAlphaCPU::DoClock()
       switch (function)
         {
         case 0x00: //SEXTB
-	  r[REG_3] = SEXT_8(V_2);
+	  r[REG_3] = SEXT(V_2,8);
 	  DEBUG_OP_R23("SEXTB");
 	  return;
         case 0x01: // SEXTW
-	  r[REG_3] = SEXT_16(V_2);
+	  r[REG_3] = SEXT(V_2,16);
 	  DEBUG_OP_R23("SEXTW");
 	  return;
         case 0x30: // CTPOP
@@ -1683,8 +1334,9 @@ void CAlphaCPU::DoClock()
 	  return;
         case 0x11: // i_ctl
 	  i_ctl_other = r[REG_2]    & X64(00000000007e2f67);
-	  i_ctl_vptb  =  (r[REG_2] & X64(0000ffffc0000000))
-	    | ((r[REG_2] & X64(0000800000000000)) * X64(1fffe)); // SEXT
+	  i_ctl_vptb  = SEXT (r[REG_2] & X64(0000ffffc0000000),48);
+//	  i_ctl_vptb  =  (r[REG_2] & X64(0000ffffc0000000))
+//	    | ((r[REG_2] & X64(0000800000000000)) * X64(1fffe)); // SEXT
 	  i_ctl_spe   = (int)(r[REG_2]>>3) & 3;
 	  sde         = (r[REG_2]>>7) & 1;
 	  hwe         = (r[REG_2]>>12) & 1;
@@ -1791,8 +1443,9 @@ void CAlphaCPU::DoClock()
 	  DEBUG_MTPR("CC_CTL");
 	  return;
         case 0xc4: // VA_CTL
-	  va_ctl_vptb  =  (r[REG_2] & X64(0000ffffc0000000))
-	    | ((r[REG_2] & X64(0000800000000000)) * X64(1fffe)); // SEXT
+	  va_ctl_vptb = SEXT(r[REG_2] & X64(0000ffffc0000000),48);
+//	  va_ctl_vptb    =  (r[REG_2] & X64(0000ffffc0000000))
+//	    | ((r[REG_2] & X64(0000800000000000)) * X64(1fffe)); // SEXT
 	  i_ctl_va_mode = (int)(r[REG_2]>>1) & 3;
 	  DEBUG_MTPR("VA_CTL");
 	  return;
@@ -1900,7 +1553,7 @@ void CAlphaCPU::DoClock()
       if (DO_ACTION)
 	{
 	  DATA_PHYS(r[REG_2] + DISP_16, ACCESS_READ, true, false, false);
-	  r[REG_1] = SEXT_32(READ_PHYS(32));
+	  r[REG_1] = SEXT(READ_PHYS(32),32);
 	}
       DEBUG_LD_ST("LDL");
       return;
@@ -1919,7 +1572,7 @@ void CAlphaCPU::DoClock()
 	{
 	  lock_flag = true;
 	  DATA_PHYS(r[REG_2] + DISP_16, ACCESS_READ, true, false, false);
-	  r[REG_1] = SEXT_32(READ_PHYS(32));
+	  r[REG_1] = SEXT(READ_PHYS(32),32);
 	}
       DEBUG_LD_ST("LDL_L");
       return;
@@ -2254,22 +1907,4 @@ void CAlphaCPU::RestoreState(FILE *f)
 
   itb->RestoreState(f);
   dtb->RestoreState(f);
-}
-
-u64 CAlphaCPU::get_r(int i, bool translate)
-{
-  if (translate)
-    return r[RREG(i)];
-  else
-    return r[i];
-}
-
-u64 CAlphaCPU::get_prbr(void)
-{
-  if (r[21+32] && (   (r[21+32]+0xa8)< (128*1024*1024)))
-    {
-      return cSystem->ReadMem(r[21+32] + 0xa8,64);
-    }
-  else
-    return cSystem->ReadMem(0x70a8 + (0x200 * get_cpuid()),64);
 }
