@@ -131,8 +131,7 @@ class CAliM1543C : public CSystemComponent
   // DMA controller
   u8 dma_read(int channel, u64 address);
   void dma_write(int channel, u64 address, u8 data);
- private:
-  //	u8 val_8k;
+
   u8 ide_command[2][8];
   u8 ide_status[2];
   u16 ide_data[2][256];

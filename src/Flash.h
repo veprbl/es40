@@ -52,17 +52,12 @@ class CFlash : public CSystemComponent
   virtual u64 ReadMem(int index, u64 address, int dsize);
   CFlash(class CSystem * c);
   virtual ~CFlash();
+  virtual void SaveState(FILE * f);
+  virtual void RestoreState(FILE * f);
 
  protected:
   u8 Flash[2*1024*1024];
   int mode;
-
- public:
-  // Save component state to file
-  virtual void SaveState(FILE * f);
- public:
-  // Restore component state from file
-  virtual void RestoreState(FILE * f);
 };
 
 #endif // !defined(__FLASH_H__)

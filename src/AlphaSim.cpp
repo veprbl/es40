@@ -152,7 +152,7 @@ int main(int argc, char* argv[])
   dpr = new CDPR(systm);
 
   loadat = systm->Select_ROM();
-  cpu[0]->pc = loadat+1;
+  cpu[0]->set_pc(loadat+1);
   cpu[0]->set_PAL_BASE(loadat);
 
 #ifdef IDB
@@ -258,28 +258,16 @@ int main(int argc, char* argv[])
 
 #ifndef DO_LISTING
       // known speedups
-      if  (  cpu[0]->pc==X64(14248) 
-	     || cpu[0]->pc==X64(14249)
-	     || cpu[0]->pc==X64(14288)
-	     || cpu[0]->pc==X64(14289)
-	     || cpu[0]->pc==X64(142c8)
-	     || cpu[0]->pc==X64(142c9)
-	     || cpu[0]->pc==X64(68320)
-	     || cpu[0]->pc==X64(68321)
+      if  (     cpu[0]->get_clean_pc()==X64(14248) 
+	     || cpu[0]->get_clean_pc()==X64(14288)
+	     || cpu[0]->get_clean_pc()==X64(142c8)
+	     || cpu[0]->get_clean_pc()==X64(68320)
 
-	     || cpu[0]->pc==X64(8bb78)	// write in memory test (aa)
-	     || cpu[0]->pc==X64(8bb79)
-	     || cpu[0]->pc==X64(8bc0c)	// write in memory test (bb)
-	     || cpu[0]->pc==X64(8bc0d)
-	     || cpu[0]->pc==X64(8bc94)	// write in memory test (00)
-	     || cpu[0]->pc==X64(8bc95)
+	     || cpu[0]->get_clean_pc()==X64(8bb78)	// write in memory test (aa)
+	     || cpu[0]->get_clean_pc()==X64(8bc0c)	// write in memory test (bb)
+	     || cpu[0]->get_clean_pc()==X64(8bc94)	// write in memory test (00)
 	     )
-	cpu[0]->pc += 4;
-
-      // HACK
-      if ( cpu[0]->pc==X64(2000e850)
-	   || cpu[0]->pc==X64(2000e851) )
-	cpu[0]->r[0]++;
+	cpu[0]->next_pc();
 
 #endif
 
@@ -302,9 +290,9 @@ int main(int argc, char* argv[])
 	  ops_per_sec = 0x20000 / seconds;
 			
 #ifdef _WIN32
-	  sprintf(prf,"\r%dK | %8I64x | %e i/s",i/1000,cpu[0]->pc,ops_per_sec);
+	  sprintf(prf,"\r%dK | %8I64x | %e i/s",i/1000,cpu[0]->get_pc(),ops_per_sec);
 #else
-	  sprintf(prf,"\r%dK | %8llx | %e i/s",i/1000,cpu[0]->pc,ops_per_sec);
+	  sprintf(prf,"\r%dK | %8llx | %e i/s",i/1000,cpu[0]->get_pc(),ops_per_sec);
 #endif
 	  srl[1]->write(prf);
 	}

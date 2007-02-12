@@ -88,8 +88,6 @@ class CTranslationBuffer
  public:
   virtual void RestoreState(FILE * f);
   void SaveState(FILE * f);
-  u64 v_mask;				/**< bitmask for the virtual part of the address. */
-  u64 p_mask;				/**< bitmask for the physical part of the address. */
   int FindEntry(u64 virt, int asn);
   void InvalidateAll();
   void InvalidateAllProcess();
@@ -101,6 +99,8 @@ class CTranslationBuffer
   virtual ~CTranslationBuffer();
 
  private:
+  u64 v_mask;				/**< bitmask for the virtual part of the address. */
+  u64 p_mask;				/**< bitmask for the physical part of the address. */
   bool bIBOX;
   class CAlphaCPU * cCpu;
   struct STBEntry entry[TB_ENTRIES];

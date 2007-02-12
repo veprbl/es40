@@ -85,6 +85,8 @@ class CTraceEngine
   void add_function(u64 address, char * fn_name, char * fn_arglist, bool step_over);
   bool get_fnc_name(u64 address, char ** p_fn_name);
   void set_waitfor(class CAlphaCPU * cpu, u64 address);
+  FILE * trace_file();
+  void trace_dev(char * text);
 
  protected:
   class CSystem * cSystem;
@@ -97,9 +99,6 @@ class CTraceEngine
   int get_prbr(u64 prbr);
   void write_arglist(CAlphaCPU * c, FILE * f, char * a);
   FILE * current_trace_file;
- public:
-  FILE * trace_file();
-  void trace_dev(char * text);
 };
 
 extern bool bTrace;

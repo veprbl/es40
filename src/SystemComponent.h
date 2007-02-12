@@ -50,7 +50,6 @@ class CSystemComponent
  public:
   virtual void RestoreState(FILE * f);
   virtual void SaveState(FILE * f);
-  class CSystem * cSystem;
 
   CSystemComponent(class CSystem * system);
   virtual ~CSystemComponent();
@@ -61,6 +60,9 @@ class CSystemComponent
   virtual u8 ReadTIG(int index, int address) {index; address; return 0;};
   virtual void WriteTIG(int index, int address, u8 data) {index; address; data;};
   virtual void DoClock() {};
+
+ protected: 
+  class CSystem * cSystem;
 };
 
 #endif // !defined(AFX_SYSTEMCOMPONENT_H__54D2AACC_ED4A_47C2_9E9F_1795A246E458__INCLUDED_)

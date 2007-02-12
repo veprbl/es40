@@ -25,8 +25,8 @@
  */
  
 /**
- * \file AlphaCPU.H 
- * AlphaCPU.H contains the definitions for the emulated DecChip 21264CB EV68 Alpha processor.
+ * \file
+ * Contains the definitions for the emulated DecChip 21264CB EV68 Alpha processor.
  *
  * \author Camiel Vanderhoeven (camiel@camicom.com / www.camicom.com)
  **/
@@ -73,7 +73,6 @@ class CAlphaCPU : public CSystemComponent
   virtual void RestoreState(FILE * f);
   void irq_h(int number, bool assert);
   int get_cpuid();
-  u64 pal_base;			/**< IPR PAL_BASE [HRM: p 5-15] */
   int get_i_spe();
   int get_d_spe();
   void flush_icache();
@@ -85,14 +84,18 @@ class CAlphaCPU : public CSystemComponent
   virtual void DoClock();
   CAlphaCPU(CSystem * system);
   virtual ~CAlphaCPU();
-  u64 pc;			/**< Program counter */
   u64 get_r(int i, bool translate);
   u64 get_prbr(void);
-
-  u32 cc;			/**< IPR CC: Cycle counter [HRM p 5-3] */
-  u64 r[64];			/**< Integer registers (0-31 normal, 32-63 shadow) */
+  u64 get_pc();
+  u64 get_clean_pc();
+  void next_pc();
+  void set_pc(u64 p_pc);
 
  private:
+  u64 pal_base;			/**< IPR PAL_BASE [HRM: p 5-15] */
+  u64 pc;			/**< Program counter */
+  u32 cc;			/**< IPR CC: Cycle counter [HRM p 5-3] */
+  u64 r[64];			/**< Integer registers (0-31 normal, 32-63 shadow) */
   u64 dc_stat;			/**< IPR DC_STAT: Dcache status [HRM p 5-31..32] */
   bool ppcen;			/**< IPR PCTX: ppce (proc perf counting enable) [HRM p 5-21..23] */
   u64 i_stat;			/**< IPR I_STAT: Ibox status [HRM p 5-18..20] */
@@ -299,6 +302,42 @@ inline void CAlphaCPU::irq_h(int number, bool assert)
       //            printf("Interrupt %d de-asserted on CPU %d\n",number,iProcNum);
       eir &= ~(X64(1)<<number);
     }
+}
+
+/**
+ * Return program counter value.
+ **/
+
+inline u64 CAlphaCPU::get_pc()
+{
+	return pc;
+}
+
+/**
+ * Return program counter value without PALmode bit.
+ **/
+
+inline u64 CAlphaCPU::get_clean_pc()
+{
+	return pc & ~X64(3);
+}
+
+/**
+ * Jump to next instruction
+ **/
+
+inline void CAlphaCPU::next_pc()
+{
+	pc += 4;
+}
+
+/**
+ * Set program counter to a certain value.
+ **/
+
+inline void CAlphaCPU::set_pc(u64 p_pc)
+{
+	pc = p_pc;
 }
 
 #endif // !defined(__ALPHACPU_H__)
