@@ -365,11 +365,6 @@ void CSystem::WriteMem(u64 address, int dsize, u64 data)
 	case X64(0000080380000800):
 	  return;
 	default:
-#ifdef _WIN32
-	  TRC_DEV5("Failed memwrite (%02d bits: %016I64x) to %016I64x (PC:%016I64x)         \n",dsize, data,address,acCPUs[0]->pc);
-#else
-	  TRC_DEV5("Failed memwrite (%02d bits: %016llx) to %016llx (PC:%016llx)         \n",dsize, data,address,acCPUs[0]->pc);
-#endif
 	  return;
 	}
     }
@@ -526,11 +521,6 @@ u64 CSystem::ReadMem(u64 address, int dsize)
 	  return tig$HaltB;
 
 	default:
-#ifdef _WIN32
-	  TRC_DEV4("Failed memread (%02d bits) to %016I64x (PC:%016I64x)              \n",dsize, address,acCPUs[0]->pc);
-#else
-	  TRC_DEV4("Failed memread (%02d bits) to %016llx (PC:%016llx)              \n",dsize, address,acCPUs[0]->pc);
-#endif
 	  return 0;
 	  //			return 0x77; // 7f
 	}
