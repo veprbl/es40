@@ -21,9 +21,14 @@
  * Although this is not required, the author would appreciate being notified of, 
  * and receiving any modifications you may make to the source code that might serve
  * the general public.
- * 
- * ALIM1543C.CPP contains the code for the emulated Ali M1543C chipset devices.
  */
+
+/**
+ * \file 
+ * Contains the code for the emulated Ali M1543C chipset devices.
+ *
+ * \author Camiel Vanderhoeven (camiel@camicom.com / www.camicom.com)
+ **/
 
 #include "StdAfx.h"
 #include "AliM1543C.h"
@@ -73,14 +78,6 @@ CAliM1543C::CAliM1543C(CSystem * c): CSystemComponent(c)
   for (i=0;i<256;i++)
     toy_stored_data[i] = 0;
   //    toy_stored_data[0x17] = 1;
-
-  FILE * toyf;
-  toyf = fopen("c:\\toynvram.sav","rb");
-  if (toyf)
-    {
-      fread(&(toy_stored_data[0x0e]),50,1,toyf);
-      fclose(toyf);
-    }
 
   c->RegisterMemory(this, 3, X64(00000801fe003800),0x100);
 
@@ -529,6 +526,10 @@ void CAliM1543C::toy_write(u64 address, u8 data)
     }
 }
 
+/**
+ * Read from the ISA interfaces PCI configuration space.
+ **/
+
 u64 CAliM1543C::isa_config_read(u64 address, int dsize)
 {
     
@@ -554,6 +555,10 @@ u64 CAliM1543C::isa_config_read(u64 address, int dsize)
     }
   return data;
 }
+
+/**
+ * Write to the ISA interfaces PCI configuration space.
+ **/
 
 void CAliM1543C::isa_config_write(u64 address, int dsize, u64 data)
 {
@@ -582,6 +587,7 @@ void CAliM1543C::isa_config_write(u64 address, int dsize, u64 data)
 
 u8 CAliM1543C::pit_read(u64 address)
 {
+  address;
   u8 data;
 
   data = 0;
@@ -591,6 +597,9 @@ u8 CAliM1543C::pit_read(u64 address)
 
 void CAliM1543C::pit_write(u64 address, u8 data)
 {
+  address;
+  data;
+
   pit_enable = true;
 }
 
@@ -720,6 +729,10 @@ void CAliM1543C::pic_interrupt(int index, int intno)
     cSystem->interrupt(55,true);
 }
 
+/**
+ * Read from the IDE controllers PCI configuration space.
+ **/
+
 u64 CAliM1543C::ide_config_read(u64 address, int dsize)
 {
     
@@ -746,6 +759,10 @@ u64 CAliM1543C::ide_config_read(u64 address, int dsize)
   return data;
 
 }
+
+/**
+ * Write to the IDE controllers PCI configuration space.
+ **/
 
 void CAliM1543C::ide_config_write(u64 address, int dsize, u64 data)
 {
@@ -953,6 +970,11 @@ void CAliM1543C::ide_command_write(int index, u64 address, u64 data)
     ide_status[index] = 0;
 }
 
+/**
+ * Read from the IDE controller control interface.
+ * Return status when \a address is 2, otherwise return 0.
+ **/
+
 u64 CAliM1543C::ide_control_read(int index, u64 address)
 {
   u64 data;
@@ -964,10 +986,20 @@ u64 CAliM1543C::ide_control_read(int index, u64 address)
   return data;
 }
 
+/**
+ * Write to the IDE controller control interface.
+ * Not functional
+ **/
+
 void CAliM1543C::ide_control_write(int index, u64 address, u64 data)
 {
   TRC_DEV4("%%ALI-I-WRITEIDECTL: write port %d on IDE control %d: 0x%02x\n",  (u32)(address),index, data);
 }
+
+/**
+ * Read from the IDE controller busmaster interface.
+ * Always returns 0.
+ **/
 
 u64 CAliM1543C::ide_busmaster_read(int index, u64 address)
 {
@@ -979,11 +1011,19 @@ u64 CAliM1543C::ide_busmaster_read(int index, u64 address)
   return data;
 }
 
+/**
+ * Write to the IDE controller busmaster interface.
+ * Not functional.
+ **/
+
 void CAliM1543C::ide_busmaster_write(int index, u64 address, u64 data)
 {
   TRC_DEV4("%%ALI-I-WRITEIDEBM: write port %d on IDE bus master %d: 0x%02x\n",  (u32)(address),index, data);
 }
 
+/**
+ * Read from the USB controllers PCI configuration space.
+ **/
 
 u64 CAliM1543C::usb_config_read(u64 address, int dsize)
 {
@@ -1012,6 +1052,10 @@ u64 CAliM1543C::usb_config_read(u64 address, int dsize)
 
 }
 
+/**
+ * Write to the USB controllers PCI configuration space.
+ **/
+
 void CAliM1543C::usb_config_write(u64 address, int dsize, u64 data)
 {
   void * x;
@@ -1037,6 +1081,10 @@ void CAliM1543C::usb_config_write(u64 address, int dsize, u64 data)
     }
 }
 
+/**
+ * Read a byte from the dma controller.
+ * Always returns 0.
+ **/
 
 u8 CAliM1543C::dma_read(int index, u64 address)
 {
@@ -1047,15 +1095,28 @@ u8 CAliM1543C::dma_read(int index, u64 address)
   return data;
 }
 
+/**
+ * Write a byte to the dma controller.
+ * Not functional.
+ **/
+
 void CAliM1543C::dma_write(int index, u64 address, u8 data)
 {
 }
 
+/**
+ * Make sure a clock interrupt is generated on the next clock.
+ * used for debugging, or to speed tings up when software is waiting for a clock tick.
+ **/
 
 void CAliM1543C::instant_tick()
 {
   pit_clock = 99999999;
 }
+
+/**
+ * Save state to a Virtual Machine State file.
+ **/
 
 void CAliM1543C::SaveState(FILE *f)
 {
@@ -1099,6 +1160,10 @@ void CAliM1543C::SaveState(FILE *f)
 
   // DMA controller
 }
+
+/**
+ * Restore state from a Virtual Machine State file.
+ **/
 
 void CAliM1543C::RestoreState(FILE *f)
 {

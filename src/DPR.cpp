@@ -21,9 +21,14 @@
  * Although this is not required, the author would appreciate being notified of, 
  * and receiving any modifications you may make to the source code that might serve
  * the general public.
- * 
- * DPR.CPP contains the code for the emulated Dual Port Ram and RMC devices.
  */
+
+/** 
+ * \file
+ * Contains the code for the emulated Dual Port Ram and RMC devices.
+ *
+ * \author Camiel Vanderhoeven (camiel@camicom.com / www.camicom.com)
+ **/
 
 #include "StdAfx.h"
 #include "DPR.h"
@@ -32,13 +37,13 @@
 
 extern CSerial * srl[2];
 
-//////////////////////////////////////////////////////////////////////
-// Construction/Destruction
-//////////////////////////////////////////////////////////////////////
+/**
+ * Constructor.
+ **/
 
 CDPR::CDPR(CSystem * c) : CSystemComponent(c)
 {
-  int i;
+  u8 i;
 
   c->RegisterMemory(this, 0, X64(0000080110000000),0x100000); // 16KB
   printf("%%DPR-I-INIT: Dual-Port RAM emulator initialized.\n");
@@ -280,6 +285,10 @@ CDPR::CDPR(CSystem * c) : CSystemComponent(c)
 
 }
 
+/**
+ * Destructor.
+ **/
+
 CDPR::~CDPR()
 {
 
@@ -447,13 +456,19 @@ void CDPR::WriteMem(int index, u64 address, int dsize, u64 data)
 }
 
 
-// Save component state to file
+/**
+ * Save state to a Virtual Machine State file.
+ **/
+
 void CDPR::SaveState(FILE * f)
 {
   fwrite(ram,16*1024,1,f);
 }
 
-// Restore component state from file
+/**
+ * Restore state from a Virtual Machine State file.
+ **/
+
 void CDPR::RestoreState(FILE * f)
 {
   fread(ram,16*1024,1,f);

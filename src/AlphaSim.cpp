@@ -21,9 +21,14 @@
  * Although this is not required, the author would appreciate being notified of, 
  * and receiving any modifications you may make to the source code that might serve
  * the general public.
- * 
- * ALPHASIM.CPP defines the entry point for the application.
  */
+
+/** 
+ * \file
+ * Defines the entry point for the application.
+ *
+ * \author Camiel Vanderhoeven (camiel@camicom.com / www.camicom.com)
+ **/
 
 #include "StdAfx.h"
 #include "System.h"
@@ -42,7 +47,6 @@
 #include <sys/time.h>
 #include <stdlib.h>
 #endif
-
 
 //#define DO_LISTING 1
 //#define DO_TRACE 1
@@ -66,26 +70,21 @@ CFlash * srom;
 CAliM1543C * ali = 0;
 CDPR * dpr = 0;
 
-
 // "standard" locations for a configuration file.  This
 // will be port specific.
-#ifdef _WIN32
 char path[][40]={
+#ifdef _WIN32
   ".\\es40.cfg",
   "c:\\es40.cfg",
   "c:\\windows\\es40.cfg",
-  0
-};
 #else
-char path[][40]={
   "./es40.cfg",
   "/etc/es40.cfg",
   "/usr/etc/es40.cfg",
   "/usr/local/etc/es40.cfg",
+#endif
   0
 };
-#endif
-
 
 int main(int argc, char* argv[])
 {
@@ -194,9 +193,6 @@ int main(int argc, char* argv[])
 
   int i;
 
-  bool x = false;
-  bool tick1 = true;
-
   char prf[300];
 #ifdef _WIN32
   QueryPerformanceCounter(&before);
@@ -279,6 +275,11 @@ int main(int argc, char* argv[])
 	     || cpu[0]->pc==X64(8bc95)
 	     )
 	cpu[0]->pc += 4;
+
+      // HACK
+      if ( cpu[0]->pc==X64(2000e850)
+	   || cpu[0]->pc==X64(2000e851) )
+	cpu[0]->r[0]++;
 
 #endif
 

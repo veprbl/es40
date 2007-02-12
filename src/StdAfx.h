@@ -21,11 +21,17 @@
  * Although this is not required, the author would appreciate being notified of, 
  * and receiving any modifications you may make to the source code that might serve
  * the general public.
- * 
- * stdafx.h : include file for standard system include files,
- * or project specific include files that are used frequently, but
- * are changed infrequently
  */
+
+/**
+ * \file 
+ * Standard includes.
+ * Include file for standard system include files,
+ * or project specific include files that are used frequently, but
+ * are changed infrequently.
+ *
+ * \author Camiel Vanderhoeven (camiel@camicom.com / www.camicom.com)
+ **/
 
 #if !defined(AFX_STDAFX_H__E45CEFB7_CE00_44EB_ADFF_B17622633B52__INCLUDED_)
 #define AFX_STDAFX_H__E45CEFB7_CE00_44EB_ADFF_B17622633B52__INCLUDED_

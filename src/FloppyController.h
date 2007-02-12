@@ -21,9 +21,14 @@
  * Although this is not required, the author would appreciate being notified of, 
  * and receiving any modifications you may make to the source code that might serve
  * the general public.
- * 
- * FLOPPYCONTROLLER.H contains the definitions for the emulated Floppy Controller devices.
  */
+
+/**
+ * \file 
+ * Contains the definitions for the emulated Floppy Controller devices.
+ *
+ * \author Camiel Vanderhoeven (camiel@camicom.com / www.camicom.com)
+ **/
 
 #if !defined(__FLOPPYCONTROLLER_H__)
 #define __FLOPPYCONTROLLER_H__
@@ -35,7 +40,7 @@
 #include "SystemComponent.h"
 
 /**
- * Floppy-drive controller.
+ * Emulated floppy-drive controller.
  **/
 
 class CFloppyController : public CSystemComponent  

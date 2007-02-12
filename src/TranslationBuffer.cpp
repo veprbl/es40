@@ -21,18 +21,18 @@
  * Although this is not required, the author would appreciate being notified of, 
  * and receiving any modifications you may make to the source code that might serve
  * the general public.
- * 
- * TRANSLATIONBUFFER.CPP contains the code for the emulated on-cpu instruction and
- * data translation buffers.
  */
+
+/**
+ * \file 
+ * Contains the code for the emulated on-cpu translation buffers.
+ *
+ * \author Camiel Vanderhoeven (camiel@camicom.com / www.camicom.com)
+ **/
 
 #include "StdAfx.h"
 #include "TranslationBuffer.h"
 #include "AlphaCPU.h"
-
-//////////////////////////////////////////////////////////////////////
-// Construction/Destruction
-//////////////////////////////////////////////////////////////////////
 
 /**
  * Constructor.

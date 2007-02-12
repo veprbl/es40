@@ -26,8 +26,9 @@
  
 /**
  * \file AlphaCPU.H 
- * \brief AlphaCPU.H contains the code for the emulated DecChip 21264CB EV68 Alpha processor.
- * \author Camiel Vanderhoeven
+ * AlphaCPU.H contains the definitions for the emulated DecChip 21264CB EV68 Alpha processor.
+ *
+ * \author Camiel Vanderhoeven (camiel@camicom.com / www.camicom.com)
  **/
 
 #if !defined(__ALPHACPU_H__)
@@ -44,7 +45,7 @@
 /**
  * Instruction cache entry.
  * An instruction cache entry contains the address and address space number
- * (ASN) + 16 32-bit instructions.
+ * (ASN) + 16 32-bit instructions. [HRM 2-11]
  **/
  
 struct SICache {
@@ -57,6 +58,12 @@ struct SICache {
 /**
  * Emulated CPU.
  * The CPU emulated is the DECchip 21264CB Alpha Processor (EV68).
+ * 
+ * Documents referred to:
+ *	- DS-0026A-TE: Alpha 21264B Microprocessor Hardware Reference Manual [HRM].
+ *	  (http://ftp.digital.com/pub/Digital/info/semiconductor/literature/21264hrm.pdf)
+ *	- Alpha Architecture Reference Manual, fourth edition [ARM].
+ *	.
  **/
 
 class CAlphaCPU : public CSystemComponent  
@@ -66,7 +73,7 @@ class CAlphaCPU : public CSystemComponent
   virtual void RestoreState(FILE * f);
   void irq_h(int number, bool assert);
   int get_cpuid();
-  u64 pal_base;
+  u64 pal_base;			/**< IPR PAL_BASE [HRM: p 5-15] */
   int get_i_spe();
   int get_d_spe();
   void flush_icache();
@@ -82,78 +89,74 @@ class CAlphaCPU : public CSystemComponent
   u64 get_r(int i, bool translate);
   u64 get_prbr(void);
 
-  /*	int trclvl;
-    u64 trcadd[700];
-    int trcfncs;
-    int trchide;
-    u64 trc_waitfor;
-    struct STraceFunction trcfnc[5000]; 
-  */	u32 cc;
+  u32 cc;			/**< IPR CC: Cycle counter [HRM p 5-3] */
   u64 r[64];			/**< Integer registers (0-31 normal, 32-63 shadow) */
 
  private:
-  u64 dc_stat;
-  bool ppcen;
-  u64 i_stat;
-  u64 pctr_ctl;
-  bool cc_ena;
-  u32 cc_offset;
-  u64 dc_ctl;
-  int alt_cm;
-  int smc;
-  bool fpen;
-  bool sde;
-  u64 fault_va;
-  u64 exc_sum;
-  int ier;
-  int  i_ctl_va_mode;
-  int  va_ctl_va_mode;
-  u64  i_ctl_vptb;
-  u64  va_ctl_vptb;
-  //    bool palmode;
-  int  cm;
-  int asn;
-  int asn0;
-  int asn1;
-  int eien;
-  int slen;
-  int cren;
-  int pcen;
-  int sien;
-  int asten;
-  int sir;
-  int eir;
-  int slr;
-  int crr;
-  int pcr;
-  int astrr;
-  int aster;
-  u64 i_ctl_other;
-  u64 mm_stat;
-  bool hwe;
-  int m_ctl_spe;
-  int i_ctl_spe;
+  u64 dc_stat;			/**< IPR DC_STAT: Dcache status [HRM p 5-31..32] */
+  bool ppcen;			/**< IPR PCTX: ppce (proc perf counting enable) [HRM p 5-21..23] */
+  u64 i_stat;			/**< IPR I_STAT: Ibox status [HRM p 5-18..20] */
+  u64 pctr_ctl;			/**< IPR PCTR_CTL [HRM p 5-23..25] */
+  bool cc_ena;			/**< IPR CC_CTL: Cycle counter enabled [HRM p 5-3] */
+  u32 cc_offset;		/**< IPR CC: Cycle counter offset [HRM p 5-3] */
+  u64 dc_ctl;			/**< IPR DC_CTL: Dcache control [HRM p 5-30..31] */
+  int alt_cm;			/**< IPR DTB_ALTMODE: alternative cm for HW_LD/HW_ST [HRM p 5-26..27] */
+  int smc;			/**< IPR M_CTL: smc (speculative miss control) [HRM p 5-29..30] */
+  bool fpen;			/**< IPR PCTX: fpe (floating point enable) [HRM p 5-21..23] */
+  bool sde;			/**< IPR I_CTL: sde[1] (PALshadow enable) [HRM p 5-15..18] */
+  u64 fault_va;			/**< IPR VA: virtual address of last Dstream miss or fault [HRM p 5-4] */
+  u64 exc_sum;			/**< IPR EXC_SUM: exception summary [HRM p 5-13..15] */
+  int  i_ctl_va_mode;		/**< IPR I_CTL: (va_form_32 + va_48) [HRM p 5-15..17] */
+  int  va_ctl_va_mode;		/**< IPR VA_CTL: (va_form_32 + va_48) [HRM p 5-4] */
+  u64  i_ctl_vptb;		/**< IPR I_CTL: vptb (virtual page table base) [HRM p 5-15..16] */
+  u64  va_ctl_vptb;		/**< IPR VA_CTL: vptb (virtual page table base) [HRM p 5-4] */
+
+  int  cm;			/**< IPR IER_CM: cm (current mode) [HRM p 5-9..10] */
+  int asn;			/**< IPR PCTX: asn (address space number) [HRM p 5-21..22] */
+  int asn0;			/**< IPR DTB_ASN0: asn (address space number) [HRM p 5-28] */
+  int asn1;			/**< IPR DTB_ASN1: asn (address space number) [HRM p 5-28] */
+  int eien;			/**< IPR IER_CM: eien (external interrupt enable) [HRM p 5-9..10] */
+  int slen;			/**< IPR IER_CM: slen (serial line interrupt enable) [HRM p 5-9..10] */
+  int cren;			/**< IPR IER_CM: cren (corrected read error int enable) [HRM p 5-9..10] */
+  int pcen;			/**< IPR IER_CM: pcen (perf counter interrupt enable) [HRM p 5-9..10] */
+  int sien;			/**< IPR IER_CM: sien (software interrupt enable) [HRM p 5-9..10] */
+  int asten;			/**< IPR IER_CM: asten (AST interrupt enable) [HRM p 5-9..10] */
+  int sir;			/**< IPR SIRR: sir (software interrupt request) [HRM p 5-10..11] */
+  int eir;			/**< external interrupt request */
+  int slr;			/**< serial line interrupt request */
+  int crr;			/**< corrected read error interrupt */
+  int pcr;			/**< perf counter interrupt */
+  int astrr;			/**< IPR PCTX: astrr (AST request) [HRM p 5-21..22] */
+  int aster;			/**< IPR PCTX: aster (AST enable) [HRM p 5-21..22] */
+  u64 i_ctl_other;		/**< various bits in IPR I_CTL that have no meaning to the emulator */
+  u64 mm_stat;			/**< IPR MM_STAT: memory management status [HRM p 5-28..29] */
+  bool hwe;			/**< IPR I_CLT: hwe (allow palmode ins in kernel mode) [HRM p 5-15..17] */
+  int m_ctl_spe;		/**< IPR M_CTL: spe (Super Page mode enabled) [HRM p 5-29..30] */
+  int i_ctl_spe;		/**< IPR I_CTL: spe (Super Page mode enabled) [HRM p 5-15..18] */
 
   u64 va_form(u64 address, int va_ctl, u64 ptbr);
-  u64 exc_addr;
+  u64 exc_addr;				/**< IPR EXC_ADDR: address of last exception [HRM p 5-8] */
   u64 pmpc;
-  u64 fpcr;
+  u64 fpcr;				/**< Floating-Point Control Register [HRM p 2-36] */
   bool bIntrFlag;
   u64 current_pc;
-  struct SICache icache[1024];		/**< Instruction cache entries*/
-  int next_icache;			/**< Number of next cache entry to use*/
+  struct SICache icache[1024];		/**< Instruction cache entries [HRM p 2-11] */
+  int next_icache;			/**< Number of next cache entry to use */
   int get_icache(u64 address, u32 * data);
   void go_pal(u32 pal_offset);
 	
   bool lock_flag;
 
-  u64 f[64];
-  int iProcNum;
+  u64 f[64];			/**< Floating point registers (0-31 normal, 32-63 shadow) */
+  int iProcNum;			/**< number of the current processor (0 in a 1-processor system) */
 
-  CTranslationBuffer * itb;
-  CTranslationBuffer * dtb;
+  CTranslationBuffer * itb;	/**< Instruction-Stream Translation Buffer [HRM p 2-5] */
+  CTranslationBuffer * dtb;	/**< Data-Stream Translation Buffer [HRM p 2-13] */
 };
 
+/**
+ * Empty the instruction cache.
+ **/
 
 inline void CAlphaCPU::flush_icache()
 {
@@ -172,6 +175,10 @@ inline int CAlphaCPU::get_i_spe()
 {
   return (int) i_ctl_spe;
 }
+
+/**
+ * Return the current address space number.
+ **/
 
 inline int CAlphaCPU::get_asn()
 {
@@ -192,6 +199,11 @@ inline void CAlphaCPU::set_PAL_BASE(u64 pb)
 {
   pal_base = pb;
 }
+
+/**
+ * Get an instruction from the instruction cache.
+ * If necessary, fill a new cache block from memory.
+ **/
 
 inline int CAlphaCPU::get_icache(u64 address, u32 * data)
 {
@@ -237,6 +249,11 @@ inline int CAlphaCPU::get_icache(u64 address, u32 * data)
   return 0;
 }
 
+/**
+ * Convert a virtual address to va_form format.
+ * Used for IPR VA_FORM [HRM 5-5..6] and IPR IVA_FORM [HRM 5-9].
+ **/
+
 inline u64 CAlphaCPU::va_form(u64 address, int va_ctl, u64 ptbr)
 {
   switch( va_ctl)
@@ -255,10 +272,18 @@ inline u64 CAlphaCPU::va_form(u64 address, int va_ctl, u64 ptbr)
   return 0;
 }
 
+/**
+ * Return processor number.
+ **/
+
 inline int CAlphaCPU::get_cpuid()
 {
   return iProcNum;
 }
+
+/**
+ * Assert or release an external interrupt line to the cpu.
+ **/
 
 inline void CAlphaCPU::irq_h(int number, bool assert)
 {
@@ -275,7 +300,5 @@ inline void CAlphaCPU::irq_h(int number, bool assert)
       eir &= ~(X64(1)<<number);
     }
 }
-
-
 
 #endif // !defined(__ALPHACPU_H__)

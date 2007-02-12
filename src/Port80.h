@@ -21,9 +21,14 @@
  * Although this is not required, the author would appreciate being notified of, 
  * and receiving any modifications you may make to the source code that might serve
  * the general public.
- * 
- * PORT80.H contains the definitions for the emulated Floppy Controller devices.
  */
+
+/**
+ * \file 
+ * Contains the definitions for the emulated Port 80 device.
+ *
+ * \author Camiel Vanderhoeven (camiel@camicom.com / www.camicom.com)
+ **/
 
 #if !defined(AFX_PORT80_H__C93A4910_DB8A_4AF8_A890_5724EFB9C654__INCLUDED_)
 #define AFX_PORT80_H__C93A4910_DB8A_4AF8_A890_5724EFB9C654__INCLUDED_
@@ -33,6 +38,14 @@
 #endif // _MSC_VER > 1000
 
 #include "SystemComponent.h"
+
+/**
+ * Emulated port 80.
+ * Port 80 is a port without a real function, that is used to slow things down.
+ * Since our emulator is slow enough already ;-) this port has no function at
+ * all, but it needs to be there to avoid error messages about non-existing
+ * hardware.
+ **/
 
 class CPort80 : public CSystemComponent  
 {
@@ -44,7 +57,7 @@ class CPort80 : public CSystemComponent
   virtual void WriteMem(int index, u64 address, int dsize, u64 data);
 
  protected:
-  u8 p80;
+  u8 p80;	/**< Last value written.*/
 };
 
 #endif // !defined(AFX_PORT80_H__C93A4910_DB8A_4AF8_A890_5724EFB9C654__INCLUDED_)

@@ -21,17 +21,22 @@
  * Although this is not required, the author would appreciate being notified of, 
  * and receiving any modifications you may make to the source code that might serve
  * the general public.
- * 
- * PORT80.CPP contains the code for the emulated Port 80 devices.
  */
+
+/** 
+ * \file
+ * Contains the code for the emulated Port 80 device.
+ *
+ * \author Camiel Vanderhoeven (camiel@camicom.com / www.camicom.com)
+ **/
 
 #include "StdAfx.h"
 #include "Port80.h"
 #include "System.h"
 
-//////////////////////////////////////////////////////////////////////
-// Construction/Destruction
-//////////////////////////////////////////////////////////////////////
+/**
+ * Constructor.
+ **/
 
 CPort80::CPort80(CSystem * c) : CSystemComponent(c)
 {
@@ -39,10 +44,19 @@ CPort80::CPort80(CSystem * c) : CSystemComponent(c)
   p80 = 0;
 }
 
+/**
+ * Destructor.
+ **/
+
 CPort80::~CPort80()
 {
 
 }
+
+/**
+ * Read from port 80.
+ * Returns the value last written to port 80.
+ **/
 
 u64 CPort80::ReadMem(int index, u64 address, int dsize)
 {
@@ -52,6 +66,10 @@ u64 CPort80::ReadMem(int index, u64 address, int dsize)
 
   return p80;
 }
+
+/**
+ * Write to port 80.
+ **/
 
 void CPort80::WriteMem(int index, u64 address, int dsize, u64 data)
 {

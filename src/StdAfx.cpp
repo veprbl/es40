@@ -1,4 +1,4 @@
-/** ES40 emulator.
+/* ES40 emulator.
  * Copyright (C) 2007 by Camiel Vanderhoeven
  *
  * Website: www.camicom.com
@@ -25,7 +25,15 @@
  * stdafx.cpp : source file that includes just the standard includes
  * AlphaSim.pch will be the pre-compiled header
  * stdafx.obj will contain the pre-compiled type information
+ */
+
+/** 
+ * \file
+ * Source file that includes just the standard includes.
+ * AlphaSim.pch will be the pre-compiled header.
+ * stdafx.obj will contain the pre-compiled type information.
  *
+ * \author Camiel Vanderhoeven (camiel@camicom.com / www.camicom.com)
  **/
 
 #include "StdAfx.h"

@@ -21,18 +21,22 @@
  * Although this is not required, the author would appreciate being notified of, 
  * and receiving any modifications you may make to the source code that might serve
  * the general public.
- * 
- * SYSTEMCOMPONENT.CPP contains the code for the base class for devices that connect 
- * to the emulated Typhoon Chipset devices.
  */
+
+/**
+ * \file 
+ * Contains code for the base class for devices that connect to the chipset.
+ *
+ * \author Camiel Vanderhoeven (camiel@camicom.com / www.camicom.com)
+ **/
 
 #include "StdAfx.h"
 #include "SystemComponent.h"
 #include "System.h"
 
-//////////////////////////////////////////////////////////////////////
-// Construction/Destruction
-//////////////////////////////////////////////////////////////////////
+/**
+ * Constructor.
+ **/
 
 CSystemComponent::CSystemComponent(CSystem * system)
 {
@@ -40,16 +44,27 @@ CSystemComponent::CSystemComponent(CSystem * system)
   cSystem = system;
 }
 
+/**
+ * destructor.
+ **/
+
 CSystemComponent::~CSystemComponent()
 {
 
 }
 
+/**
+ * Save state to a Virtual Machine State file.
+ **/
 
 void CSystemComponent::SaveState(FILE *f)
 {
   f;
 }
+
+/**
+ * Restore state from a Virtual Machine State file.
+ **/
 
 void CSystemComponent::RestoreState(FILE *f)
 {

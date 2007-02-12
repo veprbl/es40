@@ -21,17 +21,22 @@
  * Although this is not required, the author would appreciate being notified of, 
  * and receiving any modifications you may make to the source code that might serve
  * the general public.
- * 
- * FLOPPYCONTROLLER.CPP contains the code for the emulated Floppy Controller devices.
  */
+
+/** 
+ * \file
+ * Contains the code for the emulated Floppy Controller devices.
+ *
+ * \author Camiel Vanderhoeven (camiel@camicom.com / www.camicom.com)
+ **/
 
 #include "StdAfx.h"
 #include "FloppyController.h"
 #include "System.h"
 
-//////////////////////////////////////////////////////////////////////
-// Construction/Destruction
-//////////////////////////////////////////////////////////////////////
+/**
+ * Constructor.
+ **/
 
 CFloppyController::CFloppyController(CSystem * c, int id) : CSystemComponent(c)
 {
@@ -86,6 +91,10 @@ CFloppyController::CFloppyController(CSystem * c, int id) : CSystemComponent(c)
   printf("%%FDC-I-INIT: Floppy Drive Controller emulator initialized.\n");
 
 }
+
+/**
+ * Destructor.
+ **/
 
 CFloppyController::~CFloppyController()
 {

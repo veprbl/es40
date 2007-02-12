@@ -21,9 +21,14 @@
  * Although this is not required, the author would appreciate being notified of, 
  * and receiving any modifications you may make to the source code that might serve
  * the general public.
- * 
- * FLASH.CPP contains the code for the emulated Flash ROM devices.
  */
+
+/** 
+ * \file
+ * Contains the code for the emulated Flash ROM devices.
+ *
+ * \author Camiel Vanderhoeven (camiel@camicom.com / www.camicom.com)
+ **/
 
 #include "StdAfx.h"
 #include "Flash.h"
@@ -200,7 +205,7 @@ void CFlash::WriteMem(int index, u64 address, int dsize, u64 data)
 
 
 /**
- * Save component state to file.
+ * Save state to a Virtual Machine State file.
  **/
 
 void CFlash::SaveState(FILE * f)
@@ -210,7 +215,7 @@ void CFlash::SaveState(FILE * f)
 }
 
 /**
- * Restore component state from file.
+ * Restore state from a Virtual Machine state file.
  **/
 
 void CFlash::RestoreState(FILE * f)

@@ -21,9 +21,14 @@
  * Although this is not required, the author would appreciate being notified of, 
  * and receiving any modifications you may make to the source code that might serve
  * the general public.
- * 
- * ALPHACPU.CPP contains the code for the emulated DecChip 21264CB EV68 Alpha processor.
- */
+ */ 
+
+/**
+ * \file 
+ * Contains the code for the emulated DecChip 21264CB EV68 Alpha processor.
+ *
+ * \author Camiel Vanderhoeven (camiel@camicom.com / www.camicom.com)
+ **/
 
 #include "StdAfx.h"
 #include "AlphaCPU.h"
@@ -44,10 +49,21 @@
 #define MT_FPCR       X64(700)
 #define RESET         X64(780)
 
-// EV68CB pass 4
-#define CPU_CHIP_ID 0x21
-#define CPU_TYPE_MAJOR 12
-#define CPU_TYPE_MINOR 6
+/** Chip ID (EV68CB pass 4) [HRM p 5-16]; actual value derived from SRM-code */
+#define CPU_CHIP_ID	0x21
+/** Major CPU type (EV68CB) [ARM pp D-1..3] */
+#define CPU_TYPE_MAJOR	12
+/** Minor CPU type (pass 4) [ARM pp D-1..3] */
+#define CPU_TYPE_MINOR	6
+/** Implementation version [HRM p 2-38; ARM p D-5] */
+#define CPU_IMPLVER	2
+/** Architecture mask [HRM p 2-38; ARM p D-4]; FIX not implemented */
+#define CPU_AMASK	X64(1305)
+
+#define X64_BYTE	X64(ff)
+#define X64_WORD	X64(ffff)
+#define X64_LONG	X64(ffffffff)
+#define X64_QUAD	X64(ffffffffffffffff)
 
 #ifdef IDB
 
@@ -127,7 +143,6 @@ CAlphaCPU::CAlphaCPU(CSystem * system) : CSystemComponent (system)
   i_ctl_va_mode = 0;
   i_ctl_vptb = 0;
   i_stat = 0;
-  ier = 0;
   mm_stat = 0;
   pal_base = 0;
   pc = 0;
@@ -167,12 +182,12 @@ CAlphaCPU::~CAlphaCPU()
 
 }
 
-#define SEXT_8(x)  ((x&      X64(ff)) | (((x&      X64(ff))>>7 )?X64(ffffffffffffff00):0))
+#define SEXT_8(x)  ((x&      X64_BYTE) | (((x&      X64_BYTE)>>7 )?X64(ffffffffffffff00):0))
 #define SEXT_12(x) ((x&     X64(fff)) | (((x&     X64(fff))>>11)?X64(fffffffffffff000):0))
 #define SEXT_13(x) ((x&    X64(1fff)) | (((x&    X64(1fff))>>12)?X64(ffffffffffffe000):0))
-#define SEXT_16(x) ((x&    X64(ffff)) | (((x&    X64(ffff))>>15)?X64(ffffffffffff0000):0))
+#define SEXT_16(x) ((x&    X64_WORD) | (((x&    X64_WORD)>>15)?X64(ffffffffffff0000):0))
 #define SEXT_21(x) ((x&  X64(1fffff)) | (((x&  X64(1fffff))>>20)?X64(ffffffffffe00000):0))
-#define SEXT_32(x) ((x&X64(ffffffff)) | (((x&X64(ffffffff))>>31)?X64(ffffffff00000000):0))
+#define SEXT_32(x) ((x&X64_LONG) | (((x&X64_LONG)>>31)?X64(ffffffff00000000):0))
 
 #ifdef IDB
 
@@ -488,7 +503,6 @@ CAlphaCPU::~CAlphaCPU()
   if (bDisassemble)							\
     {								\
       u64 dbg_x = (current_pc + 4 + (DISP_21 * 4))&~X64(3);	\
-      bool dbg_y = false;					\
       DEBUG_XX							\
 	printf("%s r%d, ", a, REG_1&31);			\
       if (trc->get_fnc_name(dbg_x,&funcname))	\
@@ -578,7 +592,8 @@ CAlphaCPU::~CAlphaCPU()
  * Called each clock-cycle.
  * This is where the actual CPU emulation takes place. Each clocktick, one instruction
  * is processed by the processor. The instruction pipeline is not emulated, things are
- * complicated enough as it is.
+ * complicated enough as it is. The one exception is the instruction cache, which is
+ * implemented, to accomodate self-modifying code.
  **/
 
 void CAlphaCPU::DoClock()
@@ -900,7 +915,7 @@ void CAlphaCPU::DoClock()
 	  DEBUG_OP("EQV");
 	  return;
         case 0x61: // AMASK
-	  r[REG_3] = V_2 & ~X64(1305); // BWX,CIX,MVI,trapPC,prefMod 
+	  r[REG_3] = V_2 & ~CPU_AMASK; // BWX,CIX,MVI,trapPC,prefMod 
 	  DEBUG_OP_R23("AMASK");
 	  return;
         case 0x64: // CMOVLE
@@ -914,7 +929,7 @@ void CAlphaCPU::DoClock()
 	  DEBUG_OP("CMOVGT");
 	  return;
         case 0x6c: // IMPLVER
-	  r[REG_3] = 2;
+	  r[REG_3] = CPU_IMPLVER;
 	  DEBUG_OP_R3("IMPLVER");
 	  return;
         default:
@@ -927,43 +942,43 @@ void CAlphaCPU::DoClock()
       switch (function)
         {
         case 0x02: //MSKBL
-	  r[REG_3] = r[REG_1] & ~(X64(ff)<<((V_2&7)*8));
+	  r[REG_3] = r[REG_1] & ~(X64_BYTE<<((V_2&7)*8));
 	  DEBUG_OP("MSKBL");
 	  return;
         case 0x06: // EXTBL
-	  r[REG_3] = (r[REG_1] >> ((V_2&7)*8)) & X64(ff);
+	  r[REG_3] = (r[REG_1] >> ((V_2&7)*8)) & X64_BYTE;
 	  DEBUG_OP("EXTBL");
 	  return;
         case 0x0b: // INSBL
-	  r[REG_3] = (r[REG_1] & X64(ff)) << ((V_2&7)*8);
+	  r[REG_3] = (r[REG_1] & X64_BYTE) << ((V_2&7)*8);
 	  DEBUG_OP("INSBL");
 	  return;
         case 0x12: // MSKWL
-	  r[REG_3] = r[REG_1] & ~(X64(ffff)<<((V_2&7)*8));
+	  r[REG_3] = r[REG_1] & ~(X64_WORD<<((V_2&7)*8));
 	  DEBUG_OP("MSKWL");
 	  return;
         case 0x16: // EXTWL
-	  r[REG_3] = (r[REG_1] >> ((V_2&7)*8))&X64(ffff);
+	  r[REG_3] = (r[REG_1] >> ((V_2&7)*8))&X64_WORD;
 	  DEBUG_OP("EXTWL");
 	  return;
         case 0x1b: // INSWL
-	  r[REG_3] = (r[REG_1]&X64(ffff)) << ((V_2&7)*8);
+	  r[REG_3] = (r[REG_1]&X64_WORD) << ((V_2&7)*8);
 	  DEBUG_OP("INSWL");
 	  return;
         case 0x22: // MSKLL
-	  r[REG_3] = r[REG_1] & ~(X64(ffffffff)<<((V_2&7)*8));
+	  r[REG_3] = r[REG_1] & ~(X64_LONG<<((V_2&7)*8));
 	  DEBUG_OP("MSKLL");
 	  return;
         case 0x26: // EXTLL
-	  r[REG_3] = (r[REG_1] >> ((V_2&7)*8))&X64(ffffffff);
+	  r[REG_3] = (r[REG_1] >> ((V_2&7)*8))&X64_LONG;
 	  DEBUG_OP("EXTLL");
 	  return;
         case 0x2b: // INSLL
-	  r[REG_3] = (r[REG_1]&X64(ffffffff)) << ((V_2&7)*8);
+	  r[REG_3] = (r[REG_1]&X64_LONG) << ((V_2&7)*8);
 	  DEBUG_OP("INSLL");
 	  return;
         case 0x32: // MSKQL
-	  r[REG_3] = r[REG_1] & ~(X64(ffffffffffffffff)<<((V_2&7)*8));
+	  r[REG_3] = r[REG_1] & ~(X64_QUAD<<((V_2&7)*8));
 	  DEBUG_OP("MSKQL");
 	  return;
         case 0x36: // EXTQL
@@ -1006,43 +1021,43 @@ void CAlphaCPU::DoClock()
 	  return;
         case 0x3c: // SRA
 	  r[REG_3] = r[REG_1] >> (V_2 & 63) |
-	    ((r[REG_1]>>63)?(X64(ffffffffffffffff)<<(64-(V_2 & 63))):0);
+	    ((r[REG_1]>>63)?(X64_QUAD<<(64-(V_2 & 63))):0);
 	  DEBUG_OP("SRA");
 	  return;
         case 0x52: //MSKWH
-	  r[REG_3] = r[REG_1] & ~(X64(ffff)>>(64-((V_2 & 7)*8)));
+	  r[REG_3] = r[REG_1] & ~(X64_WORD>>(64-((V_2 & 7)*8)));
 	  DEBUG_OP("MSKWH");
 	  return;
         case 0x57: // INSWH
-	  r[REG_3] = (r[REG_1]&X64(ffff)) >> (64-((V_2&7)*8));
+	  r[REG_3] = (r[REG_1]&X64_WORD) >> (64-((V_2&7)*8));
 	  DEBUG_OP("INSWH");
 	  return;
         case 0x5a: // EXTWH
-	  r[REG_3] = (r[REG_1] << (64-((V_2&7)*8))) & X64(ffff);
+	  r[REG_3] = (r[REG_1] << (64-((V_2&7)*8))) & X64_WORD;
 	  DEBUG_OP("EXTWH");
 	  return;
         case 0x62: //MSKLH
-	  r[REG_3] = r[REG_1] & ~(X64(ffffffff)>>(64-((V_2&7)*8)));
+	  r[REG_3] = r[REG_1] & ~(X64_LONG>>(64-((V_2&7)*8)));
 	  DEBUG_OP("MSKLH");
 	  return;
         case 0x67: // INSLH
-	  r[REG_3] = (r[REG_1]&X64(ffffffff)) >> (64-((V_2&7)*8));
+	  r[REG_3] = (r[REG_1]&X64_LONG) >> (64-((V_2&7)*8));
 	  DEBUG_OP("INSLH");
 	  return;
         case 0x6a: // EXTLH
-	  r[REG_3] = (r[REG_1] << (64-((V_2&7)*8))) & X64(ffffffff);
+	  r[REG_3] = (r[REG_1] << (64-((V_2&7)*8))) & X64_LONG;
 	  DEBUG_OP("EXTLH");
 	  return;
         case 0x72: //MSKQH
-	  r[REG_3] = r[REG_1] & ~(X64(ffffffffffffffff)>>(64-((V_2&7)*8)));
+	  r[REG_3] = r[REG_1] & ~(X64_QUAD>>(64-((V_2&7)*8)));
 	  DEBUG_OP("MSKQH");
 	  return;
         case 0x77: // INSQH
-	  r[REG_3] = (r[REG_1]&X64(ffffffffffffffff)) >> (64-((V_2&7)*8));
+	  r[REG_3] = (r[REG_1]&X64_QUAD) >> (64-((V_2&7)*8));
 	  DEBUG_OP("INSQH");
 	  return;
         case 0x7a: // EXTQH
-	  r[REG_3] = (r[REG_1] << (64-((V_2&7)*8))) & X64(ffffffffffffffff);
+	  r[REG_3] = (r[REG_1] << (64-((V_2&7)*8))) & X64_QUAD;
 	  DEBUG_OP("EXTQH");
 	  return;
         default:
@@ -1416,10 +1431,10 @@ void CAlphaCPU::DoClock()
 	  temp_64_1 = r[REG_1];
 	  temp_64_2 = V_2;
 	  for(i=0;i<64;i+=8)
-	    if ((s8)((temp_64_1>>i)&X64(ff)) > (s8)((temp_64_2>>i)&X64(ff)))
-	      temp_64 |=    ((u64)((s8)((temp_64_1>>i)&X64(ff)) - (s8)((temp_64_2>>i)&X64(ff)))<<i);
+	    if ((s8)((temp_64_1>>i)&X64_BYTE) > (s8)((temp_64_2>>i)&X64_BYTE))
+	      temp_64 |=    ((u64)((s8)((temp_64_1>>i)&X64_BYTE) - (s8)((temp_64_2>>i)&X64_BYTE))<<i);
 	    else
-	      temp_64 |=    ((u64)((s8)((temp_64_2>>i)&X64(ff)) - (s8)((temp_64_1>>i)&X64(ff)))<<i);
+	      temp_64 |=    ((u64)((s8)((temp_64_2>>i)&X64_BYTE) - (s8)((temp_64_1>>i)&X64_BYTE))<<i);
 	  r[REG_3] = temp_64;
 	  DEBUG_OP("PERR");
 	  return;
@@ -1479,10 +1494,10 @@ void CAlphaCPU::DoClock()
 	  temp_64_2 = V_2;
 	  for(i=0;i<64;i+= 8)
             {
-	      if ((s8)((temp_64_1>>i)&X64(ff)) > (s8)((temp_64_2>>i)&X64(ff)))
-		temp_64 |=    (((temp_64_2>>i)&X64(ff))<<i);
+	      if ((s8)((temp_64_1>>i)&X64_BYTE) > (s8)((temp_64_2>>i)&X64_BYTE))
+		temp_64 |=    (((temp_64_2>>i)&X64_BYTE)<<i);
 	      else
-		temp_64 |=    (((temp_64_1>>i)&X64(ff))<<i);
+		temp_64 |=    (((temp_64_1>>i)&X64_BYTE)<<i);
             }
 	  DEBUG_OP("MINSB8");
 	  return;
@@ -1492,10 +1507,10 @@ void CAlphaCPU::DoClock()
 	  temp_64_2 = V_2;
 	  for(i=0;i<64;i+= 16)
             {
-	      if ((s16)((temp_64_1>>i)&X64(ffff)) > (s16)((temp_64_2>>i)&X64(ffff)))
-		temp_64 |=    (((temp_64_2>>i)&X64(ffff))<<i);
+	      if ((s16)((temp_64_1>>i)&X64_WORD) > (s16)((temp_64_2>>i)&X64_WORD))
+		temp_64 |=    (((temp_64_2>>i)&X64_WORD)<<i);
 	      else
-		temp_64 |=    (((temp_64_1>>i)&X64(ffff))<<i);
+		temp_64 |=    (((temp_64_1>>i)&X64_WORD)<<i);
             }
 	  DEBUG_OP("MINSW4");
 	  return;
@@ -1505,10 +1520,10 @@ void CAlphaCPU::DoClock()
 	  temp_64_2 = V_2;
 	  for(i=0;i<64;i+= 8)
             {
-	      if ((u8)((temp_64_1>>i)&X64(ff)) > (u8)((temp_64_2>>i)&X64(ff)))
-		temp_64 |=    (((temp_64_2>>i)&X64(ff))<<i);
+	      if ((u8)((temp_64_1>>i)&X64_BYTE) > (u8)((temp_64_2>>i)&X64_BYTE))
+		temp_64 |=    (((temp_64_2>>i)&X64_BYTE)<<i);
 	      else
-		temp_64 |=    (((temp_64_1>>i)&X64(ff))<<i);
+		temp_64 |=    (((temp_64_1>>i)&X64_BYTE)<<i);
             }
 	  DEBUG_OP("MINUB8");
 	  return;
@@ -1518,10 +1533,10 @@ void CAlphaCPU::DoClock()
 	  temp_64_2 = V_2;
 	  for(i=0;i<64;i+= 16)
             {
-	      if ((u16)((temp_64_1>>i)&X64(ffff)) > (u16)((temp_64_2>>i)&X64(ffff)))
-		temp_64 |=    (((temp_64_2>>i)&X64(ffff))<<i);
+	      if ((u16)((temp_64_1>>i)&X64_WORD) > (u16)((temp_64_2>>i)&X64_WORD))
+		temp_64 |=    (((temp_64_2>>i)&X64_WORD)<<i);
 	      else
-		temp_64 |=    (((temp_64_1>>i)&X64(ffff))<<i);
+		temp_64 |=    (((temp_64_1>>i)&X64_WORD)<<i);
             }
 	  DEBUG_OP("MINUW4");
 	  return;
@@ -1531,10 +1546,10 @@ void CAlphaCPU::DoClock()
 	  temp_64_2 = V_2;
 	  for(i=0;i<64;i+= 8)
             {
-	      if ((u8)((temp_64_1>>i)&X64(ff)) > (u8)((temp_64_2>>i)&X64(ff)))
-		temp_64 |=    (((temp_64_1>>i)&X64(ff))<<i);
+	      if ((u8)((temp_64_1>>i)&X64_BYTE) > (u8)((temp_64_2>>i)&X64_BYTE))
+		temp_64 |=    (((temp_64_1>>i)&X64_BYTE)<<i);
 	      else
-		temp_64 |=    (((temp_64_2>>i)&X64(ff))<<i);
+		temp_64 |=    (((temp_64_2>>i)&X64_BYTE)<<i);
             }
 	  DEBUG_OP("MAXUB8");
 	  return;
@@ -1544,10 +1559,10 @@ void CAlphaCPU::DoClock()
 	  temp_64_2 = V_2;
 	  for(i=0;i<64;i+= 16)
             {
-	      if ((u16)((temp_64_1>>i)&X64(ffff)) > (u16)((temp_64_2>>i)&X64(ffff)))
-		temp_64 |=    (((temp_64_1>>i)&X64(ffff))<<i);
+	      if ((u16)((temp_64_1>>i)&X64_WORD) > (u16)((temp_64_2>>i)&X64_WORD))
+		temp_64 |=    (((temp_64_1>>i)&X64_WORD)<<i);
 	      else
-		temp_64 |=    (((temp_64_2>>i)&X64(ffff))<<i);
+		temp_64 |=    (((temp_64_2>>i)&X64_WORD)<<i);
             }
 	  DEBUG_OP("MAXUW4");
 	  return;
@@ -1557,10 +1572,10 @@ void CAlphaCPU::DoClock()
 	  temp_64_2 = V_2;
 	  for(i=0;i<64;i+= 8)
             {
-	      if ((s8)((temp_64_1>>i)&X64(ff)) > (s8)((temp_64_2>>i)&X64(ff)))
-		temp_64 |=    (((temp_64_1>>i)&X64(ff))<<i);
+	      if ((s8)((temp_64_1>>i)&X64_BYTE) > (s8)((temp_64_2>>i)&X64_BYTE))
+		temp_64 |=    (((temp_64_1>>i)&X64_BYTE)<<i);
 	      else
-		temp_64 |=    (((temp_64_2>>i)&X64(ff))<<i);
+		temp_64 |=    (((temp_64_2>>i)&X64_BYTE)<<i);
             }
 	  DEBUG_OP("MAXSB8");
 	  return;
@@ -1570,10 +1585,10 @@ void CAlphaCPU::DoClock()
 	  temp_64_2 = V_2;
 	  for(i=0;i<64;i+= 16)
             {
-	      if ((s16)((temp_64_1>>i)&X64(ffff)) > (s16)((temp_64_2>>i)&X64(ffff)))
-		temp_64 |=    (((temp_64_1>>i)&X64(ffff))<<i);
+	      if ((s16)((temp_64_1>>i)&X64_WORD) > (s16)((temp_64_2>>i)&X64_WORD))
+		temp_64 |=    (((temp_64_1>>i)&X64_WORD)<<i);
 	      else
-		temp_64 |=    (((temp_64_2>>i)&X64(ffff))<<i);
+		temp_64 |=    (((temp_64_2>>i)&X64_WORD)<<i);
             }
 	  DEBUG_OP("MAXSW4");
 	  return;
@@ -2103,7 +2118,9 @@ void CAlphaCPU::DoClock()
     }
 }
 
-
+/**
+ * Save state to a Virtual Machine State file.
+ **/
 
 void CAlphaCPU::SaveState(FILE *f)
 {
@@ -2141,7 +2158,6 @@ void CAlphaCPU::SaveState(FILE *f)
 
   fwrite(&alt_cm,1,sizeof(int),f);
   fwrite(&smc,1,sizeof(int),f);
-  fwrite(&ier,1,sizeof(int),f);
   fwrite(&i_ctl_va_mode,1,sizeof(int),f);
   fwrite(&va_ctl_va_mode,1,sizeof(int),f);
   fwrite(&cm,1,sizeof(int),f);
@@ -2170,6 +2186,10 @@ void CAlphaCPU::SaveState(FILE *f)
   itb->SaveState(f);
   dtb->SaveState(f);
 }
+
+/**
+ * Restore state from a Virtual Machine State file.
+ **/
 
 void CAlphaCPU::RestoreState(FILE *f)
 {
@@ -2207,7 +2227,6 @@ void CAlphaCPU::RestoreState(FILE *f)
 
   fread(&alt_cm,1,sizeof(int),f);
   fread(&smc,1,sizeof(int),f);
-  fread(&ier,1,sizeof(int),f);
   fread(&i_ctl_va_mode,1,sizeof(int),f);
   fread(&va_ctl_va_mode,1,sizeof(int),f);
   fread(&cm,1,sizeof(int),f);

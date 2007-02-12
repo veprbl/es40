@@ -21,10 +21,14 @@
  * Although this is not required, the author would appreciate being notified of, 
  * and receiving any modifications you may make to the source code that might serve
  * the general public.
- * 
- * TRANSLATIONBUFFER.H contains the definitions for the emulated on-cpu instruction and
- * data translation buffers.
  */
+
+/**
+ * \file 
+ * Contains the definitions for the emulated on-cpu translation buffers.
+ *
+ * \author Camiel Vanderhoeven (camiel@camicom.com / www.camicom.com)
+ **/
 
 #if !defined(__TRANSLATIONBUFFER_H__)
 #define __TRANSLATIONBUFFER_H__
@@ -36,26 +40,24 @@
 #include "datatypes.h"
 #include "System.h"
 
-extern CSystem * systm;
+#define TB_ENTRIES	128
 
-#define TB_ENTRIES 128
-
-#define CM_KERNEL		0
+#define CM_KERNEL	0
 #define CM_EXECUTIVE	1
 #define CM_SUPERVISOR	2
-#define CM_USER			3
+#define CM_USER		3
 
-#define ACCESS_READ		0
+#define ACCESS_READ	0
 #define ACCESS_WRITE	1
 
-#define E_ACCESS		1
-#define E_NOT_FOUND		2
+#define E_ACCESS	1
+#define E_NOT_FOUND	2
 
-#define MBOX_PHYS_S 19
-#define ASM_BIT     4
-#define GH_BIT      5
+#define MBOX_PHYS_S	19
+#define ASM_BIT		4
+#define GH_BIT		5
 #define ACCESS_BIT	8
-#define FAULT_BIT   1
+#define FAULT_BIT	1
 
 /**
  * Translation Buffer Entry.
@@ -77,6 +79,8 @@ struct STBEntry {
  * Translation Buffer.
  * The translation buffers are two on-chip translation units for translating virtual addresses to physical
  * memory. Each Alpha CPU has one translation buffers for instructions, and one for data.
+ * For speed, most methods are implemented as inline functions. Documentation for the ITB can be found in
+ * [HRM 5-6..7].
  **/
 
 class CTranslationBuffer  
@@ -84,8 +88,8 @@ class CTranslationBuffer
  public:
   virtual void RestoreState(FILE * f);
   void SaveState(FILE * f);
-  u64 v_mask;
-  u64 p_mask;
+  u64 v_mask;				/**< bitmask for the virtual part of the address. */
+  u64 p_mask;				/**< bitmask for the physical part of the address. */
   int FindEntry(u64 virt, int asn);
   void InvalidateAll();
   void InvalidateAllProcess();
@@ -252,20 +256,6 @@ inline int CTranslationBuffer::convert_address(u64 virt, u64 *phys, u8 access, b
   // all is ok...
 
   *phys = (entry[i].phys & v_mask) | (virt & p_mask);
-
-  //	if (((*phys) & X64(00000fffffffffff)) != (virt & X64(00000fffffffffff)))
-  //	{
-#ifdef _WIN32
-  //		printf("*** %s VIRT: %016I64x translates to PHYS %016I64x\n",bIBOX?"IBOX":"MBOX",virt,*phys);
-#else
-  //		printf("*** %s VIRT: %016llx translates to PHYS %016llx\n",bIBOX?"IBOX":"MBOX",virt,*phys);
-#endif
-#ifdef _WIN32
-  //		fprintf(systm->trace->trace_file(),"*** %s VIRT: %016I64x translates to PHYS %016I64x\n",bIBOX?"IBOX":"MBOX",virt,*phys);
-#else
-  //		fprintf(systm->trace->trace_file(),"*** %s VIRT: %016llx translates to PHYS %016llx\n",bIBOX?"IBOX":"MBOX",virt,*phys);
-#endif
-  //	}
 
   return 0;
 }

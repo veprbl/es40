@@ -21,9 +21,14 @@
  * Although this is not required, the author would appreciate being notified of, 
  * and receiving any modifications you may make to the source code that might serve
  * the general public.
- * 
- * SERIAL.H contains the definitions for the emulated Serial Port devices.
  */
+
+/**
+ * \file 
+ * Contains the definitions for the emulated Serial Port devices.
+ *
+ * \author Camiel Vanderhoeven (camiel@camicom.com / www.camicom.com)
+ **/
 
 #if !defined(AFX_SERIAL_H__7FD919DE_84AC_4364_A682_0BE164142E9B__INCLUDED_)
 #define AFX_SERIAL_H__7FD919DE_84AC_4364_A682_0BE164142E9B__INCLUDED_
@@ -33,6 +38,11 @@
 #endif // _MSC_VER > 1000
 
 #include "SystemComponent.h"
+
+/**
+ * Emulated serial port.
+ * The serial port is translated to a telnet port.
+ **/
 
 class CSerial : public CSystemComponent  
 {

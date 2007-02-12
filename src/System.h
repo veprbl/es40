@@ -21,17 +21,21 @@
  * Although this is not required, the author would appreciate being notified of, 
  * and receiving any modifications you may make to the source code that might serve
  * the general public.
- * 
- * SYSTEM.H contains the definitions for the emulated Typhoon Chipset devices.
+ */
+
+/**
+ * \file 
+ * Contains the definitions for the emulated Typhoon Chipset devices.
  *
+ * \author Camiel Vanderhoeven (camiel@camicom.com / www.camicom.com)
  **/
 
 #include "datatypes.h"
 #include "SystemComponent.h"
 #include "TraceEngine.h"
 
-#if !defined(AFX_SYSTEM_H__210AB1B2_9C79_4C34_856A_D52C82CDD3E8__INCLUDED_)
-#define AFX_SYSTEM_H__210AB1B2_9C79_4C34_856A_D52C82CDD3E8__INCLUDED_
+#if !defined(__SYSTEM_H__)
+#define __SYSTEM_H__
 
 
 #define MAX_COMPONENTS 100
@@ -40,13 +44,22 @@
 #pragma once
 #endif // _MSC_VER > 1000
 
+/**
+ * Structure used for mapping memory ranges to devices.
+ **/
 
 struct SMemoryUser {
-  CSystemComponent * component;
-  int index;
-  u64 base;
-  u64 length;
+  CSystemComponent * component;	/**< Device that occupies this range. */
+  int index;			/**< Index within the device. 
+                                 *   Used by devices that occupy more than one range.
+                                 **/
+  u64 base;			/**< Address of first byte. */
+  u64 length;			/**< Number of bytes in range. */
 };
+
+/**
+ * Structure used for information about available ROM images.
+ **/
 
 struct SROM_data
 {
@@ -63,12 +76,18 @@ struct SROM_data
   char tp[4];
 };
 
+/**
+ * Structure used for configuration values.
+ **/
+
 struct SConfig {
-  char *key;
-  char *value;
+  char *key;		/**< Name of the value. */
+  char *value;		/**< Value of the value. */
 };
 
-
+/**
+ * Emulated Typhoonchipset.
+ **/
 
 class CSystem  
 {
@@ -133,7 +152,7 @@ class CSystem
   struct SMemoryUser * asMemories[MAX_COMPONENTS];
 
   struct SROM_data * asROMs[10];
-  unsigned int iNumROMs;
+  int iNumROMs;
   class CAlphaCPU * acCPUs[4];
 
 
@@ -143,4 +162,4 @@ class CSystem
 
 };
 
-#endif // !defined(AFX_SYSTEM_H__210AB1B2_9C79_4C34_856A_D52C82CDD3E8__INCLUDED_)
+#endif // !defined(__SYSTEM_H__)

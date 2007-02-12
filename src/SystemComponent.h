@@ -21,10 +21,14 @@
  * Although this is not required, the author would appreciate being notified of, 
  * and receiving any modifications you may make to the source code that might serve
  * the general public.
- * 
- * SYSTEMCOMPONENT.H contains the definitions for the base class for devices that connect 
- * to the emulated Typhoon Chipset devices.
  */
+
+/**
+ * \file 
+ * Contains definitions for the base class for devices that connect to the chipset.
+ *
+ * \author Camiel Vanderhoeven (camiel@camicom.com / www.camicom.com)
+ **/
 
 
 #include "datatypes.h"
@@ -36,6 +40,10 @@
 #if _MSC_VER > 1000
 #pragma once
 #endif // _MSC_VER > 1000
+
+/**
+ * Base class for devices.
+ **/
 
 class CSystemComponent  
 {

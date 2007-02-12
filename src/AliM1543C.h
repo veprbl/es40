@@ -21,9 +21,14 @@
  * Although this is not required, the author would appreciate being notified of, 
  * and receiving any modifications you may make to the source code that might serve
  * the general public.
- * 
- * ALIM1543C.H contains the definitions for the emulated Ali M1543C chipset devices.
  */
+
+/**
+ * \file 
+ * Contains the definitions for the emulated Ali M1543C chipset devices.
+ *
+ * \author Camiel Vanderhoeven (camiel@camicom.com / www.camicom.com)
+ **/
 
 #if !defined(__ALIM1543C_H__)
 #define __ALIM1543C_H__

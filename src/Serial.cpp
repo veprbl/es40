@@ -21,9 +21,14 @@
  * Although this is not required, the author would appreciate being notified of, 
  * and receiving any modifications you may make to the source code that might serve
  * the general public.
- * 
- * SERIAL.CPP contains the code for the emulated Serial Port devices.
  */
+
+/** 
+ * \file
+ * Contains the code for the emulated Serial Port devices.
+ *
+ * \author Camiel Vanderhoeven (camiel@camicom.com / www.camicom.com)
+ **/
 
 #include "StdAfx.h"
 #include "Serial.h"
@@ -69,9 +74,9 @@ bool bStop     = false;
 
 #define FIFO_SIZE 1024
 
-//////////////////////////////////////////////////////////////////////
-// Construction/Destruction
-//////////////////////////////////////////////////////////////////////
+/**
+ * Constructor.
+ **/
 
 CSerial::CSerial(CSystem * c, int number) : CSystemComponent(c)
 {
@@ -171,6 +176,10 @@ CSerial::CSerial(CSystem * c, int number) : CSystemComponent(c)
   bMSR = 0x30; // CTS, DSR
   bIIR = 0x01; // no interrupt
 }
+
+/**
+ * Destructor.
+ **/
 
 CSerial::~CSerial()
 {

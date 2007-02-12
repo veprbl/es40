@@ -21,9 +21,14 @@
  * Although this is not required, the author would appreciate being notified of, 
  * and receiving any modifications you may make to the source code that might serve
  * the general public.
- * 
- * TRACEENGINE.H contains the definitions for the cpu tracing engine.
  */
+
+/**
+ * \file 
+ * Contains the definitions for the CPU tracing engine.
+ *
+ * \author Camiel Vanderhoeven (camiel@camicom.com / www.camicom.com)
+ **/
 
 #pragma once
 
@@ -31,12 +36,20 @@
 
 #include "datatypes.h"
 
+/**
+ * Structure used to define named functions within memory.
+ **/
+
 struct STraceFunction {
   u32 address;
   char * fn_name;
   char * fn_arglist;
   bool step_over;
 };
+
+/**
+ * Structure used to keep track of PRBR values.
+ **/
 
 struct STracePRBR {
   u64 prbr;
@@ -49,9 +62,17 @@ struct STracePRBR {
   int generation;
 };
 
+/**
+ * Structure used to keep track of CPU's
+ **/
+
 struct STraceCPU {
   int last_prbr;
 };
+
+/**
+ * CPU tracing engine.
+ **/
 
 class CTraceEngine
 {

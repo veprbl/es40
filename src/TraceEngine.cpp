@@ -21,9 +21,16 @@
  * Although this is not required, the author would appreciate being notified of, 
  * and receiving any modifications you may make to the source code that might serve
  * the general public.
- * 
- * TRACEENGINE.CPP contains the code for the cpu tracing engine.
  */
+
+/**
+ * \file 
+ * Contains the code for the CPU tracing engine.
+ * This will become the debugging engine (interactive debugger) soon.
+ *
+ * \author Camiel Vanderhoeven (camiel@camicom.com / www.camicom.com)
+ **/
+
 
 #ifdef IDB
 

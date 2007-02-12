@@ -21,9 +21,14 @@
  * Although this is not required, the author would appreciate being notified of, 
  * and receiving any modifications you may make to the source code that might serve
  * the general public.
- * 
- * FLASH.H contains the definitions for the emulated Flash ROM devices.
  */
+
+/**
+ * \file 
+ * Contains the definitions for the emulated Flash ROM devices.
+ *
+ * \author Camiel Vanderhoeven (camiel@camicom.com / www.camicom.com)
+ **/
 
 #if !defined(__FLASH_H__)
 #define __FLASH_H__
@@ -35,7 +40,7 @@
 #include "SystemComponent.h"
 
 /**
- * Flash memory.
+ * Emulated flash memory.
  * Flash memory is only used for storing configuration data (such as SRM console variables),
  * it is not used for firmware.
  **/

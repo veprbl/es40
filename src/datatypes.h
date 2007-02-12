@@ -21,10 +21,14 @@
  * Although this is not required, the author would appreciate being notified of, 
  * and receiving any modifications you may make to the source code that might serve
  * the general public.
- * 
- * DATATYPES.H contains the datatype definitions for use with Microsoft Visual C++
- * and Linux.
  */
+
+/** 
+ * \file
+ * Contains the datatype definitions for use with Microsoft Visual C++ and Linux.
+ *
+ * \author Camiel Vanderhoeven (camiel@camicom.com / www.camicom.com)
+ **/
 
 #if !defined(__DATATYPES_H__)
 #define __DATATYPES_H__

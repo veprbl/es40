@@ -21,9 +21,14 @@
  * Although this is not required, the author would appreciate being notified of, 
  * and receiving any modifications you may make to the source code that might serve
  * the general public.
- * 
- * DPR.H contains the definitions for the emulated Dual Port Ram and RMC devices.
  */
+
+/**
+ * \file 
+ * Contains the definitions for the emulated Dual Port Ram and RMC devices.
+ *
+ * \author Camiel Vanderhoeven (camiel@camicom.com / www.camicom.com)
+ **/
 
 #if !defined(__DPR_H__)
 #define __DPR_H__

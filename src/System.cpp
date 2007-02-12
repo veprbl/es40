@@ -21,9 +21,14 @@
  * Although this is not required, the author would appreciate being notified of, 
  * and receiving any modifications you may make to the source code that might serve
  * the general public.
- * 
- * SYSTEM.CPP contains the code for the emulated Typhoon Chipset devices.
  */
+
+/**
+ * \file 
+ * Contains the code for the emulated Typhoon Chipset devices.
+ *
+ * \author Camiel Vanderhoeven (camiel@camicom.com / www.camicom.com)
+ **/
 
 #include "StdAfx.h"
 #include "System.h"
@@ -37,9 +42,9 @@
 #endif
 
 
-//////////////////////////////////////////////////////////////////////
-// Construction/Destruction
-//////////////////////////////////////////////////////////////////////
+/**
+ * Constructor.
+ **/
 
 CSystem::CSystem(char *filename)
 {
@@ -106,6 +111,10 @@ CSystem::CSystem(char *filename)
   printf("%%TYP-I-INIT: 21272 Typhoon chipset emulator initialized.\n");
   printf("%%TYP-I-CONF: 21272 Typhoon config: 1 Cchip, 8 DChip, 2 PChip.\n");
 }
+
+/**
+ * Destructor.
+ **/
 
 CSystem::~CSystem()
 {
@@ -733,7 +742,7 @@ int CSystem::load_ROM2(char *filename, int start_at, u64 load_at, u8 rom_type)
 
 u64 CSystem::Select_ROM()
 {
-  unsigned int i, result;
+  int i, result;
 
   if (!iNumROMs)
     {
