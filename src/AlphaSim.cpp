@@ -222,7 +222,7 @@ int main(int argc, char* argv[])
 #endif
 
 #ifdef DO_SETPC
-  cpu[0]->pc = DO_SETPC;
+  cpu[0]->set_pc(DO_SETPC);
 #endif
 
   ff = fopen(systm->GetConfig("rom.flash","flash.rom"),"rb");
@@ -246,11 +246,11 @@ int main(int argc, char* argv[])
 #endif
 
 #ifdef RUN_GT
-      if ((cpu[0]->pc&~X64(3)) > RUN_GT)
+      if (cpu[0]->get_clean_pc() > RUN_GT)
 	break;
 #endif
 #ifdef RUN_LT
-	if ((cpu[0]->pc&~X64(3)) < RUN_LT)
+	if (cpu[0]->get_clean_pc() < RUN_LT)
 	  break;
 #endif
 
