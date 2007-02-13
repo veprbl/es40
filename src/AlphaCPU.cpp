@@ -135,7 +135,7 @@ CAlphaCPU::CAlphaCPU(CSystem * system) : CSystemComponent (system)
   smc = 1;
   m_ctl_spe = 0;
   i_ctl_spe = 0;
-  va_ctl_va_mode = 1;
+  va_ctl_va_mode = 0;
   va_ctl_vptb = 0;
 
   itb = new CTranslationBuffer (this, true);
@@ -270,7 +270,6 @@ void CAlphaCPU::DoClock()
       // check for interrupts
       if ((!(pc&X64(1))) && (eien & eir))
 	{
-	  //			printf("*** INTERRUPT %x ***\n",eir&eien);
 	  GO_PAL(INTERRUPT);
 	  return;
 	}
@@ -737,7 +736,7 @@ void CAlphaCPU::DoClock()
 	  temp_64_z = 0;
 	  for(i=0;i<64;i++)
 	    {
-	      if (temp_64_2&(X64(1)<<(u64)i))
+	      if ((temp_64_2 >> (u64)i) & X64(1))
 		{
 		  temp_64_y = temp_64_z;
 		  temp_64_x = temp_64_1<<(u64)i;
@@ -745,8 +744,8 @@ void CAlphaCPU::DoClock()
 
 		  if (temp_64_z<temp_64_x || temp_64_z<temp_64_y) // overflow
 		    temp_64++;
-
-		  temp_64 += temp_64_1>>(X64(40)-(u64)i);
+		  if (i)
+		    temp_64 += temp_64_1>>(X64(40)-(u64)i);
 		}
 	    }
 	  r[REG_3] = temp_64;
@@ -1312,10 +1311,6 @@ void CAlphaCPU::DoClock()
 	  cren  = (int)(r[REG_2]>>31) & 1;
 	  slen  = (int)(r[REG_2]>>32) & 1;
 	  eien  = (int)(r[REG_2]>>33) & 0x3f;
-	  ////////////////////////////////
-	  //printf("eien: 0x%x\n",eien);
-	  //scanf("\n");
-	  ////////////////////////////////
 	  DEBUG_MTPR("IER[_CM]");
 	  return;
         case 0x0c: // SIRR
@@ -1335,8 +1330,6 @@ void CAlphaCPU::DoClock()
         case 0x11: // i_ctl
 	  i_ctl_other = r[REG_2]    & X64(00000000007e2f67);
 	  i_ctl_vptb  = SEXT (r[REG_2] & X64(0000ffffc0000000),48);
-//	  i_ctl_vptb  =  (r[REG_2] & X64(0000ffffc0000000))
-//	    | ((r[REG_2] & X64(0000800000000000)) * X64(1fffe)); // SEXT
 	  i_ctl_spe   = (int)(r[REG_2]>>3) & 3;
 	  sde         = (r[REG_2]>>7) & 1;
 	  hwe         = (r[REG_2]>>12) & 1;
@@ -1444,9 +1437,7 @@ void CAlphaCPU::DoClock()
 	  return;
         case 0xc4: // VA_CTL
 	  va_ctl_vptb = SEXT(r[REG_2] & X64(0000ffffc0000000),48);
-//	  va_ctl_vptb    =  (r[REG_2] & X64(0000ffffc0000000))
-//	    | ((r[REG_2] & X64(0000800000000000)) * X64(1fffe)); // SEXT
-	  i_ctl_va_mode = (int)(r[REG_2]>>1) & 3;
+	  va_ctl_va_mode = (int)(r[REG_2]>>1) & 3;
 	  DEBUG_MTPR("VA_CTL");
 	  return;
         default:
