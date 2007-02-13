@@ -59,7 +59,7 @@ CSystemComponent::~CSystemComponent()
 
 void CSystemComponent::SaveState(FILE *f)
 {
-  f;
+  
 }
 
 /**
@@ -68,5 +68,5 @@ void CSystemComponent::SaveState(FILE *f)
 
 void CSystemComponent::RestoreState(FILE *f)
 {
-  f;
+  
 }

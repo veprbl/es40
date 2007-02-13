@@ -352,7 +352,7 @@ void CSystem::WriteMem(u64 address, int dsize, u64 data)
 	  return;
 	case X64(0000080130000100):
 	  // soft reset
-	  printf("Soft reset: %02x\n",data);
+	  printf("Soft reset: %02x\n",(int)data);
 	  return;
 	  //PERROR registers
 	case X64(00000801800003c0):
@@ -622,7 +622,7 @@ int CSystem::load_ROM(char *filename)
 		    }
 		  if (d->compression)
 		    {
-		      printf("%TYP-F-ROMCPR: Sorry... I can't handle compressed ROM images (yet)\n");
+		      printf("%%TYP-F-ROMCPR: Sorry... I can't handle compressed ROM images (yet)\n");
 		      free(d->filename);
 		      free(d);
 		    }
@@ -1040,10 +1040,10 @@ void CSystem::LoadConfig(char *filename) {
   while(!feof(f)) {
     fgets(linebuf,120,f);
     // terminate the line at the comment char, if any.
-    if(p=strchr(linebuf,'#')) *p=0;
+    if((p=strchr(linebuf,'#'))) *p=0;
     
     // if the line has an =, it is a config line.
-    if(p=strchr(linebuf,'=')) {
+    if((p=strchr(linebuf,'='))) {
       *p=0;
       keyp = linebuf;
       valp = p+1;

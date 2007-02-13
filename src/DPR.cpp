@@ -296,8 +296,6 @@ CDPR::~CDPR()
 
 u64 CDPR::ReadMem(int index, u64 address, int dsize)
 {
-  dsize;
-  index;
   u64 data = 0;
   int a = (int)(address>>6);
 
@@ -309,8 +307,6 @@ u64 CDPR::ReadMem(int index, u64 address, int dsize)
 
 void CDPR::WriteMem(int index, u64 address, int dsize, u64 data)
 {
-  dsize;
-  index;
   int i;
   int a = (int)(address>>6);
   char trcbuffer[1000];

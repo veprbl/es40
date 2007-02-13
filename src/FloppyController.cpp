@@ -103,9 +103,6 @@ CFloppyController::~CFloppyController()
 
 void CFloppyController::WriteMem(int index, u64 address, int dsize, u64 data)
 {
-  dsize;
-  index;
-
   switch (address)
     {
     case 0:
@@ -147,9 +144,6 @@ void CFloppyController::WriteMem(int index, u64 address, int dsize, u64 data)
 
 u64 CFloppyController::ReadMem(int index, u64 address, int dsize)
 {
-  dsize;
-  index;
-
   switch (address)
     {
     case 1:

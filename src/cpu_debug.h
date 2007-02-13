@@ -85,9 +85,11 @@ char * PAL_NAME[] = {
 
 #ifdef IDB
 
+#ifndef MINI_DEBUG_XX
+
 #define DEBUG_XX							\
   char * funcname = 0;							\
-  if (trc->get_fnc_name(current_pc&~X64(3),&funcname))	\
+  if (trc->get_fnc_name(current_pc&~X64(3),&funcname))			\
     {									\
       if (bListing && !strcmp(funcname,""))				\
         {								\
@@ -174,10 +176,27 @@ char * PAL_NAME[] = {
 	printf("\n%s:\n",funcname);					\
     }									\
   printf("%08x: ", (u32)current_pc);					\
-  if (bListing)							\
+  if (bListing)								\
     printf("%08x %c%c%c%c: ", (u32)ins,					\
 	   printable((char)(ins)),     printable((char)(ins>>8)),	\
 	   printable((char)(ins>>16)), printable((char)(ins>>24)));
+
+#else //MINI_DEBUG_XX
+
+/* MINI_DEBUG_XX just dumps the CPU state after every operation. This way
+   I should be able determine which operation behaves different between
+   icc and g++.  Since its going to be ~100M operations, we need to have it
+   be as concise as possible. */
+#define DEBUG_XX				\
+  char * funcname=NULL;				\
+  printf("PC:%llx ",pc);			\
+  for(int reg=0;reg<=30;reg++) {		\
+    if(r[reg]==0) continue;			\
+    printf("R%02d:%llx ",reg,r[reg]);		\
+  }						\
+  printf("\t");					
+
+#endif //MINI_DEBUG_XX
 
 #define UNKNOWN1					\
   if (bDisassemble)					\
@@ -235,7 +254,7 @@ char * PAL_NAME[] = {
     }
 
 #define DEBUG_OP_R1(a)							\
-  if (bDisassemble)								\
+  if (bDisassemble)							\
     {									\
       DEBUG_XX								\
 	printf("%s r%d", a, REG_1&31);					\
@@ -245,7 +264,7 @@ char * PAL_NAME[] = {
     }
 
 #define DEBUG_OP_R3(a)							\
-  if (bDisassemble)								\
+  if (bDisassemble)							\
     {									\
       DEBUG_XX								\
 	printf("%s r%d", a, REG_3&31);					\
@@ -255,7 +274,7 @@ char * PAL_NAME[] = {
     }
 
 #define DEBUG_OP_F1_R3(a)						\
-  if (bDisassemble)								\
+  if (bDisassemble)							\
     {									\
       DEBUG_XX								\
 	printf("%s f%d, r%d", a, FREG_1, REG_3&31);			\
@@ -265,7 +284,7 @@ char * PAL_NAME[] = {
     }
 
 #define DEBUG_OP_R23(a)							\
-  if (bDisassemble)								\
+  if (bDisassemble)							\
     {									\
       DEBUG_XX								\
 	printf("%s ", a);						\

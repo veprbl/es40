@@ -60,6 +60,7 @@
 //#define DO_SETPC X64(200000)
 //#define DO_SETPC X64(0)
 //#define DO_DISASM 1
+//#define DISASM_START 90*1000*1000
 
 CSystem * systm;
 CAlphaCPU * cpu[4];
@@ -72,7 +73,7 @@ CDPR * dpr = 0;
 
 // "standard" locations for a configuration file.  This
 // will be port specific.
-char path[][40]={
+char *path[]={
 #ifdef _WIN32
   ".\\es40.cfg",
   "c:\\es40.cfg",
@@ -209,7 +210,9 @@ int main(int argc, char* argv[])
 #endif
 
 #ifdef DO_DISASM
+#ifndef DISASM_START
   bDisassemble = true;
+#endif
 #endif
 
 #ifdef DO_TRACE
@@ -295,7 +298,16 @@ int main(int argc, char* argv[])
 	  sprintf(prf,"\r%dK | %8llx | %e i/s",i/1000,cpu[0]->get_pc(),ops_per_sec);
 #endif
 	  srl[1]->write(prf);
+
+#ifdef DO_DISASM
+	  /* Start disassembling here! */
+	  if(i > DISASM_START) 
+	    bDisassemble = true;
+#endif
+
 	}
+
+
     }
 #ifdef _WIN32
   QueryPerformanceCounter(&after);

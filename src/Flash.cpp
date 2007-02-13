@@ -77,9 +77,6 @@ CFlash::~CFlash()
 
 u64 CFlash::ReadMem(int index, u64 address, int dsize)
 {
-  dsize;
-  index;
-
   u64 data = 0;
   int a = (int)(address>>6);
 
@@ -119,9 +116,6 @@ u64 CFlash::ReadMem(int index, u64 address, int dsize)
 
 void CFlash::WriteMem(int index, u64 address, int dsize, u64 data)
 {
-  dsize;
-  index;
-
   int a = (int)(address>>6);
 
 

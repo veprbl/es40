@@ -60,10 +60,6 @@ CPort80::~CPort80()
 
 u64 CPort80::ReadMem(int index, u64 address, int dsize)
 {
-  dsize;
-  index;
-  address;
-
   return p80;
 }
 
@@ -73,9 +69,5 @@ u64 CPort80::ReadMem(int index, u64 address, int dsize)
 
 void CPort80::WriteMem(int index, u64 address, int dsize, u64 data)
 {
-  dsize;
-  index;
-  address;
-
   p80 = (u8)data;
 }

@@ -32,6 +32,7 @@
 
 #include "StdAfx.h"
 #include "AlphaCPU.h"
+#include "TraceEngine.h"
 #include "cpu_debug.h"
 
 // INTERRUPT VECTORS
@@ -259,6 +260,12 @@ void CAlphaCPU::DoClock()
   u64 temp_64_x;
   u64 temp_64_y;
   u64 temp_64_z;
+  u64 temp_64_a;
+  u64 temp_64_b;
+  u64 temp_64_c;
+  u64 temp_64_d;
+  u64 temp_64_hi;
+  u64 temp_64_lo;
 
   int opcode;
   int function;
@@ -728,28 +735,28 @@ void CAlphaCPU::DoClock()
 	  DEBUG_OP("MULQ");
 	  return;
 	case 0x30: // UMULH
-	  temp_64 = 0;
-	  temp_64_1 = r[REG_1];
-	  temp_64_2 = V_2;
-	  temp_64_x = 0;
-	  temp_64_y = 0;
-	  temp_64_z = 0;
-	  for(i=0;i<64;i++)
-	    {
-	      if ((temp_64_2 >> (u64)i) & X64(1))
-		{
-		  temp_64_y = temp_64_z;
-		  temp_64_x = temp_64_1<<(u64)i;
-		  temp_64_z += temp_64_x;
+	  /*
+	    This algorithm was snagged from:
+	    http://www.cs.uaf.edu/2004/fall/cs301/notes/notes/node47.html
 
-		  if (temp_64_z<temp_64_x || temp_64_z<temp_64_y) // overflow
-		    temp_64++;
-		  if (i)
-		    temp_64 += temp_64_1>>(X64(40)-(u64)i);
-		}
-	    }
-	  r[REG_3] = temp_64;
-	  DEBUG_OP("UMULH");
+	    which is very similar to the method used in the (unreleased)
+	    simh alpha emulation.
+
+	  */
+
+	    temp_64_a = (r[REG_1] >> 32) & X64(ffffffff);
+	    temp_64_b = r[REG_1]  & X64(ffffffff);
+	    temp_64_c = (V_2 >> 32) & X64(ffffffff);
+	    temp_64_d = V_2 & X64(ffffffff);
+	    
+	    temp_64_lo = temp_64_b * temp_64_d;
+	    temp_64_x = temp_64_a * temp_64_d + temp_64_c * temp_64_b;
+	    temp_64_y = ((temp_64_lo >> 32) & X64(ffffffff)) + temp_64_x;
+	    temp_64_lo = (temp_64_lo & X64(ffffffff)) | ((temp_64_y & X64(ffffffff)) << 32);
+	    temp_64_hi = (temp_64_y >> 32) & X64(ffffffff);
+	    temp_64_hi += temp_64_a * temp_64_c;
+	    r[REG_3] = temp_64_hi;
+	    DEBUG_OP("UMULH");
 	  return;
 	default:
 	  UNKNOWN2;

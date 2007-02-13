@@ -278,7 +278,7 @@ u64 CAliM1543C::ReadMem(int index, u64 address, int dsize)
       else if (address==1)
 	return reg_61_read();
       else
-	printf("%%ALI-W-INVPORT: Read from unknown port %02x\n",0x60+address);
+	printf("%%ALI-W-INVPORT: Read from unknown port %02x\n",(int)(0x60+address));
     case 2:
       return toy_read(address);
     case 3:
@@ -328,7 +328,7 @@ void CAliM1543C::WriteMem(int index, u64 address, int dsize, u64 data)
       else if (address==1)
 	reg_61_write((u8)data);
       else
-	printf("%%ALI-W-INVPORT: Write to unknown port %02x\n",0x60+address);
+	printf("%%ALI-W-INVPORT: Write to unknown port %02x\n",(int)(0x60+address));
       return;
     case 2:
       toy_write(address, (u8)data);
@@ -587,18 +587,13 @@ void CAliM1543C::isa_config_write(u64 address, int dsize, u64 data)
 
 u8 CAliM1543C::pit_read(u64 address)
 {
-  address;
   u8 data;
-
   data = 0;
-
   return data;
 }
 
 void CAliM1543C::pit_write(u64 address, u8 data)
 {
-  address;
-  data;
 
   pit_enable = true;
 }

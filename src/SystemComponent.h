@@ -55,10 +55,10 @@ class CSystemComponent
   virtual ~CSystemComponent();
 
   //=== abstract ===
-  virtual u64 ReadMem(int index, u64 address, int dsize) {index; address; dsize; return 0;};
-  virtual void WriteMem(int index, u64 address, int dsize, u64 data) {index; address; dsize; data;};
-  virtual u8 ReadTIG(int index, int address) {index; address; return 0;};
-  virtual void WriteTIG(int index, int address, u8 data) {index; address; data;};
+  virtual u64 ReadMem(int index, u64 address, int dsize) {return 0;};
+  virtual void WriteMem(int index, u64 address, int dsize, u64 data) {};
+  virtual u8 ReadTIG(int index, int address) {return 0;};
+  virtual void WriteTIG(int index, int address, u8 data) {};
   virtual void DoClock() {};
 
  protected: 

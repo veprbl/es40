@@ -191,9 +191,6 @@ CSerial::~CSerial()
 
 u64 CSerial::ReadMem(int index, u64 address, int dsize)
 {
-  dsize;
-  index;
-
   u8 d;
 
   switch (address)
@@ -251,9 +248,6 @@ u64 CSerial::ReadMem(int index, u64 address, int dsize)
 
 void CSerial::WriteMem(int index, u64 address, int dsize, u64 data)
 {
-  dsize;
-  index;
-
   u8 d;
   char s[5];
   d = (u8)data;
