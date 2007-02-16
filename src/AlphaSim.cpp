@@ -122,13 +122,7 @@ int main(int argc, char* argv[])
   cpu[0]->set_pc(loadat+1);
   cpu[0]->set_PAL_BASE(loadat);
 
-#if defined(IDB)
-  trc->read_procfile("es40.csv");
-  trc->read_procfile("vms83.csv");
-#endif
-
   printf("%%SYS-I-INITEND: System initialization complete.\n");
-
 
   printf("\n\n");
   printf("   **======================================================================**\n");
