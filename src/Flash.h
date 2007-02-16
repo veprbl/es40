@@ -30,12 +30,8 @@
  * \author Camiel Vanderhoeven (camiel@camicom.com / www.camicom.com)
  **/
 
-#if !defined(__FLASH_H__)
-#define __FLASH_H__
-
-#if _MSC_VER > 1000
-#pragma once
-#endif // _MSC_VER > 1000
+#if !defined(INCLUDED_FLASH_H)
+#define INCLUDED_FLASH_H
 
 #include "SystemComponent.h"
 
@@ -54,10 +50,12 @@ class CFlash : public CSystemComponent
   virtual ~CFlash();
   virtual void SaveState(FILE * f);
   virtual void RestoreState(FILE * f);
+  virtual void SaveStateF(char * fn);
+  virtual void RestoreStateF(char * fn);
 
  protected:
   u8 Flash[2*1024*1024];
   int mode;
 };
 
-#endif // !defined(__FLASH_H__)
+#endif // !defined(INCLUDED_FLASH_H)

@@ -37,11 +37,6 @@
 #include <ctype.h>
 #include <stdlib.h>
 
-#ifndef _WIN32
-#define _strdup strdup
-#endif
-
-
 /**
  * Constructor.
  **/
@@ -51,11 +46,16 @@ CSystem::CSystem(char *filename)
   this->LoadConfig(filename);
 
   iNumComponents = 0;
-  iNumClocks = 0;
+  iNumFastClocks = 0;
+  iNumSlowClocks = 0;
   iNumMemories = 0;
   iNumCPUs = 0;
   iNumROMs = 0;
   iNumMemoryBits = atoi(this->GetConfig("memory.bits","27"));
+
+#if defined(IDB)
+  iSingleStep = 0;
+#endif
 
   c$MISC = X64(0000000800000000);
   c$DIM[0] = 0;
@@ -118,7 +118,7 @@ CSystem::CSystem(char *filename)
 
 CSystem::~CSystem()
 {
-  unsigned int i;
+  int i;
   for (i=0;i<iNumComponents;i++)
     delete acComponents[i];
 }
@@ -155,10 +155,18 @@ int CSystem::RegisterCPU(class CAlphaCPU * cpu)
   return iNumCPUs - 1;
 }
 
-int CSystem::RegisterClock(CSystemComponent *component)
+int CSystem::RegisterClock(CSystemComponent *component, bool slow)
 {
-  acClocks[iNumClocks] = component;
-  iNumClocks++;
+  if (slow)
+  {
+    acSlowClocks[iNumSlowClocks] = component;
+    iNumSlowClocks++;
+  }
+  else
+  {
+    acFastClocks[iNumFastClocks] = component;
+    iNumFastClocks++;
+  }
   return 0;
 }
 
@@ -182,17 +190,66 @@ int CSystem::RegisterMemory(CSystemComponent *component, int index, u64 base, u6
 
 }
 
-void CSystem::DoClock()
+int CSystem::Run()
 {
-  unsigned int i;
-  for(i=0;i<iNumClocks;i++)
-    acClocks[i]->DoClock();
+  int i,j,k;
+  int result;
+
+  for(k=0;;k++)
+  {
+    for(j=0;j<10000;j++)
+    {
+      for(i=0;i<iNumFastClocks;i++)
+      {
+        result = acFastClocks[i]->DoClock();
+	if (result)
+	  return result;
+      }
+    }
+	 
+    for(i=0;i<iNumSlowClocks;i++)
+    {
+      result = acSlowClocks[i]->DoClock();
+      if (result)
+	return result;
+    }
+    printf("%d0000 | %016" LL "x\r",k,acCPUs[0]->get_pc());
+  }
 }
+
+#if defined(IDB)
+int CSystem::SingleStep()
+{
+  int i;
+  int result;
+
+  for(i=0;i<iNumFastClocks;i++)
+  {
+    result = acFastClocks[i]->DoClock();
+    if (result)
+      return result;
+  }
+
+  iSingleStep++;
+
+  if (iSingleStep >= 10000)
+  {
+     iSingleStep = 0;
+     for(i=0;i<iNumSlowClocks;i++)
+     {
+        result = acSlowClocks[i]->DoClock();
+	if (result)
+	  return result;
+     }
+  }
+  return 0;
+}
+#endif
 
 void CSystem::WriteMem(u64 address, int dsize, u64 data)
 {
   u64 a;
-  unsigned int i;
+  int i;
   void * p;
 
   a = address & X64(00000fffffffffff);
@@ -392,7 +449,7 @@ void CSystem::WriteMem(u64 address, int dsize, u64 data)
 u64 CSystem::ReadMem(u64 address, int dsize)
 {
   u64 a;
-  unsigned int i;
+  int i;
   void * p;
 
   a = address & X64(00000fffffffffff);
@@ -763,7 +820,7 @@ u64 CSystem::Select_ROM()
 
 void CSystem::interrupt(int number, bool assert)
 {
-  unsigned int i;
+  int i;
 
   if (number==-1)
     {
@@ -814,7 +871,6 @@ void CSystem::PCI_WriteMem(int pcibus, u32 address, int dsize, u64 data)
   //    j,(u32)(p$TBA[pcibus][j]>>32),(u32)(p$TBA[pcibus][j]));
   //    }
   //  printf("--------------------------------------------------------------\n");
-    
     
   //Step through windows
   for(j=0;j<4;j++)
@@ -870,7 +926,9 @@ u64 CSystem::PCI_ReadMem(int pcibus, u32 address, int dsize)
 void CSystem::SaveState(char *fn)
 {
   FILE * f;
-  unsigned int i, j;
+  int i;
+  unsigned int m;
+  unsigned int j;
   int * mem = (int*) memory;
   int int0 = 0;
   unsigned int memints = (1<<iNumMemoryBits)/sizeof(int);
@@ -879,25 +937,25 @@ void CSystem::SaveState(char *fn)
   if (f)
     {
       // memory
-      for (i=0 ; i<memints ; i++)
+      for (m=0 ; m<memints ;m++)
 	{
-	  if (mem[i])
+	  if (mem[m])
 	    {
-	      fwrite(&(mem[i]),1,sizeof(int),f);
+	      fwrite(&(mem[m]),1,sizeof(int),f);
 	    }
 	  else
 	    {
 	      j = 0;
-	      i++;
-	      while (!mem[i] && (i<memints))
+	      m++;
+	      while (!mem[m] && (m<memints))
 		{
-		  i++;
+		  m++;
 		  j++;
 		  if ((int)j == -1)
 		    break;
 		}
-	      if (mem[i]) 
-		i--;
+	      if (mem[m]) 
+		m--;
 	      fwrite(&int0,1,sizeof(int),f);
 	      fwrite(&j,1,sizeof(int),f);
 	    }
@@ -941,7 +999,9 @@ void CSystem::SaveState(char *fn)
 void CSystem::RestoreState(char *fn)
 {
   FILE * f;
-  unsigned int i,j;
+  int i;
+  unsigned int m;
+  unsigned int j;
   int * mem = (int*) memory;
   unsigned int memints = (1<<iNumMemoryBits)/sizeof(int);
 
@@ -953,15 +1013,15 @@ void CSystem::RestoreState(char *fn)
     }
 
   // memory
-  for (i=0;i<memints;i++)
+  for (m=0;m<memints;m++)
     {
-      fread(&(mem[i]),1,sizeof(int),f);
-      if (!mem[i])
+      fread(&(mem[m]),1,sizeof(int),f);
+      if (!mem[m])
 	{
 	  fread(&j,1,sizeof(int),f);
 	  while (j--)
 	    {
-	      mem[++i] = 0;
+	      mem[++m] = 0;
 	    }
 	}
     }

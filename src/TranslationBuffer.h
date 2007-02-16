@@ -30,12 +30,8 @@
  * \author Camiel Vanderhoeven (camiel@camicom.com / www.camicom.com)
  **/
 
-#if !defined(__TRANSLATIONBUFFER_H__)
-#define __TRANSLATIONBUFFER_H__
-
-#if _MSC_VER > 1000
-#pragma once
-#endif // _MSC_VER > 1000
+#if !defined(INCLUDED_TRANSLATIONBUFFER_H)
+#define INCLUDED_TRANSLATIONBUFFER_H
 
 #include "datatypes.h"
 #include "System.h"
@@ -164,14 +160,6 @@ inline void CTranslationBuffer::write_pte(int number, u64 value, int asn)
       if (!entry[next_entry].asm_bit)
 	entry[next_entry].asn = asn;
       entry[next_entry].valid = true;
-
-      //	printf("\n================================\n");
-      //	printf("ADD PTE: %d\n",next_entry);
-      //	printf("    virt: %08x%08x\n",(u32)(entry[next_entry].virt>>32),(u32)(entry[next_entry].virt));
-      //	printf("    phys: %08x%08x\n",(u32)(entry[next_entry].phys>>32),(u32)(entry[next_entry].phys));
-      //	printf("    asm : %s\n",entry[next_entry].asm_bit?"true":"false");
-      //	printf("    asn : %02x\n",entry[next_entry].asn);
-      //	printf("================================\n");
 	
       next_entry++;
       if (next_entry==TB_ENTRIES)
@@ -220,9 +208,6 @@ inline int CTranslationBuffer::convert_address(u64 virt, u64 *phys, u8 access, b
 {
   int i;
 
-  //	int spe;
-
-  //	spe = bIBOX?cCpu->get_i_spe():cCpu->get_d_spe();
   if (spe && !cm)
     {
       if (   (((virt>>46)&3) == 2)
@@ -290,4 +275,4 @@ inline void CTranslationBuffer::InvalidateSingle(u64 address, int asn)
   entry[i].valid = false;
 }
 
-#endif // !defined(__TRANSLATIONBUFFER_H__)
+#endif // !defined(INCLUDED_TRANSLATIONBUFFER_H)

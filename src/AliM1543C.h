@@ -30,14 +30,10 @@
  * \author Camiel Vanderhoeven (camiel@camicom.com / www.camicom.com)
  **/
 
-#if !defined(__ALIM1543C_H__)
-#define __ALIM1543C_H__
+#if !defined(INCLUDED_ALIM1543C_H_)
+#define INCLUDED_ALIM1543C_H
 
 #include "SystemComponent.h"
-
-#if _MSC_VER > 1000
-#pragma once
-#endif // _MSC_VER > 1000
 
 /**
  * Emulated ALi M1543C multi-function device.
@@ -60,7 +56,7 @@ class CAliM1543C : public CSystemComponent
   virtual void RestoreState(FILE * f);
   void instant_tick();
   //	void interrupt(int number);
-  virtual void DoClock();
+  virtual int DoClock();
   virtual void WriteMem(int index, u64 address, int dsize, u64 data);
 
   virtual u64 ReadMem(int index, u64 address, int dsize);
@@ -98,7 +94,6 @@ class CAliM1543C : public CSystemComponent
   // Timer/Counter
   u8 pit_read(u64 address);
   void pit_write(u64 address, u8 data);
-  int pit_clock;
   bool pit_enable;
 
   // interrupt controller
@@ -144,4 +139,4 @@ class CAliM1543C : public CSystemComponent
   char * ide_dev[2][2];		/**< disk image filenames. */
 };
 
-#endif // !defined(__ALIM1543C_H__)
+#endif // !defined(INCLUDED_ALIM1543C_H)

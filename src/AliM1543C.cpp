@@ -122,8 +122,7 @@ CAliM1543C::CAliM1543C(CSystem * c): CSystemComponent(c)
   // ...
 									
   c->RegisterMemory(this, 6, X64(00000801fc000040), 4);
-  c->RegisterClock(this);
-  pit_clock = 0;
+  c->RegisterClock(this, true);
   pit_enable = false;
 
   c->RegisterMemory(this, 7, X64(00000801fc000020), 2);
@@ -392,21 +391,13 @@ u8 CAliM1543C::kb_read(u64 address)
       break;
     }
   
-#ifdef _WIN32
-  TRC_DEV3("%%ALI-I-KBDREAD: %02I64x read from Keyboard port %02x\n",data,address+0x60);
-#else
-  TRC_DEV3("%%ALI-I-KBDREAD: %02llx read from Keyboard port %02x\n",data,address+0x60);
-#endif
+  TRC_DEV3("%%ALI-I-KBDREAD: %02" LL"x read from Keyboard port %02x\n",data,address+0x60);
   return data;
 }
 
 void CAliM1543C::kb_write(u64 address, u8 data)
 {
-#ifdef _WIN32
-  TRC_DEV3("%%ALI-I-KBDWRITE: %02I64x written to Keyboard port %02x\n",data,address+0x60);
-#else
-  TRC_DEV3("%%ALI-I-KBDWRITE: %02llx written to Keyboard port %02x\n",data,address+0x60);
-#endif
+  TRC_DEV3("%%ALI-I-KBDWRITE: %02" LL "x written to Keyboard port %02x\n",data,address+0x60);
   switch (address)
     {
       //    case 0:
@@ -598,14 +589,10 @@ void CAliM1543C::pit_write(u64 address, u8 data)
   pit_enable = true;
 }
 
-void CAliM1543C::DoClock()
+int CAliM1543C::DoClock()
 {
-  pit_clock++;
-  if (pit_clock>=10000)
-    {
-      cSystem->interrupt(-1, true);
-      pit_clock=0;
-    }
+  cSystem->interrupt(-1, true);
+  return 0;
 }
 
 #define PIC_STD 0
@@ -958,7 +945,7 @@ void CAliM1543C::ide_command_write(int index, u64 address, u64 data)
 	      ide_status[index] = 0x48;
 	      ide_sectors[index] = ide_command[index][2]-1;
 	      if (ide_sectors[index]) ide_reading[index] = true;
-	    }
+	  }
 	}
     }
   else
@@ -1106,7 +1093,7 @@ void CAliM1543C::dma_write(int index, u64 address, u8 data)
 
 void CAliM1543C::instant_tick()
 {
-  pit_clock = 99999999;
+  DoClock();
 }
 
 /**
@@ -1137,7 +1124,6 @@ void CAliM1543C::SaveState(FILE *f)
   //u8 rom_low_data[0x10000];
 
   // Timer/Counter
-  fwrite(&pit_clock,1,sizeof(int),f);
   fwrite(&pit_enable,1,sizeof(bool),f);
 
   // interrupc controller
@@ -1184,7 +1170,6 @@ void CAliM1543C::RestoreState(FILE *f)
   //u8 rom_low_data[0x10000];
 
   // Timer/Counter
-  fread(&pit_clock,1,sizeof(int),f);
   fread(&pit_enable,1,sizeof(bool),f);
 
   // interrupc controller

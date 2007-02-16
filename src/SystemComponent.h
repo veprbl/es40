@@ -30,16 +30,10 @@
  * \author Camiel Vanderhoeven (camiel@camicom.com / www.camicom.com)
  **/
 
+#if !defined(INCLUDED_SYSTEMCOMPONENT_H)
+#define INCLUDED_SYSTEMCOMPONENT_H
 
 #include "datatypes.h"
- 
-
-#if !defined(AFX_SYSTEMCOMPONENT_H__54D2AACC_ED4A_47C2_9E9F_1795A246E458__INCLUDED_)
-#define AFX_SYSTEMCOMPONENT_H__54D2AACC_ED4A_47C2_9E9F_1795A246E458__INCLUDED_
-
-#if _MSC_VER > 1000
-#pragma once
-#endif // _MSC_VER > 1000
 
 /**
  * Base class for devices.
@@ -59,10 +53,10 @@ class CSystemComponent
   virtual void WriteMem(int index, u64 address, int dsize, u64 data) {};
   virtual u8 ReadTIG(int index, int address) {return 0;};
   virtual void WriteTIG(int index, int address, u8 data) {};
-  virtual void DoClock() {};
+  virtual int DoClock() {return 0;};
 
  protected: 
   class CSystem * cSystem;
 };
 
-#endif // !defined(AFX_SYSTEMCOMPONENT_H__54D2AACC_ED4A_47C2_9E9F_1795A246E458__INCLUDED_)
+#endif // !defined(INCLUDED_SYSTEMCOMPONENT_H)

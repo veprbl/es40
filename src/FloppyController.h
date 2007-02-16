@@ -30,12 +30,8 @@
  * \author Camiel Vanderhoeven (camiel@camicom.com / www.camicom.com)
  **/
 
-#if !defined(__FLOPPYCONTROLLER_H__)
-#define __FLOPPYCONTROLLER_H__
-
-#if _MSC_VER > 1000
-#pragma once
-#endif // _MSC_VER > 1000
+#if !defined(INCLUDED_FLOPPYCONTROLLER_H)
+#define INCLUDED_FLOPPYCONTROLLER_H
 
 #include "SystemComponent.h"
 
@@ -58,4 +54,4 @@ class CFloppyController : public CSystemComponent
   int iID;
 };
 
-#endif // !defined(__FLOPPYCONTROLLER_H__)
+#endif // !defined(INCLUDED_FLOPPYCONTROLLER_H)

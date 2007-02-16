@@ -31,12 +31,8 @@
  * \author Camiel Vanderhoeven (camiel@camicom.com / www.camicom.com)
  **/
 
-#if !defined(__ALPHACPU_H__)
-#define __ALPHACPU_H__
-
-#if _MSC_VER > 1000
-#pragma once
-#endif // _MSC_VER > 1000
+#if !defined(INCLUDED_ALPHACPU_H)
+#define INCLUDED_ALPHACPU_H
 
 #include "SystemComponent.h"
 #include "System.h"
@@ -81,7 +77,7 @@ class CAlphaCPU : public CSystemComponent
   int get_altcm();
   int get_cm();
   int get_asn();
-  virtual void DoClock();
+  virtual int DoClock();
   CAlphaCPU(CSystem * system);
   virtual ~CAlphaCPU();
   u64 get_r(int i, bool translate);
@@ -90,6 +86,10 @@ class CAlphaCPU : public CSystemComponent
   u64 get_clean_pc();
   void next_pc();
   void set_pc(u64 p_pc);
+
+#if defined(IDB)
+  void listing(u64 from, u64 to);
+#endif
 
  private:
   u64 pal_base;			/**< IPR PAL_BASE [HRM: p 5-15] */
@@ -155,6 +155,10 @@ class CAlphaCPU : public CSystemComponent
 
   CTranslationBuffer * itb;	/**< Instruction-Stream Translation Buffer [HRM p 2-5] */
   CTranslationBuffer * dtb;	/**< Data-Stream Translation Buffer [HRM p 2-13] */
+
+#if defined(IDB)
+  bool bListing;
+#endif
 };
 
 #define RREG(a) (((a) & 0x1f) + (((pc&1) && (((a)&0xc)==0x4) && sde)?32:0))
@@ -370,4 +374,4 @@ inline u64 CAlphaCPU::get_prbr(void)
     return cSystem->ReadMem(0x70a8 + (0x200 * get_cpuid()),64);
 }
 
-#endif // !defined(__ALPHACPU_H__)
+#endif // !defined(INCLUDED_ALPHACPU_H)

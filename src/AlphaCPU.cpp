@@ -77,7 +77,7 @@ CAlphaCPU::CAlphaCPU(CSystem * system) : CSystemComponent (system)
   cSystem = system;
   int i;
 
-  cSystem->RegisterClock(this);
+  cSystem->RegisterClock(this, false);
 
   pc = 0;
   bIntrFlag = false;
@@ -146,7 +146,11 @@ CAlphaCPU::CAlphaCPU(CSystem * system) : CSystemComponent (system)
 
   dtb->write_tag(0,0);
   dtb->write_pte(0,X64(ff61),get_asn());
-    
+
+#if defined(IDB)
+  bListing = false;
+#endif
+  
   printf("%%CPU-I-INIT: Alpha AXP 21264 EV68 processor %d initialized.\n", iProcNum);
 }
 
@@ -186,7 +190,7 @@ CAlphaCPU::~CAlphaCPU()
       case E_ACCESS:							\
 	GO_PAL(DFAULT);							\
 	break; }							\
-      return;	} }
+      return 0;	} }
 
 #define ALIGN_PHYS(a) (phys_address & ~((u64)((a)-1)))
 
@@ -248,7 +252,7 @@ CAlphaCPU::~CAlphaCPU()
  * implemented, to accomodate self-modifying code.
  **/
 
-void CAlphaCPU::DoClock()
+int CAlphaCPU::DoClock()
 {
   u32 ins;
   int i;
@@ -259,7 +263,6 @@ void CAlphaCPU::DoClock()
   u64 temp_64_2;
   u64 temp_64_x;
   u64 temp_64_y;
-  u64 temp_64_z;
   u64 temp_64_a;
   u64 temp_64_b;
   u64 temp_64_c;
@@ -270,15 +273,33 @@ void CAlphaCPU::DoClock()
   int opcode;
   int function;
 
-  current_pc = pc;
+#if defined(IDB)
+  if (!bListing)
+  {
+#endif
+      // known speedups
+      if  (     get_clean_pc()==X64(14248) 
+	     || get_clean_pc()==X64(14288)
+	     || get_clean_pc()==X64(142c8)
+	     || get_clean_pc()==X64(68320)
+	     || get_clean_pc()==X64(8bb78)	// write in memory test (aa)
+	     || get_clean_pc()==X64(8bc0c)	// write in memory test (bb)
+	     || get_clean_pc()==X64(8bc94)	// write in memory test (00)
+	     )
+	next_pc();
+#if defined(IDB)
+  }
+#endif
 
-  if (DO_ACTION)
+   current_pc = pc;
+
+   if (DO_ACTION)
     {
       // check for interrupts
       if ((!(pc&X64(1))) && (eien & eir))
 	{
 	  GO_PAL(INTERRUPT);
-	  return;
+	  return 0;
 	}
 
       // get next instruction
@@ -294,15 +315,15 @@ void CAlphaCPU::DoClock()
 	      GO_PAL(IACV);
 	      break;
 	    }
-	  return;
+	  return 0;
 	}
     }
   else
     {
       ins = (u32)(cSystem->ReadMem(pc,32));
     }
+    pc += 4;
 
-  pc+=4;
   r[31] = 0;
 
   if (cc_ena)
@@ -339,7 +360,7 @@ void CAlphaCPU::DoClock()
 	      GO_PAL(OPCDEC);
 
 	    }
-	  return;
+	  return 0;
 	}
       if (DO_ACTION)
 	{
@@ -358,17 +379,19 @@ void CAlphaCPU::DoClock()
 	{
 	  TRC(true,false);
 	}
-      return;
+      return 0;
 
     case 0x08: // LDA
-      r[REG_1] = r[REG_2] + DISP_16;
+      if (DO_ACTION)
+        r[REG_1] = r[REG_2] + DISP_16;
       DEBUG_LD_ST("LDA");
-      return;
+      return 0;
 
     case 0x09: // LDAH
-      r[REG_1] = r[REG_2] + (DISP_16<<16);
+      if (DO_ACTION)
+        r[REG_1] = r[REG_2] + (DISP_16<<16);
       DEBUG_LD_ST("LDAH");
-      return;
+      return 0;
 
     case 0x0a: // LDBU
       if (DO_ACTION)
@@ -377,7 +400,7 @@ void CAlphaCPU::DoClock()
 	  r[REG_1] = READ_PHYS(8);
 	}
       DEBUG_LD_ST("LDBU");
-      return;
+      return 0;
 
     case 0x0b: // LDQ_U
       if (DO_ACTION)
@@ -386,7 +409,7 @@ void CAlphaCPU::DoClock()
 	  r[REG_1] = READ_PHYS(64);
 	}
       DEBUG_LD_ST("LDQ_U");
-      return;
+      return 0;
 
     case 0x0c: // LDWU
       if (DO_ACTION)
@@ -395,7 +418,7 @@ void CAlphaCPU::DoClock()
 	  r[REG_1] = READ_PHYS(16);
 	}
       DEBUG_LD_ST("LDWU");
-      return;
+      return 0;
 
     case 0x0d: // STW
       if (DO_ACTION)
@@ -404,7 +427,7 @@ void CAlphaCPU::DoClock()
 	  WRITE_PHYS(r[REG_1],16);
 	}
       DEBUG_LD_ST("STW");
-      return;
+      return 0;
 
     case 0x0e: // STB
       if (DO_ACTION)
@@ -413,7 +436,7 @@ void CAlphaCPU::DoClock()
 	  WRITE_PHYS(r[REG_1],8);
 	}
       DEBUG_LD_ST("STB");
-      return;
+      return 0;
 
     case 0x0f: // STQ_U
       if (DO_ACTION)
@@ -422,94 +445,112 @@ void CAlphaCPU::DoClock()
 	  WRITE_PHYS(r[REG_1],64);
 	}
       DEBUG_LD_ST("STQ_U");
-      return;
+      return 0;
 
     case 0x10: // op
       function = (ins>>5) & 0x7f;
       switch (function)
         {
         case 0x00: // ADDL
-	  r[REG_3] = SEXT(r[REG_1] + V_2,32);
+	  if (DO_ACTION)
+ 	    r[REG_3] = SEXT(r[REG_1] + V_2,32);
 	  DEBUG_OP("ADDL");
-	  return;
+	  return 0;
         case 0x02: // S4ADDL
-	  r[REG_3] = SEXT((r[REG_1]*4) + V_2,32);
+	  if (DO_ACTION)
+	    r[REG_3] = SEXT((r[REG_1]*4) + V_2,32);
 	  DEBUG_OP("S4ADDL");
-	  return;
+	  return 0;
         case 0x09: // SUBL
-	  r[REG_3] = SEXT(r[REG_1] - V_2,32);
+	  if (DO_ACTION)
+	    r[REG_3] = SEXT(r[REG_1] - V_2,32);
 	  DEBUG_OP("SUBL");
-	  return;
+	  return 0;
         case 0x0b: // S4SUBL
-	  r[REG_3] = SEXT((r[REG_1]*4) - V_2,32);
+	  if (DO_ACTION)
+	    r[REG_3] = SEXT((r[REG_1]*4) - V_2,32);
 	  DEBUG_OP("S4SUBL");
-	  return;
+	  return 0;
         case 0x0f:  // CMPBGE
-	  r[REG_3] =   (((u8)( r[REG_1]     &0xff)>=(u8)( V_2      & 0xff))?  1:0)
-	    | (((u8)((r[REG_1]>> 8)&0xff)>=(u8)((V_2>> 8) & 0xff))?  2:0)
-	    | (((u8)((r[REG_1]>>16)&0xff)>=(u8)((V_2>>16) & 0xff))?  4:0)
-	    | (((u8)((r[REG_1]>>24)&0xff)>=(u8)((V_2>>24) & 0xff))?  8:0)
-	    | (((u8)((r[REG_1]>>32)&0xff)>=(u8)((V_2>>32) & 0xff))? 16:0)
-	    | (((u8)((r[REG_1]>>40)&0xff)>=(u8)((V_2>>40) & 0xff))? 32:0)
-	    | (((u8)((r[REG_1]>>48)&0xff)>=(u8)((V_2>>48) & 0xff))? 64:0)
-	    | (((u8)((r[REG_1]>>56)&0xff)>=(u8)((V_2>>56) & 0xff))?128:0);
+	  if (DO_ACTION)
+ 	    r[REG_3] =   (((u8)( r[REG_1]     &0xff)>=(u8)( V_2      & 0xff))?  1:0)
+	      | (((u8)((r[REG_1]>> 8)&0xff)>=(u8)((V_2>> 8) & 0xff))?  2:0)
+	      | (((u8)((r[REG_1]>>16)&0xff)>=(u8)((V_2>>16) & 0xff))?  4:0)
+	      | (((u8)((r[REG_1]>>24)&0xff)>=(u8)((V_2>>24) & 0xff))?  8:0)
+	      | (((u8)((r[REG_1]>>32)&0xff)>=(u8)((V_2>>32) & 0xff))? 16:0)
+	      | (((u8)((r[REG_1]>>40)&0xff)>=(u8)((V_2>>40) & 0xff))? 32:0)
+	      | (((u8)((r[REG_1]>>48)&0xff)>=(u8)((V_2>>48) & 0xff))? 64:0)
+	      | (((u8)((r[REG_1]>>56)&0xff)>=(u8)((V_2>>56) & 0xff))?128:0);
 	  DEBUG_OP("CMPBGE");
-	  return;
+	  return 0;
         case 0x12: // S8ADDL
-	  r[REG_3] = SEXT((r[REG_1]*8) + V_2,32);
+	  if (DO_ACTION)
+	    r[REG_3] = SEXT((r[REG_1]*8) + V_2,32);
 	  DEBUG_OP("S8ADDL");
-	  return;
+	  return 0;
         case 0x1b: // S8SUBL
-	  r[REG_3] = SEXT((r[REG_1]*8) - V_2,32);
+	  if (DO_ACTION)
+ 	    r[REG_3] = SEXT((r[REG_1]*8) - V_2,32);
 	  DEBUG_OP("S8SUBL");
-	  return;
+	  return 0;
         case 0x1d: // CMPULT
-	  r[REG_3] = ((u64)r[REG_1]<(u64)V_2)?1:0;
+	  if (DO_ACTION)
+ 	    r[REG_3] = ((u64)r[REG_1]<(u64)V_2)?1:0;
 	  DEBUG_OP("CMPULT");
-	  return;
+	  return 0;
         case 0x20: // ADDQ
-	  r[REG_3] = r[REG_1] + V_2;
+	  if (DO_ACTION)
+ 	    r[REG_3] = r[REG_1] + V_2;
 	  DEBUG_OP("ADDQ");
-	  return;
+	  return 0;
         case 0x22: // S4ADDQ
-	  r[REG_3] = (r[REG_1]*4) + V_2;
+	  if (DO_ACTION)
+ 	    r[REG_3] = (r[REG_1]*4) + V_2;
 	  DEBUG_OP("S4ADDQ");
-	  return;
+	  return 0;
         case 0x29: // SUBQ
-	  r[REG_3] = r[REG_1] - V_2;
+	  if (DO_ACTION)
+ 	    r[REG_3] = r[REG_1] - V_2;
 	  DEBUG_OP("SUBQ");
-	  return;
+	  return 0;
         case 0x2b: // S4SUBQ
-	  r[REG_3] = (r[REG_1]*4) - V_2;
+	  if (DO_ACTION)
+ 	    r[REG_3] = (r[REG_1]*4) - V_2;
 	  DEBUG_OP("S4SUBQ");
-	  return;
+	  return 0;
         case 0x2d: // CMPEQ
-	  r[REG_3] = (r[REG_1]==V_2)?1:0;
+	  if (DO_ACTION)
+ 	    r[REG_3] = (r[REG_1]==V_2)?1:0;
 	  DEBUG_OP("CMPEQ");
-	  return;
+	  return 0;
         case 0x32: // S8ADDQ
-	  r[REG_3] = (r[REG_1]*8) + V_2;
+	  if (DO_ACTION)
+ 	    r[REG_3] = (r[REG_1]*8) + V_2;
 	  DEBUG_OP("S8ADDQ");
-	  return;
+	  return 0;
         case 0x3b: // S8SUBQ
-	  r[REG_3] = (r[REG_1]*8) - V_2;
+	  if (DO_ACTION)
+ 	    r[REG_3] = (r[REG_1]*8) - V_2;
 	  DEBUG_OP("S8SUBQ");
-	  return;
+	  return 0;
         case 0x3d: // CMPULE
-	  r[REG_3] = ((u64)r[REG_1]<=(u64)V_2)?1:0;
+	  if (DO_ACTION)
+ 	    r[REG_3] = ((u64)r[REG_1]<=(u64)V_2)?1:0;
 	  DEBUG_OP("CMPULE");
-	  return;
+	  return 0;
         case 0x4d: // CMPLT
-	  r[REG_3] = ((s64)r[REG_1]<(s64)V_2)?1:0;
+	  if (DO_ACTION)
+ 	    r[REG_3] = ((s64)r[REG_1]<(s64)V_2)?1:0;
 	  DEBUG_OP("CMPLT");
-	  return;
+	  return 0;
         case 0x6d: // CMPLE
-	  r[REG_3] = ((s64)r[REG_1]<=(s64)V_2)?1:0;
+	  if (DO_ACTION)
+ 	    r[REG_3] = ((s64)r[REG_1]<=(s64)V_2)?1:0;
 	  DEBUG_OP("CMPLE");
-	  return;
+	  return 0;
         default:
 	  UNKNOWN2;
-	  return;
+	  return 0;
         }
       break;
 
@@ -518,80 +559,112 @@ void CAlphaCPU::DoClock()
       switch (function)
         {
         case 0x00: // AND
-	  r[REG_3] = r[REG_1] & V_2;
+	  if (DO_ACTION)
+ 	    r[REG_3] = r[REG_1] & V_2;
 	  DEBUG_OP("AND");
-	  return;
+	  return 0;
         case 0x08: // BIC
-	  r[REG_3] = r[REG_1] & ~V_2;
+	  if (DO_ACTION)
+ 	    r[REG_3] = r[REG_1] & ~V_2;
 	  DEBUG_OP("BIC");
-	  return;
+	  return 0;
         case 0x14: // CMOVLBS
-	  if (r[REG_1] & X64(1))
-	    r[REG_3] = V_2;
+	  if (DO_ACTION)
+	  {
+ 	    if (r[REG_1] & X64(1))
+	      r[REG_3] = V_2;
+	  }
 	  DEBUG_OP("CMOVLBS");
-	  return;
+	  return 0;
         case 0x16: // CMOVLBC
-	  if (!(r[REG_1] & X64(1)))
-	    r[REG_3] = V_2;
+	  if (DO_ACTION)
+	  {
+            if (!(r[REG_1] & X64(1)))
+	      r[REG_3] = V_2;
+	  }
 	  DEBUG_OP("CMOVLBC");
-	  return;
+	  return 0;
         case 0x20: // BIS
-	  r[REG_3] = r[REG_1] | V_2;
+	  if (DO_ACTION)
+ 	    r[REG_3] = r[REG_1] | V_2;
 	  DEBUG_OP("BIS");
-	  return;
+	  return 0;
         case 0x24: // CMOVEQ
-	  if (!r[REG_1])
-	    r[REG_3] = V_2;
+	  if (DO_ACTION)
+	  {
+	    if (!r[REG_1])
+	      r[REG_3] = V_2;
+	  }
 	  DEBUG_OP("CMOVEQ");
-	  return;
+	  return 0;
         case 0x26: // CMOVNE
-	  if (r[REG_1])
-	    r[REG_3] = V_2;
+	  if (DO_ACTION)
+	  {
+ 	    if (r[REG_1])
+	      r[REG_3] = V_2;
+	  }
 	  DEBUG_OP("CMOVNE");
-	  return;
+	  return 0;
         case 0x28: // ORNOT
-	  r[REG_3] = r[REG_1] | ~V_2;
+	  if (DO_ACTION)
+ 	    r[REG_3] = r[REG_1] | ~V_2;
 	  DEBUG_OP("ORNOT");
-	  return;
+	  return 0;
         case 0x40: // XOR
-	  r[REG_3] = r[REG_1] ^ V_2;
+	  if (DO_ACTION)
+ 	    r[REG_3] = r[REG_1] ^ V_2;
 	  DEBUG_OP("XOR");
-	  return;
+	  return 0;
         case 0x44: // CMOVLT
-	  if ((s64)r[REG_1]<0)
+	  if (DO_ACTION)
+	  {
+	    if ((s64)r[REG_1]<0)
 	    r[REG_3] = V_2;
+	  }
 	  DEBUG_OP("CMOVLT");
-	  return;
+	  return 0;
         case 0x46: // CMOVGE
-	  if ((s64)r[REG_1]>=0)
-	    r[REG_3] = V_2;
+	  if (DO_ACTION)
+	  {
+ 	    if ((s64)r[REG_1]>=0)
+	      r[REG_3] = V_2;
+	  }
 	  DEBUG_OP("CMOVGE");
-	  return;
+	  return 0;
         case 0x48: // EQV
-	  r[REG_3] = r[REG_1] ^ ~V_2;
+	  if (DO_ACTION)
+ 	    r[REG_3] = r[REG_1] ^ ~V_2;
 	  DEBUG_OP("EQV");
-	  return;
+	  return 0;
         case 0x61: // AMASK
-	  r[REG_3] = V_2 & ~CPU_AMASK; // BWX,CIX,MVI,trapPC,prefMod 
+	  if (DO_ACTION)
+ 	    r[REG_3] = V_2 & ~CPU_AMASK; // BWX,CIX,MVI,trapPC,prefMod 
 	  DEBUG_OP_R23("AMASK");
-	  return;
+	  return 0;
         case 0x64: // CMOVLE
-	  if ((s64)r[REG_1]<=0)
-	    r[REG_3] = V_2;
+	  if (DO_ACTION)
+	  {
+ 	    if ((s64)r[REG_1]<=0)
+	      r[REG_3] = V_2;
+	  }
 	  DEBUG_OP("CMOVLE");
-	  return;
+	  return 0;
         case 0x66: // CMOVGT
-	  if ((s64)r[REG_1]>0)
-	    r[REG_3] = V_2;
+	  if (DO_ACTION)
+	  {
+ 	    if ((s64)r[REG_1]>0)
+	      r[REG_3] = V_2;
+	  }
 	  DEBUG_OP("CMOVGT");
-	  return;
+	  return 0;
         case 0x6c: // IMPLVER
-	  r[REG_3] = CPU_IMPLVER;
+	  if (DO_ACTION)
+ 	    r[REG_3] = CPU_IMPLVER;
 	  DEBUG_OP_R3("IMPLVER");
-	  return;
+	  return 0;
         default:
 	  UNKNOWN2;
-	  return;
+	  return 0;
         }
 
     case 0x12:
@@ -599,55 +672,68 @@ void CAlphaCPU::DoClock()
       switch (function)
         {
         case 0x02: //MSKBL
-	  r[REG_3] = r[REG_1] & ~(X64_BYTE<<((V_2&7)*8));
+	  if (DO_ACTION)
+ 	    r[REG_3] = r[REG_1] & ~(X64_BYTE<<((V_2&7)*8));
 	  DEBUG_OP("MSKBL");
-	  return;
+	  return 0;
         case 0x06: // EXTBL
-	  r[REG_3] = (r[REG_1] >> ((V_2&7)*8)) & X64_BYTE;
+	  if (DO_ACTION)
+ 	    r[REG_3] = (r[REG_1] >> ((V_2&7)*8)) & X64_BYTE;
 	  DEBUG_OP("EXTBL");
-	  return;
+	  return 0;
         case 0x0b: // INSBL
-	  r[REG_3] = (r[REG_1] & X64_BYTE) << ((V_2&7)*8);
+	  if (DO_ACTION)
+ 	    r[REG_3] = (r[REG_1] & X64_BYTE) << ((V_2&7)*8);
 	  DEBUG_OP("INSBL");
-	  return;
+	  return 0;
         case 0x12: // MSKWL
-	  r[REG_3] = r[REG_1] & ~(X64_WORD<<((V_2&7)*8));
+	  if (DO_ACTION)
+ 	    r[REG_3] = r[REG_1] & ~(X64_WORD<<((V_2&7)*8));
 	  DEBUG_OP("MSKWL");
-	  return;
+	  return 0;
         case 0x16: // EXTWL
-	  r[REG_3] = (r[REG_1] >> ((V_2&7)*8))&X64_WORD;
+	  if (DO_ACTION)
+ 	    r[REG_3] = (r[REG_1] >> ((V_2&7)*8))&X64_WORD;
 	  DEBUG_OP("EXTWL");
-	  return;
+	  return 0;
         case 0x1b: // INSWL
-	  r[REG_3] = (r[REG_1]&X64_WORD) << ((V_2&7)*8);
+	  if (DO_ACTION)
+ 	    r[REG_3] = (r[REG_1]&X64_WORD) << ((V_2&7)*8);
 	  DEBUG_OP("INSWL");
-	  return;
+	  return 0;
         case 0x22: // MSKLL
-	  r[REG_3] = r[REG_1] & ~(X64_LONG<<((V_2&7)*8));
+	  if (DO_ACTION)
+ 	    r[REG_3] = r[REG_1] & ~(X64_LONG<<((V_2&7)*8));
 	  DEBUG_OP("MSKLL");
-	  return;
+	  return 0;
         case 0x26: // EXTLL
-	  r[REG_3] = (r[REG_1] >> ((V_2&7)*8))&X64_LONG;
+	  if (DO_ACTION)
+ 	    r[REG_3] = (r[REG_1] >> ((V_2&7)*8))&X64_LONG;
 	  DEBUG_OP("EXTLL");
-	  return;
+	  return 0;
         case 0x2b: // INSLL
-	  r[REG_3] = (r[REG_1]&X64_LONG) << ((V_2&7)*8);
+	  if (DO_ACTION)
+ 	    r[REG_3] = (r[REG_1]&X64_LONG) << ((V_2&7)*8);
 	  DEBUG_OP("INSLL");
-	  return;
+	  return 0;
         case 0x32: // MSKQL
-	  r[REG_3] = r[REG_1] & ~(X64_QUAD<<((V_2&7)*8));
+	  if (DO_ACTION)
+ 	    r[REG_3] = r[REG_1] & ~(X64_QUAD<<((V_2&7)*8));
 	  DEBUG_OP("MSKQL");
-	  return;
+	  return 0;
         case 0x36: // EXTQL
-	  r[REG_3] = r[REG_1] >> ((V_2&7)*8);
+	  if (DO_ACTION)
+ 	    r[REG_3] = r[REG_1] >> ((V_2&7)*8);
 	  DEBUG_OP("EXTQL");
-	  return;
+	  return 0;
         case 0x3b: // INSQL
-	  r[REG_3] = r[REG_1] << ((V_2&7)*8);
+	  if (DO_ACTION)
+ 	    r[REG_3] = r[REG_1] << ((V_2&7)*8);
 	  DEBUG_OP("INSQL");
-	  return;
+	  return 0;
         case 0x30: // ZAP
-	  r[REG_3] = r[REG_1] & (  ((V_2&  1)?0:              X64(ff))
+	  if (DO_ACTION)
+ 	    r[REG_3] = r[REG_1] & (  ((V_2&  1)?0:              X64(ff))
 				 | ((V_2&  2)?0:            X64(ff00))
 				 | ((V_2&  4)?0:          X64(ff0000))
 				 | ((V_2&  8)?0:        X64(ff000000))
@@ -656,9 +742,10 @@ void CAlphaCPU::DoClock()
 				 | ((V_2& 64)?0:  X64(ff000000000000))
 				 | ((V_2&128)?0:X64(ff00000000000000)));
 	  DEBUG_OP("ZAP");
-	  return;
+	  return 0;
         case 0x31: // ZAPNOT
-	  r[REG_3] = r[REG_1] & (  ((V_2&  1)?              X64(ff):0)
+	  if (DO_ACTION)
+ 	    r[REG_3] = r[REG_1] & (  ((V_2&  1)?              X64(ff):0)
 				 | ((V_2&  2)?            X64(ff00):0)
 				 | ((V_2&  4)?          X64(ff0000):0)
 				 | ((V_2&  8)?        X64(ff000000):0)
@@ -667,59 +754,71 @@ void CAlphaCPU::DoClock()
 				 | ((V_2& 64)?  X64(ff000000000000):0)
 				 | ((V_2&128)?X64(ff00000000000000):0) );
 	  DEBUG_OP("ZAPNOT");
-	  return;
+	  return 0;
         case 0x34: // SRL
-	  r[REG_3] = r[REG_1] >> (V_2 & 63);
+	  if (DO_ACTION)
+ 	    r[REG_3] = r[REG_1] >> (V_2 & 63);
 	  DEBUG_OP("SRL");
-	  return;
+	  return 0;
         case 0x39: // SLL
-	  r[REG_3] = r[REG_1] << (V_2 & 63);
+	  if (DO_ACTION)
+ 	    r[REG_3] = r[REG_1] << (V_2 & 63);
 	  DEBUG_OP("SLL");
-	  return;
+	  return 0;
         case 0x3c: // SRA
-	  r[REG_3] = r[REG_1] >> (V_2 & 63) |
-	    ((r[REG_1]>>63)?(X64_QUAD<<(64-(V_2 & 63))):0);
+	  if (DO_ACTION)
+ 	    r[REG_3] = r[REG_1] >> (V_2 & 63) |
+	                ((r[REG_1]>>63)?(X64_QUAD<<(64-(V_2 & 63))):0);
 	  DEBUG_OP("SRA");
-	  return;
+	  return 0;
         case 0x52: //MSKWH
-	  r[REG_3] = r[REG_1] & ~(X64_WORD>>(64-((V_2 & 7)*8)));
+	  if (DO_ACTION)
+ 	    r[REG_3] = r[REG_1] & ~(X64_WORD>>(64-((V_2 & 7)*8)));
 	  DEBUG_OP("MSKWH");
-	  return;
+	  return 0;
         case 0x57: // INSWH
-	  r[REG_3] = (r[REG_1]&X64_WORD) >> (64-((V_2&7)*8));
+	  if (DO_ACTION)
+ 	    r[REG_3] = (r[REG_1]&X64_WORD) >> (64-((V_2&7)*8));
 	  DEBUG_OP("INSWH");
-	  return;
+	  return 0;
         case 0x5a: // EXTWH
-	  r[REG_3] = (r[REG_1] << (64-((V_2&7)*8))) & X64_WORD;
+	  if (DO_ACTION)
+ 	    r[REG_3] = (r[REG_1] << (64-((V_2&7)*8))) & X64_WORD;
 	  DEBUG_OP("EXTWH");
-	  return;
+	  return 0;
         case 0x62: //MSKLH
-	  r[REG_3] = r[REG_1] & ~(X64_LONG>>(64-((V_2&7)*8)));
+	  if (DO_ACTION)
+ 	    r[REG_3] = r[REG_1] & ~(X64_LONG>>(64-((V_2&7)*8)));
 	  DEBUG_OP("MSKLH");
-	  return;
+	  return 0;
         case 0x67: // INSLH
-	  r[REG_3] = (r[REG_1]&X64_LONG) >> (64-((V_2&7)*8));
+	  if (DO_ACTION)
+ 	    r[REG_3] = (r[REG_1]&X64_LONG) >> (64-((V_2&7)*8));
 	  DEBUG_OP("INSLH");
-	  return;
+	  return 0;
         case 0x6a: // EXTLH
-	  r[REG_3] = (r[REG_1] << (64-((V_2&7)*8))) & X64_LONG;
+	  if (DO_ACTION)
+ 	    r[REG_3] = (r[REG_1] << (64-((V_2&7)*8))) & X64_LONG;
 	  DEBUG_OP("EXTLH");
-	  return;
+	  return 0;
         case 0x72: //MSKQH
-	  r[REG_3] = r[REG_1] & ~(X64_QUAD>>(64-((V_2&7)*8)));
+	  if (DO_ACTION)
+ 	    r[REG_3] = r[REG_1] & ~(X64_QUAD>>(64-((V_2&7)*8)));
 	  DEBUG_OP("MSKQH");
-	  return;
+	  return 0;
         case 0x77: // INSQH
-	  r[REG_3] = (r[REG_1]&X64_QUAD) >> (64-((V_2&7)*8));
+	  if (DO_ACTION)
+ 	    r[REG_3] = (r[REG_1]&X64_QUAD) >> (64-((V_2&7)*8));
 	  DEBUG_OP("INSQH");
-	  return;
+	  return 0;
         case 0x7a: // EXTQH
-	  r[REG_3] = (r[REG_1] << (64-((V_2&7)*8))) & X64_QUAD;
+	  if (DO_ACTION)
+ 	    r[REG_3] = (r[REG_1] << (64-((V_2&7)*8))) & X64_QUAD;
 	  DEBUG_OP("EXTQH");
-	  return;
+	  return 0;
         default:
 	  UNKNOWN2;
-	  return;
+	  return 0;
         }
 
     case 0x13:
@@ -727,13 +826,15 @@ void CAlphaCPU::DoClock()
       switch (function)
         {
 	case 0x00: // MULL
-	  r[REG_3] = SEXT((u32)r[REG_1]*(u32)V_2,32);
+	  if (DO_ACTION)
+ 	    r[REG_3] = SEXT((u32)r[REG_1]*(u32)V_2,32);
 	  DEBUG_OP("MULL");
-	  return;
+	  return 0;
 	case 0x20: // MULQ
-	  r[REG_3] = r[REG_1]*V_2;
+	  if (DO_ACTION)
+ 	    r[REG_3] = r[REG_1]*V_2;
 	  DEBUG_OP("MULQ");
-	  return;
+	  return 0;
 	case 0x30: // UMULH
 	  /*
 	    This algorithm was snagged from:
@@ -743,24 +844,26 @@ void CAlphaCPU::DoClock()
 	    simh alpha emulation.
 
 	  */
-
-	    temp_64_a = (r[REG_1] >> 32) & X64(ffffffff);
-	    temp_64_b = r[REG_1]  & X64(ffffffff);
-	    temp_64_c = (V_2 >> 32) & X64(ffffffff);
-	    temp_64_d = V_2 & X64(ffffffff);
+          if (DO_ACTION)
+	  {  
+	    temp_64_a = (r[REG_1] >> 32) & X64_LONG;
+	    temp_64_b = r[REG_1]  & X64_LONG;
+	    temp_64_c = (V_2 >> 32) & X64_LONG;
+	    temp_64_d = V_2 & X64_LONG;
 	    
 	    temp_64_lo = temp_64_b * temp_64_d;
 	    temp_64_x = temp_64_a * temp_64_d + temp_64_c * temp_64_b;
-	    temp_64_y = ((temp_64_lo >> 32) & X64(ffffffff)) + temp_64_x;
-	    temp_64_lo = (temp_64_lo & X64(ffffffff)) | ((temp_64_y & X64(ffffffff)) << 32);
-	    temp_64_hi = (temp_64_y >> 32) & X64(ffffffff);
+	    temp_64_y = ((temp_64_lo >> 32) & X64_LONG) + temp_64_x;
+	    temp_64_lo = (temp_64_lo & X64_LONG) | ((temp_64_y & X64_LONG) << 32);
+	    temp_64_hi = (temp_64_y >> 32) & X64_LONG;
 	    temp_64_hi += temp_64_a * temp_64_c;
 	    r[REG_3] = temp_64_hi;
-	    DEBUG_OP("UMULH");
-	  return;
+	  }
+	  DEBUG_OP("UMULH");
+	  return 0;
 	default:
 	  UNKNOWN2;
-	  return;
+	  return 0;
 	}
 
     case 0x17:
@@ -768,14 +871,16 @@ void CAlphaCPU::DoClock()
       switch (function)
 	{
 	case 0x24: //MT_FPCR
-	  fpcr = f[FREG_1];
-	  return;
+	  if (DO_ACTION)
+ 	    fpcr = f[FREG_1];
+	  return 0;
 	case 0x25: //MF_FPCR
-	  f[FREG_1] = fpcr;
-	  return;
+	  if (DO_ACTION)
+ 	    f[FREG_1] = fpcr;
+	  return 0;
 	default:
 	  UNKNOWN2;
-	  return;
+	  return 0;
 	}
 
     case 0x18:
@@ -792,134 +897,157 @@ void CAlphaCPU::DoClock()
 	case 0xF800: // WH64
 	case 0xFC00: // WH64EN
 	  DEBUG_("NOP");
-	  return;
+	  return 0;
 	case 0xC000: // RPCC
-	  r[REG_1] = ((u64)cc_offset)<<32
-	    | cc;
+	  if (DO_ACTION)
+ 	    r[REG_1] = ((u64)cc_offset)<<32 | cc;
 	  DEBUG_OP_R1("RPCC");
-	  return;
+	  return 0;
 	case 0xE000: // RC
-	  r[REG_1] = bIntrFlag?1:0;
-	  bIntrFlag = false;
+	  if (DO_ACTION)
+	  {
+ 	    r[REG_1] = bIntrFlag?1:0;
+	    bIntrFlag = false;
+	  }
 	  DEBUG_OP_R1("RC");
-	  return;
+	  return 0;
 	case 0xF000: // RS
-	  r[REG_1] = bIntrFlag?1:0;
-	  bIntrFlag = true;
+	  if (DO_ACTION)
+	  {
+ 	    r[REG_1] = bIntrFlag?1:0;
+	    bIntrFlag = true;
+	  }
 	  DEBUG_OP_R1("RS");
-	  return;
+	  return 0;
 	default:
 	  UNKNOWN2;
-	  return;
+	  return 0;
 	}
 
     case 0x19: // HW_MFPR
       function = (ins>>8) & 0xff;
       if ((function & 0xc0) == 0x40)
         {	// PCTX
-	  r[REG_1] = ((u64)asn << 39)
-	    | ((u64)astrr << 9)
-	    | ((u64)aster <<5)
-	    | (fpen?X64(1)<<3:0)
-	    | (ppcen?X64(1)<<1:0);
+	  if (DO_ACTION)
+ 	    r[REG_1] = ((u64)asn << 39)
+	      | ((u64)astrr << 9)
+	      | ((u64)aster <<5)
+	      | (fpen?X64(1)<<3:0)
+	      | (ppcen?X64(1)<<1:0);
 	  DEBUG_MFPR("PCTX");
-	  return;
+	  return 0;
         }
       switch (function)
         {
         case 0x05: // PMPC
-	  r[REG_1] = pmpc;
+	  if (DO_ACTION)
+ 	    r[REG_1] = pmpc;
 	  DEBUG_MFPR("PMPC");
-	  return;
+	  return 0;
         case 0x06: // EXC_ADDR
-	  r[REG_1] = exc_addr;
+	  if (DO_ACTION)
+ 	    r[REG_1] = exc_addr;
 	  DEBUG_MFPR("EXC_ADDR");
-	  return;
+	  return 0;
         case 0x07: // IVA_FORM
-	  r[REG_1] = va_form(exc_addr,i_ctl_va_mode,i_ctl_vptb);
+	  if (DO_ACTION)
+ 	    r[REG_1] = va_form(exc_addr,i_ctl_va_mode,i_ctl_vptb);
 	  DEBUG_MFPR("IVA_FORM");
-	  return;
+	  return 0;
         case 0x08: // IER_CM
         case 0x09: // CM
         case 0x0a: // IER
         case 0x0b: // IER_CM
-	  r[REG_1] = (((u64)eien) << 33)
-	    | (((u64)slen) << 32)
-	    | (((u64)cren) << 31)
-	    | (((u64)pcen) << 29)
-	    | (((u64)sien) << 14)
-	    | (((u64)asten) << 13)
-	    | (((u64)cm) << 3);
+	  if (DO_ACTION)
+ 	    r[REG_1] = (((u64)eien) << 33)
+	      | (((u64)slen) << 32)
+	      | (((u64)cren) << 31)
+	      | (((u64)pcen) << 29)
+	      | (((u64)sien) << 14)
+	      | (((u64)asten) << 13)
+	      | (((u64)cm) << 3);
 	  DEBUG_MFPR("IER_CM");
-	  return;
+	  return 0;
         case 0x0c: // SIRR
-	  r[REG_1] = ((u64)sir) << 14;
+	  if (DO_ACTION)
+ 	    r[REG_1] = ((u64)sir) << 14;
 	  DEBUG_MFPR("SIRR");
-	  return;
+	  return 0;
         case 0x0d: // ISUM
-	  r[REG_1] = (((u64)(eir & eien)) << 33)
-	    | (((u64)(slr & slen)) << 32)
-	    | (((u64)(crr & cren)) << 31)
-	    | (((u64)(pcr & pcen)) << 29)
-	    | (((u64)(sir & sien)) << 14)
-	    | (((u64)( ((X64(1)<<(cm+1))-1) & aster & astrr & (asten * 0x3))) << 3)
-	    | (((u64)( ((X64(1)<<(cm+1))-1) & aster & astrr & (asten * 0xc))) << 7);
+	  if (DO_ACTION)
+ 	    r[REG_1] = (((u64)(eir & eien)) << 33)
+	      | (((u64)(slr & slen)) << 32)
+	      | (((u64)(crr & cren)) << 31)
+	      | (((u64)(pcr & pcen)) << 29)
+	      | (((u64)(sir & sien)) << 14)
+	      | (((u64)( ((X64(1)<<(cm+1))-1) & aster & astrr & (asten * 0x3))) << 3)
+	      | (((u64)( ((X64(1)<<(cm+1))-1) & aster & astrr & (asten * 0xc))) << 7);
 	  DEBUG_MFPR("ISUM");
-	  return;
+	  return 0;
         case 0x0f: // EXC_SUM
-	  r[REG_1] = exc_sum;
+	  if (DO_ACTION)
+ 	    r[REG_1] = exc_sum;
 	  DEBUG_MFPR("EXC_SUM");
-	  return;
+	  return 0;
         case 0x10: // PAL_BASE
-	  r[REG_1] = pal_base;
+	  if (DO_ACTION)
+ 	    r[REG_1] = pal_base;
 	  DEBUG_MFPR("PAL_BASE");
-	  return;
+	  return 0;
         case 0x11: // i_ctl
-	  r[REG_1] = i_ctl_other
-	    | (((u64)CPU_CHIP_ID)<<24)
-	    | (u64)i_ctl_vptb
-	    | (((u64)i_ctl_va_mode) << 15)
-	    | (hwe?X64(1)<<12:0)
-	    | (sde?X64(1)<<7:0)
-	    | (((u64)i_ctl_spe) << 3);
+	  if (DO_ACTION)
+ 	    r[REG_1] = i_ctl_other
+	      | (((u64)CPU_CHIP_ID)<<24)
+	      | (u64)i_ctl_vptb
+	      | (((u64)i_ctl_va_mode) << 15)
+	      | (hwe?X64(1)<<12:0)
+	      | (sde?X64(1)<<7:0)
+	      | (((u64)i_ctl_spe) << 3);
 	  DEBUG_MFPR("I_CTL");
-	  return;
+	  return 0;
         case 0x14: // PCTR_CTL
-	  r[REG_1] = pctr_ctl;
+	  if (DO_ACTION)
+ 	    r[REG_1] = pctr_ctl;
 	  DEBUG_MFPR("PCTR_CTL");
-	  return;
+	  return 0;
         case 0x16: // I_STAT
-	  r[REG_1] = i_stat;
+	  if (DO_ACTION)
+ 	    r[REG_1] = i_stat;
 	  DEBUG_MFPR("I_STAT");
-	  return;
+	  return 0;
         case 0x27: // MM_STAT
-	  r[REG_1] = mm_stat;
+	  if (DO_ACTION)
+ 	    r[REG_1] = mm_stat;
 	  DEBUG_MFPR("MM_STAT");
-	  return;
+	  return 0;
         case 0x2a: // DC_STAT
-	  r[REG_1] = dc_stat;
+	  if (DO_ACTION)
+ 	    r[REG_1] = dc_stat;
 	  DEBUG_MFPR("DC_STAT");
-	  return;
+	  return 0;
         case 0x2b: // C_DATA
-	  r[REG_1] = 0;
+	  if (DO_ACTION)
+ 	    r[REG_1] = 0;
 	  DEBUG_MFPR("C_DATA");
-	  return;
+	  return 0;
         case 0xc0: // CC
-	  r[REG_1] = (((u64)cc_offset) << 32)
-	    |  cc;
+	  if (DO_ACTION)
+ 	    r[REG_1] = (((u64)cc_offset) << 32) |  cc;
 	  DEBUG_MFPR("CC");
-	  return;
+	  return 0;
         case 0xc2: // VA
-	  r[REG_1] = fault_va;
+	  if (DO_ACTION)
+ 	    r[REG_1] = fault_va;
 	  DEBUG_MFPR("VA");
-	  return;
+	  return 0;
         case 0xc3: // VA_FORM
-	  r[REG_1] = va_form(fault_va, va_ctl_va_mode, va_ctl_vptb);
+	  if (DO_ACTION)
+ 	    r[REG_1] = va_form(fault_va, va_ctl_va_mode, va_ctl_vptb);
 	  DEBUG_MFPR("VA_FORM");
-	  return;
+	  return 0;
         default:
 	  UNKNOWN2;
-	  return;
+	  return 0;
         }
 
     case 0x1a: // JMP...
@@ -937,7 +1065,7 @@ void CAlphaCPU::DoClock()
 	    else
 	      TRC(true, true)
 	}
-      return;
+      return 0;
 
     case 0x1b: // HW_LD
       function = (ins>>12) & 0xf;
@@ -950,7 +1078,7 @@ void CAlphaCPU::DoClock()
 	      r[REG_1] = READ_PHYS_NT(32);
 	    }
 	  DEBUG_HW("HW_LDL","/Phys");
-	  return;
+	  return 0;
         case 1: // quadword physical
 	  if (DO_ACTION)
 	    {
@@ -958,7 +1086,7 @@ void CAlphaCPU::DoClock()
 	      r[REG_1] = READ_PHYS_NT(64);
 	    }
 	  DEBUG_HW("HW_LDQ","/Phys");
-	  return;
+	  return 0;
         case 2: // longword physical locked
 	  if (DO_ACTION)
 	    {
@@ -967,7 +1095,7 @@ void CAlphaCPU::DoClock()
 	      r[REG_1] = READ_PHYS_NT(32);
 	    }
 	  DEBUG_HW("HW_LDL","/Phys/Lock");
-	  return;
+	  return 0;
         case 3: // quadword physical locked
 	  if (DO_ACTION)
 	    {
@@ -976,7 +1104,7 @@ void CAlphaCPU::DoClock()
 	      r[REG_1] = READ_PHYS_NT(64);
 	    }
 	  DEBUG_HW("HW_LDQ","/Phys/Lock");
-	  return;
+	  return 0;
         case 4: // longword virtual vpte               //chk //alt  //vpte
 	  if (DO_ACTION)
 	    {
@@ -984,7 +1112,7 @@ void CAlphaCPU::DoClock()
 	      r[REG_1] = READ_PHYS_NT(32);
 	    }
 	  DEBUG_HW("HW_LDL","/Vpte");
-	  return;
+	  return 0;
         case 5: // quadword virtual vpte               //chk //alt  //vpte
 	  if (DO_ACTION)
 	    {
@@ -992,7 +1120,7 @@ void CAlphaCPU::DoClock()
 	      r[REG_1] = READ_PHYS_NT(64);
 	    }
 	  DEBUG_HW("HW_LDQ","/Vpte");
-	  return;
+	  return 0;
         case 8: // longword virtual
 	  if (DO_ACTION)
 	    {
@@ -1000,7 +1128,7 @@ void CAlphaCPU::DoClock()
 	      r[REG_1] = READ_PHYS_NT(32);
 	    }
 	  DEBUG_HW("HW_LDL","");
-	  return;
+	  return 0;
         case 9: // quadword virtual
 	  if (DO_ACTION)
 	    {
@@ -1008,7 +1136,7 @@ void CAlphaCPU::DoClock()
 	      r[REG_1] = READ_PHYS_NT(64);
 	    }
 	  DEBUG_HW("HW_LDQ","");
-	  return;
+	  return 0;
         case 10: // longword virtual check
 	  if (DO_ACTION)
 	    {
@@ -1016,7 +1144,7 @@ void CAlphaCPU::DoClock()
 	      r[REG_1] = READ_PHYS_NT(32);
 	    }
 	  DEBUG_HW("HW_LDL","/Chk");
-	  return;
+	  return 0;
         case 11: // quadword virtual check
 	  if (DO_ACTION)
 	    {
@@ -1024,7 +1152,7 @@ void CAlphaCPU::DoClock()
 	      r[REG_1] = READ_PHYS_NT(64);
 	    }
 	  DEBUG_HW("HW_LDQ","/Chk");
-	  return;
+	  return 0;
         case 12: // longword virtual alt
 	  if (DO_ACTION)
 	    {
@@ -1032,7 +1160,7 @@ void CAlphaCPU::DoClock()
 	      r[REG_1] = READ_PHYS_NT(32);
 	    }
 	  DEBUG_HW("HW_LDL","/Alt");
-	  return;
+	  return 0;
         case 13: // quadword virtual alt
 	  if (DO_ACTION)
 	    {
@@ -1040,7 +1168,7 @@ void CAlphaCPU::DoClock()
 	      r[REG_1] = READ_PHYS_NT(64);
 	    }
 	  DEBUG_HW("HW_LDQ","/Alt");
-	  return;
+	  return 0;
         case 14: // longword virtual alt check
 	  if (DO_ACTION)
 	    {
@@ -1048,7 +1176,7 @@ void CAlphaCPU::DoClock()
 	      r[REG_1] = READ_PHYS_NT(32);
 	    }
 	  DEBUG_HW("HW_LDL","/Alt/Chk");
-	  return;
+	  return 0;
         case 15: // quadword virtual alt check
 	  if (DO_ACTION)
 	    {
@@ -1056,10 +1184,10 @@ void CAlphaCPU::DoClock()
 	      r[REG_1] = READ_PHYS_NT(64);
 	    }
 	  DEBUG_HW("HW_LDQ","/Alt/Chk");
-	  return;
+	  return 0;
         default:
 	  UNKNOWN2;
-	  return;
+	  return 0;
         }
     
     case 0x1c: // op
@@ -1067,389 +1195,498 @@ void CAlphaCPU::DoClock()
       switch (function)
         {
         case 0x00: //SEXTB
-	  r[REG_3] = SEXT(V_2,8);
+	  if (DO_ACTION)
+ 	    r[REG_3] = SEXT(V_2,8);
 	  DEBUG_OP_R23("SEXTB");
-	  return;
+	  return 0;
         case 0x01: // SEXTW
-	  r[REG_3] = SEXT(V_2,16);
+	  if (DO_ACTION)
+ 	    r[REG_3] = SEXT(V_2,16);
 	  DEBUG_OP_R23("SEXTW");
-	  return;
+	  return 0;
         case 0x30: // CTPOP
-	  temp_64 = 0;
-	  temp_64_2 = V_2;
-	  for (i=0;i<64;i++)
-	    if ((temp_64_2>>i)&1)
-	      temp_64++;
-	  r[REG_3] = temp_64;
+	  if (DO_ACTION)
+	  {
+ 	    temp_64 = 0;
+	    temp_64_2 = V_2;
+	    for (i=0;i<64;i++)
+	      if ((temp_64_2>>i)&1)
+	        temp_64++;
+	    r[REG_3] = temp_64;
+	  }
 	  DEBUG_OP_R23("CTPOP");
-	  return;
+	  return 0;
         case 0x31: // PERR
-	  temp_64 = 0;
-	  temp_64_1 = r[REG_1];
-	  temp_64_2 = V_2;
-	  for(i=0;i<64;i+=8)
-	    if ((s8)((temp_64_1>>i)&X64_BYTE) > (s8)((temp_64_2>>i)&X64_BYTE))
-	      temp_64 |=    ((u64)((s8)((temp_64_1>>i)&X64_BYTE) - (s8)((temp_64_2>>i)&X64_BYTE))<<i);
-	    else
-	      temp_64 |=    ((u64)((s8)((temp_64_2>>i)&X64_BYTE) - (s8)((temp_64_1>>i)&X64_BYTE))<<i);
-	  r[REG_3] = temp_64;
+	  if (DO_ACTION)
+	  {
+ 	    temp_64 = 0;
+	    temp_64_1 = r[REG_1];
+	    temp_64_2 = V_2;
+	    for(i=0;i<64;i+=8)
+	      if ((s8)((temp_64_1>>i)&X64_BYTE) > (s8)((temp_64_2>>i)&X64_BYTE))
+	        temp_64 |=    ((u64)((s8)((temp_64_1>>i)&X64_BYTE) - (s8)((temp_64_2>>i)&X64_BYTE))<<i);
+	      else
+	        temp_64 |=    ((u64)((s8)((temp_64_2>>i)&X64_BYTE) - (s8)((temp_64_1>>i)&X64_BYTE))<<i);
+	    r[REG_3] = temp_64;
+	  }
 	  DEBUG_OP("PERR");
-	  return;
+	  return 0;
         case 0x32: // CTLZ
-	  temp_64 = 0;
-	  temp_64_2 = V_2;
-	  for (i=63;i>=0;i--)
-	    if ((temp_64>>i)&1)
-	      break;
-	    else
-	      temp_64++;
-	  r[REG_3] = temp_64;
+	  if (DO_ACTION)
+	  {
+ 	    temp_64 = 0;
+	    temp_64_2 = V_2;
+	    for (i=63;i>=0;i--)
+	      if ((temp_64>>i)&1)
+	        break;
+	      else
+	        temp_64++;
+	    r[REG_3] = temp_64;
+	  }
 	  DEBUG_OP_R23("CTLZ");
-	  return;
+	  return 0;
         case 0x33: // CTTZ
-	  temp_64 = 0;
-	  temp_64_2 = V_2;
-	  for (i=0;i<64;i++)
-	    if ((temp_64>>i)&1)
-	      break;
-	    else
-	      temp_64++;
-	  r[REG_3] = temp_64;
+	  if (DO_ACTION)
+	  {
+ 	    temp_64 = 0;
+	    temp_64_2 = V_2;
+	    for (i=0;i<64;i++)
+	      if ((temp_64>>i)&1)
+	        break;
+	      else
+	        temp_64++;
+	    r[REG_3] = temp_64;
+	  }
 	  DEBUG_OP_R23("CTLZ");
-	  return;
+	  return 0;
         case 0x34: // UNPKBW
-	  temp_64_2 = V_2;
-	  r[REG_3] =  (temp_64_2 & X64(000000ff))
-	    | ((temp_64_2 & X64(0000ff00)) << 8)
-	    | ((temp_64_2 & X64(00ff0000)) << 16)
-	    | ((temp_64_2 & X64(ff000000)) << 24);
+	  if (DO_ACTION)
+	  {
+ 	    temp_64_2 = V_2;
+	    r[REG_3] =  (temp_64_2 & X64(000000ff))
+	      | ((temp_64_2 & X64(0000ff00)) << 8)
+	      | ((temp_64_2 & X64(00ff0000)) << 16)
+	      | ((temp_64_2 & X64(ff000000)) << 24);
+	  }
 	  DEBUG_OP_R23("UNPKBW");
-	  return;
+	  return 0;
         case 0x35: // UNPKBL
-	  temp_64_2 = V_2;
-	  r[REG_3] =  (temp_64_2 & X64(000000ff))
-	    | ((temp_64_2 & X64(0000ff00)) << 24);
+	  if (DO_ACTION)
+	  {
+ 	    temp_64_2 = V_2;
+	    r[REG_3] =  (temp_64_2 & X64(000000ff))
+	      | ((temp_64_2 & X64(0000ff00)) << 24);
+	  }
 	  DEBUG_OP_R23("UNPKBL");
-	  return;
+	  return 0;
         case 0x36: // PKBW
-	  temp_64_2 = V_2;
-	  r[REG_3] =  (temp_64_2 & X64(00000000000000ff))
-	    | ((temp_64_2 & X64(0000000000ff0000)) >> 8)
-	    | ((temp_64_2 & X64(000000ff00000000)) >> 16)
-	    | ((temp_64_2 & X64(00ff000000000000)) >> 24);
+	  if (DO_ACTION)
+	  {
+ 	    temp_64_2 = V_2;
+	    r[REG_3] =  (temp_64_2 & X64(00000000000000ff))
+	      | ((temp_64_2 & X64(0000000000ff0000)) >> 8)
+	      | ((temp_64_2 & X64(000000ff00000000)) >> 16)
+	      | ((temp_64_2 & X64(00ff000000000000)) >> 24);
+	  }
 	  DEBUG_OP_R23("PKBW");
-	  return;
+	  return 0;
         case 0x37: // PKBL
-	  temp_64_2 = V_2;
-	  r[REG_3] =  (temp_64_2 & X64(00000000000000ff))
-	    | ((temp_64_2 & X64(000000ff00000000)) >> 24);
+	  if (DO_ACTION)
+	  {
+ 	    temp_64_2 = V_2;
+	    r[REG_3] =  (temp_64_2 & X64(00000000000000ff))
+	      | ((temp_64_2 & X64(000000ff00000000)) >> 24);
+	  }
 	  DEBUG_OP_R23("PKBL");
-	  return;
+	  return 0;
         case 0x38: // MINSB8
-	  temp_64 = 0;
-	  temp_64_1 = r[REG_1];
-	  temp_64_2 = V_2;
-	  for(i=0;i<64;i+= 8)
-            {
+	  if (DO_ACTION)
+	  {
+ 	    temp_64 = 0;
+	    temp_64_1 = r[REG_1];
+	    temp_64_2 = V_2;
+	    for(i=0;i<64;i+= 8)
+	    {
 	      if ((s8)((temp_64_1>>i)&X64_BYTE) > (s8)((temp_64_2>>i)&X64_BYTE))
 		temp_64 |=    (((temp_64_2>>i)&X64_BYTE)<<i);
 	      else
 		temp_64 |=    (((temp_64_1>>i)&X64_BYTE)<<i);
             }
+	    r[REG_3] = temp_64;
+	  }
 	  DEBUG_OP("MINSB8");
-	  return;
+	  return 0;
         case 0x39: // MINSW4
-	  temp_64 = 0;
-	  temp_64_1 = r[REG_1];
-	  temp_64_2 = V_2;
-	  for(i=0;i<64;i+= 16)
+	  if (DO_ACTION)
+	  {
+ 	    temp_64 = 0;
+	    temp_64_1 = r[REG_1];
+	    temp_64_2 = V_2;
+	    for(i=0;i<64;i+= 16)
             {
 	      if ((s16)((temp_64_1>>i)&X64_WORD) > (s16)((temp_64_2>>i)&X64_WORD))
 		temp_64 |=    (((temp_64_2>>i)&X64_WORD)<<i);
 	      else
 		temp_64 |=    (((temp_64_1>>i)&X64_WORD)<<i);
             }
+	    r[REG_3] = temp_64;
+	  }
 	  DEBUG_OP("MINSW4");
-	  return;
+	  return 0;
         case 0x3a: // MINUB8
-	  temp_64 = 0;
-	  temp_64_1 = r[REG_1];
-	  temp_64_2 = V_2;
-	  for(i=0;i<64;i+= 8)
-            {
+	  if (DO_ACTION)
+	  {
+ 	    temp_64 = 0;
+	    temp_64_1 = r[REG_1];
+	    temp_64_2 = V_2;
+	    for(i=0;i<64;i+= 8)
+	    {
 	      if ((u8)((temp_64_1>>i)&X64_BYTE) > (u8)((temp_64_2>>i)&X64_BYTE))
 		temp_64 |=    (((temp_64_2>>i)&X64_BYTE)<<i);
 	      else
 		temp_64 |=    (((temp_64_1>>i)&X64_BYTE)<<i);
             }
+	    r[REG_3] = temp_64;
+	  }
 	  DEBUG_OP("MINUB8");
-	  return;
+	  return 0;
         case 0x3b: // MINUW4
-	  temp_64 = 0;
-	  temp_64_1 = r[REG_1];
-	  temp_64_2 = V_2;
-	  for(i=0;i<64;i+= 16)
+	  if (DO_ACTION)
+	  {
+ 	    temp_64 = 0;
+	    temp_64_1 = r[REG_1];
+	    temp_64_2 = V_2;
+	    for(i=0;i<64;i+= 16)
             {
 	      if ((u16)((temp_64_1>>i)&X64_WORD) > (u16)((temp_64_2>>i)&X64_WORD))
 		temp_64 |=    (((temp_64_2>>i)&X64_WORD)<<i);
 	      else
 		temp_64 |=    (((temp_64_1>>i)&X64_WORD)<<i);
             }
+	    r[REG_3] = temp_64;
+	  }
 	  DEBUG_OP("MINUW4");
-	  return;
+	  return 0;
         case 0x3c: // MAXUB8
-	  temp_64 = 0;
-	  temp_64_1 = r[REG_1];
-	  temp_64_2 = V_2;
-	  for(i=0;i<64;i+= 8)
+	  if (DO_ACTION)
+	  {
+ 	    temp_64 = 0;
+	    temp_64_1 = r[REG_1];
+	    temp_64_2 = V_2;
+	    for(i=0;i<64;i+= 8)
             {
 	      if ((u8)((temp_64_1>>i)&X64_BYTE) > (u8)((temp_64_2>>i)&X64_BYTE))
 		temp_64 |=    (((temp_64_1>>i)&X64_BYTE)<<i);
 	      else
 		temp_64 |=    (((temp_64_2>>i)&X64_BYTE)<<i);
             }
+	    r[REG_3] = temp_64;
+	  }
 	  DEBUG_OP("MAXUB8");
-	  return;
+	  return 0;
         case 0x3d: // MAXUW4
-	  temp_64 = 0;
-	  temp_64_1 = r[REG_1];
-	  temp_64_2 = V_2;
-	  for(i=0;i<64;i+= 16)
+	  if (DO_ACTION)
+	  {
+ 	    temp_64 = 0;
+	    temp_64_1 = r[REG_1];
+	    temp_64_2 = V_2;
+	    for(i=0;i<64;i+= 16)
             {
 	      if ((u16)((temp_64_1>>i)&X64_WORD) > (u16)((temp_64_2>>i)&X64_WORD))
 		temp_64 |=    (((temp_64_1>>i)&X64_WORD)<<i);
 	      else
 		temp_64 |=    (((temp_64_2>>i)&X64_WORD)<<i);
             }
+	    r[REG_3] = temp_64;
+	  }
 	  DEBUG_OP("MAXUW4");
-	  return;
+	  return 0;
         case 0x3e: // MAXSB8
-	  temp_64 = 0;
-	  temp_64_1 = r[REG_1];
-	  temp_64_2 = V_2;
-	  for(i=0;i<64;i+= 8)
+	  if (DO_ACTION)
+	  {
+ 	    temp_64 = 0;
+	    temp_64_1 = r[REG_1];
+	    temp_64_2 = V_2;
+	    for(i=0;i<64;i+= 8)
             {
 	      if ((s8)((temp_64_1>>i)&X64_BYTE) > (s8)((temp_64_2>>i)&X64_BYTE))
 		temp_64 |=    (((temp_64_1>>i)&X64_BYTE)<<i);
 	      else
 		temp_64 |=    (((temp_64_2>>i)&X64_BYTE)<<i);
             }
+	    r[REG_3] = temp_64;
+	  }
 	  DEBUG_OP("MAXSB8");
-	  return;
+	  return 0;
         case 0x3f: // MAXSW4
-	  temp_64 = 0;
-	  temp_64_1 = r[REG_1];
-	  temp_64_2 = V_2;
-	  for(i=0;i<64;i+= 16)
+	  if (DO_ACTION)
+	  {
+ 	    temp_64 = 0;
+	    temp_64_1 = r[REG_1];
+	    temp_64_2 = V_2;
+	    for(i=0;i<64;i+= 16)
             {
 	      if ((s16)((temp_64_1>>i)&X64_WORD) > (s16)((temp_64_2>>i)&X64_WORD))
 		temp_64 |=    (((temp_64_1>>i)&X64_WORD)<<i);
 	      else
 		temp_64 |=    (((temp_64_2>>i)&X64_WORD)<<i);
             }
+ 	    r[REG_3] = temp_64;
+	  }
 	  DEBUG_OP("MAXSW4");
-	  return;
+	  return 0;
         case 0x70: // FTOIT
-	  r[REG_3] = f[FREG_1];
+	  if (DO_ACTION)
+ 	    r[REG_3] = f[FREG_1];
 	  DEBUG_OP_F1_R3("FTOIT");
-	  return;
-
+	  return 0;
         case 0x78: // FTOIS
-	  temp_64 = f[FREG_1];
-	  r[REG_3] = (temp_64 & X64(000000003fffffff))
-	    |((temp_64 & X64(c000000000000000)) >> 32)
-	    |(((temp_64 & X64(8000000000000000)) >>31) * X64(ffffffff));
+	  if (DO_ACTION)
+	  {
+ 	    temp_64 = f[FREG_1];
+	    r[REG_3] = (temp_64 & X64(000000003fffffff))
+	      |((temp_64 & X64(c000000000000000)) >> 32)
+	      |(((temp_64 & X64(8000000000000000)) >>31) * X64(ffffffff));
+	  }
 	  DEBUG_OP_F1_R3("FTOIS");
-	  return;
+	  return 0;
         default:
 	  UNKNOWN2;
-	  return;
+	  return 0;
         }
 
     case 0x1d: // HW_MTPR
       function = (ins>>8) & 0xff;
       if ((function & 0xc0) == 0x40)
         {
-	  if (function & 1)
-	    asn = (int)(r[REG_2]>>39) & 0xff;
-	  if (function & 2)
-	    aster = (int)(r[REG_2]>>5) & 0xf;
-	  if (function & 4)
-	    astrr = (int)(r[REG_2]>>9) & 0xf;
-	  if (function & 8)
-	    ppcen = (int)(r[REG_2]>>1) & 1;
-	  if (function & 16)
-	    fpen = (int)(r[REG_2]>>3) & 1;
-	  DEBUG_MTPR("PCTX");
-	  return;
+	  if (DO_ACTION)
+	  {	    
+	    if (function & 1)
+	      asn = (int)(r[REG_2]>>39) & 0xff;
+	    if (function & 2)
+	      aster = (int)(r[REG_2]>>5) & 0xf;
+	    if (function & 4)
+	      astrr = (int)(r[REG_2]>>9) & 0xf;
+	    if (function & 8)
+	      ppcen = (int)(r[REG_2]>>1) & 1;
+	    if (function & 16)
+	      fpen = (int)(r[REG_2]>>3) & 1;
+	    DEBUG_MTPR("PCTX");
+	  }
+	  return 0;
         }
       switch (function)
         {
         case 0x00: // ITB_TAG
-	  itb->write_tag(0,r[REG_2]);
+	  if (DO_ACTION)
+ 	    itb->write_tag(0,r[REG_2]);
 	  DEBUG_MTPR("ITB_TAG");
-	  return;
+	  return 0;
         case 0x01: // ITB_PTE
-	  itb->write_pte(0,r[REG_2],get_asn());
+	  if (DO_ACTION)
+ 	    itb->write_pte(0,r[REG_2],get_asn());
 	  DEBUG_MTPR("ITB_PTE");
-	  return;
+	  return 0;
         case 0x02: // ITB_IAP
-	  itb->InvalidateAllProcess();
+	  if (DO_ACTION)
+ 	    itb->InvalidateAllProcess();
 	  DEBUG_MTPR("ITB_IAP");
-	  return;
+	  return 0;
         case 0x03: // ITB_IA
-	  itb->InvalidateAll();
+	  if (DO_ACTION)
+ 	    itb->InvalidateAll();
 	  DEBUG_MTPR("ITB_IA");
-	  return;
+	  return 0;
         case 0x04: // ITB_IS
-	  itb->InvalidateSingle(r[REG_2],get_asn());
+	  if (DO_ACTION)
+ 	    itb->InvalidateSingle(r[REG_2],get_asn());
 	  DEBUG_MTPR("ITB_IS");
-	  return;
+	  return 0;
         case 0x09: // CM
-	  cm = (int)(r[REG_2]>>3) & 3;
+	  if (DO_ACTION)
+ 	    cm = (int)(r[REG_2]>>3) & 3;
 	  DEBUG_MTPR("CM");
-	  return;
+	  return 0;
         case 0x0b: // IER_CM
-	  cm = (int)(r[REG_2]>>3) & 3;
+	  if (DO_ACTION)
+ 	    cm = (int)(r[REG_2]>>3) & 3;
         case 0x0a: // IER
-	  asten = (int)(r[REG_2]>>13) & 1;
-	  sien  = (int)(r[REG_2]>>14) & 0x3fff;
-	  pcen  = (int)(r[REG_2]>>29) & 3;
-	  cren  = (int)(r[REG_2]>>31) & 1;
-	  slen  = (int)(r[REG_2]>>32) & 1;
-	  eien  = (int)(r[REG_2]>>33) & 0x3f;
+	  if (DO_ACTION)
+	  {
+ 	    asten = (int)(r[REG_2]>>13) & 1;
+	    sien  = (int)(r[REG_2]>>14) & 0x3fff;
+	    pcen  = (int)(r[REG_2]>>29) & 3;
+	    cren  = (int)(r[REG_2]>>31) & 1;
+	    slen  = (int)(r[REG_2]>>32) & 1;
+	    eien  = (int)(r[REG_2]>>33) & 0x3f;
+	  }
 	  DEBUG_MTPR("IER[_CM]");
-	  return;
+	  return 0;
         case 0x0c: // SIRR
-	  sir = (int)(r[REG_2]>>14) & 0x3fff;
+	  if (DO_ACTION)
+ 	    sir = (int)(r[REG_2]>>14) & 0x3fff;
 	  DEBUG_MTPR("SIRR");
-	  return;
+	  return 0;
         case 0x0e: // HW_INT_CLR
-	  pcr &= ~((r[REG_2]>>29)&X64(3));
-	  crr &= ~((r[REG_2]>>31)&X64(1));
-	  slr &= ~((r[REG_2]>>32)&X64(1));
+	  if (DO_ACTION)
+	  {
+	    pcr &= ~((r[REG_2]>>29)&X64(3));
+	    crr &= ~((r[REG_2]>>31)&X64(1));
+	    slr &= ~((r[REG_2]>>32)&X64(1));
+	  }
 	  DEBUG_MTPR("HW_INT_CLT");
-	  return;
+	  return 0;
         case 0x10: // PAL_BASE
-	  pal_base = r[REG_2] & X64(00000fffffff8000);
+	  if (DO_ACTION)
+ 	    pal_base = r[REG_2] & X64(00000fffffff8000);
 	  DEBUG_MTPR("PAL_BASE");
-	  return;
+	  return 0;
         case 0x11: // i_ctl
-	  i_ctl_other = r[REG_2]    & X64(00000000007e2f67);
-	  i_ctl_vptb  = SEXT (r[REG_2] & X64(0000ffffc0000000),48);
-	  i_ctl_spe   = (int)(r[REG_2]>>3) & 3;
-	  sde         = (r[REG_2]>>7) & 1;
-	  hwe         = (r[REG_2]>>12) & 1;
-	  i_ctl_va_mode = (int)(r[REG_2]>>15) & 3;
+	  if (DO_ACTION)
+	  {
+ 	    i_ctl_other = r[REG_2]    & X64(00000000007e2f67);
+	    i_ctl_vptb  = SEXT (r[REG_2] & X64(0000ffffc0000000),48);
+	    i_ctl_spe   = (int)(r[REG_2]>>3) & 3;
+	    sde         = (r[REG_2]>>7) & 1;
+	    hwe         = (r[REG_2]>>12) & 1;
+	    i_ctl_va_mode = (int)(r[REG_2]>>15) & 3;
+	  }
 	  DEBUG_MTPR("I_CTL");
-	  return;
+	  return 0;
         case 0x12: // ic_flush_asm
-	  flush_icache();
+	  if (DO_ACTION)
+ 	    flush_icache();
 	  DEBUG_MTPR("IC_FLUSH_ASM");
-	  return;
+	  return 0;
         case 0x13: // IC_FLUSH
-	  flush_icache();
+	  if (DO_ACTION)
+ 	    flush_icache();
 	  DEBUG_MTPR("IC_FLUSH");
-	  return;
+	  return 0;
         case 0x14: // PCTR_CTL
-	  pctr_ctl = r[REG_2] & X64(ffffffffffffffdf);
+	  if (DO_ACTION)
+ 	    pctr_ctl = r[REG_2] & X64(ffffffffffffffdf);
 	  DEBUG_MTPR("PCTR_CTL");
-	  return;
+	  return 0;
         case 0x15: // CLR_MAP
 	  // NOP
 	  DEBUG_MTPR("CLR_MAP");
-	  return;
+	  return 0;
         case 0x16: // I_STAT
-	  i_stat &= ~r[REG_2]; //W1C
+	  if (DO_ACTION)
+ 	    i_stat &= ~r[REG_2]; //W1C
 	  DEBUG_MTPR("I_STAT");
-	  return;
+	  return 0;
         case 0x17: // SLEEP
 	  // NOP
 	  DEBUG_MTPR("SLEEP");
-	  return;
+	  return 0;
         case 0x20: // DTB_TAG0
-	  dtb->write_tag(0,r[REG_2]);
+	  if (DO_ACTION)
+ 	    dtb->write_tag(0,r[REG_2]);
 	  DEBUG_MTPR("DTB_TAG0");
-	  return;
+	  return 0;
         case 0x21: // DTB_PTE0
-	  dtb->write_pte(0,r[REG_2],get_asn());
+	  if (DO_ACTION)
+ 	    dtb->write_pte(0,r[REG_2],get_asn());
 	  DEBUG_MTPR("DTB_PTE0");
-	  return;
+	  return 0;
         case 0x24: // DTB_IS0
-	  dtb->InvalidateSingle(r[REG_2],get_asn());
+	  if (DO_ACTION)
+ 	    dtb->InvalidateSingle(r[REG_2],get_asn());
 	  DEBUG_MTPR("DTB_IS0");
-	  return;
+	  return 0;
         case 0x25: // DTB_ASN0
-	  asn0 = (int)(r[REG_2] >> 56);
+	  if (DO_ACTION)
+ 	    asn0 = (int)(r[REG_2] >> 56);
 	  DEBUG_MTPR("DTB_ASN0");
-	  return;
+	  return 0;
         case 0x26: // DTB_ALTMODE
-	  alt_cm = (int)(r[REG_2] & 3);
+	  if (DO_ACTION)
+ 	    alt_cm = (int)(r[REG_2] & 3);
 	  DEBUG_MTPR("DTB_ALTMODE");
-	  return;
+	  return 0;
         case 0x27: // MM_STAT
 	  DEBUG_MTPR("MM_STAT");
-	  return;
+	  return 0;
         case 0x28: // M_CTL
-	  smc = (int)(r[REG_2]>>4) & 3;
-	  m_ctl_spe = (int)(r[REG_2]>>1) & 7;
+	  if (DO_ACTION)
+	  {
+ 	    smc = (int)(r[REG_2]>>4) & 3;
+	    m_ctl_spe = (int)(r[REG_2]>>1) & 7;
+	  }
 	  DEBUG_MTPR("M_CTL");
-	  return;
+	  return 0;
         case 0x29: // DC_CTL
-	  dc_ctl = r[REG_2];
+	  if (DO_ACTION)
+ 	    dc_ctl = r[REG_2];
 	  DEBUG_MTPR("DC_CTL");
-	  return;
+	  return 0;
         case 0x2a: // DC_STAT
-	  dc_stat &= ~r[REG_2];
+	  if (DO_ACTION)
+ 	    dc_stat &= ~r[REG_2];
 	  DEBUG_MTPR("DC_STAT");
-	  return;
+	  return 0;
         case 0x2b: // C_DATA
 	  DEBUG_MTPR("C_DATA");
-	  return;
+	  return 0;
         case 0x2c: // C_SHIFT
 	  DEBUG_MTPR("C_SHIFT");
-	  return;
+	  return 0;
         case 0xa0: // DTB_TAG1
-	  dtb->write_tag(1,r[REG_2]);
+	  if (DO_ACTION)
+ 	    dtb->write_tag(1,r[REG_2]);
 	  DEBUG_MTPR("DTB_TAG1");
-	  return;
+	  return 0;
         case 0xa1: // DTB_PTE1
-	  dtb->write_pte(1,r[REG_2],get_asn());
+	  if (DO_ACTION)
+ 	    dtb->write_pte(1,r[REG_2],get_asn());
 	  DEBUG_MTPR("DTB_PTE1");
-	  return;
+	  return 0;
         case 0xa2: // DTB_IAP
-	  dtb->InvalidateAllProcess();
+	  if (DO_ACTION)
+ 	    dtb->InvalidateAllProcess();
 	  DEBUG_MTPR("DTB_IAP");
-	  return;
+	  return 0;
         case 0xa3: // DTB_IA
-	  dtb->InvalidateAll();
+	  if (DO_ACTION)
+ 	    dtb->InvalidateAll();
 	  DEBUG_MTPR("DTB_IA");
-	  return;
+	  return 0;
         case 0xa4: // DTB_IS1
-	  dtb->InvalidateSingle(r[REG_2],get_asn());
+	  if (DO_ACTION)
+ 	    dtb->InvalidateSingle(r[REG_2],get_asn());
 	  DEBUG_MTPR("DTB_IA1");
-	  return;
+	  return 0;
         case 0xa5: // DTB_ASN1
-	  asn1 = (int)(r[REG_2] >> 56);
+	  if (DO_ACTION)
+ 	    asn1 = (int)(r[REG_2] >> 56);
 	  DEBUG_MTPR("DTB_ASN1");
-	  return;
+	  return 0;
         case 0xc0: // CC
-	  cc_offset = (u32)(r[REG_2] >> 32);
+	  if (DO_ACTION)
+ 	    cc_offset = (u32)(r[REG_2] >> 32);
 	  DEBUG_MTPR("CC");
-	  return;
+	  return 0;
         case 0xc1: // CC_CTL
-	  cc_ena = (r[REG_2] >> 32) & 1;
-	  cc    = (u32)(r[REG_2] & X64(fffffff0));
+	  if (DO_ACTION)
+	  {
+ 	    cc_ena = (r[REG_2] >> 32) & 1;
+	    cc    = (u32)(r[REG_2] & X64(fffffff0));
+	  }
 	  DEBUG_MTPR("CC_CTL");
-	  return;
+	  return 0;
         case 0xc4: // VA_CTL
-	  va_ctl_vptb = SEXT(r[REG_2] & X64(0000ffffc0000000),48);
-	  va_ctl_va_mode = (int)(r[REG_2]>>1) & 3;
+	  if (DO_ACTION)
+	  {
+ 	    va_ctl_vptb = SEXT(r[REG_2] & X64(0000ffffc0000000),48);
+	    va_ctl_va_mode = (int)(r[REG_2]>>1) & 3;
+	  }
 	  DEBUG_MTPR("VA_CTL");
-	  return;
+	  return 0;
         default:
 	  UNKNOWN2;
-	  return;
+	  return 0;
         }
 
     case 0x1e: // HW_RET
@@ -1462,7 +1699,7 @@ void CAlphaCPU::DoClock()
 	{
 	  TRC(false, true);
 	}
-      return;
+      return 0;
 
     case 0x1f: // HW_ST
       function = (ins>>12) & 0xf;
@@ -1475,7 +1712,7 @@ void CAlphaCPU::DoClock()
 	      WRITE_PHYS_NT(r[REG_1],32);
 	    }
 	  DEBUG_HW("HW_STL","/Phys");
-	  return;
+	  return 0;
         case 1: // quadword physical
 	  if (DO_ACTION)
 	    {
@@ -1483,7 +1720,7 @@ void CAlphaCPU::DoClock()
 	      WRITE_PHYS_NT(r[REG_1],64);
 	    }
 	  DEBUG_HW("HW_STQ","/Phys");
-	  return;
+	  return 0;
         case 2: // longword physical conditional
 	  if (DO_ACTION)
 	    {
@@ -1496,7 +1733,7 @@ void CAlphaCPU::DoClock()
 	      lock_flag = false;
 	    }
 	  DEBUG_HW("HW_STL","/Phys/Cond");
-	  return;
+	  return 0;
         case 3: // quadword physical conditional
 	  if (DO_ACTION)
 	    {
@@ -1509,7 +1746,7 @@ void CAlphaCPU::DoClock()
 	      lock_flag = false;
 	    }
 	  DEBUG_HW("HW_STQ","/Phys/Cond");
-	  return;
+	  return 0;
         case 4: // longword virtual                   //chk //alt  //vpte
 	  if (DO_ACTION)
 	    {
@@ -1517,7 +1754,7 @@ void CAlphaCPU::DoClock()
 	      WRITE_PHYS_NT(r[REG_1],32);
 	    }
 	  DEBUG_HW("HW_STL","");
-	  return;
+	  return 0;
         case 5: // quadword virtual                    //chk //alt  //vpte
 	  if (DO_ACTION)
 	    {
@@ -1525,7 +1762,7 @@ void CAlphaCPU::DoClock()
 	      WRITE_PHYS_NT(r[REG_1],64);
 	    }
 	  DEBUG_HW("HW_STQ","");
-	  return;
+	  return 0;
         case 12: // longword virtual alt
 	  if (DO_ACTION)
 	    {
@@ -1533,7 +1770,7 @@ void CAlphaCPU::DoClock()
 	      WRITE_PHYS_NT(r[REG_1],32);
 	    }
 	  DEBUG_HW("HW_STL","/Alt");
-	  return;
+	  return 0;
         case 13: // quadword virtual alt
 	  if (DO_ACTION)
 	    {
@@ -1541,10 +1778,10 @@ void CAlphaCPU::DoClock()
 	      WRITE_PHYS_NT(r[REG_1],64);
 	    }
 	  DEBUG_HW("HW_STQ","/Alt");
-	  return;
+	  return 0;
         default:
 	  UNKNOWN2;
-	  return;
+	  return 0;
         }
 
     case 0x28: // LDL
@@ -1554,7 +1791,7 @@ void CAlphaCPU::DoClock()
 	  r[REG_1] = SEXT(READ_PHYS(32),32);
 	}
       DEBUG_LD_ST("LDL");
-      return;
+      return 0;
 
     case 0x29: // LDQ
       if (DO_ACTION)
@@ -1563,7 +1800,7 @@ void CAlphaCPU::DoClock()
 	  r[REG_1] = READ_PHYS(64);
 	}
       DEBUG_LD_ST("LDQ");
-      return;
+      return 0;
 
     case 0x2a: // LDL_L
       if (DO_ACTION)
@@ -1573,7 +1810,7 @@ void CAlphaCPU::DoClock()
 	  r[REG_1] = SEXT(READ_PHYS(32),32);
 	}
       DEBUG_LD_ST("LDL_L");
-      return;
+      return 0;
 
     case 0x2b: // LDQ_L
       if (DO_ACTION)
@@ -1583,7 +1820,7 @@ void CAlphaCPU::DoClock()
 	  r[REG_1] = READ_PHYS(64);
 	}
       DEBUG_LD_ST("LDQ_L");
-      return;
+      return 0;
 
     case 0x2c: // STL
       if (DO_ACTION)
@@ -1592,7 +1829,7 @@ void CAlphaCPU::DoClock()
 	  WRITE_PHYS(r[REG_1],32);
 	}
       DEBUG_LD_ST("STL");
-      return;
+      return 0;
 
     case 0x2d: // STQ
       if (DO_ACTION)
@@ -1601,7 +1838,7 @@ void CAlphaCPU::DoClock()
 	  WRITE_PHYS(r[REG_1],64);
 	}
       DEBUG_LD_ST("STQ");
-      return;
+      return 0;
 
     case 0x2e: // STL_C
       if (DO_ACTION)
@@ -1615,7 +1852,7 @@ void CAlphaCPU::DoClock()
 	  lock_flag = false;
 	}
       DEBUG_LD_ST("STL_C");
-      return;
+      return 0;
 
     case 0x2f: // STQ_C
       if (DO_ACTION)
@@ -1629,7 +1866,7 @@ void CAlphaCPU::DoClock()
 	  lock_flag = false;
 	}
       DEBUG_LD_ST("STQ_C");
-      return;
+      return 0;
 
     case 0x30: // BR
       if (DO_ACTION)
@@ -1642,7 +1879,7 @@ void CAlphaCPU::DoClock()
 	{
 	  TRC_BR;
 	}
-      return;
+      return 0;
 
     case 0x34: // BSR
       if (DO_ACTION)
@@ -1658,7 +1895,7 @@ void CAlphaCPU::DoClock()
 	    else
 	      TRC(true, true)
 	}
-      return;
+      return 0;
 
     case 0x38: // BLBC
       DEBUG_BR("BLBC");
@@ -1670,7 +1907,7 @@ void CAlphaCPU::DoClock()
 	      TRC_BR;
 	    }
 	}
-      return;
+      return 0;
 
     case 0x39: // BEQ
       DEBUG_BR("BEQ");
@@ -1682,7 +1919,7 @@ void CAlphaCPU::DoClock()
 	      TRC_BR;
 	    }
 	}
-      return;
+      return 0;
 
     case 0x3a: // BLT
       DEBUG_BR("BLT");
@@ -1694,7 +1931,7 @@ void CAlphaCPU::DoClock()
 	      TRC_BR;
 	    }
 	}
-      return;
+      return 0;
 
     case 0x3b: // BLE
       DEBUG_BR("BLE");
@@ -1706,7 +1943,7 @@ void CAlphaCPU::DoClock()
 	      TRC_BR;
 	    }
 	}
-      return;
+      return 0;
 
     case 0x3c: // BLBS
       DEBUG_BR("BLBS");
@@ -1718,7 +1955,7 @@ void CAlphaCPU::DoClock()
 	      TRC_BR;
 	    }
 	}
-      return;
+      return 0;
 
     case 0x3d: // BNE
       DEBUG_BR("BNE");
@@ -1730,7 +1967,7 @@ void CAlphaCPU::DoClock()
 	      TRC_BR;
 	    }
 	}
-      return;
+      return 0;
 
     case 0x3e: // BGE
       DEBUG_BR("BGE");
@@ -1742,7 +1979,7 @@ void CAlphaCPU::DoClock()
 	      TRC_BR;
 	    }
 	}
-      return;
+      return 0;
 
     case 0x3f: // BGT
       DEBUG_BR("BGT");
@@ -1754,7 +1991,7 @@ void CAlphaCPU::DoClock()
 	      TRC_BR;
 	    }
 	}
-      return;
+      return 0;
 
     case 0x01:
     case 0x02:
@@ -1765,9 +2002,34 @@ void CAlphaCPU::DoClock()
     case 0x07:
     default:
       UNKNOWN1;
-      return;
+      return 0;
     }
+    return 0;
 }
+
+#if defined(IDB)
+void CAlphaCPU::listing(u64 from, u64 to)
+{
+  printf("%%CPU-I-LISTNG: Listing from %016" LL "x to %016" LL "x\n",from,to);
+  u64 iSavedPC;
+  bool bSavedDebug;
+  iSavedPC = pc;
+  bSavedDebug = bDisassemble;
+  bDisassemble = true;
+  bListing = true;
+  pc = from;
+  for(;;)
+  {
+    DoClock();
+    if (pc>to)
+      break;
+  }
+  for(pc=from;pc<=to;DoClock())
+  bListing = false;
+  pc = iSavedPC;
+  bDisassemble = bSavedDebug;
+}
+#endif
 
 /**
  * Save state to a Virtual Machine State file.

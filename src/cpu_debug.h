@@ -30,7 +30,7 @@
  * \author Camiel Vanderhoeven (camiel@camicom.com / http://www.camicom.com)
  **/
 
-#ifdef IDB
+#if defined(IDB)
 
 char * PAL_NAME[] = {
   "HALT"		,"CFLUSH"   ,"DRAINA"		,"LDQP"			,"STQP"			,"SWPCTX"		,"MFPR_ASN"		,"MTPR_ASTEN"	,
@@ -83,9 +83,9 @@ char * PAL_NAME[] = {
 
 #endif
 
-#ifdef IDB
+#if defined(IDB)
 
-#ifndef MINI_DEBUG_XX
+#if !defined(MINI_DEBUG_XX)
 
 #define DEBUG_XX							\
   char * funcname = 0;							\
@@ -98,18 +98,18 @@ char * PAL_NAME[] = {
 	  pc = (current_pc + strlen(cSystem->PtrToMem(current_pc)) + 4)	\
 	    & ~X64(3);							\
 	  while (pc < 0x600000 && cSystem->ReadMem(pc,32)==0) pc += 4;	\
-	  return;							\
+	  return 0;							\
         }								\
       else if (bListing && !strcmp(funcname,"!SKIP"))			\
         {								\
 	  while (pc < 0x600000 && cSystem->ReadMem(pc,32)==0) pc += 4;	\
-	  return;							\
+	  return 0;							\
         }								\
       else if (bListing && !strncmp(funcname,"!CHAR-",6))		\
         {								\
 	  u64 xx_upto;							\
 	  int xx_result;						\
-	  xx_result = sscanf(&(funcname[6]),"%I64x",&xx_upto);		\
+	  xx_result = sscanf(&(funcname[6]),"%" LL "x",&xx_upto);	\
 	  if (xx_result==1)						\
 	    {								\
 	      pc = current_pc;						\
@@ -120,7 +120,7 @@ char * PAL_NAME[] = {
 		  while (pc < xx_upto && cSystem->ReadMem(pc,8)==0)	\
 		    pc++;						\
 		}							\
-	      return;							\
+	      return 0;							\
 	    }								\
         }								\
       else if (bListing && !strncmp(funcname,"!LCHAR-",7))		\
@@ -129,7 +129,7 @@ char * PAL_NAME[] = {
 	  int  stringlen;						\
 	  u64 xx_upto;							\
 	  int xx_result;						\
-	  xx_result = sscanf(&(funcname[7]),"%I64x",&xx_upto);		\
+	  xx_result = sscanf(&(funcname[7]),"%" LL "x",&xx_upto);	\
 	  if (xx_result==1)						\
 	    {								\
 	      pc = current_pc;						\
@@ -143,7 +143,7 @@ char * PAL_NAME[] = {
 		  while (pc < xx_upto && cSystem->ReadMem(pc,8)==0)	\
 		    pc++;						\
 		}							\
-	      return;							\
+	      return 0;							\
 	    }								\
         }								\
       else if (bListing && !strncmp(funcname,"!X64-",5))		\
@@ -151,24 +151,24 @@ char * PAL_NAME[] = {
 	  printf("\n%s:\n",&(funcname[5]));				\
 	  pc = current_pc;						\
 	  while (   (pc==current_pc)					\
-		    || !trc->get_fnc_name(pc,&funcname) )	\
+		    || !trc->get_fnc_name(pc,&funcname) )		\
 	    {								\
-	      printf("%08x: %016I64x\n",(u32)pc, cSystem->ReadMem(pc,64)); \
+              printf("%08x: %016" LL "x\n",(u32)pc, cSystem->ReadMem(pc,64)); \
 	      pc += 8;							\
 	    }								\
-	  return;							\
+	  return 0;							\
         }								\
-      else if (bListing&& !strncmp(funcname,"!X32-",5))		\
+      else if (bListing&& !strncmp(funcname,"!X32-",5))			\
         {								\
 	  printf("\n%s:\n",&(funcname[5]));				\
 	  pc = current_pc;						\
 	  while (   (pc==current_pc)					\
-		    || !trc->get_fnc_name(pc,&funcname) )	\
+		    || !trc->get_fnc_name(pc,&funcname) )		\
 	    {								\
-	      printf("%08x: %08I64x\n",(u32)pc, cSystem->ReadMem(pc,32)); \
+	      printf("%08x: %08" LL "x\n",(u32)pc, cSystem->ReadMem(pc,32)); \
 	      pc += 4;							\
 	    }								\
-	  return;							\
+	  return 0;							\
         }								\
       else if (bListing && !strncmp(funcname,":",1))			\
 	printf("%s:\n",funcname);					\

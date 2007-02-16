@@ -32,17 +32,19 @@
  **/
 
 
-#ifdef IDB
+#if defined(IDB)
 
 #include "StdAfx.h"
 #include "TraceEngine.h"
 #include "AlphaCPU.h"
 #include "System.h"
+#include "DPR.h"
+#include "Flash.h"
 
-#ifndef _WIN32
-#define _strdup strdup
-#include <stdlib.h>
-#endif
+extern CSystem * systm;
+extern CAlphaCPU * cpu [4];
+extern CDPR * dpr;
+extern CFlash * srom;
 
 CTraceEngine * trc;
 
@@ -66,6 +68,7 @@ CTraceEngine::CTraceEngine(CSystem * sys)
       asCPUs[0].last_prbr = -1;
     }
   current_trace_file = stdout;
+  bBreakPoint = false;
 }
 
 CTraceEngine::~CTraceEngine(void)
@@ -97,21 +100,9 @@ void CTraceEngine::trace(CAlphaCPU * cpu, u64 f, u64 t, bool down, bool up, char
     {
       if (asCPUs[cpu->get_cpuid()].last_prbr != -1)
 	{
-#ifdef _WIN32
-	  fprintf(asPRBRs[asCPUs[cpu->get_cpuid()].last_prbr].f, "\n==> Switch to PRBR %I64x (%s)\n", cpu->get_prbr(), cSystem->PtrToMem(cpu->get_prbr()+0x154));
-#else
-	  fprintf(asPRBRs[asCPUs[cpu->get_cpuid()].last_prbr].f, "\n==> Switch to PRBR %llx (%s)\n", cpu->get_prbr(), cSystem->PtrToMem(cpu->get_prbr()+0x154));
-#endif
-#ifdef _WIN32
-	  fprintf(asPRBRs[p].f, "    This is PRBR %I64x (%s)\n", cpu->get_prbr(), cSystem->PtrToMem(cpu->get_prbr()+0x154));
-#else
-	  fprintf(asPRBRs[p].f, "    This is PRBR %llx (%s)\n", cpu->get_prbr(), cSystem->PtrToMem(cpu->get_prbr()+0x154));
-#endif
-#ifdef _WIN32
-	  fprintf(asPRBRs[p].f,"<== Switch from PRBR %I64x (%s)\n\n", asPRBRs[asCPUs[cpu->get_cpuid()].last_prbr].prbr, cSystem->PtrToMem(asPRBRs[asCPUs[cpu->get_cpuid()].last_prbr].prbr+0x154));
-#else
-	  fprintf(asPRBRs[p].f,"<== Switch from PRBR %llx (%s)\n\n", asPRBRs[asCPUs[cpu->get_cpuid()].last_prbr].prbr, cSystem->PtrToMem(asPRBRs[asCPUs[cpu->get_cpuid()].last_prbr].prbr+0x154));
-#endif
+	  fprintf(asPRBRs[asCPUs[cpu->get_cpuid()].last_prbr].f, "\n==> Switch to PRBR %" LL "x (%s)\n", cpu->get_prbr(), cSystem->PtrToMem(cpu->get_prbr()+0x154));
+	  fprintf(asPRBRs[p].f, "    This is PRBR %" LL "x (%s)\n", cpu->get_prbr(), cSystem->PtrToMem(cpu->get_prbr()+0x154));
+	  fprintf(asPRBRs[p].f,"<== Switch from PRBR %" LL "x (%s)\n\n", asPRBRs[asCPUs[cpu->get_cpuid()].last_prbr].prbr, cSystem->PtrToMem(asPRBRs[asCPUs[cpu->get_cpuid()].last_prbr].prbr+0x154));
 	}
       asCPUs[cpu->get_cpuid()].last_prbr = p;
     }
@@ -148,11 +139,7 @@ void CTraceEngine::trace(CAlphaCPU * cpu, u64 f, u64 t, bool down, bool up, char
 
 	      for (j=0;j<oldlvl;j++)
 		fprintf(asPRBRs[p].f," ");
-#ifdef _WIN32
-	      fprintf(asPRBRs[p].f,"%08x ($r0 = %I64x)\n", pc_f, cpu->get_r(0,true));
-#else
-	      fprintf(asPRBRs[p].f,"%08x ($r0 = %llx)\n", pc_f, cpu->get_r(0,true));
-#endif
+	      fprintf(asPRBRs[p].f,"%08x ($r0 = %" LL "x)\n", pc_f, cpu->get_r(0,true));
 			
 	      for (j=0;j<asPRBRs[p].trclvl;j++)
 		fprintf(asPRBRs[p].f," ");
@@ -201,11 +188,7 @@ void CTraceEngine::trace(CAlphaCPU * cpu, u64 f, u64 t, bool down, bool up, char
 	}
     }
 
-#ifdef _WIN32
-  fprintf(asPRBRs[p].f,"%08x  (r27 = %I64x, r16 = %I64x, r17 = %I64x, r18 = %I64x, )\n",pc_t, cpu->get_r(27,true), cpu->get_r(16,true), cpu->get_r(17,true), cpu->get_r(18,true));
-#else
-  fprintf(asPRBRs[p].f,"%08x  (r27 = %llx, r16 = %llx, r17 = %llx, r18 = %llx, )\n",pc_t, cpu->get_r(27,true), cpu->get_r(16,true), cpu->get_r(17,true), cpu->get_r(18,true));
-#endif
+  fprintf(asPRBRs[p].f,"%08x  (r27 = %" LL "x, r16 = %" LL "x, r17 = %" LL "x, r18 = %" LL "x, )\n",pc_t, cpu->get_r(27,true), cpu->get_r(16,true), cpu->get_r(17,true), cpu->get_r(18,true));
 }
 
 void CTraceEngine::trace_br(CAlphaCPU * cpu, u64 f, u64 t)
@@ -239,21 +222,9 @@ void CTraceEngine::trace_br(CAlphaCPU * cpu, u64 f, u64 t)
     {
       if (asCPUs[cpu->get_cpuid()].last_prbr != -1)
 	{
-#ifdef _WIN32
-	  fprintf(asPRBRs[asCPUs[cpu->get_cpuid()].last_prbr].f, "\n==> Switch to PRBR %I64x (%s)\n", cpu->get_prbr(), cSystem->PtrToMem(cpu->get_prbr()+0x154));
-#else
-	  fprintf(asPRBRs[asCPUs[cpu->get_cpuid()].last_prbr].f, "\n==> Switch to PRBR %llx (%s)\n", cpu->get_prbr(), cSystem->PtrToMem(cpu->get_prbr()+0x154));
-#endif
-#ifdef _WIN32
-	  fprintf(asPRBRs[p].f, "    This is PRBR %I64x (%s)\n", cpu->get_prbr(), cSystem->PtrToMem(cpu->get_prbr()+0x154));
-#else
-	  fprintf(asPRBRs[p].f, "    This is PRBR %llx (%s)\n", cpu->get_prbr(), cSystem->PtrToMem(cpu->get_prbr()+0x154));
-#endif
-#ifdef _WIN32
-	  fprintf(asPRBRs[p].f,"<== Switch from PRBR %I64x (%s)\n\n", asPRBRs[asCPUs[cpu->get_cpuid()].last_prbr].prbr, cSystem->PtrToMem(asPRBRs[asCPUs[cpu->get_cpuid()].last_prbr].prbr+0x154));
-#else
-	  fprintf(asPRBRs[p].f,"<== Switch from PRBR %llx (%s)\n\n", asPRBRs[asCPUs[cpu->get_cpuid()].last_prbr].prbr, cSystem->PtrToMem(asPRBRs[asCPUs[cpu->get_cpuid()].last_prbr].prbr+0x154));
-#endif
+	  fprintf(asPRBRs[asCPUs[cpu->get_cpuid()].last_prbr].f, "\n==> Switch to PRBR %" LL "x (%s)\n", cpu->get_prbr(), cSystem->PtrToMem(cpu->get_prbr()+0x154));
+	  fprintf(asPRBRs[p].f, "    This is PRBR %" LL "x (%s)\n", cpu->get_prbr(), cSystem->PtrToMem(cpu->get_prbr()+0x154));
+	  fprintf(asPRBRs[p].f,"<== Switch from PRBR %" LL "x (%s)\n\n", asPRBRs[asCPUs[cpu->get_cpuid()].last_prbr].prbr, cSystem->PtrToMem(asPRBRs[asCPUs[cpu->get_cpuid()].last_prbr].prbr+0x154));
 	}
       asCPUs[cpu->get_cpuid()].last_prbr = p;
     }
@@ -359,11 +330,7 @@ int CTraceEngine::get_prbr(u64 prbr)
 
   asPRBRs[i].prbr = prbr;
   sprintf(asPRBRs[i].procname,"%s",cSystem->PtrToMem(prbr+0x154));
-#ifdef _WIN32
-  sprintf(filename,"trace_%08I64x_%02d_%s.trc",prbr,asPRBRs[i].generation,asPRBRs[i].procname);
-#else
-  sprintf(filename,"trace_%08llx_%02d_%s.trc",prbr,asPRBRs[i].generation,asPRBRs[i].procname);
-#endif
+  sprintf(filename,"trace_%08" LL "x_%02d_%s.trc",prbr,asPRBRs[i].generation,asPRBRs[i].procname);
   asPRBRs[i].f = fopen(filename,"w");
   if (asPRBRs[i].f==0)
     printf("Failed to open file!!\n");
@@ -371,11 +338,7 @@ int CTraceEngine::get_prbr(u64 prbr)
   asPRBRs[i].trchide = -1;
   asPRBRs[i].trc_waitfor = 0;
   current_trace_file = asPRBRs[i].f;
-#ifdef _WIN32
-  printf("Add PRBR: %I64x\n",prbr);
-#else
-  printf("Add PRBR: %llx\n",prbr);
-#endif
+  printf("Add PRBR: %" LL "x\n",prbr);
   return i;
 }
 
@@ -409,11 +372,7 @@ void CTraceEngine::write_arglist(CAlphaCPU * c, FILE * fl, char * a)
 	  value = c->get_r(r,true);
 	  if (!strcmp(f,"%s"))
 	    {
-#ifdef _WIN32
-	      sprintf(op,"%I64x (",value);
-#else
-	      sprintf(op,"%llx (",value);
-#endif
+	      sprintf(op,"%" LL "x (",value);
 	      while (*op)
 		op++;
 	      if ((value&X64(fffffffff0000000))
@@ -432,53 +391,21 @@ void CTraceEngine::write_arglist(CAlphaCPU * c, FILE * fl, char * a)
 	      *(op)='\0';
 	    }
 	  else if (!strcmp(f,"%c"))
-#ifdef _WIN32
-	    sprintf(op,"%02I64x (%c)",value,printable((char)value));
-#else
-	  sprintf(op,"%02llx (%c)",value,printable((char)value));
-#endif
+	    sprintf(op,"%02" LL "x (%c)",value,printable((char)value));
 	  else if (!strcmp(f,"%d"))
-#ifdef _WIN32
-	    sprintf(op,"%I64d",value);
-#else
-	  sprintf(op,"%lld",value);
-#endif
+	    sprintf(op,"%" LL "d",value);
 	  else if (!strcmp(f,"%x"))
-#ifdef _WIN32
-	    sprintf(op,"%I64x",value);
-#else
-	  sprintf(op,"%llx",value);
-#endif
+	    sprintf(op,"%" LL "x",value);
 	  else if (!strcmp(f,"%0x"))
-#ifdef _WIN32
-	    sprintf(op,"%016I64x",value);
-#else
-	  sprintf(op,"%016llx",value);
-#endif
+	    sprintf(op,"%016" LL "x",value);
 	  else if (!strcmp(f,"%016x"))
-#ifdef _WIN32
-	    sprintf(op,"%016I64x",value);
-#else
-	  sprintf(op,"%016llx",value);
-#endif
+	    sprintf(op,"%016" LL "x",value);
 	  else if (!strcmp(f,"%08x"))
-#ifdef _WIN32
-	    sprintf(op,"%08I64x",value);
-#else
-	  sprintf(op,"%08llx",value);
-#endif
+	    sprintf(op,"%08" LL "x",value);
 	  else if (!strcmp(f,"%04x"))
-#ifdef _WIN32
-	    sprintf(op,"%04I64x",value);
-#else
-	  sprintf(op,"%04llx",value);
-#endif
+	    sprintf(op,"%04" LL "x",value);
 	  else if (!strcmp(f,"%02x"))
-#ifdef _WIN32
-	    sprintf(op,"%02I64x",value);
-#else
-	  sprintf(op,"%02llx",value);
-#endif
+	    sprintf(op,"%02" LL "x",value);
 	  else
 	    sprintf(op,f,value);
 	  while(*op) 
@@ -517,11 +444,7 @@ void CTraceEngine::read_procfile(char *filename)
             {
 	      *fn_name = '\0';
 	      fn_name++;
-#ifdef _WIN32
-	      result = sscanf(linebuffer,"%I64x",&address);
-#else
-	      result = sscanf(linebuffer,"%llx",&address);
-#endif
+	      result = sscanf(linebuffer,"%" LL "x",&address);
 	      if ((result == 1) && address)
                 {
 		  fn_args = strchr(fn_name,';');
@@ -561,8 +484,425 @@ FILE * CTraceEngine::trace_file()
   return current_trace_file;
 }
 
+void CTraceEngine::run_script(char * filename)
+{
+  FILE * f = NULL;
+  char s[100][100];
+  int i,j;
+  bool u;
+  char c = '\0';
+  if (filename)
+  {
+     f = fopen(filename,"r");
+     if (!f)
+     {
+       printf("%%IDB-F-NOLOAD: File %s could not be opened.\n",filename);
+       return;
+     }
+  }
+  else
+  {
+    printf("This is the ES40 interactive debugger. To start non-interactively, run es40,\n");
+    printf("Or run this executable (es40_idb) with a last argument of @<script-file>\n");
+    f = stdin;
+  }
+
+  for (;;)
+  {
+    if (filename)
+    {
+      if (feof(f))
+	break;
+    }
+    else
+    {
+      printf("IDB %016" LL "x %c>",cpu[0]->get_clean_pc(), (cpu[0]->get_pc()&X64(1))?'P':'-');
+    }
+    
+    for (i=0; i<100; )
+    {
+      u = false;
+      for (j=0; j<100; )
+      {
+	fscanf(f,"%c",&c);
+        if (c != '\n' && c!= '\r' && c!= ' ' && c!= '\t')
+	{
+	  s[i][j++] = c;
+	  u = true;
+	}
+	if (c == ' ' || c == '\t' || c== '\n')
+	  break;
+      }
+      s[i][j] = '\0';
+      if (u) 
+        i++;
+      if (c == '\n')
+        break;
+    }
+    s[i][0] = '\0';
+    if (parse(s))
+      break;
+  }
+  if (filename)
+    fclose(f);
+}
+
+int CTraceEngine::parse(char command[100][100])
+{
+  int i = 0;
+  int numargs;
+  int result;
+  int RunCycles;
+  u64 iFrom;
+  u64 iTo;
+  u64 iJump;
+
+  for (numargs=0; command[numargs][0] != '\0'; numargs++);
+
+  if ((numargs>0) && (command[0][0]=='#'||command[0][0] ==';' || command[0][0] =='!' 
+      || (command[0][0]=='/' && command[0][1]=='/')))
+    //comment
+    return 0;
+  switch (numargs)
+  {
+  case 0:
+    // empty command
+    return 0;
+  case 1:
+    if (!strncasecmp(command[0],"EXIT",strlen(command[0])) ||
+	!strncasecmp(command[0],"QUIT",strlen(command[0])))
+      return 1;
+    if (!strncasecmp(command[0],"HELP",strlen(command[0])) ||
+	!strncasecmp(command[0],"?",strlen(command[0])))
+    {
+      printf("                                                                     \n");
+      printf("Available commands:                                                  \n");
+      printf("  HELP | ?                                                           \n");
+      printf("  EXIT | QUIT                                                        \n");
+      printf("  STEP                                                               \n");
+      printf("  TRACE [ ON | OFF ]                                                 \n");
+      printf("  BREAKPOINT [ OFF | > | < | = ] <hex value>                         \n");
+      printf("  DISASSEMBLE [ON | OFF ]	                                           \n");
+      printf("  LIST <hex address> - <hex address>                                 \n");
+      printf("  RUN [ <max cycles> ]                                               \n");
+      printf("  LOAD [STATE | DPR | FLASH | CSV ] <file>                           \n");
+      printf("  SAVE [STATE | DPR | FLASH ] <file>                                 \n");
+      printf("  JUMP <hex address>                                                 \n");
+      printf("  PAL [ ON | OFF ]                                                   \n"); 
+      printf("  @<script-file>                                                     \n");
+      printf("  # | // | ; | ! <comment>                                           \n");
+      printf("                                                                     \n");
+      printf("The words of each command can be abbreviated, e.g. B or BRE for      \n");
+      printf("BREAKPOINT; S F for save flash.                                      \n");
+      printf("                                                                     \n");
+      return 0;
+    }
+    if (!strncasecmp(command[0],"STEP",strlen(command[0])))
+    {
+      printf("%%IDB-I-SSTEP : Single step.\n");
+      systm->SingleStep();
+      return 0;
+    }
+    if (!strncasecmp(command[0],"RUN",strlen(command[0])))
+    {
+      if (!bBreakPoint)
+      {
+	printf("%%IDB-F-NOBRKP: No breakpoint set, and RUN requested without number of cycles.\n");
+	return 0;
+      }
+      printf("%%IDB-I-RUNBPT: Running until breakpoint found.\n");
+      switch (iBreakPointMode)
+      {
+      case -1:
+	for (i=0;;i++)
+	{
+	  systm->SingleStep();
+	  if (!(i&0xfff))
+	    printf("%d\r",i);
+	  if (cpu[0]->get_clean_pc() < iBreakPoint)
+	    break;
+	}
+	break;
+      case 0:
+	for(i=0;;i++)
+	{
+	  systm->SingleStep();
+	  if (!(i&0xfff))
+	    printf("%d\r",i);
+	  if (cpu[0]->get_clean_pc() == iBreakPoint)
+	    break;
+	}
+	break;
+      case 1:
+	for(i=0;;i++)
+	{
+	  if (!(i&0xfff))
+	    printf("%d\r",i);
+	  systm->SingleStep();
+	  if (cpu[0]->get_clean_pc() > iBreakPoint)
+	    break;
+	}
+	break;
+      default:
+	break;
+      }
+      printf("%%IDB-I-BRKPT : Breakpoint encountered.\n");
+      return 0;
+    }
+    if (command[0][0]=='@')
+    {
+      run_script(command[0] + 1);
+      return 0;
+    }
+    break;
+  case 2:
+    if (!strncasecmp(command[0],"TRACE",strlen(command[0])))
+    {
+      if (!strcasecmp(command[1],"ON"))
+      {
+	printf("%%IDB-I-TRCON : Tracing enabled.\n");
+	bTrace = true;
+	return 0;
+      }
+      if (!strcasecmp(command[1],"OFF"))
+      {
+	printf("%%IDB-I-TRCOFF: Tracing disabled.\n");
+	bTrace = false;
+	return 0;
+      }
+    }
+    if (!strncasecmp(command[0],"PAL",strlen(command[0])))
+    {
+      if (!strcasecmp(command[1],"ON"))
+      {
+	printf("%%IDB-I-PALON : PALmode enabled.\n");
+	cpu[0]->set_pc(cpu[0]->get_clean_pc() + 1);
+	return 0;
+      }
+      if (!strcasecmp(command[1],"OFF"))
+      {
+	printf("%%IDB-I-PALOFF: PALmode disabled.\n");
+	cpu[0]->set_pc(cpu[0]->get_clean_pc());
+	return 0;
+      }
+    }
+    if (!strncasecmp(command[0],"DISASSEMBLE",strlen(command[0])))
+    {
+      if (!strcasecmp(command[1],"ON"))
+      {
+	printf("%%IDB-I-DISON : Disassembling enabled.\n");
+	bDisassemble = true;
+	return 0;
+      }
+      if (!strcasecmp(command[1],"OFF"))
+      {
+	printf("%%IDB-I-DISOFF: Disassembling disabled.\n");
+	bDisassemble = false;
+	return 0;
+      }
+    }
+    if (!strncasecmp(command[0],"BREAKPOINT",strlen(command[0])))
+    {
+      if (!strncasecmp(command[1],"OFF",strlen(command[1])))
+      {
+	printf("%%IDB-I-BRKOFF: Breakpoint disabled.\n");
+	bBreakPoint = false;
+	return 0;
+      }
+    }
+    if (!strncasecmp(command[0],"RUN",strlen(command[0])))
+    {
+      result = sscanf(command[1],"%d",&RunCycles);
+      if (result != 1)
+      {
+	printf("%%IDB-F-INVVAL: Invalid decimal value.\n");
+	return 0;
+      }
+      if (bBreakPoint)
+      {
+        printf("%%IDB-I-RUNCBP: Running until breakpoint found or max cycles reached.\n");
+        switch (iBreakPointMode)
+	{
+        case -1:
+	  for (i=0;i<RunCycles;i++)
+	  {
+	    systm->SingleStep();
+  	    if (!(i&0xfff))
+	      printf("%d\r",i);
+	    if (cpu[0]->get_clean_pc() < iBreakPoint)
+	      break;
+	  }
+	  break;
+        case 0:
+	  for(i=0;i<RunCycles;i++)
+	  {
+	    systm->SingleStep();
+	    if (!(i&0xfff))
+	      printf("%d\r",i);
+	    if (cpu[0]->get_clean_pc() == iBreakPoint)
+	      break;
+	  }
+	  break;
+        case 1:
+	  for(i=0;i<RunCycles;i++)
+	  {
+	    systm->SingleStep();
+ 	    if (!(i&0xfff))
+	      printf("%d\r",i);
+	    if (cpu[0]->get_clean_pc() > iBreakPoint)
+	      break;
+	  }
+	  break;
+        default:
+	  break;
+	}
+      }
+      else
+      {
+        printf("%%IDB-I-RUNCYC: Running until max cycles reached.\n");
+	for(i=0;i<RunCycles;i++)
+	{
+	  systm->SingleStep();
+          if (!(i&0xfff))
+            printf("%d\r",i);
+	}
+      }
+      if (i!=RunCycles)
+        printf("%%IDB-I-BRKPT : Breakpoint encountered.\n");
+      else
+        printf("%%IDB-I-MAXCYC: Max cycles reached.\n");
+      return 0;
+    }
+    if (!strncasecmp(command[0],"JUMP",strlen(command[0])))
+    {
+      result = sscanf(command[1],"%" LL "x",&iJump);
+      if (result != 1)
+      {
+	printf("%%IDB-F-INVVAL: Invalid hexadecimal value.\n");
+	return 0;
+      }
+      if (iJump&X64(3))
+      {
+	printf("%%IDB-F-ALGVAL: Value not aligned on a 4-byte bounday.\n");
+	return 0;
+      }
+      printf("%%IDB-I-JUMPTO: Jumping.\n");
+      cpu[0]->set_pc(iJump + (cpu[0]->get_pc() & X64(1)));
+      return 0;
+    }
+    break;
+  case 3:
+    if (!strncasecmp(command[0],"BREAKPOINT",strlen(command[0])))
+    {
+      if (!strcmp(command[1],"=") ||
+	  !strcmp(command[1],">") ||
+	  !strcmp(command[1],"<"))
+      {
+	result = sscanf(command[2],"%" LL "x",&iBreakPoint);
+	if (result != 1)
+	{
+	  printf("%%IDB-F-INVVAL: Invalid hexadecimal value.\n");
+	  bBreakPoint = false;
+	  return 0;
+	}
+	if (iBreakPoint&X64(3))
+	{
+	  printf("%%IDB-F-ALGVAL: Value not aligned on a 4-byte bounday.\n");
+	  bBreakPoint = false;
+	  return 0;
+	}
+	switch (command[1][0])
+	{
+	case '=':
+	  iBreakPointMode = 0;
+	  break;
+	case '>':
+	  iBreakPointMode = 1;
+	  break;
+	case '<':
+	  iBreakPointMode = -1;
+	  break;
+	}
+	printf("%%IDB-I-BRKSET: Breakpoint set when PC %c %016" LL "x.\n",command[1][0],iBreakPoint);
+	bBreakPoint = true;
+	return 0;
+      }
+    }
+    if (!strncasecmp(command[0],"LOAD",strlen(command[0])))
+    {
+      if (!strncasecmp(command[1],"CSV",strlen(command[1])))
+      {
+        read_procfile(command[2]);
+	return 0;
+      }
+      if (!strncasecmp(command[1],"STATE",strlen(command[1])))
+      {
+	systm->RestoreState(command[2]);
+	return 0;
+      }
+      if (!strncasecmp(command[1],"DPR",strlen(command[1])))
+      {
+	dpr->RestoreStateF(command[2]);
+	return 0;
+      }
+      if (!strncasecmp(command[1],"FLASH",strlen(command[1])))
+      {
+	srom->RestoreStateF(command[2]);
+	return 0;
+      }
+    }
+    if (!strncasecmp(command[0],"SAVE",strlen(command[0])))
+    {
+      if (!strncasecmp(command[1],"STATE",strlen(command[1])))
+      {
+	systm->SaveState(command[2]);
+	return 0;
+      }
+      if (!strncasecmp(command[1],"DPR",strlen(command[1])))
+      {
+	dpr->SaveStateF(command[2]);
+	return 0;
+      }
+      if (!strncasecmp(command[1],"FLASH",strlen(command[1])))
+      {
+	srom->SaveStateF(command[2]);
+	return 0;
+      }
+    }
+    break;
+  case 4:
+    if (!strncasecmp(command[0],"LIST",strlen(command[0])) && !strcmp(command[2],"-"))
+    {
+      result = sscanf(command[1],"%" LL "x",&iFrom);
+      if (result==1)
+	result =  sscanf(command[3],"%" LL "x",&iTo);
+      if (result != 1)
+      {
+        printf("%%IDB-F-INVVAL: Invalid hexadecimal value.\n");
+	return 0;
+      }
+      if (iFrom&X64(3) || iTo&X64(3))
+      {
+        printf("%%IDB-F-ALGVAL: Value not aligned on a 4-byte bounday.\n");
+	return 0;
+      }
+      if (iFrom > iTo)
+      {
+	printf("%%IDB-F-FRLTTO: From value exceeds to value.\n");
+	return 0;
+      }
+      cpu[0]->listing(iFrom,iTo);
+      return 0;
+    }
+    break;
+  default:
+    break;
+  }
+  printf("%%IDB-F-SYNTAX: Syntax error. Type \"?\" or \"HELP\" for help.\n");
+  return 0;
+}
+
 bool bTrace = false;
-bool bListing = false;
 bool bDisassemble = false;
 
 

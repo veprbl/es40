@@ -30,12 +30,8 @@
  * \author Camiel Vanderhoeven (camiel@camicom.com / www.camicom.com)
  **/
 
-#if !defined(__DPR_H__)
-#define __DPR_H__
-
-#if _MSC_VER > 1000
-#pragma once
-#endif // _MSC_VER > 1000
+#if !defined(INCLUDED_DPR_H)
+#define INCLUDED_DPR_H
 
 #include "SystemComponent.h"
 
@@ -50,13 +46,13 @@ class CDPR : public CSystemComponent
   virtual ~CDPR();
   virtual void WriteMem(int index, u64 address, int dsize, u64 data);
   virtual u64 ReadMem(int index, u64 address, int dsize);
-  // Save component state to file
   virtual void SaveState(FILE * f);
-  // Restore component state from file
   virtual void RestoreState(FILE * f);
+  virtual void SaveStateF(char * fn);
+  virtual void RestoreStateF(char * fn);
 
  protected:
   u8 ram[16*1024];
 };
 
-#endif // !defined(__DPR_H__)
+#endif // !defined(INCLUDED_DPR_H_)

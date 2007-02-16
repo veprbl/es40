@@ -42,26 +42,6 @@
 #include "DPR.h"
 #include "TraceEngine.h"
 
-
-#ifndef _WIN32
-#include <sys/time.h>
-#include <stdlib.h>
-#endif
-
-//#define DO_LISTING 1
-//#define DO_TRACE 1
-//#define DO_SAVESTATE "console.vms"
-//#define DO_SAVESTATE "console2.vms"
-//#define DO_LOADSTATE "console.vms"
-//#define DO_LOADSTATE "console2.vms"
-//#define RUN_CYCLES 8*1000*1000
-//#define RUN_GT X64(400000)
-//#define RUN_LT X64(400000)
-//#define DO_SETPC X64(200000)
-//#define DO_SETPC X64(0)
-//#define DO_DISASM 1
-//#define DISASM_START 90*1000*1000
-
 CSystem * systm;
 CAlphaCPU * cpu[4];
 CSerial * srl[2];
@@ -74,7 +54,7 @@ CDPR * dpr = 0;
 // "standard" locations for a configuration file.  This
 // will be port specific.
 char *path[]={
-#ifdef _WIN32
+#if defined(_WIN32)
   ".\\es40.cfg",
   "c:\\es40.cfg",
   "c:\\windows\\es40.cfg",
@@ -90,29 +70,15 @@ char *path[]={
 int main(int argc, char* argv[])
 {
   u64 loadat;
-#ifdef _WIN32
-  LARGE_INTEGER beginning;
-  LARGE_INTEGER before;
-  LARGE_INTEGER after;
-  LARGE_INTEGER diff;
-  LARGE_INTEGER freq;
-#else
-  struct timeval beginning, before, after;
-  double t1, t2;
-#endif
-  double seconds;
-  double ops_per_sec;
-  FILE * ff;
 
   printf("%%SYS-I-INITSTART: System initialization started.\n");
 
-#ifdef _WIN32	
-  SetThreadAffinityMask(GetCurrentThread(), 1);
-
-  QueryPerformanceFrequency(&freq);
+#if defined(IDB)
+  if ((argc == 2 || argc==3) && argv[1][0] != '@')
+#else
+  if (argc == 2)
 #endif
-
-  if(argc == 2) {
+  {
     systm = new CSystem(argv[1]);
   } else {
     char *filename = 0;
@@ -133,7 +99,7 @@ int main(int argc, char* argv[])
     systm = new CSystem(filename);
   }
 
-#ifdef IDB
+#if defined(IDB)
   trc = new CTraceEngine(systm);
 #endif
 
@@ -156,7 +122,7 @@ int main(int argc, char* argv[])
   cpu[0]->set_pc(loadat+1);
   cpu[0]->set_PAL_BASE(loadat);
 
-#ifdef IDB
+#if defined(IDB)
   trc->read_procfile("es40.csv");
   trc->read_procfile("vms83.csv");
 #endif
@@ -192,155 +158,25 @@ int main(int argc, char* argv[])
   printf("   **======================================================================**\n");
   printf("\n\n");
 
-  int i;
+  srom->RestoreStateF(systm->GetConfig("rom.flash","flash.rom"));
+  dpr->RestoreStateF(systm->GetConfig("rom.dpr","dpr.rom"));
 
-  char prf[300];
-#ifdef _WIN32
-  QueryPerformanceCounter(&before);
-  beginning = before;
+#if defined(IDB)
+  if (argc>1 && argc<4 && argv[argc-1][0]=='@')
+    trc->run_script(argv[argc-1] + 1);
+  else
+    trc->run_script(NULL);
 #else
-  gettimeofday(&beginning,NULL);
-  gettimeofday(&before,NULL);
+
+  if (systm->Run()>0)
+  {
+    // save flash and dpr rom only if not terminated with a fatal error
+    srom->SaveStateF(systm->GetConfig("rom.flash","flash.rom"));
+    dpr->SaveStateF(systm->GetConfig("rom.dpr","dpr.rom"));
+  }
 #endif
-
-
-
-#ifdef DO_LOADSTATE
-  systm->RestoreState(DO_LOADSTATE);
-#endif
-
-#ifdef DO_DISASM
-#ifndef DISASM_START
-  bDisassemble = true;
-#endif
-#endif
-
-#ifdef DO_TRACE
-  bTrace = true;
-#endif
-
-#ifdef DO_LISTING
-  bDisassemble = true;
-  bListing = true;
-#endif
-
-#ifdef DO_SETPC
-  cpu[0]->set_pc(DO_SETPC);
-#endif
-
-  ff = fopen(systm->GetConfig("rom.flash","flash.rom"),"rb");
-  if (ff)
-    {
-      srom->RestoreState(ff);
-      fclose(ff);
-    }
-  ff = fopen(systm->GetConfig("rom.dpr","dpr.rom"),"rb");
-  if (ff)
-    {
-      dpr->RestoreState(ff);
-      fclose(ff);
-    }
-
-  for(i=0;;i++)
-    {
-#ifdef RUN_CYCLES
-      if (i >= RUN_CYCLES)
-	break;
-#endif
-
-#ifdef RUN_GT
-      if (cpu[0]->get_clean_pc() > RUN_GT)
-	break;
-#endif
-#ifdef RUN_LT
-	if (cpu[0]->get_clean_pc() < RUN_LT)
-	  break;
-#endif
-
-      systm->DoClock();
-
-#ifndef DO_LISTING
-      // known speedups
-      if  (     cpu[0]->get_clean_pc()==X64(14248) 
-	     || cpu[0]->get_clean_pc()==X64(14288)
-	     || cpu[0]->get_clean_pc()==X64(142c8)
-	     || cpu[0]->get_clean_pc()==X64(68320)
-
-	     || cpu[0]->get_clean_pc()==X64(8bb78)	// write in memory test (aa)
-	     || cpu[0]->get_clean_pc()==X64(8bc0c)	// write in memory test (bb)
-	     || cpu[0]->get_clean_pc()==X64(8bc94)	// write in memory test (00)
-	     )
-	cpu[0]->next_pc();
-
-#endif
-
-      if ((i&0x1ffff)==0 && i)
-	{
-#ifdef _WIN32
-	  QueryPerformanceCounter(&after);
-	  diff.QuadPart = after.QuadPart-before.QuadPart;
-			
-	  seconds = (after.QuadPart - before.QuadPart)/(double)freq.QuadPart;
-#else
-	  gettimeofday(&after,NULL);
-	  t1 = ((double)(before.tv_sec*1000000)+(double)before.tv_usec)/1000000;
-	  t2 = ((double)(after.tv_sec*1000000)+(double)after.tv_usec)/1000000;
-	  seconds = t2 - t1;
-
-#endif
-	  before=after;
-
-	  ops_per_sec = 0x20000 / seconds;
-			
-#ifdef _WIN32
-	  sprintf(prf,"\r%dK | %8I64x | %e i/s",i/1000,cpu[0]->get_pc(),ops_per_sec);
-#else
-	  sprintf(prf,"\r%dK | %8llx | %e i/s",i/1000,cpu[0]->get_pc(),ops_per_sec);
-#endif
-	  srl[1]->write(prf);
-
-#ifdef DO_DISASM
-	  /* Start disassembling here! */
-	  if(i > DISASM_START) 
-	    bDisassemble = true;
-#endif
-
-	}
-
-
-    }
-#ifdef _WIN32
-  QueryPerformanceCounter(&after);
-  seconds = (after.QuadPart - beginning.QuadPart)/(double)freq.QuadPart;
-#else
-  t1 = ((double)(beginning.tv_sec*1000000)+(double)beginning.tv_usec)/1000000;
-  t2 = ((double)(after.tv_sec*1000000)+(double)after.tv_usec)/1000000;
-  seconds = t2 - t1;
-#endif
-  ops_per_sec = i / seconds;
-  printf("%d instructions skipped. Time elapsed: %e sec. Avg. speed: %e ins/sec.              \n\n",i,seconds,ops_per_sec);
-
-#ifdef DO_SAVESTATE
-  systm->SaveState(DO_SAVESTATE);
-#endif
-
-
-  ff = fopen(systm->GetConfig("rom.flash","flash.rom"),"wb");
-  if (ff)
-    {
-      srom->SaveState(ff);
-      fclose(ff);
-    }
-
-  ff = fopen(systm->GetConfig("rom.dpr","dpr.rom"),"wb");
-  if (ff)
-    {
-      dpr->SaveState(ff);
-      fclose(ff);
-    }
 
   delete systm;
-
 
   return 0;
 }

@@ -30,12 +30,8 @@
  * \author Camiel Vanderhoeven (camiel@camicom.com / www.camicom.com)
  **/
 
-#if !defined(AFX_SERIAL_H__7FD919DE_84AC_4364_A682_0BE164142E9B__INCLUDED_)
-#define AFX_SERIAL_H__7FD919DE_84AC_4364_A682_0BE164142E9B__INCLUDED_
-
-#if _MSC_VER > 1000
-#pragma once
-#endif // _MSC_VER > 1000
+#if !defined(INCLUDED_SERIAL_H)
+#define INCLUDED_SERIAL_H
 
 #include "SystemComponent.h"
 
@@ -50,13 +46,10 @@ class CSerial : public CSystemComponent
   void write(char * s);
   void WriteMem(int index, u64 address, int dsize, u64 data);
   u64 ReadMem(int index, u64 address, int dsize);
-  CSerial(CSystem * c, int number);
+  CSerial(CSystem * c, u16 number);
   virtual ~CSerial();
   void receive(const char* data);
-
-#ifndef _WIN32
-  void DoClock();
-#endif
+  int DoClock();
 
  private:
   u8 bTHR;
@@ -71,19 +64,13 @@ class CSerial : public CSystemComponent
   u8 bLSR;
   u8 bMSR;
   u8 bSPR;
-#ifdef _WIN32
-  class CTelnet * cTelnet;
-#else
   int listenSocket;
   int connectSocket;
   int serial_cycles;
-#endif
   char rcvBuffer[1024];
   int rcvW;
   int rcvR;
   int iNumber;
-  bool bInitialized;
-
 };
 
-#endif // !defined(AFX_SERIAL_H__7FD919DE_84AC_4364_A682_0BE164142E9B__INCLUDED_)
+#endif // !defined(INCLUDED_SERIAL_H)

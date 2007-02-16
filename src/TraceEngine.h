@@ -30,9 +30,10 @@
  * \author Camiel Vanderhoeven (camiel@camicom.com / www.camicom.com)
  **/
 
-#pragma once
+#if !defined(INCLUDED_TRACEENGINE_H)
+#define INCLUDED_TRACEENGINE_H
 
-#ifdef IDB
+#if defined(IDB)
 
 #include "datatypes.h"
 
@@ -87,6 +88,8 @@ class CTraceEngine
   void set_waitfor(class CAlphaCPU * cpu, u64 address);
   FILE * trace_file();
   void trace_dev(char * text);
+  int parse(char command[100][100]);
+  void run_script(char * filename);
 
  protected:
   class CSystem * cSystem;
@@ -99,10 +102,12 @@ class CTraceEngine
   int get_prbr(u64 prbr);
   void write_arglist(CAlphaCPU * c, FILE * f, char * a);
   FILE * current_trace_file;
+  u64 iBreakPoint;
+  int iBreakPointMode;
+  bool bBreakPoint;
 };
 
 extern bool bTrace;
-extern bool bListing;
 extern bool bDisassemble;
 
 
@@ -125,5 +130,7 @@ extern CTraceEngine * trc;
 #define TRC_DEV5(a,b,c,d,e) ;
 
 #define DO_ACTION 1
+
+#endif
 
 #endif

@@ -33,71 +33,63 @@
  * \author Camiel Vanderhoeven (camiel@camicom.com / www.camicom.com)
  **/
 
-#if !defined(AFX_STDAFX_H__E45CEFB7_CE00_44EB_ADFF_B17622633B52__INCLUDED_)
-#define AFX_STDAFX_H__E45CEFB7_CE00_44EB_ADFF_B17622633B52__INCLUDED_
+#if !defined(INCLUDED_STDAFX_H)
+#define INCLUDED_STDAFX_H
 
-#if _MSC_VER > 1000
-#pragma once
-#endif // _MSC_VER > 1000
+#if defined(_WIN32)
 
 #define WIN32_LEAN_AND_MEAN		// Exclude rarely-used stuff from Windows headers
-
 #define _CRT_SECURE_NO_DEPRECATE 1
-
 #if _MSC_VER < 1400
 #define WINVER 0x0400
 #else
 #define WINVER 0x0501
 #endif
-
-#include <stdio.h>
-#ifdef _WIN32
 #include <afx.h>
 #include <winsock.h>
+#define strcasecmp(a,b) _stricmp(a,b)
+#define strncasecmp(a,b,c) _strnicmp (a,b,c)
+
+inline void sleep_ms(DWORD ms)
+{
+	Sleep(ms);
+}
+
 #else
+
+#define _strdup strdup
+#include <sys/time.h>
+#include <stdlib.h>
 #include <unistd.h>
+
+inline void sleep_ms(int ms)
+{
+	usleep(ms*1000);
+}
+
 #endif
+
+#include <stdio.h>
 #include <string.h>
 #include <malloc.h>
 #include <time.h>
 #include <ctype.h>
 
-#if _MSC_VER < 1400
+#if (defined(_MSC_VER) && (_MSC_VER < 1400)) || !defined(_WIN32)
 inline void gmtime_s(struct tm * t1, time_t * t2)
 {
   struct tm * t3;
   t3 = gmtime(t2);
   memcpy(t1,t3,sizeof(struct tm));
 }
-#endif //_MSC_VER
+#endif
 
-#ifdef _WIN32
+#if defined(_WIN32) || defined(__DECCXX)
 inline bool isblank(char c)
 {
   if ( c == ' ' || c == '\t' || c == '\n' || c == '\r' )
     return true;
   return false;
-}
-#endif
-
-#ifdef __DECCXX
-inline bool isblank(char c)
-{
-  if ( c == ' ' || c == '\t' || c == '\n' || c == '\r' )
-    return true;
-  return false;
-}
-#endif
-
-#ifdef _WIN32
-inline void sleep_ms(DWORD ms)
-{
-	Sleep(ms);
-}
-#else
-inline void sleep_ms(int ms)
-{
-	usleep(ms*1000);
 }
 #endif
 
@@ -108,9 +100,4 @@ inline char printable(char c)
   return '.';
 }
 
-// TODO: reference additional headers your program requires here
-
-//{{AFX_INSERT_LOCATION}}
-// Microsoft Visual C++ will insert additional declarations immediately before the previous line.
-
-#endif // !defined(AFX_STDAFX_H__E45CEFB7_CE00_44EB_ADFF_B17622633B52__INCLUDED_)
+#endif // !defined(INCLUDED_STDAFX_H)

@@ -209,6 +209,26 @@ void CFlash::SaveState(FILE * f)
 }
 
 /**
+ * Save state to a flash rom file.
+ **/
+
+void CFlash::SaveStateF(char * fn)
+{
+  FILE * ff;
+  ff = fopen(fn,"wb");
+  if (ff)
+    {
+      SaveState(ff);
+      fclose(ff);
+      printf("%%FLS-I-SAVEST: Flash state saved to %s\n",fn);
+    }
+  else
+  {
+    printf("%%FLS-F-NOSAVE: Flash could not be saved to %s\n",fn);
+  }
+}
+
+/**
  * Restore state from a Virtual Machine state file.
  **/
 
@@ -216,4 +236,24 @@ void CFlash::RestoreState(FILE * f)
 {
   fread(Flash,2*1024*1024,1,f);
   fread(&mode,sizeof(int),1,f);
+}
+
+/**
+ * Restore state from a flash rom file.
+ **/
+
+void CFlash::RestoreStateF(char * fn)
+{
+  FILE * ff;
+  ff = fopen(fn,"rb");
+  if (ff)
+    {
+      RestoreState(ff);
+      fclose(ff);
+      printf("%%FLS-I-RESTST: Flash state restored from %s\n",fn);
+    }
+  else
+  {
+    printf("%%FLS-F-NOREST: Flash could not be restored from %s\n",fn);
+  }
 }

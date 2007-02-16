@@ -30,10 +30,10 @@
  * \author Camiel Vanderhoeven (camiel@camicom.com / www.camicom.com)
  **/
 
-#if !defined(__DATATYPES_H__)
-#define __DATATYPES_H__
+#if !defined(INCLUDED_DATATYPES_H)
+#define INCLUDED_DATATYPES_H
 
-#ifdef _WIN32
+#if defined(_WIN32)
 
 #define u8 unsigned char
 #define u16 unsigned short
@@ -46,8 +46,10 @@
 #define s64 signed __int64
 
 #define X64(a) 0x##a##ui64
+#define LL "I64"
 
-#else
+#else // defined(_WIN32)
+
 #include <stdint.h>
 #define u8 uint8_t
 #define u16 uint16_t
@@ -60,12 +62,13 @@
 #define s64 int64_t
 
 #define X64(a) 0x##a##ll
+#define LL "ll"
 
-#endif
+#endif // defined(_WIN32)
 
 #define X32(a) 0x##a
 #define X16(a) 0x##a
 #define X8(a) 0x##a
 
 
-#endif //__DATATYPES_H__
+#endif //INCLUDED_DATATYPES_H

@@ -462,6 +462,46 @@ void CDPR::SaveState(FILE * f)
 }
 
 /**
+ * Save state to a DPR rom file.
+ **/
+
+void CDPR::SaveStateF(char * fn)
+{
+  FILE * ff;
+  ff = fopen(fn,"wb");
+  if (ff)
+    {
+      SaveState(ff);
+      fclose(ff);
+      printf("%%DPR-I-SAVEST: DPR state saved to %s\n",fn);
+    }
+  else
+  {
+    printf("%%DPR-F-NOSAVE: DPR could not be saved to %s\n",fn);
+  }
+}
+
+/**
+ * Restore state from a DPR rom file.
+ **/
+
+void CDPR::RestoreStateF(char * fn)
+{
+  FILE * ff;
+  ff = fopen(fn,"rb");
+  if (ff)
+    {
+      RestoreState(ff);
+      fclose(ff);
+      printf("%%DPR-I-RESTST: DPR state restored from %s\n",fn);
+    }
+  else
+  {
+    printf("%%DPR-F-NOREST: DPR could not be restored from %s\n",fn);
+  }
+}
+
+/**
  * Restore state from a Virtual Machine State file.
  **/
 

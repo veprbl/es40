@@ -34,17 +34,12 @@
 #include "SystemComponent.h"
 #include "TraceEngine.h"
 
-#if !defined(__SYSTEM_H__)
-#define __SYSTEM_H__
-
+#if !defined(INCLUDED_SYSTEM_H)
+#define INCLUDED_SYSTEM_H
 
 #define MAX_COMPONENTS 100
 
-#if _MSC_VER > 1000
-#pragma once
-#endif // _MSC_VER > 1000
-
-/**
+ /**
  * Structure used for mapping memory ranges to devices.
  **/
 
@@ -105,9 +100,13 @@ class CSystem
   int load_ROM2(char* filename, int start_at, u64 load_at, u8 type);
   u64 ReadMem(u64 address, int dsize);
   void WriteMem(u64 address, int dsize, u64 data);
-  void DoClock();
+  int Run();
+#if defined(IDB)
+  int SingleStep();
+#endif
+
   int RegisterMemory(CSystemComponent * component, int index, u64 base, u64 length);
-  int RegisterClock(CSystemComponent * component);
+  int RegisterClock(CSystemComponent * component, bool slow);
   int RegisterComponent(CSystemComponent * component);
   int RegisterCPU(class CAlphaCPU * cpu);
 	
@@ -124,7 +123,7 @@ class CSystem
 
 
  private:
-  unsigned int iNumCPUs;
+  int iNumCPUs;
   u8  tig$FwWrite;
   u8  tig$HaltA;
   u8  tig$HaltB;
@@ -144,22 +143,25 @@ class CSystem
   void * memory;
   //	void * memmap;
 
-  unsigned int iNumComponents;
+  int iNumComponents;
   CSystemComponent * acComponents[MAX_COMPONENTS];
-  unsigned int iNumClocks;
-  CSystemComponent * acClocks[MAX_COMPONENTS];
-  unsigned int iNumMemories;
+  int iNumFastClocks;
+  CSystemComponent * acFastClocks[MAX_COMPONENTS];
+  int iNumSlowClocks;
+  CSystemComponent * acSlowClocks[MAX_COMPONENTS];
+  int iNumMemories;
   struct SMemoryUser * asMemories[MAX_COMPONENTS];
 
   struct SROM_data * asROMs[10];
   int iNumROMs;
   class CAlphaCPU * acCPUs[4];
 
-
   struct SConfig *asConfig[30];
   int iNumConfig;
 
-
+#if defined(IDB)
+  int iSingleStep;
+#endif
 };
 
-#endif // !defined(__SYSTEM_H__)
+#endif // !defined(INCLUDED_SYSTEM_H)

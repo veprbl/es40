@@ -38,32 +38,51 @@
 #include <stdlib.h>
 #include <ctype.h>
 
-#ifdef _WIN32
-#include "windows/telnet.h"
-#include <process.h>
-
-CRITICAL_SECTION critSection;
+#if defined(_WIN32)
+#include <winsock.h>
+#define socklen_t int
+#define ssize_t size_t
 
 #define	IAC	255		/* interpret as command: */
+#define	DONT	254		/* you are not to use option */
 #define	DO	253		/* please, you use option */
+#define	WONT	252		/* I won't use option */
 #define	WILL	251		/* I will use option */
+#define	SB	250		/* interpret as subnegotiation */
+#define	GA	249		/* you may reverse the line */
+#define	EL	248		/* erase the current line */
+#define	EC	247		/* erase the current character */
+#define	AYT	246		/* are you there */
+#define	AO	245		/* abort output--but let prog finish */
+#define	IP	244		/* interrupt process--permanently */
+#define	BREAK	243		/* break */
+#define	DM	242		/* data mark--for connect. cleaning */
+#define	NOP	241		/* nop */
+#define	SE	240		/* end sub negotiation */
+#define EOR     239             /* end of record (transparent mode) */
+#define	ABORT	238		/* Abort process */
+#define	SUSP	237		/* Suspend process */
+#define	xEOF	236		/* End of file: EOF is already used... */
+
+#define SYNCH	242		/* for telfunc calls */
 #define TELOPT_ECHO	1	/* echo */
 #define	TELOPT_SGA	3	/* suppress go ahead */
 #define	TELOPT_NAWS	31	/* window size */
 #define	TELOPT_LFLOW	33	/* remote flow control */
-#else
+
+#else // defined(_WIN32)
+
 #include <arpa/inet.h>
 #include <arpa/telnet.h>
 #include <netinet/in.h>
 #include <sys/select.h>
 #include <sys/time.h>
 #include <unistd.h>
+#define INVALID_SOCKET 1
 
-#define RECV_TICKS 100000
+#endif // defined (_WIN32)
 
-#endif
-
-
+#define RECV_TICKS 10
 
 extern CAliM1543C * ali;
 
@@ -78,52 +97,53 @@ bool bStop     = false;
  * Constructor.
  **/
 
-CSerial::CSerial(CSystem * c, int number) : CSystemComponent(c)
+CSerial::CSerial(CSystem * c, u16 number) : CSystemComponent(c)
 {
-  int base = atoi(c->GetConfig("serial.base","8000"));
+  u16 base = (u16)atoi(c->GetConfig("serial.base","8000"));
   char s[100];
-  int i;
   
   c->RegisterMemory (this, 0, X64(00000801fc0003f8) - (0x100*number), 8);
 
-  bInitialized = false;
-
 // Start Telnet server
 
-#ifdef _WIN32
-  InitializeCriticalSection( &critSection );
-  cTelnet = new CTelnet(base+number, this);
-  if ( !cTelnet->start() )
-    return;
-#else
-  c->RegisterClock(this);
-	
+  c->RegisterClock(this, true);
+
+#if defined(_WIN32)
+  // Windows Sockets only work after calling WSAStartup.
+  WSADATA wsa;
+  WSAStartup(0x0101, &wsa);
+#endif // defined (_WIN32)
+
   struct sockaddr_in Address;
   socklen_t nAddressSize=sizeof(struct sockaddr_in);
 
   listenSocket = socket(AF_INET,SOCK_STREAM,0);
+  if (listenSocket == INVALID_SOCKET)
+  {
+    printf("Could not open socket to listen on!\n");
+  }
+  
   Address.sin_addr.s_addr=INADDR_ANY;
-  Address.sin_port=htons(base+number);
+  Address.sin_port=htons((u16)(base+number));
   Address.sin_family=AF_INET;
 
   int optval = 1;
-  setsockopt(listenSocket,SOL_SOCKET,SO_REUSEADDR, &optval,sizeof(optval));
+  setsockopt(listenSocket,SOL_SOCKET,SO_REUSEADDR, (char*)&optval,sizeof(optval));
   bind(listenSocket,(struct sockaddr *)&Address,sizeof(Address));
   listen(listenSocket,5);
-#endif
 
   printf("%%SRL-I-WAIT: Waiting for connection on port %d.\n",number+base);
 
 
 //  Wait until we have a connection
 
-#ifdef _WIN32
-  for (;!cTelnet->getLoggedOn();) ;
-#else
-  connectSocket = accept(listenSocket,(struct sockaddr*)&Address,&nAddressSize);
+  connectSocket = INVALID_SOCKET;
+  while (connectSocket == INVALID_SOCKET)
+  {
+    connectSocket = accept(listenSocket,(struct sockaddr*)&Address,&nAddressSize);
+  }
 
   serial_cycles = 0;
-#endif
 
   // Send some control characters to the telnet client to handle 
   // character-at-a-time mode.  
@@ -148,23 +168,8 @@ CSerial::CSerial(CSystem * c, int number) : CSystemComponent(c)
   sprintf(s,"This is serial port #%d on AlphaSim\r\n",number);
   this->write(s);
 
-// Eat all characters that come in in the first second
-//#if 0
-  for (i=0;i<100;i++)
-  {
-	sleep_ms(10);
-#ifndef _WIN32
-	this->DoClock();
-#endif
-  }
-//#endif // 0
-
-  bInitialized = true;
-
-
   printf("%%SRL-I-INIT: Serial Interface %d emulator initialized.\n",number);
   printf("%%SRL-I-ADDRESS: Serial Interface %d on telnet port %d.\n",number,number+base);
-
 
   iNumber = number;
 
@@ -183,10 +188,6 @@ CSerial::CSerial(CSystem * c, int number) : CSystemComponent(c)
 
 CSerial::~CSerial()
 {
-#ifdef _WIN32
-  cTelnet->stop();
-  free(cTelnet);
-#endif
 }
 
 u64 CSerial::ReadMem(int index, u64 address, int dsize)
@@ -262,11 +263,7 @@ void CSerial::WriteMem(int index, u64 address, int dsize, u64 data)
       else
         {
 	  sprintf(s,"%c",d);
-#ifdef _WIN32
-	  cTelnet->write(s);
-#else
 	  write(s);
-#endif
 	  TRC_DEV4("Write character %02x (%c) on serial port %d\n",d,printable(d),iNumber);
 	  if (bIER & 0x2)
             {
@@ -307,11 +304,7 @@ void CSerial::WriteMem(int index, u64 address, int dsize, u64 data)
 
 void CSerial::write(char *s)
 {
-#ifdef _WIN32
-  cTelnet->write(s);
-#else
   send(connectSocket,s,strlen(s)+1,0);
-#endif
 }
 
 void CSerial::receive(const char* data)
@@ -320,8 +313,6 @@ void CSerial::receive(const char* data)
 
   x = (char *) data;
 
-  if (bInitialized)
-  {
 	while (*x)
 	{
 	  rcvBuffer[rcvW++] = *x;
@@ -334,12 +325,9 @@ void CSerial::receive(const char* data)
 	    ali->pic_interrupt(0, 4 - iNumber);
       }
     }
-  }
 }
 
-#ifndef _WIN32
-
-void CSerial::DoClock() {
+int CSerial::DoClock() {
   fd_set readset;
   unsigned char buffer[FIFO_SIZE+1];
   unsigned char cbuffer[FIFO_SIZE+1];  // cooked buffer
@@ -354,7 +342,12 @@ void CSerial::DoClock() {
     tv.tv_sec=0;
     tv.tv_usec=0;
     if(select(connectSocket+1,&readset,NULL,NULL,&tv) > 0) {
+#if defined(_WIN32)
+      // Windows Sockets has no direct equivalent of BSD's read
+      size = recv(connectSocket,(char*)buffer,FIFO_SIZE, 0);
+#else
       size = read(connectSocket,&buffer,FIFO_SIZE);
+#endif
       buffer[size+1]=0; // force null termination.
       b=buffer;
       c=cbuffer;
@@ -372,6 +365,8 @@ void CSerial::DoClock() {
 	    continue;
 	  } else if(*(b+1) == BREAK) { // break (== halt button?)
 	    b+=2;
+	    printf("%%SRL-I-BREAK : Break received on serial port. Emulator terminating...\n");
+	    return 1;
 	    continue;
 	  } else if(*(b+1) == AYT) { // are you there?
 	    
@@ -388,7 +383,5 @@ void CSerial::DoClock() {
     }
     serial_cycles=0;
   }
+  return 0;
 }
-
-
-#endif

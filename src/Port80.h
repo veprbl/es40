@@ -30,12 +30,8 @@
  * \author Camiel Vanderhoeven (camiel@camicom.com / www.camicom.com)
  **/
 
-#if !defined(AFX_PORT80_H__C93A4910_DB8A_4AF8_A890_5724EFB9C654__INCLUDED_)
-#define AFX_PORT80_H__C93A4910_DB8A_4AF8_A890_5724EFB9C654__INCLUDED_
-
-#if _MSC_VER > 1000
-#pragma once
-#endif // _MSC_VER > 1000
+#if !defined(INCLUDED_PORT80_H)
+#define INCLUDED_PORT80_H
 
 #include "SystemComponent.h"
 
@@ -60,4 +56,4 @@ class CPort80 : public CSystemComponent
   u8 p80;	/**< Last value written.*/
 };
 
-#endif // !defined(AFX_PORT80_H__C93A4910_DB8A_4AF8_A890_5724EFB9C654__INCLUDED_)
+#endif // !defined(INCLUDED_PORT80_H)
