@@ -1,18 +1,20 @@
+#to use G++
 CC = g++
-#CC = /opt/intel/cc/9.1.046/bin/icc
-#CFLAGS =  -g -I. -Wall -DIDB -DMINI_DEBUG_XX
-CFLAGS =  -O2 -I.
+LDFLAGS =
+
+#to use Intel's ICC
+# CC = /opt/intel/cc/9.1.046/bin/icc
+#LDFLAGS = -L/opt/intel/cc/9.1.046/lib -lirc
+
+CFLAGS = -O2 -g -I.
+IDB_CFLAGS = -DIDB 
 LD = g++
-#LDFLAGS =  -L/opt/intel/cc/9.1.046/lib -lirc
-LDFLAGS = 
-DOXYGEN = doxygen
+
 DEPEND = makedepend $(CFLAGS)
 
-SRCS = $(shell echo *.cpp)
-
 OBJS = AliM1543C.o \
-	AlphaCPU.o \
-	AlphaSim.o \
+        AlphaCPU.o \
+        AlphaSim.o \
         DPR.o \
         Flash.o \
         FloppyController.o \
@@ -24,28 +26,27 @@ OBJS = AliM1543C.o \
         TraceEngine.o \
         TranslationBuffer.o 
 
+IDB_OBJS = $(subst .o,.do,$(OBJS))
+
+.SUFFIXES: .do
+
 .cpp.o:
 	$(CC) $(CFLAGS) -c $< 
 
-all: es40
+.cpp.do:
+	$(CC) $(CFLAGS) $(IDB_CFLAGS) -c $< -o $@
 
+all: es40 es40_idb
 
-
-es40: $(OBJS)
+es40:   $(OBJS)
 	$(LD) $(LDFLAGS) -o es40 $(OBJS)
 
-doc: Doxyfile $(SRCS)
-	if [ ! -e docs ]; then  mkdir docs ; fi
-	$(DOXYGEN)
-
-Doxyfile:
-	$(DOXYGEN) -g > /dev/null
-	echo "PROJECT_NAME=ES40" >> Doxyfile
-	echo "OUTPUT_DIRECTORY=docs" >> Doxyfile
+es40_idb: $(IDB_OBJS)
+	$(LD) $(LDFLAGS) -o es40_idb $(IDB_OBJS)
 
 depend: $(SRCS)
 	$(DEPEND) $(SRCS)
-
+	$(DEPEND) -o.do -a -- $(IDB_CFLAGS) -- $(SRCS)
 clean:
-	rm -rf es40 *.o *.trc Doxyfile docs
+	rm -f es40 es40_idb *.o *.do *.trc
 
