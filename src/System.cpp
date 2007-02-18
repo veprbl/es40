@@ -55,6 +55,7 @@ CSystem::CSystem(char *filename)
 
 #if defined(IDB)
   iSingleStep = 0;
+  iSSCycles = 0;
 #endif
 
   c$MISC = X64(0000000800000000);
@@ -241,6 +242,9 @@ int CSystem::SingleStep()
 	if (result)
 	  return result;
      }
+     iSSCycles++;
+     if (bHashing)
+       printf("%d0000 | %016" LL "x\r",iSSCycles,acCPUs[0]->get_pc());
   }
   return 0;
 }

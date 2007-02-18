@@ -109,7 +109,7 @@ class CTraceEngine
 
 extern bool bTrace;
 extern bool bDisassemble;
-
+extern bool bHashing;
 
 extern CTraceEngine * trc;
 

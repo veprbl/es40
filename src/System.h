@@ -161,6 +161,7 @@ class CSystem
 
 #if defined(IDB)
   int iSingleStep;
+  int iSSCycles;
 #endif
 };
 

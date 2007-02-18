@@ -581,6 +581,7 @@ int CTraceEngine::parse(char command[100][100])
       printf("  EXIT | QUIT                                                        \n");
       printf("  STEP                                                               \n");
       printf("  TRACE [ ON | OFF ]                                                 \n");
+      printf("  HASHING [ ON | OFF ]                                               \n");
       printf("  BREAKPOINT [ OFF | > | < | = ] <hex value>                         \n");
       printf("  DISASSEMBLE [ON | OFF ]	                                           \n");
       printf("  LIST <hex address> - <hex address>                                 \n");
@@ -589,6 +590,7 @@ int CTraceEngine::parse(char command[100][100])
       printf("  SAVE [STATE | DPR | FLASH ] <file>                                 \n");
       printf("  JUMP <hex address>                                                 \n");
       printf("  PAL [ ON | OFF ]                                                   \n"); 
+      printf("  DUMPREGS                                                           \n");
       printf("  @<script-file>                                                     \n");
       printf("  # | // | ; | ! <comment>                                           \n");
       printf("                                                                     \n");
@@ -601,6 +603,38 @@ int CTraceEngine::parse(char command[100][100])
     {
       printf("%%IDB-I-SSTEP : Single step.\n");
       systm->SingleStep();
+      return 0;
+    }
+    if (!strncasecmp(command[0],"DUMPREGS",strlen(command[0])))
+    {
+      printf("\n==================== REGISTER VALUES ====================\n");
+      for(i=0;i<32;i++)
+      {
+	if (i<10) printf("R");
+	printf("%d:%016" LL "x", i, cpu[0]->get_r(i,false));
+	if (i%4==3) printf("\n"); else printf(" ");
+      }
+      printf("\n");
+      for(i=4;i<8;i++)
+      {
+	if (i<10) printf("S");
+	printf("%d:%016" LL "x", i, cpu[0]->get_r(i+32,false));
+	if (i%4==3) printf("\n"); else printf(" ");
+      }
+      for(i=20;i<24;i++)
+      {
+	if (i<10) printf("S");
+	printf("%d:%016" LL "x", i, cpu[0]->get_r(i+32,false));
+	if (i%4==3) printf("\n"); else printf(" ");
+      }
+      printf("\n");
+      for(i=0;i<32;i++)
+      {
+	if (i<10) printf("F");
+	printf("%d:%016" LL "x", i, cpu[0]->get_f(i));
+	if (i%4==3) printf("\n"); else printf(" ");
+      }
+      printf("=========================================================\n");
       return 0;
     }
     if (!strncasecmp(command[0],"RUN",strlen(command[0])))
@@ -617,8 +651,6 @@ int CTraceEngine::parse(char command[100][100])
 	for (i=0;;i++)
 	{
 	  systm->SingleStep();
-	  if (!(i&0xfff))
-	    printf("%d\r",i);
 	  if (cpu[0]->get_clean_pc() < iBreakPoint)
 	    break;
 	}
@@ -627,8 +659,6 @@ int CTraceEngine::parse(char command[100][100])
 	for(i=0;;i++)
 	{
 	  systm->SingleStep();
-	  if (!(i&0xfff))
-	    printf("%d\r",i);
 	  if (cpu[0]->get_clean_pc() == iBreakPoint)
 	    break;
 	}
@@ -636,8 +666,6 @@ int CTraceEngine::parse(char command[100][100])
       case 1:
 	for(i=0;;i++)
 	{
-	  if (!(i&0xfff))
-	    printf("%d\r",i);
 	  systm->SingleStep();
 	  if (cpu[0]->get_clean_pc() > iBreakPoint)
 	    break;
@@ -667,7 +695,22 @@ int CTraceEngine::parse(char command[100][100])
       if (!strcasecmp(command[1],"OFF"))
       {
 	printf("%%IDB-I-TRCOFF: Tracing disabled.\n");
-	bTrace = false;
+	bTrace =false;
+	return 0;
+      }
+    }
+    if (!strncasecmp(command[0],"HASHING",strlen(command[0])))
+    {
+      if (!strcasecmp(command[1],"ON"))
+      {
+	printf("%%IDB-I-HSHON : Hashing enabled.\n");
+	bHashing = true;
+	return 0;
+      }
+      if (!strcasecmp(command[1],"OFF"))
+      {
+	printf("%%IDB-I-HSHOFF: Hashing disabled.\n");
+	bHashing = false;
 	return 0;
       }
     }
@@ -727,9 +770,7 @@ int CTraceEngine::parse(char command[100][100])
 	  for (i=0;i<RunCycles;i++)
 	  {
 	    systm->SingleStep();
-  	    if (!(i&0xfff))
-	      printf("%d\r",i);
-	    if (cpu[0]->get_clean_pc() < iBreakPoint)
+ 	    if (cpu[0]->get_clean_pc() < iBreakPoint)
 	      break;
 	  }
 	  break;
@@ -737,8 +778,6 @@ int CTraceEngine::parse(char command[100][100])
 	  for(i=0;i<RunCycles;i++)
 	  {
 	    systm->SingleStep();
-	    if (!(i&0xfff))
-	      printf("%d\r",i);
 	    if (cpu[0]->get_clean_pc() == iBreakPoint)
 	      break;
 	  }
@@ -747,8 +786,6 @@ int CTraceEngine::parse(char command[100][100])
 	  for(i=0;i<RunCycles;i++)
 	  {
 	    systm->SingleStep();
- 	    if (!(i&0xfff))
-	      printf("%d\r",i);
 	    if (cpu[0]->get_clean_pc() > iBreakPoint)
 	      break;
 	  }
@@ -761,11 +798,7 @@ int CTraceEngine::parse(char command[100][100])
       {
         printf("%%IDB-I-RUNCYC: Running until max cycles reached.\n");
 	for(i=0;i<RunCycles;i++)
-	{
 	  systm->SingleStep();
-          if (!(i&0xfff))
-            printf("%d\r",i);
-	}
       }
       if (i!=RunCycles)
         printf("%%IDB-I-BRKPT : Breakpoint encountered.\n");
@@ -904,6 +937,6 @@ int CTraceEngine::parse(char command[100][100])
 
 bool bTrace = false;
 bool bDisassemble = false;
-
+bool bHashing = false;
 
 #endif // IDB

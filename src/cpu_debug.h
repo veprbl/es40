@@ -53,6 +53,42 @@ char * PAL_NAME[] = {
   "REMQHIQR"	,"REMQTIQR"	,"GENTRAP"		,"AB"			,"AC"			,"AD"			,"CLRFEN"		,"AF"			,
   "B0","B1","B2","B3","B4","B5","B6","B7","B8","B9","BA","BB","BC","BD","BE","BF"};
 
+char * IPR_NAME[] = {
+  "ITB_TAG",	"ITB_PTE",	"ITB_IAP",	"ITB_IA",	"ITB_IS",	"PMPC",		"EXC_ADDR",	"IVA_FORM",
+  "IER_CM",	"CM",		"IER",		"IER_CM",	"SIRR",		"ISUM",		"HW_INT_CLR",	"EXC_SUM",
+  "PAL_BASE",	"I_CTL",	"IC_FLUSH_ASM",	"IC_FLUSH",	"PCTR_CTL",	"CLR_MAP",	"I_STAT",	"SLEEP",
+  "?0001.1000?","?0001.1001?",	"?0001.1010?",	"?0001.1011?",	"?0001.1100?",	"?0001.1101?",	"?0001.1110?",	"?0001.1111?",
+  "DTB_TAG0",	"DTB_PTE0",	"?0010.0010?",	"?0010.0011?",	"DTB_IS0",	"DTB_ASN0",	"DTB_ALTMODE",	"MM_STAT",
+  "M_CTL",	"DC_CTL",	"DC_STAT",	"C_DATA",	"C_SHFT",	"?0010.1101?",	"?0010.1110?",	"?0010.1111?",
+  "?0011.0000?","?0011.0001?",	"?0011.0010?",	"?0011.0011?",	"?0011.0100?",	"?0010.0101?",	"?0010.0110?",	"?0010.0111?",
+  "?0011.1000?","?0011.1001?",	"?0011.1010?",	"?0011.1011?",	"?0011.1100?",	"?0010.1101?",	"?0010.1110?",	"?0010.1111?",
+  "PCTX.00000",	"PCTX.00001",	"PCTX.00010",	"PCTX.00011",	"PCTX.00100",	"PCTX.00101",	"PCTX.00110",	"PCTX.00111",
+  "PCTX.01000",	"PCTX.01001",	"PCTX.01010",	"PCTX.01011",	"PCTX.01100",	"PCTX.01101",	"PCTX.01110",	"PCTX.01111",
+  "PCTX.10000",	"PCTX.10001",	"PCTX.10010",	"PCTX.10011",	"PCTX.10100",	"PCTX.10101",	"PCTX.10110",	"PCTX.10111",
+  "PCTX.11000",	"PCTX.11001",	"PCTX.11010",	"PCTX.11011",	"PCTX.11100",	"PCTX.11101",	"PCTX.11110",	"PCTX.11111",
+  "PCTX.00000",	"PCTX.00001",	"PCTX.00010",	"PCTX.00011",	"PCTX.00100",	"PCTX.00101",	"PCTX.00110",	"PCTX.00111",
+  "PCTX.01000",	"PCTX.01001",	"PCTX.01010",	"PCTX.01011",	"PCTX.01100",	"PCTX.01101",	"PCTX.01110",	"PCTX.01111",
+  "PCTX.10000",	"PCTX.10001",	"PCTX.10010",	"PCTX.10011",	"PCTX.10100",	"PCTX.10101",	"PCTX.10110",	"PCTX.10111",
+  "PCTX.11000",	"PCTX.11001",	"PCTX.11010",	"PCTX.11011",	"PCTX.11100",	"PCTX.11101",	"PCTX.11110",	"PCTX.11111",
+  "?1000.0000?","?1000.0001?",	"?1000.0010?",	"?1000.0011?",	"?1000.0100?",	"?1000.0101?",	"?1000.0110?",	"?1000.0111?",
+  "?1000.1000?","?1000.1001?",	"?1000.1010?",	"?1000.1011?",	"?1000.1100?",	"?1000.1101?",	"?1000.1110?",	"?1000.1111?",
+  "?1001.0000?","?1001.0001?",	"?1001.0010?",	"?1001.0011?",	"?1001.0100?",	"?1001.0101?",	"?1001.0110?",	"?1001.0111?",
+  "?1001.1000?","?1001.1001?",	"?1001.1010?",	"?1001.1011?",	"?1001.1100?",	"?1001.1101?",	"?1001.1110?",	"?1001.1111?",
+  "DTB_TAG1",	"DTB_PTE1",	"DTB_IAP",	"DTB_IA",	"DTB_IS1",	"DTB_ASN1",	"?1010.0110?",	"?1010.0111?",
+  "?1010.1000?","?1010.1001?",	"?1010.1010?",	"?1010.1011?",	"?1010.1100?",	"?1010.1101?",	"?1010.1110?",	"?1010.1111?",
+  "?1011.0000?","?1011.0001?",	"?1011.0010?",	"?1011.0011?",	"?1011.0100?",	"?1011.0101?",	"?1011.0110?",	"?1011.0111?",
+  "?1011.1000?","?1011.1001?",	"?1011.1010?",	"?1011.1011?",	"?1011.1100?",	"?1011.1101?",	"?1011.1110?",	"?1011.1111?",
+  "CC",		"CC_CTL",	"VA",		"VA_FORM",	"VA_CTL",	"?1100.0101?",	"?1100.0110?",	"?1100.0111?",
+  "?1100.1000?","?1100.1001?",	"?1100.1010?",	"?1100.1011?",	"?1100.1100?",	"?1100.1101?",	"?1100.1110?",	"?1100.1111?",
+  "?1101.0000?","?1101.0001?",	"?1101.0010?",	"?1101.0011?",	"?1101.0100?",	"?1101.0101?",	"?1101.0110?",	"?1101.0111?",
+  "?1101.1000?","?1101.1001?",	"?1101.1010?",	"?1101.1011?",	"?1101.1100?",	"?1101.1101?",	"?1101.1110?",	"?1101.1111?",
+  "?1110.0000?","?1110.0001?",	"?1110.0010?",	"?1110.0011?",	"?1110.0100?",	"?1110.0101?",	"?1110.0110?",	"?1110.0111?",
+  "?1110.1000?","?1110.1001?",	"?1110.1010?",	"?1110.1011?",	"?1110.1100?",	"?1110.1101?",	"?1110.1110?",	"?1110.1111?",
+  "?1111.0000?","?1111.0001?",	"?1111.0010?",	"?1111.0011?",	"?1111.0100?",	"?1111.0101?",	"?1111.0110?",	"?1111.0111?",
+  "?1111.1000?","?1111.1001?",	"?1111.1010?",	"?1111.1011?",	"?1111.1100?",	"?1111.1101?",	"?1111.1110?",	"?1111.1111?",
+};
+
+
 #define TRC_(down,up,x,y) {					\
     if (bTrace)							\
       trc->trace(this, current_pc,pc,down,up,x,y); }
@@ -88,7 +124,6 @@ char * PAL_NAME[] = {
 #if !defined(MINI_DEBUG_XX)
 
 #define DEBUG_XX							\
-  char * funcname = 0;							\
   if (trc->get_fnc_name(current_pc&~X64(3),&funcname))			\
     {									\
       if (bListing && !strcmp(funcname,""))				\
@@ -189,10 +224,10 @@ char * PAL_NAME[] = {
    be as concise as possible. */
 #define DEBUG_XX				\
   char * funcname=NULL;				\
-  printf("PC:%llx ",pc);			\
+  printf("PC:%" LL "x ",pc);			\
   for(int reg=0;reg<=30;reg++) {		\
     if(r[reg]==0) continue;			\
-    printf("R%02d:%llx ",reg,r[reg]);		\
+    printf("R%02d:%" LL "x ",reg,r[reg]);		\
   }						\
   printf("\t");					
 
@@ -206,7 +241,10 @@ char * PAL_NAME[] = {
 	  printf("Unknown opcode: %02x\n", opcode);	\
 	else						\
 	  printf("\n");					\
-    }
+    }							\
+    else                                                \
+      printf("Unknown opcode: %02x\n", opcode);		\
+  return 0;
 
 #define UNKNOWN2							\
   if (bDisassemble)							\
@@ -216,174 +254,291 @@ char * PAL_NAME[] = {
 	  printf("Unknown opcode: %02x.%02x\n", opcode, function);	\
 	else								\
 	  printf("\n");							\
+    }									\
+    else								\
+      printf("Unknown opcode: %02x.%02x\n", opcode, function);		\
+  return 0;
+
+#define POST_X64(a)								\
+  if (bDisassemble) {								\
+      if (bListing)								\
+        printf("\n");								\
+      else									\
+        printf(" ==> %" LL "x\n", a);					\
+  }
+
+#define PRE_PAL(mnemonic)							\
+  if (bDisassemble) {								\
+      DEBUG_XX;									\
+      if (function < 0x40 || ( function > 0x7f && function < 0xc0))		\
+        printf(#mnemonic " %s\n", PAL_NAME[function]);				\
+      else									\
+        printf(#mnemonic " ?%x?\n", function);					\
     }
 
-#define DEBUG_LD_ST(a)							\
-  if (bDisassemble)							\
-    {									\
-      DEBUG_XX								\
-	printf("%s r%d, %04xH(r%d)", a, REG_1&31, (u32)DISP_16, REG_2&31); \
-      if (DO_ACTION)							\
-	printf(" ==> %08x%08x", (u32)(r[REG_1]>>32), (u32)(r[REG_1]));	\
-      printf("\n");							\
+#define POST_PAL								\
+  TRC(true, false);						
+
+
+#define PRE_BR(mnemonic)							\
+  if (bDisassemble) {								\
+      u64 dbg_x = (current_pc + 4 + (DISP_21 * 4))&~X64(3);			\
+      DEBUG_XX									\
+      printf(#mnemonic " r%d, ", REG_1&31);					\
+      if (trc->get_fnc_name(dbg_x,&funcname))					\
+	printf("%s\n",funcname);						\
+      else									\
+	printf ("%" LL "x\n", dbg_x);					\
     }
 
-#define DEBUG_HW(a,b)							\
+#define POST_BR									\
+  TRC_BR;
+
+#define PRE_COND(mnemonic)							\
+  if (bDisassemble) {								\
+      u64 dbg_x = (current_pc + 4 + (DISP_21 * 4))&~X64(3);			\
+      DEBUG_XX									\
+      printf(#mnemonic " r%d, ", REG_1&31);					\
+      if (trc->get_fnc_name(dbg_x,&funcname))					\
+	printf("%s\n",funcname);						\
+      else									\
+	printf ("%" LL "x\n", dbg_x);					\
+      if (!bListing) 								\
+        printf(": (%" LL "x)", r[REG_1]);					\
+    }
+
+#define POST_COND									\
+  TRC_BR;
+
+#define PRE_BSR(mnemonic)							\
+  if (bDisassemble) {								\
+      u64 dbg_x = (current_pc + 4 + (DISP_21 * 4))&~X64(3);			\
+      DEBUG_XX									\
+      printf(#mnemonic " r%d, ", REG_1&31);					\
+      if (trc->get_fnc_name(dbg_x,&funcname))					\
+	printf("%s\n",funcname);						\
+      else									\
+	printf ("%" LL "x\n", dbg_x);					\
+    }
+
+#define POST_BSR								\
+  if (REG_1==31) {								\
+    TRC(0,1);									\
+  } else {									\
+    TRC(1,1);									\
+  }
+
+#define PRE_JMP(mnemonic)							\
   if (bDisassemble)								\
-    {									\
-      DEBUG_XX								\
-	printf("%s r%d, %04xH(r%d)%s", a, REG_1&31, (u32)DISP_12, REG_2&31, b); \
-      if (DO_ACTION)							\
-	printf(" ==> %08x%08x",(u32)(r[REG_1]>>32), (u32)(r[REG_1]));	\
-      printf("\n");							\
+    {										\
+      DEBUG_XX									\
+	printf(#mnemonic " r%d, r%d\n", REG_1&31, REG_2&31);			\
+      if (!bListing) 								\
+        printf(": (%" LL "x)", r[REG_2]);					\
     }
 
-#define DEBUG_OP(a)							\
+#define POST_JMP								\
+  if (REG_1==31) {								\
+    TRC(0,1);									\
+  } else {									\
+    TRC(1,1);									\
+  }
+
+#define PRE_RET(mnemonic)							\
   if (bDisassemble)								\
-    {									\
-      DEBUG_XX								\
-	printf("%s r%d, ", a, REG_1&31);				\
-      if (ins&0x1000)							\
-	printf("%02xH",V_2);						\
-      else								\
-	printf("r%d",REG_2&31);						\
-      printf(", r%d", REG_3&31);					\
-      if (DO_ACTION)							\
-	printf(" ==> %08x%08x", (u32)(r[REG_3]>>32), (u32)(r[REG_3]));	\
-      printf("\n");							\
+    {										\
+      DEBUG_XX									\
+	printf(#mnemonic " r%d\n", REG_2&31);					\
+      if (!bListing) 								\
+        printf(": (%" LL "x)", r[REG_2]);					\
     }
 
-#define DEBUG_OP_R1(a)							\
-  if (bDisassemble)							\
-    {									\
-      DEBUG_XX								\
-	printf("%s r%d", a, REG_1&31);					\
-      if (DO_ACTION)							\
-	printf(" ==> %08x%08x", (u32)(r[REG_1]>>32), (u32)(r[REG_1]));	\
-      printf("\n");							\
+#define POST_RET								\
+    TRC(0,1);
+
+#define PRE_IPR(mnemonic)							\
+  if (bDisassemble) {								\
+      DEBUG_XX;									\
+      printf(#mnemonic " r%d, %s", REG_1&31, IPR_NAME[function]);		\
     }
 
-#define DEBUG_OP_R3(a)							\
-  if (bDisassemble)							\
-    {									\
-      DEBUG_XX								\
-	printf("%s r%d", a, REG_3&31);					\
-      if (DO_ACTION)							\
-	printf(" ==> %08x%08x", (u32)(r[REG_3]>>32), (u32)(r[REG_3]));	\
-      printf("\n");							\
+#define POST_IPR								\
+  POST_X64(r[REG_1]);
+
+#define PRE_NOP(mnemonic)							\
+  if (bDisassemble) {								\
+      DEBUG_XX;									\
+      printf(#mnemonic "\n");							\
     }
 
-#define DEBUG_OP_F1_R3(a)						\
-  if (bDisassemble)							\
-    {									\
-      DEBUG_XX								\
-	printf("%s f%d, r%d", a, FREG_1, REG_3&31);			\
-      if (DO_ACTION)							\
-	printf(" ==> %08x%08x", (u32)(r[REG_3]>>32), (u32)(r[REG_3]));	\
-      printf("\n");							\
-    }
+#define POST_NOP ;
 
-#define DEBUG_OP_R23(a)							\
-  if (bDisassemble)							\
-    {									\
-      DEBUG_XX								\
-	printf("%s ", a);						\
-      if								\
-	(ins&0x1000) printf("%02xH",V_2);				\
-      else								\
-	printf("r%d",REG_2&31);						\
-      printf(", r%d", REG_3&31);					\
-      if (DO_ACTION)							\
-	printf(" ==> %08x%08x", (u32)(r[REG_3]>>32), (u32)(r[REG_3]));	\
-      printf("\n");							\
-    }
+#define PRE_MEM(mnemonic)							\
+  if (bDisassemble) {								\
+      DEBUG_XX;									\
+      printf(#mnemonic " r%d, %04xH(r%d)", REG_1&31, (u32)DISP_16, REG_2&31);	\
+      if (!bListing) 								\
+        printf(": (%" LL "x)", r[REG_2]);					\
+    }	
 
+#define POST_MEM								\
+  POST_X64(r[REG_1]);
 
-#define DEBUG_BR(a)						\
-  if (bDisassemble)							\
-    {								\
-      u64 dbg_x = (current_pc + 4 + (DISP_21 * 4))&~X64(3);	\
-      DEBUG_XX							\
-	printf("%s r%d, ", a, REG_1&31);			\
-      if (trc->get_fnc_name(dbg_x,&funcname))	\
-	printf("%s\n",funcname);				\
-      else							\
-	printf ("...%08x\n", dbg_x);				\
-    }
-
-#define DEBUG_JMP(a)					\
-  if (bDisassemble)						\
-    {							\
-      DEBUG_XX						\
-	printf("%s r%d, r%d\n", a, REG_1&31, REG_2&31);	\
-    }
-
-#define DEBUG_RET(a)				\
-  if (bDisassemble)					\
-    {						\
-      DEBUG_XX					\
-	printf("%s r%d\n", a, REG_2&31);	\
-    }
-
-#define DEBUG_fnc(a)				\
-  if (bDisassemble)					\
-    {						\
-      DEBUG_XX					\
-	printf("%s %02xH\n", a, function);	\
-    }
-
-#define DEBUG_PAL					\
-  if (bDisassemble)						\
-    {							\
-      DEBUG_XX						\
-	printf("CALL_PAL %s\n", PAL_NAME[function]);	\
-    }
-
-#define DEBUG_(a)				\
-  if (bDisassemble)					\
-    {						\
-      DEBUG_XX					\
-	printf("%s\n", a);			\
-    }
-
-#define DEBUG_MFPR(a)							\
+#define PRE_R12_R3(mnemonic)							\
   if (bDisassemble)								\
-    {									\
-      DEBUG_XX								\
-	printf("HW_MFPR r%d, %s", REG_1&31, a);				\
-      if (DO_ACTION)							\
-	printf(" ==> %08x%08x", (u32)(r[REG_1]>>32), (u32)(r[REG_1]));	\
-      printf("\n");							\
+    {										\
+      DEBUG_XX;									\
+      printf(#mnemonic " r%d, ", REG_1&31);					\
+      if (ins&0x1000)								\
+        printf("%02xH",V_2);							\
+      else									\
+	printf("r%d",REG_2&31);							\
+      printf(", r%d", REG_3&31);						\
+      if (!bListing)								\
+        printf(": (%" LL "x,%" LL "x)",r[REG_1],V_2);			\
     }
 
-#define DEBUG_MTPR(a)							\
+#define POST_R12_R3								\
+	POST_X64(r[REG_3]);
+	
+#define PRE_R1_F3(mnemonic)							\
   if (bDisassemble)								\
-    {									\
-      DEBUG_XX								\
-	printf("HW_MTPR r%d, %s", REG_2&31, a);				\
-      if (DO_ACTION)							\
-	printf(" ==> %08x%08x", (u32)(r[REG_2]>>32), (u32)(r[REG_2]));	\
-      printf("\n");							\
+    {										\
+      DEBUG_XX;									\
+      printf(#mnemonic " r%d, f%d ", REG_1&31, FREG_3);				\
+      if (!bListing)								\
+        printf(": (%" LL "x)",r[REG_1]);					\
     }
+
+#define POST_R1_F3								\
+	POST_X64(f[FREG_3]);
+
+#define PRE_F1_R3(mnemonic)							\
+  if (bDisassemble)								\
+    {										\
+      DEBUG_XX;									\
+      printf(#mnemonic " f%d, r%d ", FREG_1, REG_3&31);				\
+      if (!bListing)								\
+        printf(": (%" LL "x)",f[FREG_1]);					\
+    }
+
+#define POST_F1_R3								\
+	POST_X64(r[REG_3]);
+
+#define PRE_X_F1(mnemonic)							\
+  if (bDisassemble)								\
+    {										\
+      DEBUG_XX;									\
+      printf(#mnemonic " f%d ", FREG_1&31);					\
+    }
+
+#define POST_X_F1								\
+	POST_X64(f[FREG_1]);
+	
+#define PRE_R2_R3(mnemonic)							\
+  if (bDisassemble)								\
+    {										\
+      DEBUG_XX;									\
+      printf(#mnemonic " ");							\
+      if (ins&0x1000)								\
+	printf("%02xH",V_2);							\
+      else									\
+	printf("r%d",REG_2&31);							\
+      printf(", r%d", REG_3&31);						\
+      if (!bListing)								\
+        printf(": (%" LL "x)",V_2);						\
+    }
+
+#define POST_R2_R3								\
+	POST_X64(r[REG_3]);
+	
+#define PRE_X_R1(mnemonic)							\
+  if (bDisassemble)								\
+    {										\
+        DEBUG_XX;								\
+	printf(#mnemonic " r%d", REG_1&31);					\
+    }
+
+#define POST_X_R1								\
+	POST_X64(r[REG_1]);
+
+#define PRE_X_R3(mnemonic)							\
+  if (bDisassemble)								\
+    {										\
+        DEBUG_XX;								\
+	printf(#mnemonic " r%d", REG_3&31);					\
+    }
+
+#define POST_X_R3								\
+	POST_X64(r[REG_3]);
+	
+#define PRE_HW_LD(mnemonic)							\
+  if (bDisassemble)								\
+  {										\
+      DEBUG_XX;									\
+      printf(#mnemonic);							\
+      switch(function&~1)							\
+        {									\
+        case 0:									\
+	  printf("/Phys");							\
+	  break;								\
+        case 2:									\
+	  printf("/Phys/Lock");							\
+	  break;								\
+        case 4:									\
+	  printf("/Vpte");							\
+	  break;								\
+        case 10:								\
+	  printf("/Chk");							\
+	  break;								\
+        case 12:								\
+	  printf("/Alt");							\
+	  break;								\
+        case 14:								\
+	  printf("/Alt/Chk");							\
+	  break;									\
+        }									\
+      printf(" r%d, %04xH(r%d)", REG_1&31, (u32)DISP_16, REG_2&31);		\
+      if (!bListing) 								\
+        printf(": (%" LL "x)", r[REG_2]);					\
+    }	
+
+#define POST_HW_LD								\
+  POST_X64(r[REG_1]);
+
+#define PRE_HW_ST(mnemonic)							\
+  if (bDisassemble)								\
+  {										\
+      DEBUG_XX;									\
+      printf(#mnemonic);							\
+      switch(function&~1)							\
+        {									\
+        case 0:									\
+	  printf("/Phys");							\
+	  break;								\
+        case 2:									\
+	  printf("/Phys/Cond");							\
+	  break;								\
+        case 12:								\
+	  printf("/Alt");							\
+	  break;								\
+        }									\
+      printf(" r%d, %04xH(r%d)", REG_1&31, (u32)DISP_16, REG_2&31);		\
+      if (!bListing) 								\
+        printf(": (%" LL "x)", r[REG_2]);					\
+    }	
+
+#define POST_HW_ST								\
+  POST_X64(r[REG_1]);
 
 #else
 
-#define UNKNOWN1 ;
-#define UNKNOWN2 ;
-#define DEBUG_LD_ST(a) ;
-#define DEBUG_HW(a,b) ;
-#define DEBUG_OP(a) ;
-#define DEBUG_OP_R1(a) ;
-#define DEBUG_OP_R3(a) ;
-#define DEBUG_OP_F1_R3(a) ;
-#define DEBUG_OP_R23(a) ;
-#define DEBUG_BR(a) ;
-#define DEBUG_JMP(a) ;
-#define DEBUG_RET(a) ;
-#define DEBUG_fnc(a) ;
-#define DEBUG_PAL ;
-#define DEBUG_(a) ;
-#define DEBUG_MFPR(a) ;
-#define DEBUG_MTPR(a) ;
+#define UNKNOWN1							\
+      printf("Unknown opcode: %02x\n", opcode);				\
+      return 0;		
+
+#define UNKNOWN2							\
+      printf("Unknown opcode: %02x.%02x\n", opcode, function);		\
+      return 0;	
 
 #endif

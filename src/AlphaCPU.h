@@ -81,6 +81,7 @@ class CAlphaCPU : public CSystemComponent
   CAlphaCPU(CSystem * system);
   virtual ~CAlphaCPU();
   u64 get_r(int i, bool translate);
+  u64 get_f(int i);
   u64 get_prbr(void);
   u64 get_pc();
   u64 get_clean_pc();
@@ -357,6 +358,15 @@ inline u64 CAlphaCPU::get_r(int i, bool translate)
     return r[RREG(i)];
   else
     return r[i];
+}
+
+/**
+ * Get a fp register value.
+ **/
+
+inline u64 CAlphaCPU::get_f(int i)
+{
+    return f[i];
 }
 
 /**
