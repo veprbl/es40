@@ -48,5 +48,6 @@
 #define DO_CMOVNE if    (r[REG_1])		r[REG_3] = V_2;
 
 #define DO_SLL r[REG_3] = r[REG_1] << (V_2 & 63);
-#define DO_SRA r[REG_3] = r[REG_1] >> (V_2 & 63) | ((r[REG_1]>>63)?(X64_QUAD<<(64-(V_2 & 63))):0);
+#define DO_SRA r[REG_3] = (V_2 & 63) ? ((r[REG_1] >> (V_2 & 63)) | ((r[REG_1]>>63)?(X64_QUAD<<(64-(V_2 & 63))):0))	\
+				    :r[REG_1];
 #define DO_SRL r[REG_3] = r[REG_1] >> (V_2 & 63);
