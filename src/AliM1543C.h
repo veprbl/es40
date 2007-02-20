@@ -36,6 +36,17 @@
 #include "SystemComponent.h"
 
 /**
+ * Disk information structure.
+ **/
+
+struct disk_info {
+  FILE *handle;         /**< disk image handle. */
+  char *filename;       /**< disk image filename. */
+  int size;           /**< disk image size in 512-byte blocks */  
+  int mode;           /**< disk image mode. */
+};
+
+/**
  * Emulated ALi M1543C multi-function device.
  * The ALi M1543C device provides i/o and glue logic support to the system: 
  * ISA, USB, IDE, DMA, Interrupt, Timer, TOY Clock. 
@@ -135,8 +146,9 @@ class CAliM1543C : public CSystemComponent
   bool ide_reading[2];
   int ide_sectors[2];
   int ide_selected[2];
-  FILE * ide_img[2][2];		/**< disk images opened. */
-  char * ide_dev[2][2];		/**< disk image filenames. */
+
+  struct disk_info ide_info[2][2];
+
 };
 
 #endif // !defined(INCLUDED_ALIM1543C_H)

@@ -45,19 +45,35 @@ CAliM1543C::CAliM1543C(CSystem * c): CSystemComponent(c)
   char * filename;
 
   for(i=0;i<4;i++) {
-    ide_img[i/2][i%2] = NULL;
-    ide_dev[i/2][i%2] = NULL;
+    int C = i/2;
+    int D = i%2;
+
+    ide_info[C][D].handle = NULL;
+    ide_info[C][D].filename = NULL;
 
     sprintf(buffer,"disk.%d",i);
     filename=c->GetConfig(buffer,NULL);
     if (filename)
     {
-      ide_img[i/2][i%2]=fopen(filename,"rb");
-      if(ide_img[i/2][i%2] != NULL) {
+      if(*filename == '+') {
+	filename++;
+	ide_info[C][D].handle=fopen(filename,"rb+");
+	ide_info[C][D].mode=1;
+      } else {
+	ide_info[C][D].handle=fopen(filename,"rb");
+	ide_info[C][D].mode=0;
+      }
+
+      if(ide_info[C][D].handle != NULL) {
         printf("%%IDE-I-MOUNT: Device '%s' mounted on IDE %d\n",filename,i);
         char *p=(char *)malloc(strlen(filename)+1);
         strcpy(p,filename);
-        ide_dev[i/2][i%2]=p;
+        ide_info[C][D].filename=p;
+
+	fseek(ide_info[C][D].handle,0,SEEK_END);
+	ide_info[C][D].size=ftell(ide_info[C][D].handle)/512;
+	printf("-IDE-I-SIZE: %d blocks available.\n",ide_info[C][D].size);
+
       } else {
           printf("%%IDE-E-MOUNT: Cannot mount '%s'\n",filename);
       }
@@ -816,7 +832,7 @@ u64 CAliM1543C::ide_command_read(int index, u64 address)
 	{
 	  if (ide_reading[index] && ide_sectors[index])
 	    {
-	      fread(&(ide_data[index][0]),1,512,ide_img[index][ide_selected[index]]);
+	      fread(&(ide_data[index][0]),1,512,ide_info[index][ide_selected[index]].handle);
 	      ide_sectors[index]--;
 	    }
 	  else
@@ -843,8 +859,6 @@ void CAliM1543C::ide_command_write(int index, u64 address, u64 data)
   int lba;
   int x;
   int l;
-  char dname[50];
-  char t;
 
   TRC_DEV4("%%ALI-I-WRITEIDECMD: write port %d on IDE command %d: 0x%02x\n",  (u32)(address),index, data);
 
@@ -852,7 +866,7 @@ void CAliM1543C::ide_command_write(int index, u64 address, u64 data)
 	
   ide_selected[index] = (ide_command[index][6]>>4)&1;
 
-  if (ide_img[index][ide_selected[index]])
+  if (ide_info[index][ide_selected[index]].handle)
     {
       // drive is present
       ide_status[index] = 0x40;
@@ -894,17 +908,12 @@ void CAliM1543C::ide_command_write(int index, u64 address, u64 data)
 	      for(x=27;x<47;x++) {
 		ide_data[index][x]=0x2020;
 	      }
-	      l = strlen(ide_dev[index][ide_selected[index]]);
-	      t = ' ';
-	      strncpy(dname,ide_dev[index][ide_selected[index]],40);
+	      l = strlen(ide_info[index][ide_selected[index]].filename);
 	      l = (l > 40)? 40 : l;
-	      dname[l+1]=0x20;  
-	      for(x=0; x<=l; x+=2) {
-	        t = dname[x];
-	        dname[x]=dname[x+1];
-	        dname[x+1]=t;
+	      memcpy((char *)&ide_data[index][27],ide_info[index][ide_selected[index]].filename,l);
+	      for(x=27;x<47;x++) {
+		ide_data[index][x]=((ide_data[index][x]>>8) & 0xff) | (ide_data[index][x]<<8);
 	      }
-	      strncpy((char *)(&ide_data[index][27]),dname,l);
 
 	      ide_data[index][47] = 1;		// read/write multiples
 	      ide_data[index][48] = 0;		// double-word IO transfers supported
@@ -916,11 +925,11 @@ void CAliM1543C::ide_command_write(int index, u64 address, u64 data)
 	      ide_data[index][54] = 1000;		// cylinders
 	      ide_data[index][55] = 14;		// heads
 	      ide_data[index][56] = 100;		// sectors
-	      ide_data[index][57] = 0x5008;		// total_sectors
-	      ide_data[index][58] = 0x0014;		// ""
-	      ide_data[index][59] = 0;		// multiple sector count
-	      ide_data[index][60] = 0x5008;	// LBA capacity
-	      ide_data[index][61] = 0x0014;	// ""
+	      ide_data[index][57] = ide_info[index][ide_selected[index]].size & 0xFFFF;	// total_sectors
+	      ide_data[index][58] = ide_info[index][ide_selected[index]].size >> 16;	// ""
+	      ide_data[index][59] = 0;							// multiple sector count
+	      ide_data[index][60] = ide_info[index][ide_selected[index]].size & 0xFFFF;	// LBA capacity
+	      ide_data[index][61] = ide_info[index][ide_selected[index]].size >> 16;	// ""
 				
 	      //	unsigned int	lba_capacity;	/* total number of sectors */
 	      //	unsigned short	dma_1word;	/* single-word dma info */
@@ -939,8 +948,8 @@ void CAliM1543C::ide_command_write(int index, u64 address, u64 data)
 	    case 0x20: // read sector
 	      lba =      *((int*)(&(ide_command[index][3]))) & 0x0fffffff;
 	      TRC_DEV3("Read %d sectors from LBA %d\n",ide_command[index][2]?ide_command[index][2]:256,lba);
-	      fseek(ide_img[index][ide_selected[index]],lba*512,0);
-	      fread(&(ide_data[index][0]),1,512,ide_img[index][ide_selected[index]]);
+	      fseek(ide_info[index][ide_selected[index]].handle,lba*512,0);
+	      fread(&(ide_data[index][0]),1,512,ide_info[index][ide_selected[index]].handle);
 	      ide_data_ptr[index] = 0;
 	      ide_status[index] = 0x48;
 	      ide_sectors[index] = ide_command[index][2]-1;
