@@ -365,9 +365,44 @@ int CSerial::DoClock() {
 	    continue;
 	  } else if(*(b+1) == BREAK) { // break (== halt button?)
 	    b+=2;
-	    printf("%%SRL-I-BREAK : Break received on serial port. Emulator terminating...\n");
-	    return 1;
-	    continue;
+	    write("\r\n<BREAK> received. What do you want to do?\r\n");
+	    write("     0. Continue\r\n");
+#if defined(IDB)
+	    write("     1. End run\r\n");
+#else
+	    write("     1. Exit emulator gracefully\r\n");
+	    write("     2. Abort emulator (no changes saved)\r\n");
+#endif
+	    for (;;)
+	    {
+	      FD_ZERO(&readset);
+	      FD_SET(connectSocket,&readset);
+	      tv.tv_sec = 60;
+	      tv.tv_usec = 0;
+	      if (select(connectSocket+1,&readset,NULL,NULL,&tv) <= 0) 
+	      {
+		write("%SRL-I-TIMEOUT: no timely answer received. Continuing emulation.\r\n");
+		return 0;
+	      }
+#if defined(_WIN32)
+	      size = recv(connectSocket,(char*)buffer,FIFO_SIZE, 0);
+#else
+              size = read(connectSocket,&buffer,FIFO_SIZE);
+#endif
+ 	      switch (buffer[0])
+	      {
+	      case '0':
+	        write("%SRL-I-CONTINUE: continuing emulation.\r\n");
+	        return 0;
+	      case '1':
+	        write("%SRL-I-EXIT: exiting emulation gracefully.\r\n");
+	        return 1;
+	      case '2':
+	        write("%SRL-I-ABORT: aborting emulation.\r\n");
+	        return -1;
+	      }
+	      write("%SRL-W-INVALID: Not a valid answer.\r\n");
+	    }
 	  } else if(*(b+1) == AYT) { // are you there?
 	    
 	  } else { // misc single byte command.

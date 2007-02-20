@@ -650,31 +650,52 @@ int CTraceEngine::parse(char command[100][100])
       case -1:
 	for (i=0;;i++)
 	{
-	  systm->SingleStep();
-	  if (cpu[0]->get_clean_pc() < iBreakPoint)
+	  if (systm->SingleStep())
+	  {
+	    printf("%%IDB-I-ABORT : Abort run requested (probably from serial port)\n");
 	    break;
+	  }
+	  if (cpu[0]->get_clean_pc() < iBreakPoint)
+	  {
+            printf("%%IDB-I-BRKPT : Breakpoint encountered.\n");
+	    break;
+	  }
 	}
 	break;
       case 0:
 	for(i=0;;i++)
 	{
-	  systm->SingleStep();
-	  if (cpu[0]->get_clean_pc() == iBreakPoint)
+	  if (systm->SingleStep())
+	  {
+	    printf("%%IDB-I-ABORT : Abort run requested (probably from serial port)\n");
 	    break;
+	  }
+	  if (cpu[0]->get_clean_pc() == iBreakPoint)
+	  {
+            printf("%%IDB-I-BRKPT : Breakpoint encountered.\n");
+	    break;
+	  }
 	}
 	break;
       case 1:
 	for(i=0;;i++)
 	{
-	  systm->SingleStep();
-	  if (cpu[0]->get_clean_pc() > iBreakPoint)
+	  if (systm->SingleStep())
+	  {
+	    printf("%%IDB-I-ABORT : Abort run requested (probably from serial port)\n");
 	    break;
+	  }
+	  if (cpu[0]->get_clean_pc() > iBreakPoint)
+	  {
+            printf("%%IDB-I-BRKPT : Breakpoint encountered.\n");
+	    break;
+	  }
 	}
 	break;
       default:
 	break;
       }
-      printf("%%IDB-I-BRKPT : Breakpoint encountered.\n");
+      printf("%%IDB-I-ENDRUN: End of run.\n");
       return 0;
     }
     if (command[0][0]=='@')
@@ -769,25 +790,46 @@ int CTraceEngine::parse(char command[100][100])
         case -1:
 	  for (i=0;i<RunCycles;i++)
 	  {
-	    systm->SingleStep();
- 	    if (cpu[0]->get_clean_pc() < iBreakPoint)
+	    if (systm->SingleStep())
+	    {
+	      printf("%%IDB-I-ABORT : Abort run requested (probably from serial port)\n");
 	      break;
+	    }
+ 	    if (cpu[0]->get_clean_pc() < iBreakPoint)
+	    {
+              printf("%%IDB-I-BRKPT : Breakpoint encountered.\n");
+	      break;
+	    }
 	  }
 	  break;
         case 0:
 	  for(i=0;i<RunCycles;i++)
 	  {
-	    systm->SingleStep();
-	    if (cpu[0]->get_clean_pc() == iBreakPoint)
+	    if (systm->SingleStep())
+	    {
+	      printf("%%IDB-I-ABORT : Abort run requested (probably from serial port)\n");
 	      break;
+	    }
+	    if (cpu[0]->get_clean_pc() == iBreakPoint)
+	    {
+              printf("%%IDB-I-BRKPT : Breakpoint encountered.\n");
+	      break;
+	    }
 	  }
 	  break;
         case 1:
 	  for(i=0;i<RunCycles;i++)
 	  {
-	    systm->SingleStep();
-	    if (cpu[0]->get_clean_pc() > iBreakPoint)
+	    if (systm->SingleStep())
+	    {
+	      printf("%%IDB-I-ABORT : Abort run requested (probably from serial port)\n");
 	      break;
+	    }
+	    if (cpu[0]->get_clean_pc() > iBreakPoint)
+	    {
+              printf("%%IDB-I-BRKPT : Breakpoint encountered.\n");
+	      break;
+	    }
 	  }
 	  break;
         default:
@@ -798,12 +840,13 @@ int CTraceEngine::parse(char command[100][100])
       {
         printf("%%IDB-I-RUNCYC: Running until max cycles reached.\n");
 	for(i=0;i<RunCycles;i++)
-	  systm->SingleStep();
+	  if (systm->SingleStep())
+	  {
+	    printf("%%IDB-I-ABORT : Abort run requested (probably from serial port)\n");
+	    break;
+	  }
       }
-      if (i!=RunCycles)
-        printf("%%IDB-I-BRKPT : Breakpoint encountered.\n");
-      else
-        printf("%%IDB-I-MAXCYC: Max cycles reached.\n");
+      printf("%%IDB-I-ENDRUN: End of run.\n");
       return 0;
     }
     if (!strncasecmp(command[0],"JUMP",strlen(command[0])))
