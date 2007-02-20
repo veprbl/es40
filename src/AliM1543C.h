@@ -140,6 +140,7 @@ class CAliM1543C : public CSystemComponent
 
   u8 ide_command[2][8];
   u8 ide_status[2];
+  u8 ide_error[2];
   u16 ide_data[2][256];
   int ide_data_ptr[2];
   bool ide_writing[2];

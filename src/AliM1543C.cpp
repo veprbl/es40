@@ -236,12 +236,14 @@ CAliM1543C::CAliM1543C(CSystem * c): CSystemComponent(c)
   ide_writing[0] = false;
   ide_sectors[0] = 0;
   ide_selected[0] = 0;
+  ide_error[0] = 0;
 
   ide_status[1] = 0;
   ide_reading[1] = false;
   ide_writing[1] = false;
   ide_sectors[1] = 0;
   ide_selected[1] = 0;
+  ide_error[1] = 0;
 
   c->RegisterMemory(this, 11, X64(00000801fe009800), 0x100);
   for (i=0;i<256;i++)
@@ -844,7 +846,7 @@ u64 CAliM1543C::ide_command_read(int index, u64 address)
 	}
       break;
     case 1:
-      data = 0; // no error
+      data = ide_error[index]; // no error
       break;
     case 7:
       data = ide_status[index];
@@ -870,14 +872,31 @@ void CAliM1543C::ide_command_write(int index, u64 address, u64 data)
     {
       // drive is present
       ide_status[index] = 0x40;
-      if (address==7)	// command
+      ide_error[index] = 0;
+
+      if (address==0 && ide_writing[index])
+      {
+        ide_data[index][ide_data_ptr[index]] = (u16)data;
+        ide_data_ptr[index]++;
+        if (ide_data_ptr[index]==256)
+	{
+	  fwrite(&(ide_data[index][0]),1,512,ide_info[index][ide_selected[index]].handle);
+	  ide_sectors[index]--;
+	  ide_data_ptr[index] = 0;
+	}
+	if (ide_sectors[index])
+	  ide_status[index] = 0x48;
+	else	      
+	  ide_writing[index] = false;
+      }
+      else if (address==7)	// command
 	{
 	  switch (data)
 	    {
 	    case 0xec:	// identify drive
 	      ide_data_ptr[index] = 0;
 	      ide_data[index][0] = 0x0140;	// flags
-	      ide_data[index][1] = 1000;		// cylinders
+	      ide_data[index][1] = 1000;	// cylinders
 	      ide_data[index][2] = 0;
 	      ide_data[index][3] = 14;		// heads
 	      ide_data[index][4] = 51200;	// bytes per track
@@ -897,7 +916,7 @@ void CAliM1543C::ide_command_write(int index, u64 address, u64 data)
 	      ide_data[index][18] = 0x2020;
 	      ide_data[index][19] = 0x2020;
 	      ide_data[index][20] = 1;		// single ported, single buffer
-	      ide_data[index][21] = 51200;		// buffer size
+	      ide_data[index][21] = 51200;	// buffer size
 	      ide_data[index][22] = 0;		// ecc bytes
 	      ide_data[index][23] = 0x2020;	// firmware revision
 	      ide_data[index][24] = 0x2020;
@@ -954,6 +973,25 @@ void CAliM1543C::ide_command_write(int index, u64 address, u64 data)
 	      ide_status[index] = 0x48;
 	      ide_sectors[index] = ide_command[index][2]-1;
 	      if (ide_sectors[index]) ide_reading[index] = true;
+	      break;
+	    case 0x30:
+	      if (!ide_info[index][ide_selected[index]].mode)
+	      {
+	        printf("%%ALI-W-WRITPROT: Attempt to write to write-protected disk.\n");
+		ide_status[index] = 0x41;
+		ide_error[index] = 0x04;
+	      }
+	      else
+	      {
+	        lba =      *((int*)(&(ide_command[index][3]))) & 0x0fffffff;
+	        TRC_DEV3("Write %d sectors from LBA %d\n",ide_command[index][2]?ide_command[index][2]:256,lba);
+	        fseek(ide_info[index][ide_selected[index]].handle,lba*512,0);
+	        ide_data_ptr[index] = 0;
+	        ide_status[index] = 0x48;
+	        ide_sectors[index] = ide_command[index][2];
+	        ide_writing[index] = true;
+	      }
+	      break;
 	  }
 	}
     }
