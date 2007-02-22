@@ -45,10 +45,11 @@
  **/
  
 struct SICache {
-  int asn;		/**< Address Space Number*/
-  u32 data[16];		/**< Actual cached instructions*/
+  int asn;		/**< Address Space Number */
+  u32 data[16];		/**< Actual cached instructions */
   u64 address;		/**< Address of first instruction*/
-  bool valid;		/**< Valid cache entry*/
+  bool asm_bit;		/**< Address Space Match bit */
+  bool valid;		/**< Valid cache entry */
 };
 
 /**
@@ -65,18 +66,14 @@ struct SICache {
 class CAlphaCPU : public CSystemComponent  
 {
  public:
+	 void flush_icache_asm();
   virtual void SaveState(FILE * f);
   virtual void RestoreState(FILE * f);
   void irq_h(int number, bool assert);
   int get_cpuid();
-  int get_i_spe();
-  int get_d_spe();
   void flush_icache();
 
   void set_PAL_BASE(u64 pb);
-  int get_altcm();
-  int get_cm();
-  int get_asn();
   virtual int DoClock();
   CAlphaCPU(CSystem * system);
   virtual ~CAlphaCPU();
@@ -176,34 +173,20 @@ inline void CAlphaCPU::flush_icache()
   next_icache = 0;
 }
 
-inline int CAlphaCPU::get_d_spe()
-{
-  return (int) m_ctl_spe;
-}
+/**
+ * Empty the instruction cache of lines with the ASM bit clear.
+ **/
 
-inline int CAlphaCPU::get_i_spe()
+inline void CAlphaCPU::flush_icache_asm()
 {
-  return (int) i_ctl_spe;
+  int i;
+  for(i=0;i<1024;i++) 
+    if (!icache[i].asm_bit)
+      icache[i].valid = false;
 }
-
 /**
  * Return the current address space number.
  **/
-
-inline int CAlphaCPU::get_asn()
-{
-  return asn;
-}
-
-inline int CAlphaCPU::get_cm()
-{
-  return cm;
-}
-
-inline int CAlphaCPU::get_altcm()
-{
-  return alt_cm;
-}
 
 inline void CAlphaCPU::set_PAL_BASE(u64 pb)
 {
@@ -221,11 +204,12 @@ inline int CAlphaCPU::get_icache(u64 address, u32 * data)
   u64 v_a;
   u64 p_a;
   int result;
+  bool asm_bit;
 
   for (i=0;i<1024;i++)
     {
       if (	icache[i].valid
-		&& icache[i].asn == asn
+		&& (icache[i].asn == asn || icache[i].asm_bit)
 		&& icache[i].address == (address & X64(ffffffffffffffc1)))
 	{
 	  *data = icache[i].data[(address>>2)&X64(0f)];
@@ -239,8 +223,8 @@ inline int CAlphaCPU::get_icache(u64 address, u32 * data)
       if (address & 1)
 	p_a = v_a & X64(00000fffffffffff);
       else
-	{                                       //              vv== SHOULD BE TRUE
-	  result = itb->convert_address(v_a,&p_a,ACCESS_READ,false,get_cm(),get_asn(),get_i_spe());
+      {     
+	  result = itb->convert_address(v_a,&p_a,ACCESS_READ,true,cm,asn,i_ctl_spe,&asm_bit);
 	  if (result)
 	    return result;
 	}
@@ -249,6 +233,7 @@ inline int CAlphaCPU::get_icache(u64 address, u32 * data)
 
   icache[next_icache].valid = true;
   icache[next_icache].asn = asn;
+  icache[next_icache].asm_bit = asm_bit;
   icache[next_icache].address = address & X64(ffffffffffffffc1);
 	
   *data = icache[next_icache].data[(address>>2)&X64(0f)];

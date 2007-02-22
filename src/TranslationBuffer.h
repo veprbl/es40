@@ -48,6 +48,7 @@
 
 #define E_ACCESS	1
 #define E_NOT_FOUND	2
+#define E_FAULT		3
 
 #define MBOX_PHYS_S	19
 #define ASM_BIT		4
@@ -88,7 +89,7 @@ class CTranslationBuffer
   void InvalidateAll();
   void InvalidateAllProcess();
   void InvalidateSingle(u64 address, int asn);
-  int convert_address(u64 virt, u64 * phys, u8 access, bool check, int cm, int asn, int spe);
+  int convert_address(u64 virt, u64 * phys, u8 access, bool check, int cm, int asn, int spe, bool * asm_bit);
   void write_pte(int number, u64 value, int asn);
   void write_tag(int number, u64 value);
   CTranslationBuffer(class CAlphaCPU * c, bool ibox);
@@ -204,7 +205,7 @@ inline int CTranslationBuffer::FindEntry(u64 virt, int asn)
   return -1;
 }
 
-inline int CTranslationBuffer::convert_address(u64 virt, u64 *phys, u8 access, bool check, int cm, int asn, int spe)
+inline int CTranslationBuffer::convert_address(u64 virt, u64 *phys, u8 access, bool check, int cm, int asn, int spe, bool * asm_bit)
 {
   int i;
 
@@ -214,6 +215,7 @@ inline int CTranslationBuffer::convert_address(u64 virt, u64 *phys, u8 access, b
 	     && (spe&4))
 	{
 	  *phys = virt & X64(00000fffffffffff);
+	  *asm_bit = false;
 	  return 0;
 	}
       else if (   (((virt>>41)&0x7f) == 0x7e)
@@ -221,12 +223,14 @@ inline int CTranslationBuffer::convert_address(u64 virt, u64 *phys, u8 access, b
 	{
 	  *phys =   (virt & X64(000001ffffffffff)) 
 	    | ((virt & X64(0000010000000000)) * 6);
+	  *asm_bit = false;
 	  return 0;
 	}
       else if (   (((virt>>30)&0x3ffff) == 0x3fffe)
 		  && (spe & 1))
 	{
 	  *phys = virt & X64(000000003fffffff);
+	  *asm_bit = false;
 	  return 0;
 	}
     }
@@ -236,11 +240,17 @@ inline int CTranslationBuffer::convert_address(u64 virt, u64 *phys, u8 access, b
     return E_NOT_FOUND;
 
   // check access...
-  if (   check && !entry[i].access[access][cm])
-    return E_ACCESS;
+  if (check)
+  {
+    if (!entry[i].access[access][cm])
+      return E_ACCESS;
+    if (entry[i].fault[access])
+      return E_FAULT;
+  }
   // all is ok...
 
   *phys = (entry[i].phys & v_mask) | (virt & p_mask);
+  *asm_bit = entry[i].asm_bit;
 
   return 0;
 }

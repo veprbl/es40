@@ -172,10 +172,10 @@ CAlphaCPU::CAlphaCPU(CSystem * system) : CSystemComponent (system)
   itb = new CTranslationBuffer (this, true);
   dtb = new CTranslationBuffer (this, false);
 
-  // SROM imitatie...
+  // SROM imitation...
 
   dtb->write_tag(0,0);
-  dtb->write_pte(0,X64(ff61),get_asn());
+  dtb->write_pte(0,X64(ff61),asn0);
 
 #if defined(IDB)
   bListing = false;
@@ -207,7 +207,7 @@ CAlphaCPU::~CAlphaCPU()
 
 #define DATA_PHYS(addr,access,check,alt,vpte) {				\
     int dp_result;							\
-    dp_result = dtb->convert_address(addr, &phys_address, access, false /*check*/, alt?get_altcm():get_cm(),get_asn(),get_d_spe()); \
+    dp_result = dtb->convert_address(addr, &phys_address, access, check, alt?alt_cm:cm,asn0,m_ctl_spe, &temp_bool); \
     if (dp_result) {							\
       fault_va = addr;							\
       switch (dp_result) {						\
@@ -299,6 +299,7 @@ int CAlphaCPU::DoClock()
   u64 temp_64_d;
   u64 temp_64_hi;
   u64 temp_64_lo;
+  bool temp_bool;
 
   int opcode;
   int function;
@@ -617,7 +618,7 @@ int CAlphaCPU::DoClock()
 
     case 0x19: // HW_MFPR
       function = (ins>>8) & 0xff;
-      OP(HW_MFPR,IPR);
+      OP(HW_MFPR,MFPR);
 
     case 0x1a: // JMP...
 	    OP(JMP,JMP);
@@ -680,7 +681,7 @@ int CAlphaCPU::DoClock()
 
     case 0x1d: // HW_MTPR
             function = (ins>>8) & 0xff;
-	    OP(HW_MTPR,IPR);
+	    OP(HW_MTPR,MTPR);
 
     case 0x1e: // HW_RET
 	    OP(HW_RET,RET);
@@ -921,3 +922,4 @@ void CAlphaCPU::RestoreState(FILE *f)
   itb->RestoreState(f);
   dtb->RestoreState(f);
 }
+

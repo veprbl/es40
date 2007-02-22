@@ -139,7 +139,7 @@
  	    itb->write_tag(0,r[REG_2]);						\
 	    break;								\
         case 0x01: /* ITB_PTE */						\
- 	    itb->write_pte(0,r[REG_2],get_asn());				\
+ 	    itb->write_pte(0,r[REG_2],asn);				\
             break;								\
         case 0x02: /* ITB_IAP */						\
  	    itb->InvalidateAllProcess();					\
@@ -148,7 +148,7 @@
  	    itb->InvalidateAll();						\
 	    break;								\
         case 0x04: /* ITB_IS */							\
- 	    itb->InvalidateSingle(r[REG_2],get_asn());				\
+ 	    itb->InvalidateSingle(r[REG_2],asn);				\
 	    break;								\
         case 0x09: /* CM */							\
  	    cm = (int)(r[REG_2]>>3) & 3;					\
@@ -183,7 +183,7 @@
 	    i_ctl_va_mode = (int)(r[REG_2]>>15) & 3;				\
 	    break;								\
         case 0x12: /* ic_flush_asm */						\
- 	    flush_icache();							\
+ 	    flush_icache_asm();							\
 	    break;								\
         case 0x13: /* IC_FLUSH */						\
  	    flush_icache();							\
@@ -204,10 +204,10 @@
  	    dtb->write_tag(0,r[REG_2]);						\
 	    break;								\
         case 0x21: /* DTB_PTE0 */						\
- 	    dtb->write_pte(0,r[REG_2],get_asn());				\
+ 	    dtb->write_pte(0,r[REG_2],asn0);				\
 	    break;								\
         case 0x24: /* DTB_IS0 */						\
- 	    dtb->InvalidateSingle(r[REG_2],get_asn());				\
+ 	    dtb->InvalidateSingle(r[REG_2],asn0);				\
 	    break;								\
         case 0x25: /* DTB_ASN0 */						\
  	    asn0 = (int)(r[REG_2] >> 56);					\
@@ -229,7 +229,7 @@
  	    dtb->write_tag(1,r[REG_2]);						\
 	    break;								\
         case 0xa1: /* DTB_PTE1 */						\
- 	    dtb->write_pte(1,r[REG_2],get_asn());				\
+ 	    dtb->write_pte(1,r[REG_2],asn1);				\
 	    break;								\
         case 0xa2: /* DTB_IAP */						\
  	    dtb->InvalidateAllProcess();					\
@@ -238,7 +238,7 @@
  	    dtb->InvalidateAll();						\
 	    break;								\
         case 0xa4: /* DTB_IS1 */						\
- 	    dtb->InvalidateSingle(r[REG_2],get_asn());				\
+ 	    dtb->InvalidateSingle(r[REG_2],asn1);				\
 	    break;								\
         case 0xa5: /* DTB_ASN1 */						\
  	    asn1 = (int)(r[REG_2] >> 56);					\

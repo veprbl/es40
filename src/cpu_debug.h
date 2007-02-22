@@ -356,14 +356,23 @@ char * IPR_NAME[] = {
 #define POST_RET								\
     TRC(0,1);
 
-#define PRE_IPR(mnemonic)							\
+#define PRE_MFPR(mnemonic)							\
   if (bDisassemble) {								\
       DEBUG_XX;									\
       printf(#mnemonic " r%d, %s", REG_1&31, IPR_NAME[function]);		\
     }
 
-#define POST_IPR								\
+#define POST_MFPR								\
   POST_X64(r[REG_1]);
+
+#define PRE_MTPR(mnemonic)							\
+  if (bDisassemble) {								\
+      DEBUG_XX;									\
+      printf(#mnemonic " r%d, %s", REG_2&31, IPR_NAME[function]);		\
+    }
+
+#define POST_MTPR								\
+  POST_X64(r[REG_2]);
 
 #define PRE_NOP(mnemonic)							\
   if (bDisassemble) {								\
