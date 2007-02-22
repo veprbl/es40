@@ -218,6 +218,7 @@ CAlphaCPU::~CAlphaCPU()
 	    GO_PAL(DTBM_SINGLE)						\
 	      break;							\
       case E_ACCESS:							\
+      case E_FAULT:							\
 	GO_PAL(DFAULT);							\
 	break; }							\
       return 0;	} }
