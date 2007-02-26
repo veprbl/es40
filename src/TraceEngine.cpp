@@ -120,8 +120,8 @@ void CTraceEngine::trace(CAlphaCPU * cpu, u64 f, u64 t, bool down, bool up, char
   u32 pc_f = (u32)(f1&X64(fffffffc));
   u32 pc_t = (u32)(t1&X64(fffffffc));
 	
-  if (   ((pc_t - pc_f) <= 4) 
-	 && ((pc_t - pc_f) >= 0))
+  if (      (pc_t <= pc_f+4)  
+	 && (pc_t >= pc_f) )
     return;
   if (up)
     {
@@ -234,8 +234,8 @@ void CTraceEngine::trace_br(CAlphaCPU * cpu, u64 f, u64 t)
   u32 pc_f = (u32)(f1&X64(fffffffc));
   u32 pc_t = (u32)(t1&X64(fffffffc));
 
-  if (   ((pc_t - pc_f) > 4) 
-	 || ((pc_t - pc_f) < 0))
+  if (   (pc_t > pc_f + 4) 
+	 || (pc_t < pc_f))
     {
       for (i=0;i<asPRBRs[p].trclvl;i++)
 	fprintf(asPRBRs[p].f," ");
