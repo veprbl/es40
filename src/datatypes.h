@@ -50,7 +50,12 @@
 
 #else // defined(_WIN32)
 
+#if defined(__VMS)
+#include <inttypes.h>
+#else
 #include <stdint.h>
+#endif
+
 #define u8 uint8_t
 #define u16 uint16_t
 #define u32 uint32_t

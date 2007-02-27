@@ -40,8 +40,19 @@
 
 #if defined(_WIN32)
 #include <winsock.h>
-#define socklen_t int
 #define ssize_t size_t
+#endif
+
+#if defined(__VMS)
+#include <socket.h>
+#include <in.h>
+#include <inet.h>
+#define INVALID_SOCKET -1
+#endif
+
+#if defined(_WIN32) || defined(__VMS)
+#define socklen_t int
+
 
 #define	IAC	255		/* interpret as command: */
 #define	DONT	254		/* you are not to use option */
@@ -70,7 +81,7 @@
 #define	TELOPT_NAWS	31	/* window size */
 #define	TELOPT_LFLOW	33	/* remote flow control */
 
-#else // defined(_WIN32)
+#else // defined(_WIN32) || defined(__VMS)
 
 #include <arpa/inet.h>
 #include <arpa/telnet.h>
@@ -80,7 +91,7 @@
 #include <unistd.h>
 #define INVALID_SOCKET 1
 
-#endif // defined (_WIN32)
+#endif // defined (_WIN32) || defined(__VMS)
 
 #define RECV_TICKS 10
 
