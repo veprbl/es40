@@ -600,7 +600,6 @@ u64 CSystem::ReadMem(u64 address, int dsize)
     default:
       return *((u64 *) p);
     }
-  return 0;
 }
 
 int CSystem::load_ROM(char *filename)
