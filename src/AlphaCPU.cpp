@@ -50,17 +50,17 @@
 #if defined(IDB)
 
 #define OP(mnemonic, format)							\
-        PRE_##format(mnemonic);						\
+        PRE_##format(mnemonic);							\
 	if (!bListing) {							\
 	  DO_##mnemonic;							\
 	}									\
-	POST_##format;							\
+	POST_##format;								\
 	return 0;
 
 #else //defined(IDB)
 
 #define OP(mnemonic, format)							\
-	DO_##mnemonic;							\
+	DO_##mnemonic;								\
 	return 0;
 
 #endif //defined(IDB)
@@ -759,7 +759,6 @@ int CAlphaCPU::DoClock()
     default:
       UNKNOWN1;
     }
-    return 0;
 }
 
 #if defined(IDB)
