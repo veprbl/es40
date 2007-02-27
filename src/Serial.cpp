@@ -41,6 +41,7 @@
 #if defined(_WIN32)
 #include <winsock.h>
 #define ssize_t size_t
+#define socklen_t int
 #endif
 
 #if defined(__VMS)
@@ -48,11 +49,10 @@
 #include <in.h>
 #include <inet.h>
 #define INVALID_SOCKET -1
+#define socklen_t unsigned int
 #endif
 
 #if defined(_WIN32) || defined(__VMS)
-#define socklen_t int
-
 
 #define	IAC	255		/* interpret as command: */
 #define	DONT	254		/* you are not to use option */
