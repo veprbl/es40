@@ -75,6 +75,8 @@ void lockstep_init()
 
 #else // defined(LS_MASTER)
 
+  socklen_t nAddressSize=sizeof(struct sockaddr_in);
+
   ls_listenSocket = socket(AF_INET,SOCK_STREAM,0);
   if (ls_listenSocket == INVALID_SOCKET)
     printf("%%LST-F-NOSOCK Could not open lockstep socket to listen on!\n");
