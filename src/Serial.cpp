@@ -38,65 +38,12 @@
 #include <stdlib.h>
 #include <ctype.h>
 
-#if defined(_WIN32)
-#include <winsock.h>
-#define ssize_t size_t
-#define socklen_t int
-#endif
-
-#if defined(__VMS)
-#include <socket.h>
-#include <in.h>
-#include <inet.h>
-#define INVALID_SOCKET -1
-#define socklen_t unsigned int
-#endif
-
-#if defined(_WIN32) || defined(__VMS)
-
-#define	IAC	255		/* interpret as command: */
-#define	DONT	254		/* you are not to use option */
-#define	DO	253		/* please, you use option */
-#define	WONT	252		/* I won't use option */
-#define	WILL	251		/* I will use option */
-#define	SB	250		/* interpret as subnegotiation */
-#define	GA	249		/* you may reverse the line */
-#define	EL	248		/* erase the current line */
-#define	EC	247		/* erase the current character */
-#define	AYT	246		/* are you there */
-#define	AO	245		/* abort output--but let prog finish */
-#define	IP	244		/* interrupt process--permanently */
-#define	BREAK	243		/* break */
-#define	DM	242		/* data mark--for connect. cleaning */
-#define	NOP	241		/* nop */
-#define	SE	240		/* end sub negotiation */
-#define EOR     239             /* end of record (transparent mode) */
-#define	ABORT	238		/* Abort process */
-#define	SUSP	237		/* Suspend process */
-#define	xEOF	236		/* End of file: EOF is already used... */
-
-#define SYNCH	242		/* for telfunc calls */
-#define TELOPT_ECHO	1	/* echo */
-#define	TELOPT_SGA	3	/* suppress go ahead */
-#define	TELOPT_NAWS	31	/* window size */
-#define	TELOPT_LFLOW	33	/* remote flow control */
-
-#else // defined(_WIN32) || defined(__VMS)
-
-#include <arpa/inet.h>
-#include <arpa/telnet.h>
-#include <netinet/in.h>
-#include <sys/select.h>
-#include <sys/time.h>
-#include <unistd.h>
-#define INVALID_SOCKET 1
-
-#endif // defined (_WIN32) || defined(__VMS)
+#include "telnet.h"
+#include "lockstep.h"
 
 #define RECV_TICKS 10
 
 extern CAliM1543C * ali;
-
 
 bool bStopping = false;
 int  iCounter  = 0;
@@ -126,6 +73,7 @@ CSerial::CSerial(CSystem * c, u16 number) : CSystemComponent(c)
 #endif // defined (_WIN32)
 
   struct sockaddr_in Address;
+
   socklen_t nAddressSize=sizeof(struct sockaddr_in);
 
   listenSocket = socket(AF_INET,SOCK_STREAM,0);
@@ -141,7 +89,7 @@ CSerial::CSerial(CSystem * c, u16 number) : CSystemComponent(c)
   int optval = 1;
   setsockopt(listenSocket,SOL_SOCKET,SO_REUSEADDR, (char*)&optval,sizeof(optval));
   bind(listenSocket,(struct sockaddr *)&Address,sizeof(Address));
-  listen(listenSocket,5);
+  listen(listenSocket, 1);
 
   printf("%%SRL-I-WAIT: Waiting for connection on port %d.\n",number+base);
 
@@ -178,6 +126,24 @@ CSerial::CSerial(CSystem * c, u16 number) : CSystemComponent(c)
 
   sprintf(s,"This is serial port #%d on AlphaSim\r\n",number);
   this->write(s);
+
+#if defined(IDB) && defined(LS_MASTER)
+  struct sockaddr_in dest_addr;
+  int result = -1;
+
+  throughSocket = socket(AF_INET, SOCK_STREAM, 0);
+
+  dest_addr.sin_family = AF_INET;
+  dest_addr.sin_port = htons((u16)(base + number));
+  dest_addr.sin_addr.s_addr = inet_addr(ls_IP);
+
+  printf("%%SRL-I-WAIT: Waiting to initiate remote connection to %s.\n",ls_IP);
+
+  while (result == -1)
+  {
+    result = connect(throughSocket, (struct sockaddr *)&dest_addr, sizeof(struct sockaddr));
+  }
+#endif
 
   printf("%%SRL-I-INIT: Serial Interface %d emulator initialized.\n",number);
   printf("%%SRL-I-ADDRESS: Serial Interface %d on telnet port %d.\n",number,number+base);
@@ -362,7 +328,7 @@ int CSerial::DoClock() {
       buffer[size+1]=0; // force null termination.
       b=buffer;
       c=cbuffer;
-      while(b - buffer < size) {
+      while((ssize_t)(b - buffer) < size) {
 	if(*b == IAC) {
 	  if(*(b+1) == IAC) { // escaped IAC.
 	    b++;

@@ -8,6 +8,8 @@ LDFLAGS =
 
 CFLAGS = -O2 -g -I.
 IDB_CFLAGS = -DIDB 
+LSM_CFLAGS = -DIDB -DLS_MASTER
+LSS_CFLAGS = -DIDB -DLS_SLAVE
 LD = g++
 
 DEPEND = makedepend $(CFLAGS)
@@ -24,11 +26,14 @@ OBJS = AliM1543C.o \
         SystemComponent.o \
         System.o \
         TraceEngine.o \
-        TranslationBuffer.o 
+        TranslationBuffer.o \
+	lockstep.o
 
 IDB_OBJS = $(subst .o,.do,$(OBJS))
+LSM_OBJS = $(subst .o,.mao,$(OBJS))
+LSS_OBJS = $(subst .o,.slo,$(OBJS))
 
-.SUFFIXES: .do
+.SUFFIXES: .do .mao .slo
 
 .cpp.o:
 	$(CC) $(CFLAGS) -c $< 
@@ -36,7 +41,13 @@ IDB_OBJS = $(subst .o,.do,$(OBJS))
 .cpp.do:
 	$(CC) $(CFLAGS) $(IDB_CFLAGS) -c $< -o $@
 
-all: es40 es40_idb
+.cpp.mao:
+	$(CC) $(CFLAGS) $(LSM_CFLAGS) -c $< -o $@
+
+.cpp.slo:
+	$(CC) $(CFLAGS) $(LSS_CFLAGS) -c $< -o $@
+
+all: es40 es40_idb es40_lsm es40_lss
 
 es40:   $(OBJS)
 	$(LD) $(LDFLAGS) -o es40 $(OBJS)
@@ -44,9 +55,15 @@ es40:   $(OBJS)
 es40_idb: $(IDB_OBJS)
 	$(LD) $(LDFLAGS) -o es40_idb $(IDB_OBJS)
 
+es40_lsm: $(LSM_OBJS)
+	$(LD) $(LDFLAGS) -o es40_lsm $(LSM_OBJS)
+
+es40_lss: $(LSS_OBJS)
+	$(LD) $(LDFLAGS) -o es40_lss $(LSS_OBJS)
+
 depend: $(SRCS)
 	$(DEPEND) $(SRCS)
 	$(DEPEND) -o.do -a -- $(IDB_CFLAGS) -- $(SRCS)
 clean:
-	rm -f es40 es40_idb *.o *.do *.trc
+	rm -f es40 es40_idb *.o *.do *.mao *.slo *.trc
 

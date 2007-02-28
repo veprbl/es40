@@ -40,6 +40,7 @@
 #include "System.h"
 #include "DPR.h"
 #include "Flash.h"
+#include "lockstep.h"
 
 extern CSystem * systm;
 extern CAlphaCPU * cpu [4];
@@ -486,11 +487,16 @@ FILE * CTraceEngine::trace_file()
 
 void CTraceEngine::run_script(char * filename)
 {
-  FILE * f = NULL;
   char s[100][100];
-  int i,j;
+  int i;
   bool u;
+
+#if !defined(LS_SLAVE)
+
   char c = '\0';
+  int j;
+  FILE * f = NULL;
+  
   if (filename)
   {
      f = fopen(filename,"r");
@@ -506,9 +512,11 @@ void CTraceEngine::run_script(char * filename)
     printf("Or run this executable (es40_idb) with a last argument of @<script-file>\n");
     f = stdin;
   }
+#endif
 
   for (;;)
   {
+#if !defined(LS_SLAVE)
     if (filename)
     {
       if (feof(f))
@@ -518,13 +526,19 @@ void CTraceEngine::run_script(char * filename)
     {
       printf("IDB %016" LL "x %c>",cpu[0]->get_clean_pc(), (cpu[0]->get_pc()&X64(1))?'P':'-');
     }
-    
+#endif
+
     for (i=0; i<100; )
     {
+#if defined(LS_SLAVE)
+      lockstep_receive(s[i],100);
+      if (!strcmp(s[i],"TERM"))
+        break;
+#else 
       u = false;
       for (j=0; j<100; )
       {
-	fscanf(f,"%c",&c);
+  	  fscanf(f,"%c",&c);
         if (c != '\n' && c!= '\r' && c!= ' ' && c!= '\t')
 	{
 	  s[i][j++] = c;
@@ -534,17 +548,33 @@ void CTraceEngine::run_script(char * filename)
 	  break;
       }
       s[i][j] = '\0';
+
       if (u) 
+#endif
+      {
+#if defined(LS_MASTER)
+        lockstep_send(s[i]);
+#endif
         i++;
+      }
+#if !defined(LS_SLAVE)
       if (c == '\n')
+      {
+#if defined(LS_MASTER)
+        lockstep_send("TERM");
+#endif
         break;
+      }
+#endif
     }
     s[i][0] = '\0';
     if (parse(s))
       break;
   }
+#if !defined(LS_SLAVE)
   if (filename)
     fclose(f);
+#endif
 }
 
 int CTraceEngine::parse(char command[100][100])
@@ -698,11 +728,13 @@ int CTraceEngine::parse(char command[100][100])
       printf("%%IDB-I-ENDRUN: End of run.\n");
       return 0;
     }
+#if !defined(IDB) || !defined(LS_SLAVE)
     if (command[0][0]=='@')
     {
       run_script(command[0] + 1);
       return 0;
     }
+#endif // !defined(IDB) || !defined(LS_SLAVE)
     break;
   case 2:
     if (!strncasecmp(command[0],"TRACE",strlen(command[0])))

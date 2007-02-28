@@ -33,6 +33,7 @@
 #include "StdAfx.h"
 #include "System.h"
 #include "AlphaCPU.h"
+#include "lockstep.h"
 
 #include <ctype.h>
 #include <stdlib.h>
@@ -223,6 +224,11 @@ int CSystem::SingleStep()
 {
   int i;
   int result;
+
+#if defined(LS_MASTER) || defined(LS_SLAVE)
+  lockstep_sync_m2s("sync1");
+  lockstep_sync_s2m("sync2");
+#endif
 
   for(i=0;i<iNumFastClocks;i++)
   {

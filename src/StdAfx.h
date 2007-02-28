@@ -36,6 +36,8 @@
 #if !defined(INCLUDED_STDAFX_H)
 #define INCLUDED_STDAFX_H
 
+#include "datatypes.h"
+
 #if defined(_WIN32)
 
 #define WIN32_LEAN_AND_MEAN		// Exclude rarely-used stuff from Windows headers

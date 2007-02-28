@@ -23,57 +23,35 @@
  * the general public.
  */
 
-/**
- * \file 
- * Contains the definitions for the emulated Serial Port devices.
+/** 
+ * \file
+ * Contains telnet declarations for the lock-step code.
  *
- * \author Camiel Vanderhoeven (camiel@camicom.com / www.camicom.com)
+ * \author Camiel Vanderhoeven (camiel@camicom.com / http://www.camicom.com)
  **/
 
-#if !defined(INCLUDED_SERIAL_H)
-#define INCLUDED_SERIAL_H
+#if !defined(INCLUDED_LOCKSTEP_H)
+#define INCLUDED_LOCKSTEP_H
 
-#include "SystemComponent.h"
+#include "telnet.h"
 
-/**
- * Emulated serial port.
- * The serial port is translated to a telnet port.
- **/
+#if defined(IDB) && (defined(LS_MASTER) || defined(LS_SLAVE))
 
-class CSerial : public CSystemComponent  
-{
- public:
-  void write(char * s);
-  void WriteMem(int index, u64 address, int dsize, u64 data);
-  u64 ReadMem(int index, u64 address, int dsize);
-  CSerial(CSystem * c, u16 number);
-  virtual ~CSerial();
-  void receive(const char* data);
-  int DoClock();
+extern int ls_Socket;
 
- private:
-  u8 bTHR;
-  u8 bRDR;
-  u8 bBRB_LSB;
-  u8 bBRB_MSB;
-  u8 bIER;
-  u8 bIIR;
-  u8 bFCR;
-  u8 bLCR;
-  u8 bMCR;
-  u8 bLSR;
-  u8 bMSR;
-  u8 bSPR;
-  int listenSocket;
-  int connectSocket;
-#if defined(IDB) && defined(LS_MASTER) 
-  int throughSocket;
+#if defined(LS_MASTER)
+extern char ls_IP[30];
+#else
+extern int ls_listenSocket;
 #endif
-  int serial_cycles;
-  char rcvBuffer[1024];
-  int rcvW;
-  int rcvR;
-  int iNumber;
-};
 
-#endif // !defined(INCLUDED_SERIAL_H)
+void lockstep_init();
+void lockstep_sync_m2s(char *s);
+void lockstep_sync_s2m(char *s);
+void lockstep_compare(char * s);
+void lockstep_send(char *s);
+void lockstep_receive(char * s, int sz);
+
+#endif // defined(IDB) && (defined(LS_MASTER) || defined(LS_SLAVE))
+
+#endif // !defined(INCLUDED_LOCKSTEP_H)

@@ -33,6 +33,7 @@
 #include "StdAfx.h"
 #include "AlphaCPU.h"
 #include "TraceEngine.h"
+#include "lockstep.h"
 #include "cpu_memory.h"
 #include "cpu_control.h"
 #include "cpu_arith.h"
@@ -55,6 +56,7 @@
 	  DO_##mnemonic;							\
 	}									\
 	POST_##format;								\
+        handle_debug_string(dbg_string);					\
 	return 0;
 
 #else //defined(IDB)
@@ -275,6 +277,22 @@ CAlphaCPU::~CAlphaCPU()
 
 #define V_2 ( (ins&0x1000)?((ins>>13)&0xff):r[REG_2] )
 
+#if defined(IDB)
+
+void handle_debug_string(char * s)
+{
+  if (*s)
+  {
+#if defined(LS_SLAVE) || defined(LS_MASTER)
+    lockstep_compare(s);
+#else
+    printf("%s\n",s);
+#endif
+  }	
+}
+
+#endif
+
 /**
  * Called each clock-cycle.
  * This is where the actual CPU emulation takes place. Each clocktick, one instruction
@@ -308,7 +326,9 @@ int CAlphaCPU::DoClock()
 
 #if defined(IDB)
 
-  char * funcname = 0;	
+  char * funcname = 0;
+  char dbg_string[1000];
+  char * dbg_strptr = dbg_string;
 
   if (!bListing)
   {

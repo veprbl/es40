@@ -41,6 +41,7 @@
 #include "AliM1543C.h"
 #include "DPR.h"
 #include "TraceEngine.h"
+#include "lockstep.h"
 
 CSystem * systm;
 CAlphaCPU * cpu[4];
@@ -72,6 +73,10 @@ int main(int argc, char* argv[])
   u64 loadat;
 
   printf("%%SYS-I-INITSTART: System initialization started.\n");
+
+#if defined(IDB) && (defined(LS_MASTER) || defined(LS_SLAVE))
+  lockstep_init();
+#endif
 
 #if defined(IDB)
   if ((argc == 2 || argc==3) && argv[1][0] != '@')
