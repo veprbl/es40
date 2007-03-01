@@ -1,0 +1,347 @@
+#### Compiler and tool definitions shared by all build targets #####
+CCC = CC
+CXX = CC
+##CCC = /opt/gcc/bin/g++
+##XCC = /opt/gcc/bin/g++
+## -xO3
+BASICOPTS = -g -xO3 -xarch=generic64 -I. -DES40_BIG_ENDIAN -xmemalign=8i
+##BASICOPTS = -g -I. -DES40_BIG_ENDIAN -DALIGN_MEM_ACCESS
+CCFLAGS = $(BASICOPTS)
+CXXFLAGS = $(BASICOPTS)
+CCADMIN = CCadmin -clean
+
+# Define the target directories.
+TMP_es40=tmp_es40
+TMP_es40_idb=tmp_es40_idb
+TMP_es40_lss=tmp_es40_lss
+TMP_es40_lsm=tmp_es40_lsm
+
+all: es40 es40_idb es40_lss es40_lsm
+
+## Target: es40
+OBJS_es40 =  \
+	$(TMP_es40)/AliM1543C.o \
+	$(TMP_es40)/AlphaCPU.o \
+	$(TMP_es40)/AlphaSim.o \
+	$(TMP_es40)/DPR.o \
+	$(TMP_es40)/Flash.o \
+	$(TMP_es40)/FloppyController.o \
+	$(TMP_es40)/Port80.o \
+	$(TMP_es40)/Serial.o \
+	$(TMP_es40)/System.o \
+	$(TMP_es40)/SystemComponent.o \
+	$(TMP_es40)/TranslationBuffer.o
+SYSLIBS_es40 = -lsocket -lnsl 
+USERLIBS_es40 = $(SYSLIBS_es40) 
+DEPLIBS_es40 =  
+LDLIBS_es40 = $(USERLIBS_es40)
+
+
+# Link or archive
+es40: $(TMP_es40) $(OBJS_es40) $(DEPLIBS_es40)
+	$(LINK.cc) $(CCFLAGS_es40) $(CPPFLAGS_es40) -o $@ $(OBJS_es40) $(LDLIBS_es40)
+
+# Compile source files into .o files
+$(TMP_es40)/AliM1543C.o: $(TMP_es40) AliM1543C.cpp
+	$(COMPILE.cc) $(CCFLAGS_es40) $(CPPFLAGS_es40) -o $@ AliM1543C.cpp
+
+$(TMP_es40)/AlphaCPU.o: $(TMP_es40) AlphaCPU.cpp
+	$(COMPILE.cc) $(CCFLAGS_es40) $(CPPFLAGS_es40) -o $@ AlphaCPU.cpp
+
+$(TMP_es40)/AlphaSim.o: $(TMP_es40) AlphaSim.cpp
+	$(COMPILE.cc) $(CCFLAGS_es40) $(CPPFLAGS_es40) -o $@ AlphaSim.cpp
+
+$(TMP_es40)/DPR.o: $(TMP_es40) DPR.cpp
+	$(COMPILE.cc) $(CCFLAGS_es40) $(CPPFLAGS_es40) -o $@ DPR.cpp
+
+$(TMP_es40)/Flash.o: $(TMP_es40) Flash.cpp
+	$(COMPILE.cc) $(CCFLAGS_es40) $(CPPFLAGS_es40) -o $@ Flash.cpp
+
+$(TMP_es40)/FloppyController.o: $(TMP_es40) FloppyController.cpp
+	$(COMPILE.cc) $(CCFLAGS_es40) $(CPPFLAGS_es40) -o $@ FloppyController.cpp
+
+$(TMP_es40)/Port80.o: $(TMP_es40) Port80.cpp
+	$(COMPILE.cc) $(CCFLAGS_es40) $(CPPFLAGS_es40) -o $@ Port80.cpp
+
+$(TMP_es40)/Serial.o: $(TMP_es40) Serial.cpp
+	$(COMPILE.cc) $(CCFLAGS_es40) $(CPPFLAGS_es40) -o $@ Serial.cpp
+
+$(TMP_es40)/System.o: $(TMP_es40) System.cpp
+	$(COMPILE.cc) $(CCFLAGS_es40) $(CPPFLAGS_es40) -o $@ System.cpp
+
+$(TMP_es40)/SystemComponent.o: $(TMP_es40) SystemComponent.cpp
+	$(COMPILE.cc) $(CCFLAGS_es40) $(CPPFLAGS_es40) -o $@ SystemComponent.cpp
+
+$(TMP_es40)/TranslationBuffer.o: $(TMP_es40) TranslationBuffer.cpp
+	$(COMPILE.cc) $(CCFLAGS_es40) $(CPPFLAGS_es40) -o $@ TranslationBuffer.cpp
+
+## Target: es40_idb
+CPPFLAGS_es40_idb = \
+	-DIDB
+OBJS_es40_idb =  \
+	$(TMP_es40_idb)/AliM1543C.o \
+	$(TMP_es40_idb)/AlphaCPU.o \
+	$(TMP_es40_idb)/AlphaSim.o \
+	$(TMP_es40_idb)/DPR.o \
+	$(TMP_es40_idb)/Flash.o \
+	$(TMP_es40_idb)/FloppyController.o \
+	$(TMP_es40_idb)/Port80.o \
+	$(TMP_es40_idb)/Serial.o \
+	$(TMP_es40_idb)/System.o \
+	$(TMP_es40_idb)/SystemComponent.o \
+	$(TMP_es40_idb)/TraceEngine.o \
+	$(TMP_es40_idb)/TranslationBuffer.o
+SYSLIBS_es40_idb = -lsocket -lnsl 
+USERLIBS_es40_idb = $(SYSLIBS_es40_idb) 
+DEPLIBS_es40_idb =  
+LDLIBS_es40_idb = $(USERLIBS_es40_idb)
+
+# Link or archive
+es40_idb: $(TMP_es40_idb) $(OBJS_es40_idb) $(DEPLIBS_es40_idb)
+	$(LINK.cc) $(CCFLAGS_es40_idb) $(CPPFLAGS_es40_idb) -o $@ $(OBJS_es40_idb) $(LDLIBS_es40_idb)
+
+# Compile source files into .o files
+$(TMP_es40_idb)/AliM1543C.o: $(TMP_es40_idb) AliM1543C.cpp
+	$(COMPILE.cc) $(CCFLAGS_es40_idb) $(CPPFLAGS_es40_idb) -o $@ AliM1543C.cpp
+
+$(TMP_es40_idb)/AlphaCPU.o: $(TMP_es40_idb) AlphaCPU.cpp
+	$(COMPILE.cc) $(CCFLAGS_es40_idb) $(CPPFLAGS_es40_idb) -o $@ AlphaCPU.cpp
+
+$(TMP_es40_idb)/AlphaSim.o: $(TMP_es40_idb) AlphaSim.cpp
+	$(COMPILE.cc) $(CCFLAGS_es40_idb) $(CPPFLAGS_es40_idb) -o $@ AlphaSim.cpp
+
+$(TMP_es40_idb)/DPR.o: $(TMP_es40_idb) DPR.cpp
+	$(COMPILE.cc) $(CCFLAGS_es40_idb) $(CPPFLAGS_es40_idb) -o $@ DPR.cpp
+
+$(TMP_es40_idb)/Flash.o: $(TMP_es40_idb) Flash.cpp
+	$(COMPILE.cc) $(CCFLAGS_es40_idb) $(CPPFLAGS_es40_idb) -o $@ Flash.cpp
+
+$(TMP_es40_idb)/FloppyController.o: $(TMP_es40_idb) FloppyController.cpp
+	$(COMPILE.cc) $(CCFLAGS_es40_idb) $(CPPFLAGS_es40_idb) -o $@ FloppyController.cpp
+
+$(TMP_es40_idb)/Port80.o: $(TMP_es40_idb) Port80.cpp
+	$(COMPILE.cc) $(CCFLAGS_es40_idb) $(CPPFLAGS_es40_idb) -o $@ Port80.cpp
+
+$(TMP_es40_idb)/Serial.o: $(TMP_es40_idb) Serial.cpp
+	$(COMPILE.cc) $(CCFLAGS_es40_idb) $(CPPFLAGS_es40_idb) -o $@ Serial.cpp
+
+$(TMP_es40_idb)/System.o: $(TMP_es40_idb) System.cpp
+	$(COMPILE.cc) $(CCFLAGS_es40_idb) $(CPPFLAGS_es40_idb) -o $@ System.cpp
+
+$(TMP_es40_idb)/SystemComponent.o: $(TMP_es40_idb) SystemComponent.cpp
+	$(COMPILE.cc) $(CCFLAGS_es40_idb) $(CPPFLAGS_es40_idb) -o $@ SystemComponent.cpp
+
+$(TMP_es40_idb)/TraceEngine.o: $(TMP_es40_idb) TraceEngine.cpp
+	$(COMPILE.cc) $(CCFLAGS_es40_idb) $(CPPFLAGS_es40_idb) -o $@ TraceEngine.cpp
+
+$(TMP_es40_idb)/TranslationBuffer.o: $(TMP_es40_idb) TranslationBuffer.cpp
+	$(COMPILE.cc) $(CCFLAGS_es40_idb) $(CPPFLAGS_es40_idb) -o $@ TranslationBuffer.cpp
+
+## Target: es40_lss
+CPPFLAGS_es40_lss = \
+	-DIDB -DLS_SLAVE
+OBJS_es40_lss =  \
+	$(TMP_es40_lss)/AliM1543C.o \
+	$(TMP_es40_lss)/AlphaCPU.o \
+	$(TMP_es40_lss)/AlphaSim.o \
+	$(TMP_es40_lss)/DPR.o \
+	$(TMP_es40_lss)/Flash.o \
+	$(TMP_es40_lss)/FloppyController.o \
+	$(TMP_es40_lss)/Port80.o \
+	$(TMP_es40_lss)/Serial.o \
+	$(TMP_es40_lss)/System.o \
+	$(TMP_es40_lss)/SystemComponent.o \
+	$(TMP_es40_lss)/TraceEngine.o \
+	$(TMP_es40_lss)/TranslationBuffer.o \
+	$(TMP_es40_lss)/lockstep.o
+SYSLIBS_es40_lss = -lsocket -lnsl 
+USERLIBS_es40_lss = $(SYSLIBS_es40_lss) 
+DEPLIBS_es40_lss =  
+LDLIBS_es40_lss = $(USERLIBS_es40_lss)
+
+# Link or archive
+es40_lss: $(TMP_es40_lss) $(OBJS_es40_lss) $(DEPLIBS_es40_lss)
+	$(LINK.cc) $(CCFLAGS_es40_lss) $(CPPFLAGS_es40_lss) -o $@ $(OBJS_es40_lss) $(LDLIBS_es40_lss)
+
+# Compile source files into .o files
+$(TMP_es40_lss)/AliM1543C.o: $(TMP_es40_lss) AliM1543C.cpp
+	$(COMPILE.cc) $(CCFLAGS_es40_lss) $(CPPFLAGS_es40_lss) -o $@ AliM1543C.cpp
+
+$(TMP_es40_lss)/AlphaCPU.o: $(TMP_es40_lss) AlphaCPU.cpp
+	$(COMPILE.cc) $(CCFLAGS_es40_lss) $(CPPFLAGS_es40_lss) -o $@ AlphaCPU.cpp
+
+$(TMP_es40_lss)/AlphaSim.o: $(TMP_es40_lss) AlphaSim.cpp
+	$(COMPILE.cc) $(CCFLAGS_es40_lss) $(CPPFLAGS_es40_lss) -o $@ AlphaSim.cpp
+
+$(TMP_es40_lss)/DPR.o: $(TMP_es40_lss) DPR.cpp
+	$(COMPILE.cc) $(CCFLAGS_es40_lss) $(CPPFLAGS_es40_lss) -o $@ DPR.cpp
+
+$(TMP_es40_lss)/Flash.o: $(TMP_es40_lss) Flash.cpp
+	$(COMPILE.cc) $(CCFLAGS_es40_lss) $(CPPFLAGS_es40_lss) -o $@ Flash.cpp
+
+$(TMP_es40_lss)/FloppyController.o: $(TMP_es40_lss) FloppyController.cpp
+	$(COMPILE.cc) $(CCFLAGS_es40_lss) $(CPPFLAGS_es40_lss) -o $@ FloppyController.cpp
+
+$(TMP_es40_lss)/Port80.o: $(TMP_es40_lss) Port80.cpp
+	$(COMPILE.cc) $(CCFLAGS_es40_lss) $(CPPFLAGS_es40_lss) -o $@ Port80.cpp
+
+$(TMP_es40_lss)/Serial.o: $(TMP_es40_lss) Serial.cpp
+	$(COMPILE.cc) $(CCFLAGS_es40_lss) $(CPPFLAGS_es40_lss) -o $@ Serial.cpp
+
+$(TMP_es40_lss)/System.o: $(TMP_es40_lss) System.cpp
+	$(COMPILE.cc) $(CCFLAGS_es40_lss) $(CPPFLAGS_es40_lss) -o $@ System.cpp
+
+$(TMP_es40_lss)/SystemComponent.o: $(TMP_es40_lss) SystemComponent.cpp
+	$(COMPILE.cc) $(CCFLAGS_es40_lss) $(CPPFLAGS_es40_lss) -o $@ SystemComponent.cpp
+
+$(TMP_es40_lss)/TraceEngine.o: $(TMP_es40_lss) TraceEngine.cpp
+	$(COMPILE.cc) $(CCFLAGS_es40_lss) $(CPPFLAGS_es40_lss) -o $@ TraceEngine.cpp
+
+$(TMP_es40_lss)/TranslationBuffer.o: $(TMP_es40_lss) TranslationBuffer.cpp
+	$(COMPILE.cc) $(CCFLAGS_es40_lss) $(CPPFLAGS_es40_lss) -o $@ TranslationBuffer.cpp
+
+$(TMP_es40_lss)/lockstep.o: $(TMP_es40_lss) lockstep.cpp
+	$(COMPILE.cc) $(CCFLAGS_es40_lss) $(CPPFLAGS_es40_lss) -o $@ lockstep.cpp
+
+## Target: es40_lsm
+CPPFLAGS_es40_lsm = \
+	-DIDB -DLS_MASTER
+OBJS_es40_lsm =  \
+	$(TMP_es40_lsm)/AliM1543C.o \
+	$(TMP_es40_lsm)/AlphaCPU.o \
+	$(TMP_es40_lsm)/AlphaSim.o \
+	$(TMP_es40_lsm)/DPR.o \
+	$(TMP_es40_lsm)/Flash.o \
+	$(TMP_es40_lsm)/FloppyController.o \
+	$(TMP_es40_lsm)/Port80.o \
+	$(TMP_es40_lsm)/Serial.o \
+	$(TMP_es40_lsm)/System.o \
+	$(TMP_es40_lsm)/SystemComponent.o \
+	$(TMP_es40_lsm)/TraceEngine.o \
+	$(TMP_es40_lsm)/TranslationBuffer.o \
+	$(TMP_es40_lsm)/lockstep.o
+SYSLIBS_es40_lsm = -lsocket -lnsl 
+USERLIBS_es40_lsm = $(SYSLIBS_es40_lsm) 
+DEPLIBS_es40_lsm =  
+LDLIBS_es40_lsm = $(USERLIBS_es40_lsm)
+
+# Link or archive
+es40_lsm: $(TMP_es40_lsm) $(OBJS_es40_lsm) $(DEPLIBS_es40_lsm)
+	$(LINK.cc) $(CCFLAGS_es40_lsm) $(CPPFLAGS_es40_lsm) -o $@ $(OBJS_es40_lsm) $(LDLIBS_es40_lsm)
+
+# Compile source files into .o files
+$(TMP_es40_lsm)/AliM1543C.o: $(TMP_es40_lsm) AliM1543C.cpp
+	$(COMPILE.cc) $(CCFLAGS_es40_lsm) $(CPPFLAGS_es40_lsm) -o $@ AliM1543C.cpp
+
+$(TMP_es40_lsm)/AlphaCPU.o: $(TMP_es40_lsm) AlphaCPU.cpp
+	$(COMPILE.cc) $(CCFLAGS_es40_lsm) $(CPPFLAGS_es40_lsm) -o $@ AlphaCPU.cpp
+
+$(TMP_es40_lsm)/AlphaSim.o: $(TMP_es40_lsm) AlphaSim.cpp
+	$(COMPILE.cc) $(CCFLAGS_es40_lsm) $(CPPFLAGS_es40_lsm) -o $@ AlphaSim.cpp
+
+$(TMP_es40_lsm)/DPR.o: $(TMP_es40_lsm) DPR.cpp
+	$(COMPILE.cc) $(CCFLAGS_es40_lsm) $(CPPFLAGS_es40_lsm) -o $@ DPR.cpp
+
+$(TMP_es40_lsm)/Flash.o: $(TMP_es40_lsm) Flash.cpp
+	$(COMPILE.cc) $(CCFLAGS_es40_lsm) $(CPPFLAGS_es40_lsm) -o $@ Flash.cpp
+
+$(TMP_es40_lsm)/FloppyController.o: $(TMP_es40_lsm) FloppyController.cpp
+	$(COMPILE.cc) $(CCFLAGS_es40_lsm) $(CPPFLAGS_es40_lsm) -o $@ FloppyController.cpp
+
+$(TMP_es40_lsm)/Port80.o: $(TMP_es40_lsm) Port80.cpp
+	$(COMPILE.cc) $(CCFLAGS_es40_lsm) $(CPPFLAGS_es40_lsm) -o $@ Port80.cpp
+
+$(TMP_es40_lsm)/Serial.o: $(TMP_es40_lsm) Serial.cpp
+	$(COMPILE.cc) $(CCFLAGS_es40_lsm) $(CPPFLAGS_es40_lsm) -o $@ Serial.cpp
+
+$(TMP_es40_lsm)/System.o: $(TMP_es40_lsm) System.cpp
+	$(COMPILE.cc) $(CCFLAGS_es40_lsm) $(CPPFLAGS_es40_lsm) -o $@ System.cpp
+
+$(TMP_es40_lsm)/SystemComponent.o: $(TMP_es40_lsm) SystemComponent.cpp
+	$(COMPILE.cc) $(CCFLAGS_es40_lsm) $(CPPFLAGS_es40_lsm) -o $@ SystemComponent.cpp
+
+$(TMP_es40_lsm)/TraceEngine.o: $(TMP_es40_lsm) TraceEngine.cpp
+	$(COMPILE.cc) $(CCFLAGS_es40_lsm) $(CPPFLAGS_es40_lsm) -o $@ TraceEngine.cpp
+
+$(TMP_es40_lsm)/TranslationBuffer.o: $(TMP_es40_lsm) TranslationBuffer.cpp
+	$(COMPILE.cc) $(CCFLAGS_es40_lsm) $(CPPFLAGS_es40_lsm) -o $@ TranslationBuffer.cpp
+
+$(TMP_es40_lsm)/lockstep.o: $(TMP_es40_lsm) lockstep.cpp
+	$(COMPILE.cc) $(CCFLAGS_es40_lsm) $(CPPFLAGS_es40_lsm) -o $@ lockstep.cpp
+
+#### Clean target deletes all generated files ####
+clean:
+	rm -f \
+		es40 \
+		$(TMP_es40)/AliM1543C.o \
+		$(TMP_es40)/AlphaCPU.o \
+		$(TMP_es40)/AlphaSim.o \
+		$(TMP_es40)/DPR.o \
+		$(TMP_es40)/Flash.o \
+		$(TMP_es40)/FloppyController.o \
+		$(TMP_es40)/Port80.o \
+		$(TMP_es40)/Serial.o \
+		$(TMP_es40)/System.o \
+		$(TMP_es40)/SystemComponent.o \
+		$(TMP_es40)/TranslationBuffer.o \
+		es40_idb \
+		$(TMP_es40_idb)/AliM1543C.o \
+		$(TMP_es40_idb)/AlphaCPU.o \
+		$(TMP_es40_idb)/AlphaSim.o \
+		$(TMP_es40_idb)/DPR.o \
+		$(TMP_es40_idb)/Flash.o \
+		$(TMP_es40_idb)/FloppyController.o \
+		$(TMP_es40_idb)/Port80.o \
+		$(TMP_es40_idb)/Serial.o \
+		$(TMP_es40_idb)/System.o \
+		$(TMP_es40_idb)/SystemComponent.o \
+		$(TMP_es40_idb)/TraceEngine.o \
+		$(TMP_es40_idb)/TranslationBuffer.o \
+		es40_lss \
+		$(TMP_es40_lss)/AliM1543C.o \
+		$(TMP_es40_lss)/AlphaCPU.o \
+		$(TMP_es40_lss)/AlphaSim.o \
+		$(TMP_es40_lss)/DPR.o \
+		$(TMP_es40_lss)/Flash.o \
+		$(TMP_es40_lss)/FloppyController.o \
+		$(TMP_es40_lss)/Port80.o \
+		$(TMP_es40_lss)/Serial.o \
+		$(TMP_es40_lss)/System.o \
+		$(TMP_es40_lss)/SystemComponent.o \
+		$(TMP_es40_lss)/TraceEngine.o \
+		$(TMP_es40_lss)/TranslationBuffer.o \
+		$(TMP_es40_lss)/lockstep.o \
+		es40_lsm \
+		$(TMP_es40_lsm)/AliM1543C.o \
+		$(TMP_es40_lsm)/AlphaCPU.o \
+		$(TMP_es40_lsm)/AlphaSim.o \
+		$(TMP_es40_lsm)/DPR.o \
+		$(TMP_es40_lsm)/Flash.o \
+		$(TMP_es40_lsm)/FloppyController.o \
+		$(TMP_es40_lsm)/Port80.o \
+		$(TMP_es40_lsm)/Serial.o \
+		$(TMP_es40_lsm)/System.o \
+		$(TMP_es40_lsm)/SystemComponent.o \
+		$(TMP_es40_lsm)/TraceEngine.o \
+		$(TMP_es40_lsm)/TranslationBuffer.o \
+		$(TMP_es40_lsm)/lockstep.o
+	$(CCADMIN)
+	rm -f -r $(TMP_es40_idb)
+	rm -f -r $(TMP_es40_lsm)
+	rm -f -r $(TMP_es40_lss)
+	rm -f -r $(TMP_es40)
+
+# Create the target directory (if needed)
+$(TMP_es40_idb):
+	mkdir -p $(TMP_es40_idb)
+$(TMP_es40_lsm):
+	mkdir -p $(TMP_es40_lsm)
+$(TMP_es40_lss):
+	mkdir -p $(TMP_es40_lss)
+$(TMP_es40):
+	mkdir -p $(TMP_es40)
+
+# Enable dependency checking
+.KEEP_STATE:
+.KEEP_STATE_FILE:.make.state.Sun-sparc-Solaris
+

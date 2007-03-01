@@ -56,15 +56,25 @@
 #include <stdint.h>
 #endif
 
-#define u8 uint8_t
-#define u16 uint16_t
-#define u32 uint32_t
-#define u64 uint64_t
+typedef uint8_t u8;
+typedef uint16_t u16;
+typedef uint32_t u32;
+typedef uint64_t u64;
 
-#define s8 int8_t
-#define s16 int16_t
-#define s32 int32_t
-#define s64 int64_t
+typedef int8_t s8;
+typedef int16_t s16;
+typedef int32_t s32;
+typedef int64_t s64;
+
+#undef uint8_t
+#undef uint16_t
+#undef uint32_t
+#undef uint64_t
+
+#undef int8_t
+#undef int16_t
+#undef int32_t
+#undef int64_t
 
 #define X64(a) 0x##a##ll
 #define LL "ll"

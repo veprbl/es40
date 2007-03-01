@@ -110,36 +110,36 @@ class CSystem
   int RegisterComponent(CSystemComponent * component);
   int RegisterCPU(class CAlphaCPU * cpu);
 	
-  CSystem(char *filename);
+  CSystem(const char *filename);
   void ResetMem(unsigned int membits);
 
   virtual ~CSystem();
   unsigned int iNumMemoryBits;
 
   char *FindConfig();
-  void LoadConfig(char *filename);
-  char *GetConfig(char *key);
-  char *GetConfig(char *key, char *defval);
+  void LoadConfig(const char *filename);
+  char *GetConfig(const char *key);
+  char *GetConfig(const char *key, char *defval);
 
 
  private:
   int iNumCPUs;
-  u8  tig$FwWrite;
-  u8  tig$HaltA;
-  u8  tig$HaltB;
-  u64 p$PLAT[2];
-  u64 p$PERRMASK[2];
-  u64 p$PCTL[2];
-  u64 c$DIM[4];
-  u64 c$DRIR;
-  u64 c$MISC;
-  u64 c$CSC;
-  u64 c$TRR;
-  u64 c$TDR;
-  u64 p$WSBA[2][4];
-  u64 p$WSM[2][4];
-  u64 p$TBA[2][4];
-  u64 d$STR;
+  u8  tig_FwWrite;
+  u8  tig_HaltA;
+  u8  tig_HaltB;
+  u64 p_PLAT[2];
+  u64 p_PERRMASK[2];
+  u64 p_PCTL[2];
+  u64 c_DIM[4];
+  u64 c_DRIR;
+  u64 c_MISC;
+  u64 c_CSC;
+  u64 c_TRR;
+  u64 c_TDR;
+  u64 p_WSBA[2][4];
+  u64 p_WSM[2][4];
+  u64 p_TBA[2][4];
+  u64 d_STR;
   void * memory;
   //	void * memmap;
 

@@ -809,137 +809,136 @@ void CAlphaCPU::listing(u64 from, u64 to)
  * Save state to a Virtual Machine State file.
  **/
 
-void CAlphaCPU::SaveState(FILE *f)
+void CAlphaCPU::SaveState(FILE *pF)
 {
-  fwrite(r,1,64*8,f);
-  fwrite(this->f,1,32*8,f);
+  fwrite(r,1,64*8,pF);
+  fwrite(this->f,1,32*8,pF);
+  fwrite(&pal_base,1,8,pF);
+  fwrite(&pc,1,8,pF);
+  fwrite(&dc_stat,1,8,pF);
+  fwrite(&i_stat,1,8,pF);
+  fwrite(&pctr_ctl,1,8,pF);
+  fwrite(&dc_ctl,1,8,pF);
+  fwrite(&fault_va,1,8,pF);
+  fwrite(&exc_sum,1,8,pF);
+  fwrite(&i_ctl_vptb,1,8,pF);
+  fwrite(&va_ctl_vptb,1,8,pF);
+  fwrite(&i_ctl_other,1,8,pF);
+  fwrite(&mm_stat,1,8,pF);
+  fwrite(&exc_addr,1,8,pF);
+  fwrite(&pmpc,1,8,pF);
+  fwrite(&fpcr,1,8,pF);
 
-  fwrite(&pal_base,1,8,f);
-  fwrite(&pc,1,8,f);
-  fwrite(&dc_stat,1,8,f);
-  fwrite(&i_stat,1,8,f);
-  fwrite(&pctr_ctl,1,8,f);
-  fwrite(&dc_ctl,1,8,f);
-  fwrite(&fault_va,1,8,f);
-  fwrite(&exc_sum,1,8,f);
-  fwrite(&i_ctl_vptb,1,8,f);
-  fwrite(&va_ctl_vptb,1,8,f);
-  fwrite(&i_ctl_other,1,8,f);
-  fwrite(&mm_stat,1,8,f);
-  fwrite(&exc_addr,1,8,f);
-  fwrite(&pmpc,1,8,f);
-  fwrite(&fpcr,1,8,f);
+  fwrite(&cc,1,4,pF);
+  fwrite(&cc_offset,1,4,pF);
 
-  fwrite(&cc,1,4,f);
-  fwrite(&cc_offset,1,4,f);
-
-  fwrite(&ppcen,1,sizeof(bool),f);
-  fwrite(&cc_ena,1,sizeof(bool),f);
-  fwrite(&fpen,1,sizeof(bool),f);
-  fwrite(&sde,1,sizeof(bool),f);
-  fwrite(&ppcen,1,sizeof(bool),f);
-  fwrite(&hwe,1,sizeof(bool),f);
-  fwrite(&bIntrFlag,1,sizeof(bool),f);
+  fwrite(&ppcen,1,sizeof(bool),pF);
+  fwrite(&cc_ena,1,sizeof(bool),pF);
+  fwrite(&fpen,1,sizeof(bool),pF);
+  fwrite(&sde,1,sizeof(bool),pF);
+  fwrite(&ppcen,1,sizeof(bool),pF);
+  fwrite(&hwe,1,sizeof(bool),pF);
+  fwrite(&bIntrFlag,1,sizeof(bool),pF);
 
   //	u64 current_pc;
 
-  fwrite(&alt_cm,1,sizeof(int),f);
-  fwrite(&smc,1,sizeof(int),f);
-  fwrite(&i_ctl_va_mode,1,sizeof(int),f);
-  fwrite(&va_ctl_va_mode,1,sizeof(int),f);
-  fwrite(&cm,1,sizeof(int),f);
-  fwrite(&asn,1,sizeof(int),f);
-  fwrite(&asn0,1,sizeof(int),f);
-  fwrite(&asn1,1,sizeof(int),f);
-  fwrite(&eien,1,sizeof(int),f);
-  fwrite(&slen,1,sizeof(int),f);
-  fwrite(&cren,1,sizeof(int),f);
-  fwrite(&pcen,1,sizeof(int),f);
-  fwrite(&sien,1,sizeof(int),f);
-  fwrite(&asten,1,sizeof(int),f);
-  fwrite(&sir,1,sizeof(int),f);
-  fwrite(&eir,1,sizeof(int),f);
-  fwrite(&slr,1,sizeof(int),f);
-  fwrite(&crr,1,sizeof(int),f);
-  fwrite(&pcr,1,sizeof(int),f);
-  fwrite(&astrr,1,sizeof(int),f);
-  fwrite(&aster,1,sizeof(int),f);
-  fwrite(&m_ctl_spe,1,sizeof(int),f);
-  fwrite(&i_ctl_spe,1,sizeof(int),f);
+  fwrite(&alt_cm,1,sizeof(int),pF);
+  fwrite(&smc,1,sizeof(int),pF);
+  fwrite(&i_ctl_va_mode,1,sizeof(int),pF);
+  fwrite(&va_ctl_va_mode,1,sizeof(int),pF);
+  fwrite(&cm,1,sizeof(int),pF);
+  fwrite(&asn,1,sizeof(int),pF);
+  fwrite(&asn0,1,sizeof(int),pF);
+  fwrite(&asn1,1,sizeof(int),pF);
+  fwrite(&eien,1,sizeof(int),pF);
+  fwrite(&slen,1,sizeof(int),pF);
+  fwrite(&cren,1,sizeof(int),pF);
+  fwrite(&pcen,1,sizeof(int),pF);
+  fwrite(&sien,1,sizeof(int),pF);
+  fwrite(&asten,1,sizeof(int),pF);
+  fwrite(&sir,1,sizeof(int),pF);
+  fwrite(&eir,1,sizeof(int),pF);
+  fwrite(&slr,1,sizeof(int),pF);
+  fwrite(&crr,1,sizeof(int),pF);
+  fwrite(&pcr,1,sizeof(int),pF);
+  fwrite(&astrr,1,sizeof(int),pF);
+  fwrite(&aster,1,sizeof(int),pF);
+  fwrite(&m_ctl_spe,1,sizeof(int),pF);
+  fwrite(&i_ctl_spe,1,sizeof(int),pF);
 
-  fwrite(&next_icache,1,sizeof(int),f);
-  fwrite(icache,1,1024*sizeof(struct SICache),f);
+  fwrite(&next_icache,1,sizeof(int),pF);
+  fwrite(icache,1,1024*sizeof(struct SICache),pF);
 
-  itb->SaveState(f);
-  dtb->SaveState(f);
+  itb->SaveState(pF);
+  dtb->SaveState(pF);
 }
 
 /**
  * Restore state from a Virtual Machine State file.
  **/
 
-void CAlphaCPU::RestoreState(FILE *f)
+void CAlphaCPU::RestoreState(FILE *pF)
 {
-  fread(r,1,64*8,f);
-  fread(this->f,1,32*8,f);
+  fread(r,1,64*8,pF);
+  fread(this->f,1,32*8,pF);
 
-  fread(&pal_base,1,8,f);
-  fread(&pc,1,8,f);
-  fread(&dc_stat,1,8,f);
-  fread(&i_stat,1,8,f);
-  fread(&pctr_ctl,1,8,f);
-  fread(&dc_ctl,1,8,f);
-  fread(&fault_va,1,8,f);
-  fread(&exc_sum,1,8,f);
-  fread(&i_ctl_vptb,1,8,f);
-  fread(&va_ctl_vptb,1,8,f);
-  fread(&i_ctl_other,1,8,f);
-  fread(&mm_stat,1,8,f);
-  fread(&exc_addr,1,8,f);
-  fread(&pmpc,1,8,f);
-  fread(&fpcr,1,8,f);
+  fread(&pal_base,1,8,pF);
+  fread(&pc,1,8,pF);
+  fread(&dc_stat,1,8,pF);
+  fread(&i_stat,1,8,pF);
+  fread(&pctr_ctl,1,8,pF);
+  fread(&dc_ctl,1,8,pF);
+  fread(&fault_va,1,8,pF);
+  fread(&exc_sum,1,8,pF);
+  fread(&i_ctl_vptb,1,8,pF);
+  fread(&va_ctl_vptb,1,8,pF);
+  fread(&i_ctl_other,1,8,pF);
+  fread(&mm_stat,1,8,pF);
+  fread(&exc_addr,1,8,pF);
+  fread(&pmpc,1,8,pF);
+  fread(&fpcr,1,8,pF);
 
-  fread(&cc,1,4,f);
-  fread(&cc_offset,1,4,f);
+  fread(&cc,1,4,pF);
+  fread(&cc_offset,1,4,pF);
 
-  fread(&ppcen,1,sizeof(bool),f);
-  fread(&cc_ena,1,sizeof(bool),f);
-  fread(&fpen,1,sizeof(bool),f);
-  fread(&sde,1,sizeof(bool),f);
-  fread(&ppcen,1,sizeof(bool),f);
-  fread(&hwe,1,sizeof(bool),f);
-  fread(&bIntrFlag,1,sizeof(bool),f);
+  fread(&ppcen,1,sizeof(bool),pF);
+  fread(&cc_ena,1,sizeof(bool),pF);
+  fread(&fpen,1,sizeof(bool),pF);
+  fread(&sde,1,sizeof(bool),pF);
+  fread(&ppcen,1,sizeof(bool),pF);
+  fread(&hwe,1,sizeof(bool),pF);
+  fread(&bIntrFlag,1,sizeof(bool),pF);
 
   //	u64 current_pc;
 
-  fread(&alt_cm,1,sizeof(int),f);
-  fread(&smc,1,sizeof(int),f);
-  fread(&i_ctl_va_mode,1,sizeof(int),f);
-  fread(&va_ctl_va_mode,1,sizeof(int),f);
-  fread(&cm,1,sizeof(int),f);
-  fread(&asn,1,sizeof(int),f);
-  fread(&asn0,1,sizeof(int),f);
-  fread(&asn1,1,sizeof(int),f);
-  fread(&eien,1,sizeof(int),f);
-  fread(&slen,1,sizeof(int),f);
-  fread(&cren,1,sizeof(int),f);
-  fread(&pcen,1,sizeof(int),f);
-  fread(&sien,1,sizeof(int),f);
-  fread(&asten,1,sizeof(int),f);
-  fread(&sir,1,sizeof(int),f);
-  fread(&eir,1,sizeof(int),f);
-  fread(&slr,1,sizeof(int),f);
-  fread(&crr,1,sizeof(int),f);
-  fread(&pcr,1,sizeof(int),f);
-  fread(&astrr,1,sizeof(int),f);
-  fread(&aster,1,sizeof(int),f);
-  fread(&m_ctl_spe,1,sizeof(int),f);
-  fread(&i_ctl_spe,1,sizeof(int),f);
+  fread(&alt_cm,1,sizeof(int),pF);
+  fread(&smc,1,sizeof(int),pF);
+  fread(&i_ctl_va_mode,1,sizeof(int),pF);
+  fread(&va_ctl_va_mode,1,sizeof(int),pF);
+  fread(&cm,1,sizeof(int),pF);
+  fread(&asn,1,sizeof(int),pF);
+  fread(&asn0,1,sizeof(int),pF);
+  fread(&asn1,1,sizeof(int),pF);
+  fread(&eien,1,sizeof(int),pF);
+  fread(&slen,1,sizeof(int),pF);
+  fread(&cren,1,sizeof(int),pF);
+  fread(&pcen,1,sizeof(int),pF);
+  fread(&sien,1,sizeof(int),pF);
+  fread(&asten,1,sizeof(int),pF);
+  fread(&sir,1,sizeof(int),pF);
+  fread(&eir,1,sizeof(int),pF);
+  fread(&slr,1,sizeof(int),pF);
+  fread(&crr,1,sizeof(int),pF);
+  fread(&pcr,1,sizeof(int),pF);
+  fread(&astrr,1,sizeof(int),pF);
+  fread(&aster,1,sizeof(int),pF);
+  fread(&m_ctl_spe,1,sizeof(int),pF);
+  fread(&i_ctl_spe,1,sizeof(int),pF);
 
-  fread(&next_icache,1,sizeof(int),f);
-  fread(icache,1,1024*sizeof(struct SICache),f);
+  fread(&next_icache,1,sizeof(int),pF);
+  fread(icache,1,1024*sizeof(struct SICache),pF);
 
-  itb->RestoreState(f);
-  dtb->RestoreState(f);
+  itb->RestoreState(pF);
+  dtb->RestoreState(pF);
 }
 

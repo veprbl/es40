@@ -79,7 +79,7 @@ CTraceEngine::~CTraceEngine(void)
     fclose(asPRBRs[i].f);
 }
 
-void CTraceEngine::trace(CAlphaCPU * cpu, u64 f, u64 t, bool down, bool up, char * x, int y)
+void CTraceEngine::trace(CAlphaCPU * cpu, u64 f, u64 t, bool down, bool up, const char * x, int y)
 {
   int p;
   u64 f1 = ((f&X64(fffffffff0000000))==
@@ -475,7 +475,7 @@ void CTraceEngine::read_procfile(char *filename)
 
 }
 
-void CTraceEngine::trace_dev(char * text)
+void CTraceEngine::trace_dev(const char * text)
 {
   fprintf(current_trace_file, "%s", text);
 }

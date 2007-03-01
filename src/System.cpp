@@ -42,7 +42,7 @@
  * Constructor.
  **/
 
-CSystem::CSystem(char *filename)
+CSystem::CSystem(const char *filename)
 {
   this->LoadConfig(filename);
 
@@ -59,54 +59,54 @@ CSystem::CSystem(char *filename)
   iSSCycles = 0;
 #endif
 
-  c$MISC = X64(0000000800000000);
-  c$DIM[0] = 0;
-  c$DIM[1] = 0;
-  c$DIM[2] = 0;
-  c$DIM[3] = 0;
-  c$DRIR = 0;
-  c$CSC = X64(0042444014157803);
-  c$TRR = X64(0000000000003103);
-  c$TDR = X64(F37FF37FF37FF37F);
+  c_MISC = X64(0000000800000000);
+  c_DIM[0] = 0;
+  c_DIM[1] = 0;
+  c_DIM[2] = 0;
+  c_DIM[3] = 0;
+  c_DRIR = 0;
+  c_CSC = X64(0042444014157803);
+  c_TRR = X64(0000000000003103);
+  c_TDR = X64(F37FF37FF37FF37F);
 
-  d$STR = X64(2525252525252525);
+  d_STR = X64(2525252525252525);
 
-  p$PCTL[0] = X64(0000104401440081);
-  p$PCTL[1] = X64(0000504401440081);
+  p_PCTL[0] = X64(0000104401440081);
+  p_PCTL[1] = X64(0000504401440081);
 
-  p$PERRMASK[0] = 0;
-  p$PERRMASK[1] = 0;
-  p$PLAT[0] = 0;
-  p$PLAT[1] = 0;
-  p$TBA [0][0] = 0;
-  p$WSBA[0][0] = 0;
-  p$WSM [0][0] = 0;
-  p$TBA [0][1] = 0;
-  p$WSBA[0][1] = 0;
-  p$WSM [0][1] = 0;
-  p$TBA [0][2] = 0;
-  p$WSBA[0][2] = 0;
-  p$WSM [0][2] = 0;
-  p$TBA [0][3] = 0;
-  p$WSBA[0][3] = 0;
-  p$WSM [0][3] = 0;
-  p$TBA [1][0] = 0;
-  p$WSBA[1][0] = 0;
-  p$WSM [1][0] = 0;
-  p$TBA [1][1] = 0;
-  p$WSBA[1][1] = 0;
-  p$WSM [1][1] = 0;
-  p$TBA [1][2] = 0;
-  p$WSBA[1][2] = 0;
-  p$WSM [1][2] = 0;
-  p$TBA [1][3] = 0;
-  p$WSBA[1][3] = 0;
-  p$WSM [1][3] = 0;
+  p_PERRMASK[0] = 0;
+  p_PERRMASK[1] = 0;
+  p_PLAT[0] = 0;
+  p_PLAT[1] = 0;
+  p_TBA [0][0] = 0;
+  p_WSBA[0][0] = 0;
+  p_WSM [0][0] = 0;
+  p_TBA [0][1] = 0;
+  p_WSBA[0][1] = 0;
+  p_WSM [0][1] = 0;
+  p_TBA [0][2] = 0;
+  p_WSBA[0][2] = 0;
+  p_WSM [0][2] = 0;
+  p_TBA [0][3] = 0;
+  p_WSBA[0][3] = 0;
+  p_WSM [0][3] = 0;
+  p_TBA [1][0] = 0;
+  p_WSBA[1][0] = 0;
+  p_WSM [1][0] = 0;
+  p_TBA [1][1] = 0;
+  p_WSBA[1][1] = 0;
+  p_WSM [1][1] = 0;
+  p_TBA [1][2] = 0;
+  p_WSBA[1][2] = 0;
+  p_WSM [1][2] = 0;
+  p_TBA [1][3] = 0;
+  p_WSBA[1][3] = 0;
+  p_WSM [1][3] = 0;
 
 
-  tig$FwWrite = 0;
-  tig$HaltA   = 0;
-  tig$HaltB   = 0;
+  tig_FwWrite = 0;
+  tig_HaltA   = 0;
+  tig_HaltB   = 0;
 
   memory = calloc(1<<iNumMemoryBits,1);
 
@@ -260,7 +260,12 @@ void CSystem::WriteMem(u64 address, int dsize, u64 data)
 {
   u64 a;
   int i;
-  void * p;
+  u8 * p;
+#if defined(ALIGN_MEM_ACCESS)
+  u64 t64;
+  u32 t32;
+  u16 t16;
+#endif;
 
   a = address & X64(00000fffffffffff);
 
@@ -278,16 +283,16 @@ void CSystem::WriteMem(u64 address, int dsize, u64 data)
       switch (a)
 	{
         case X64(00000801a0000000): // CSC
-	  c$CSC        &= ~X64(0777777fff3f0000);
-	  c$CSC |= (data & X64(0777777fff3f0000));
+	  c_CSC        &= ~X64(0777777fff3f0000);
+	  c_CSC |= (data & X64(0777777fff3f0000));
 	  return;
 	case X64(00000801a0000080): // MISC
-	  c$MISC |= (data & X64(00000f0000f0f000));	// W1S
-	  c$MISC &=~(data & X64(0000000010000ff0));	// W1C
+	  c_MISC |= (data & X64(00000f0000f0f000));	// W1S
+	  c_MISC &=~(data & X64(0000000010000ff0));	// W1C
 	  if       (data & X64(0000000001000000))
-	    c$MISC &=~        X64(0000000000ff0000);	//Arbitration Clear
-	  if    (!(c$MISC & X64(00000000000f0000)))
-	    c$MISC |= (data & X64(00000000000f0000));	//Arbitration try
+	    c_MISC &=~        X64(0000000000ff0000);	//Arbitration Clear
+	  if    (!(c_MISC & X64(00000000000f0000)))
+	    c_MISC |= (data & X64(00000000000f0000));	//Arbitration try
 
 	  // stop interval timer interrupt
 	  if        (data & X64(00000000000000f0))
@@ -304,118 +309,118 @@ void CSystem::WriteMem(u64 address, int dsize, u64 data)
 	  return;
 
 	case X64(00000801a0000200):
-	  c$DIM[0] = data;
+	  c_DIM[0] = data;
 	  return;
 	case X64(00000801a0000240):
-	  c$DIM[1] = data;
+	  c_DIM[1] = data;
 	  return;
 	case X64(00000801a0000600):
-	  c$DIM[2] = data;
+	  c_DIM[2] = data;
 	  return;
 	case X64(00000801a0000640):
-	  c$DIM[3] = data;
+	  c_DIM[3] = data;
 	  return;
 
         case X64(0000080180000000):
-	  p$WSBA[0][0] = data & X64(00000000fff00003);
+	  p_WSBA[0][0] = data & X64(00000000fff00003);
 	  return;
         case X64(0000080180000040):
-	  p$WSBA[0][1] = data & X64(00000000fff00003);
+	  p_WSBA[0][1] = data & X64(00000000fff00003);
 	  return;
         case X64(0000080180000080):
-	  p$WSBA[0][2] = data & X64(00000000fff00003);
+	  p_WSBA[0][2] = data & X64(00000000fff00003);
 	  return;
         case X64(00000801800000c0):
-	  p$WSBA[0][3] = data & X64(00000080fff00003);
+	  p_WSBA[0][3] = data & X64(00000080fff00003);
 	  return;
         case X64(0000080380000000):
-	  p$WSBA[1][0] = data & X64(00000000fff00003);
+	  p_WSBA[1][0] = data & X64(00000000fff00003);
 	  return;
         case X64(0000080380000040):
-	  p$WSBA[1][1] = data & X64(00000000fff00003);
+	  p_WSBA[1][1] = data & X64(00000000fff00003);
 	  return;
         case X64(0000080380000080):
-	  p$WSBA[1][2] = data & X64(00000000fff00003);
+	  p_WSBA[1][2] = data & X64(00000000fff00003);
 	  return;
         case X64(00000803800000c0):
-	  p$WSBA[1][3] = data & X64(00000080fff00003);
+	  p_WSBA[1][3] = data & X64(00000080fff00003);
 	  return;
         case X64(0000080180000100):
-	  p$WSM[0][0] = data & X64(00000000fff00000);
+	  p_WSM[0][0] = data & X64(00000000fff00000);
 	  return;
         case X64(0000080180000140):
-	  p$WSM[0][1] = data & X64(00000000fff00000);
+	  p_WSM[0][1] = data & X64(00000000fff00000);
 	  return;
         case X64(0000080180000180):
-	  p$WSM[0][2] = data & X64(00000000fff00000);
+	  p_WSM[0][2] = data & X64(00000000fff00000);
 	  return;
         case X64(00000801800001c0):
-	  p$WSM[0][3] = data & X64(00000000fff00000);
+	  p_WSM[0][3] = data & X64(00000000fff00000);
 	  return;
         case X64(0000080380000100):
-	  p$WSM[1][0] = data & X64(00000000fff00000);
+	  p_WSM[1][0] = data & X64(00000000fff00000);
 	  return;
         case X64(0000080380000140):
-	  p$WSM[1][1] = data & X64(00000000fff00000);
+	  p_WSM[1][1] = data & X64(00000000fff00000);
 	  return;
         case X64(0000080380000180):
-	  p$WSM[1][2] = data & X64(00000000fff00000);
+	  p_WSM[1][2] = data & X64(00000000fff00000);
 	  return;
         case X64(00000803800001c0):
-	  p$WSM[1][3] = data & X64(00000000fff00000);
+	  p_WSM[1][3] = data & X64(00000000fff00000);
 	  return;
         case X64(0000080180000200):
-	  p$TBA[0][0] = data & X64(00000007fffffc00);
+	  p_TBA[0][0] = data & X64(00000007fffffc00);
 	  return;
         case X64(0000080180000240):
-	  p$TBA[0][1] = data & X64(00000007fffffc00);
+	  p_TBA[0][1] = data & X64(00000007fffffc00);
 	  return;
         case X64(0000080180000280):
-	  p$TBA[0][2] = data & X64(00000007fffffc00);
+	  p_TBA[0][2] = data & X64(00000007fffffc00);
 	  return;
         case X64(00000801800002c0):
-	  p$TBA[0][3] = data & X64(00000007fffffc00);
+	  p_TBA[0][3] = data & X64(00000007fffffc00);
 	  return;
         case X64(0000080380000200):
-	  p$TBA[1][0] = data & X64(00000007fffffc00);
+	  p_TBA[1][0] = data & X64(00000007fffffc00);
 	  return;
         case X64(0000080380000240):
-	  p$TBA[1][1] = data & X64(00000007fffffc00);
+	  p_TBA[1][1] = data & X64(00000007fffffc00);
 	  return;
         case X64(0000080380000280):
-	  p$TBA[1][2] = data & X64(00000007fffffc00);
+	  p_TBA[1][2] = data & X64(00000007fffffc00);
 	  return;
         case X64(00000803800002c0):
-	  p$TBA[1][3] = data & X64(00000007fffffc00);
+	  p_TBA[1][3] = data & X64(00000007fffffc00);
 	  return;
 	case X64(0000080180000300):
-	  p$PCTL[0] &=         X64(ffffe300f0300000);
-	  p$PCTL[0] |= (data & X64(00001cff0fcfffff));
+	  p_PCTL[0] &=         X64(ffffe300f0300000);
+	  p_PCTL[0] |= (data & X64(00001cff0fcfffff));
 	  return;
 	case X64(0000080380000300):
-	  p$PCTL[1] &=         X64(ffffe300f0300000);
-	  p$PCTL[1] |= (data & X64(00001cff0fcfffff));
+	  p_PCTL[1] &=         X64(ffffe300f0300000);
+	  p_PCTL[1] |= (data & X64(00001cff0fcfffff));
 	  return;
 	case X64(0000080180000340):
-	  p$PLAT[0] = data;
+	  p_PLAT[0] = data;
 	  return;
 	case X64(0000080380000340):
-	  p$PLAT[1] = data;
+	  p_PLAT[1] = data;
 	  return;		
 	case X64(0000080180000400):
-	  p$PERRMASK[0] = data;
+	  p_PERRMASK[0] = data;
 	  return;
 	case X64(0000080380000400):
-	  p$PERRMASK[1] = data;
+	  p_PERRMASK[1] = data;
 	  return;
 	case X64(00000801300003c0):
-	  tig$HaltA = (u8)(data&0xff);
+	  tig_HaltA = (u8)(data&0xff);
 	  return;
 	case X64(00000801300005c0):
-	  tig$HaltB = (u8)(data&0xff);
+	  tig_HaltB = (u8)(data&0xff);
 	  return;
 	case X64(0000080130000040):
-	  tig$FwWrite = (u8)(data&0xff);
+	  tig_FwWrite = (u8)(data&0xff);
 	  return;
 	case X64(0000080130000100):
 	  // soft reset
@@ -446,13 +451,48 @@ void CSystem::WriteMem(u64 address, int dsize, u64 data)
       *((u8 *) p) = (u8) data;
       break;
     case 16:
-      *((u16 *) p) = (u16) data;
+#if defined(ALIGN_MEM_ACCESS)
+      if (address&1)
+      {
+        t64 = endian_64( (u64) data );
+        *p     = (t64 >> 8) & 0xff;
+        *(p+1) =  t64       & 0xff;
+      }  
+      else
+#endif
+      *((u16 *) p) = endian_16( (u16) data );
       break;
     case 32:
-      *((u32 *) p) = (u32) data;
+#if defined(ALIGN_MEM_ACCESS)
+      if (address&3)
+      {
+        t32 = endian_32( (u32) data );
+        *p     = (t32 >> 24) & 0xff;
+        *(p+1) = (t32 >> 16) & 0xff;
+        *(p+2) = (t32 >>  8) & 0xff;
+        *(p+3) =  t32        & 0xff;
+      }  
+      else
+#endif
+        *((u32 *) p) = endian_32( (u32) data );
       break;
     default:
-      *((u64 *) p) = (u64) data;
+#if defined(ALIGN_MEM_ACCESS)
+      if (address&7)
+      {
+        t64 = endian_64( (u64) data );
+        *p     = (t64 >> 56) & 0xff;
+        *(p+1) = (t64 >> 48) & 0xff;
+        *(p+2) = (t64 >> 40) & 0xff;
+        *(p+3) = (t64 >> 32) & 0xff;
+        *(p+4) = (t64 >> 24) & 0xff;
+        *(p+5) = (t64 >> 16) & 0xff;
+        *(p+6) = (t64 >>  8) & 0xff;
+        *(p+7) =  t64        & 0xff;
+      }  
+      else
+#endif
+        *((u64 *) p) = endian_64( (u64) data );
     }
 }
 
@@ -460,7 +500,7 @@ u64 CSystem::ReadMem(u64 address, int dsize)
 {
   u64 a;
   int i;
-  void * p;
+  u8 * p;
 
   a = address & X64(00000fffffffffff);
   if (a>>iNumMemoryBits)
@@ -481,9 +521,9 @@ u64 CSystem::ReadMem(u64 address, int dsize)
 	case X64(00000803800003c0):
 
         case X64(00000801a0000000):
-	  return c$CSC;
+	  return c_CSC;
 	case X64(00000801a0000080):
-	  return c$MISC;
+	  return c_MISC;
 	case X64(00000801a0000100):
 	  return   ((iNumMemoryBits-23)<<12); //size
 	case X64(00000801a0000140):
@@ -497,81 +537,81 @@ u64 CSystem::ReadMem(u64 address, int dsize)
 	  //				   | ( (((a>>6)&3)<<(iNumMemoryBits-2)) & 0x7ff000000);	// address
 
 	case X64(00000801a0000200):
-	  return c$DIM[0];
+	  return c_DIM[0];
 	case X64(00000801a0000240):
-	  return c$DIM[1];
+	  return c_DIM[1];
 	case X64(00000801a0000600):
-	  return c$DIM[2];
+	  return c_DIM[2];
 	case X64(00000801a0000640):
-	  return c$DIM[3];
+	  return c_DIM[3];
         case X64(00000801a0000280):
-	  return c$DRIR & c$DIM[0];
+	  return c_DRIR & c_DIM[0];
         case X64(00000801a00002c0):
-	  return c$DRIR & c$DIM[1];
+	  return c_DRIR & c_DIM[1];
         case X64(00000801a0000680):
-	  return c$DRIR & c$DIM[2];
+	  return c_DRIR & c_DIM[2];
         case X64(00000801a00006c0):
-	  return c$DRIR & c$DIM[3];
+	  return c_DRIR & c_DIM[3];
         case X64(00000801a0000300):
-	  return c$DRIR;
+	  return c_DRIR;
 
 	case X64(0000080180000300):
-	  return p$PCTL[0];
+	  return p_PCTL[0];
 	case X64(0000080380000300):
-	  return p$PCTL[1];
+	  return p_PCTL[1];
 	case X64(0000080180000400):
-	  return p$PERRMASK[0];
+	  return p_PERRMASK[0];
 	case X64(0000080380000400):
-	  return p$PERRMASK[1];
+	  return p_PERRMASK[1];
 
         case X64(0000080180000000):
-	  return p$WSBA[0][0];
+	  return p_WSBA[0][0];
         case X64(0000080180000040):
-	  return p$WSBA[0][1];
+	  return p_WSBA[0][1];
         case X64(0000080180000080):
-	  return p$WSBA[0][2];
+	  return p_WSBA[0][2];
         case X64(00000801800000c0):
-	  return p$WSBA[0][3];
+	  return p_WSBA[0][3];
         case X64(0000080380000000):
-	  return p$WSBA[1][0];
+	  return p_WSBA[1][0];
         case X64(0000080380000040):
-	  return p$WSBA[1][1];
+	  return p_WSBA[1][1];
         case X64(0000080380000080):
-	  return p$WSBA[1][2];
+	  return p_WSBA[1][2];
         case X64(00000803800000c0):
-	  return p$WSBA[1][3];
+	  return p_WSBA[1][3];
         case X64(0000080180000100):
-	  return p$WSM[0][0];
+	  return p_WSM[0][0];
         case X64(0000080180000140):
-	  return p$WSM[0][1];
+	  return p_WSM[0][1];
         case X64(0000080180000180):
-	  return p$WSM[0][2];
+	  return p_WSM[0][2];
         case X64(00000801800001c0):
-	  return p$WSM[0][3];
+	  return p_WSM[0][3];
         case X64(0000080380000100):
-	  return p$WSM[1][0];
+	  return p_WSM[1][0];
         case X64(0000080380000140):
-	  return p$WSM[1][1];
+	  return p_WSM[1][1];
         case X64(0000080380000180):
-	  return p$WSM[1][2];
+	  return p_WSM[1][2];
         case X64(00000803800001c0):
-	  return p$WSM[1][3];
+	  return p_WSM[1][3];
         case X64(0000080180000200):
-	  return p$TBA[0][0];
+	  return p_TBA[0][0];
         case X64(0000080180000240):
-	  return p$TBA[0][1];
+	  return p_TBA[0][1];
         case X64(0000080180000280):
-	  return p$TBA[0][2];
+	  return p_TBA[0][2];
         case X64(00000801800002c0):
-	  return p$TBA[0][3];
+	  return p_TBA[0][3];
         case X64(0000080380000200):
-	  return p$TBA[1][0];
+	  return p_TBA[1][0];
         case X64(0000080380000240):
-	  return p$TBA[1][1];
+	  return p_TBA[1][1];
         case X64(0000080380000280):
-	  return p$TBA[1][2];
+	  return p_TBA[1][2];
         case X64(00000803800002c0):
-	  return p$TBA[1][3];
+	  return p_TBA[1][3];
 
 	case X64(00000801b0000880):
 	  // DCHIP revisions
@@ -581,11 +621,11 @@ u64 CSystem::ReadMem(u64 address, int dsize)
 	  // Arbiter revision
 	  return 0xfe;
 	case X64(0000080130000040):
-	  return tig$FwWrite;
+	  return tig_FwWrite;
 	case X64(00000801300003c0):
-	  return tig$HaltA;
+	  return tig_HaltA;
 	case X64(00000801300005c0):
-	  return tig$HaltB;
+	  return tig_HaltB;
 
 	default:
 	  return 0;
@@ -600,11 +640,36 @@ u64 CSystem::ReadMem(u64 address, int dsize)
     case 8:
       return *((u8 *) p);
     case 16:
-      return *((u16 *) p);
+#if defined(ALIGN_MEM_ACCESS)
+      if (address&1)
+        return endian_16( *p | ( *(p+1) << 8 ) );
+      else
+#endif
+        return endian_16( *((u16 *) p) );
     case 32:
-      return *((u32 *) p);
+#if defined(ALIGN_MEM_ACCESS)
+      if (address&3)
+        return endian_32( *p | 
+                          ( *(p+1) << 8 )  | 
+                          ( *(p+2) << 16 ) | 
+                          ( *(p+3) << 24 ) );
+      else
+#endif
+        return endian_32( *((u32 *) p) );
     default:
-      return *((u64 *) p);
+#if defined(ALIGN_MEM_ACCESS)
+      if (address&7)
+        return endian_64(   (u64)(*p) | 
+                          ( (u64)(*(p+1)) <<  8 ) | 
+                          ( (u64)(*(p+2)) << 16 ) | 
+                          ( (u64)(*(p+3)) << 24 ) |
+                          ( (u64)(*(p+4)) << 32 ) | 
+                          ( (u64)(*(p+5)) << 40 ) | 
+                          ( (u64)(*(p+6)) << 48 ) | 
+                          ( (u64)(*(p+7)) << 56 ) );
+      else
+#endif
+        return endian_64( *((u64 *) p) );
     }
 }
 
@@ -834,30 +899,30 @@ void CSystem::interrupt(int number, bool assert)
   if (number==-1)
     {
       // timer int...
-      c$MISC |= 0xf0;
+      c_MISC |= 0xf0;
       for(i=0;i<iNumCPUs;i++)
 	acCPUs[i]->irq_h(2,true);
     }
   else if (assert)
     {
-      //        if (!(c$DRIR & (1i64<<number)))
+      //        if (!(c_DRIR & (1i64<<number)))
       //            printf("%%TYP-I-INTERRUPT: Interrupt %d asserted.\n",number);
-      c$DRIR |= (X64(1)<<number);
+      c_DRIR |= (X64(1)<<number);
     }
   else
     {
-      //        if (c$DRIR & (1i64<<number))
+      //        if (c_DRIR & (1i64<<number))
       //            printf("%%TYP-I-INTERRUPT: Interrupt %d deasserted.\n",number);
-      c$DRIR &= ~(X64(1)<<number);
+      c_DRIR &= ~(X64(1)<<number);
     }
   for (i=0;i<iNumCPUs;i++)
     {
-      if (c$DRIR & c$DIM[i] & X64(00ffffffffffffff))
+      if (c_DRIR & c_DIM[i] & X64(00ffffffffffffff))
 	acCPUs[i]->irq_h(1,true);
       else
 	acCPUs[i]->irq_h(1,false);
 
-      if (c$DRIR & c$DIM[i] & X64(fc00000000000000))
+      if (c_DRIR & c_DIM[i] & X64(fc00000000000000))
 	acCPUs[i]->irq_h(0,true);
       else
 	acCPUs[i]->irq_h(0,false);
@@ -875,19 +940,19 @@ void CSystem::PCI_WriteMem(int pcibus, u32 address, int dsize, u64 data)
   //	for(j=0;j<4;j++)
   //	{
   //      printf("WSBA%d: %08x%08x WSM%d: %08x%08x TBA%d: %08x%08x\n",
-  //        j,(u32)(p$WSBA[pcibus][j]>>32),(u32)(p$WSBA[pcibus][j]),
-  //      j,(u32)(p$WSM[pcibus][j]>>32),(u32)(p$WSM[pcibus][j]),
-  //    j,(u32)(p$TBA[pcibus][j]>>32),(u32)(p$TBA[pcibus][j]));
+  //        j,(u32)(p_WSBA[pcibus][j]>>32),(u32)(p_WSBA[pcibus][j]),
+  //      j,(u32)(p_WSM[pcibus][j]>>32),(u32)(p_WSM[pcibus][j]),
+  //    j,(u32)(p_TBA[pcibus][j]>>32),(u32)(p_TBA[pcibus][j]));
   //    }
   //  printf("--------------------------------------------------------------\n");
     
   //Step through windows
   for(j=0;j<4;j++)
     {
-      if (      (p$WSBA[pcibus][j] & 1)									// window enabled...
-		&& ! ((address ^ p$WSBA[pcibus][j]) & 0xfff00000 & ~p$WSM[pcibus][j]))	// address in range...
+      if (      (p_WSBA[pcibus][j] & 1)									// window enabled...
+		&& ! ((address ^ p_WSBA[pcibus][j]) & 0xfff00000 & ~p_WSM[pcibus][j]))	// address in range...
 	{
-	  a = (address & ((p$WSM[pcibus][j] & X64(fff00000)) | 0xfffff)) + (p$TBA[pcibus][j] & X64(3fffc0000));
+	  a = (address & ((p_WSM[pcibus][j] & X64(fff00000)) | 0xfffff)) + (p_TBA[pcibus][j] & X64(3fffc0000));
 	  //		  printf("PCI memory address %08x translated to %08x%08x\n",address, (u32)(a>>32),(u32)a);
 	  WriteMem(a, dsize, data);
           return;
@@ -909,9 +974,9 @@ u64 CSystem::PCI_ReadMem(int pcibus, u32 address, int dsize)
   //	for(j=0;j<4;j++)
   //	{
   //      printf("WSBA%d: %08x%08x WSM%d: %08x%08x TBA%d: %08x%08x\n",
-  //        j,(u32)(p$WSBA[pcibus][j]>>32),(u32)(p$WSBA[pcibus][j]),
-  //      j,(u32)(p$WSM[pcibus][j]>>32),(u32)(p$WSM[pcibus][j]),
-  //    j,(u32)(p$TBA[pcibus][j]>>32),(u32)(p$TBA[pcibus][j]));
+  //        j,(u32)(p_WSBA[pcibus][j]>>32),(u32)(p_WSBA[pcibus][j]),
+  //      j,(u32)(p_WSM[pcibus][j]>>32),(u32)(p_WSM[pcibus][j]),
+  //    j,(u32)(p_TBA[pcibus][j]>>32),(u32)(p_TBA[pcibus][j]));
   //    }
   //  printf("--------------------------------------------------------------\n");
 
@@ -919,10 +984,10 @@ u64 CSystem::PCI_ReadMem(int pcibus, u32 address, int dsize)
   for(j=0;j<4;j++)
     {
       
-      if (      (p$WSBA[pcibus][j] & 1)									// window enabled...
-		&& ! ((address ^ p$WSBA[pcibus][j]) & 0xfff00000 & ~p$WSM[pcibus][j]))	// address in range...
+      if (      (p_WSBA[pcibus][j] & 1)									// window enabled...
+		&& ! ((address ^ p_WSBA[pcibus][j]) & 0xfff00000 & ~p_WSM[pcibus][j]))	// address in range...
 	{
-	  a = (address & ((p$WSM[pcibus][j] & X64(fff00000)) | 0xfffff)) + (p$TBA[pcibus][j] & X64(3fffc0000));
+	  a = (address & ((p_WSM[pcibus][j] & X64(fff00000)) | 0xfffff)) + (p_TBA[pcibus][j] & X64(3fffc0000));
 	  //		  printf("PCI memory address %08x translated to %08x%08x\n",address, (u32)(a>>32),(u32)a);
 	  return ReadMem(a, dsize);
 	}
@@ -971,28 +1036,28 @@ void CSystem::SaveState(char *fn)
 	}
 
       // TIG registers
-      fwrite(&tig$FwWrite, 1, 1, f);
-      fwrite(&tig$HaltA, 1, 1, f);
-      fwrite(&tig$HaltB, 1, 1, f);
+      fwrite(&tig_FwWrite, 1, 1, f);
+      fwrite(&tig_HaltA, 1, 1, f);
+      fwrite(&tig_HaltB, 1, 1, f);
 
-      // C$ registers
-      fwrite(&c$CSC, 1, 8, f);
-      fwrite(&c$MISC, 1, 8, f);
-      fwrite(&c$TRR, 1, 8, f);
-      fwrite(&c$TDR, 1, 8, f);
-      fwrite(&c$DRIR, 1, 8, f);
-      fwrite(c$DIM, 1, 4*8, f);
+      // C_ registers
+      fwrite(&c_CSC, 1, 8, f);
+      fwrite(&c_MISC, 1, 8, f);
+      fwrite(&c_TRR, 1, 8, f);
+      fwrite(&c_TDR, 1, 8, f);
+      fwrite(&c_DRIR, 1, 8, f);
+      fwrite(c_DIM, 1, 4*8, f);
 	
-      // D$ registers
-      fwrite(&d$STR, 1, 8, f);
+      // D_ registers
+      fwrite(&d_STR, 1, 8, f);
 
-      // P$ registers
-      fwrite(p$PLAT, 1, 2*8, f);
-      fwrite(p$PERRMASK, 1, 2*8, f);
-      fwrite(p$PCTL, 1, 2*8, f);
-      fwrite(p$WSBA, 1, 2*4*8, f);
-      fwrite(p$WSM, 1, 2*4*8, f);
-      fwrite(p$TBA, 1, 2*4*8, f);
+      // P_ registers
+      fwrite(p_PLAT, 1, 2*8, f);
+      fwrite(p_PERRMASK, 1, 2*8, f);
+      fwrite(p_PCTL, 1, 2*8, f);
+      fwrite(p_WSBA, 1, 2*4*8, f);
+      fwrite(p_WSM, 1, 2*4*8, f);
+      fwrite(p_TBA, 1, 2*4*8, f);
 
       // components
       //
@@ -1036,30 +1101,30 @@ void CSystem::RestoreState(char *fn)
     }
 
   // TIG registers
-  fread(&tig$FwWrite, 1, 1, f);
-  fread(&tig$HaltA, 1, 1, f);
-  fread(&tig$HaltB, 1, 1, f);
+  fread(&tig_FwWrite, 1, 1, f);
+  fread(&tig_HaltA, 1, 1, f);
+  fread(&tig_HaltB, 1, 1, f);
 
-  // C$ registers
-  fread(&c$CSC, 1, 8, f);
-  fread(&c$MISC, 1, 8, f);
-  fread(&c$TRR, 1, 8, f);
-  fread(&c$TDR, 1, 8, f);
-  fread(&c$DRIR, 1, 8, f);
-  fread(c$DIM, 1, 4*8, f);
+  // C_ registers
+  fread(&c_CSC, 1, 8, f);
+  fread(&c_MISC, 1, 8, f);
+  fread(&c_TRR, 1, 8, f);
+  fread(&c_TDR, 1, 8, f);
+  fread(&c_DRIR, 1, 8, f);
+  fread(c_DIM, 1, 4*8, f);
 
-  // D$ registers
+  // D_ registers
 
-  fread(&d$STR, 1, 8, f);
+  fread(&d_STR, 1, 8, f);
 
-  // P$ registers
+  // P_ registers
 
-  fread(p$PLAT, 1, 2*8, f);
-  fread(p$PERRMASK, 1, 2*8, f);
-  fread(p$PCTL, 1, 2*8, f);
-  fread(p$WSBA, 1, 2*4*8, f);
-  fread(p$WSM, 1, 2*4*8, f);
-  fread(p$TBA, 1, 2*4*8, f);
+  fread(p_PLAT, 1, 2*8, f);
+  fread(p_PERRMASK, 1, 2*8, f);
+  fread(p_PCTL, 1, 2*8, f);
+  fread(p_WSBA, 1, 2*4*8, f);
+  fread(p_WSM, 1, 2*4*8, f);
+  fread(p_TBA, 1, 2*4*8, f);
 
 
   // components
@@ -1094,7 +1159,7 @@ void CSystem::DumpMemory(unsigned int filenum)
 
 
 
-void CSystem::LoadConfig(char *filename) {
+void CSystem::LoadConfig(const char *filename) {
   char linebuf[121];
   char *p, *keyp, *valp, *key, *val;
   struct SConfig *conf;
@@ -1161,11 +1226,11 @@ void CSystem::LoadConfig(char *filename) {
 
 }
 
-char *CSystem::GetConfig(char *key) {
+char *CSystem::GetConfig(const char *key) {
   return GetConfig(key,NULL);
 }
 
-char *CSystem::GetConfig(char *key, char *defval) {
+char *CSystem::GetConfig(const char *key, char *defval) {
   for(int i=0;i<iNumConfig;i++) {
     if(strcmp(asConfig[i]->key,key)==0) {
       return asConfig[i]->value;

@@ -299,7 +299,7 @@ u64 CAliM1543C::ReadMem(int index, u64 address, int dsize)
     case 2:
       return toy_read(address);
     case 3:
-      return isa_config_read(address, dsize);
+      return endian_bits(isa_config_read(address, dsize), dsize);
     case 6:
       return pit_read(address);
     case 8:
@@ -309,9 +309,9 @@ u64 CAliM1543C::ReadMem(int index, u64 address, int dsize)
     case 20:
       return pic_read_vector();
     case 9:
-      return ide_config_read(address, dsize);
+      return endian_bits(ide_config_read(address, dsize), dsize);
     case 11:
-      return usb_config_read(address, dsize);
+      return endian_bits(usb_config_read(address, dsize), dsize);
     case 13:
       channel = 1;
       address >>= 1;
@@ -351,7 +351,7 @@ void CAliM1543C::WriteMem(int index, u64 address, int dsize, u64 data)
       toy_write(address, (u8)data);
       return;
     case 3:
-      isa_config_write(address, dsize, data);
+      isa_config_write(address, dsize, endian_bits(data, dsize));
       return;
     case 6:
       pit_write(address, (u8) data);
@@ -362,10 +362,10 @@ void CAliM1543C::WriteMem(int index, u64 address, int dsize, u64 data)
       pic_write(channel, address, (u8) data);
       return;
     case 9:
-      ide_config_write(address, dsize, data);
+      ide_config_write(address, dsize, endian_bits(data, dsize));
       return;
     case 11:
-      usb_config_write(address, dsize, data);
+      usb_config_write(address, dsize, endian_bits(data, dsize));
       return;
     case 13:
       channel = 1;
@@ -796,25 +796,25 @@ void CAliM1543C::ide_config_write(u64 address, int dsize, u64 data)
       {
       case 0x10:
 	// command
-	cSystem->RegisterMemory(this,14, X64(00000801fc000000) + (data&0x00fffffe), 8);
+	cSystem->RegisterMemory(this,14, X64(00000801fc000000) + (endian_32(data)&0x00fffffe), 8);
 	return;
       case 0x14:
 	// control
-	cSystem->RegisterMemory(this,16, X64(00000801fc000000) + (data&0x00fffffe), 4);
+	cSystem->RegisterMemory(this,16, X64(00000801fc000000) + (endian_32(data)&0x00fffffe), 4);
 	return;
       case 0x18:
 	// command
-	cSystem->RegisterMemory(this,15, X64(00000801fc000000) + (data&0x00fffffe), 8);
+	cSystem->RegisterMemory(this,15, X64(00000801fc000000) + (endian_32(data)&0x00fffffe), 8);
 	return;
       case 0x1c:
 	// control
-	cSystem->RegisterMemory(this,17, X64(00000801fc000000) + (data&0x00fffffe), 4);
+	cSystem->RegisterMemory(this,17, X64(00000801fc000000) + (endian_32(data)&0x00fffffe), 4);
 	return;
       case 0x20:
 	// bus master control
-	cSystem->RegisterMemory(this,18, X64(00000801fc000000) + (data&0x00fffffe), 8);
+	cSystem->RegisterMemory(this,18, X64(00000801fc000000) + (endian_32(data)&0x00fffffe), 8);
 	// bus master control
-	cSystem->RegisterMemory(this,19, X64(00000801fc000000) + (data&0x00fffffe) + 8, 8);
+	cSystem->RegisterMemory(this,19, X64(00000801fc000000) + (endian_32(data)&0x00fffffe) + 8, 8);
 	return;
       }
 }
@@ -828,10 +828,15 @@ u64 CAliM1543C::ide_command_read(int index, u64 address)
   switch (address)
     {
     case 0:
-      data = ide_data[index][ide_data_ptr[index]];
+      if (ide_reading[index])
+        data = endian_16(ide_data[index][ide_data_ptr[index]]);
+      else
+        data = ide_data[index][ide_data_ptr[index]];
+//      printf("%c%c",printable((char)(data&0xff)),printable((char)((data>>8)&0xff)));
       ide_data_ptr[index]++;
       if (ide_data_ptr[index]==256)
 	{
+//	  printf("\n");
 	  if (ide_reading[index] && ide_sectors[index])
 	    {
 	      fread(&(ide_data[index][0]),1,512,ide_info[index][ide_selected[index]].handle);
@@ -876,7 +881,7 @@ void CAliM1543C::ide_command_write(int index, u64 address, u64 data)
 
       if (address==0 && ide_writing[index])
       {
-        ide_data[index][ide_data_ptr[index]] = (u16)data;
+        ide_data[index][ide_data_ptr[index]] = endian_16((u16)data);
         ide_data_ptr[index]++;
         if (ide_data_ptr[index]==256)
 	{
@@ -891,6 +896,10 @@ void CAliM1543C::ide_command_write(int index, u64 address, u64 data)
       }
       else if (address==7)	// command
 	{
+	      // DEBUGGING
+//	      printf("IDE Command: ");
+//	      for (x=0;x<8;x++) printf("%02x ",ide_command[index][x]);
+//	      printf("\n");
 	  switch (data)
 	    {
 	    case 0xec:	// identify drive
@@ -930,11 +939,13 @@ void CAliM1543C::ide_command_write(int index, u64 address, u64 data)
 	      l = strlen(ide_info[index][ide_selected[index]].filename);
 	      l = (l > 40)? 40 : l;
 	      memcpy((char *)&ide_data[index][27],ide_info[index][ide_selected[index]].filename,l);
+     #if defined(ES40_LITTLE_ENDIAN)         
 	      for(x=27;x<47;x++) {
 		ide_data[index][x]=((ide_data[index][x]>>8) & 0xff) | (ide_data[index][x]<<8);
 	      }
-
-	      ide_data[index][47] = 1;		// read/write multiples
+     #endif
+     
+              ide_data[index][47] = 1;		// read/write multiples
 	      ide_data[index][48] = 0;		// double-word IO transfers supported
 	      ide_data[index][49] = 0x0202;		// capability LBA
 	      ide_data[index][50] = 0;
@@ -967,6 +978,7 @@ void CAliM1543C::ide_command_write(int index, u64 address, u64 data)
 	    case 0x20: // read sector
 	      lba =      *((int*)(&(ide_command[index][3]))) & 0x0fffffff;
 	      TRC_DEV3("Read %d sectors from LBA %d\n",ide_command[index][2]?ide_command[index][2]:256,lba);
+//	      printf("Read %d sectors from LBA %d\n",ide_command[index][2]?ide_command[index][2]:256,lba);
 	      fseek(ide_info[index][ide_selected[index]].handle,lba*512,0);
 	      fread(&(ide_data[index][0]),1,512,ide_info[index][ide_selected[index]].handle);
 	      ide_data_ptr[index] = 0;

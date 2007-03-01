@@ -81,13 +81,13 @@ class CTraceEngine
   void read_procfile(char * filename);
   CTraceEngine(class CSystem * sys);
   ~CTraceEngine(void);
-  void trace(class CAlphaCPU * cpu, u64 f, u64 t, bool down, bool up, char * x, int y);
+  void trace(class CAlphaCPU * cpu, u64 f, u64 t, bool down, bool up, const char * x, int y);
   void trace_br(class CAlphaCPU * cpu, u64 f, u64 t);
   void add_function(u64 address, char * fn_name, char * fn_arglist, bool step_over);
   bool get_fnc_name(u64 address, char ** p_fn_name);
   void set_waitfor(class CAlphaCPU * cpu, u64 address);
   FILE * trace_file();
-  void trace_dev(char * text);
+  void trace_dev(const char * text);
   int parse(char command[100][100]);
   void run_script(char * filename);
 
