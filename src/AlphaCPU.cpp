@@ -327,7 +327,7 @@ int CAlphaCPU::DoClock()
 #if defined(IDB)
 
   char * funcname = 0;
-  char dbg_string[1000];
+  char dbg_string[1000] = "";
   char * dbg_strptr = dbg_string;
 
   if (!bListing)
