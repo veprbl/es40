@@ -48,6 +48,14 @@
 #include "cpu_pal.h"
 #include "cpu_debug.h"
 
+// DEBUGGING --
+#include "Serial.h"
+#include "AliM1543C.h"
+
+extern CSerial * srl[2];
+extern CAliM1543C * ali;
+// -- DEBUGGING
+
 #if defined(IDB)
 
 #define OP(mnemonic, format)							\
@@ -343,6 +351,49 @@ int CAlphaCPU::DoClock()
 	     || get_clean_pc()==X64(8bc94)	// write in memory test (00)
 	     )
 	next_pc();
+
+      // PALcode emulations (for speed...)
+
+#define QQQ(a) cSystem->ReadMem(a,64)
+#define LLL(a) cSystem->ReadMem(a,32)
+#define WWW(a) cSystem->ReadMem(a,16)
+#define BBB(a) cSystem->ReadMem(a,8)
+      
+      
+      if ( get_clean_pc()==X64(a8b38) )		// tt_fwrite
+      {
+	u64 tmp_add;
+	u32 tmp_prt = (u32)LLL(LLL(LLL(r[16] + 0x68) + 0x34) + 0x2c);	// serial port #
+	char tmp_chr[2]=" ";
+	if (tmp_prt<2)
+	{
+	  for (tmp_add = r[19]; tmp_add < r[19]+(r[17]*r[18]); tmp_add++) 
+	  {
+	    tmp_chr[0] = (char)BBB(tmp_add);
+	    if (tmp_chr[0]=='\n')
+              srl[tmp_prt]->write("\r");
+	    srl[tmp_prt]->write(tmp_chr);
+	    TRC_DEV4("%%SRM-I-WRSRL: Write character %02x (%c) on serial port %d.\n",tmp_chr[0],printable(tmp_chr[0]),tmp_prt);
+//  	    printf("SRL-W: %d: %s\n",tmp_prt,tmp_chr);
+	  }
+  	  r[0] = r[17] * r[18];
+	  pc -= 4;
+	}
+      }
+
+      if ( get_clean_pc()==X64(0b66c0) )		// ide_fread
+      {
+	u64 tmp_fps = QQQ(LLL(r[16] + 0x6c));		// file pos
+	int tmp_drv = (int)LLL(LLL(LLL(LLL(r[16] + 0x68) + 0x34) + 0x14) + 0xac);	// drive
+	int tmp_ctl = (LLL(LLL(LLL(LLL(LLL(r[16] + 0x68) + 0x34) + 0x14)) + 0x21c)&0x80)?0:1;	// controller
+	fseek(ali->get_ide_disk(tmp_ctl,tmp_drv),(long)tmp_fps,0);
+	r[0] = fread(cSystem->PtrToMem(r[19]),(size_t)r[17],(size_t)r[18],ali->get_ide_disk(tmp_ctl,tmp_drv)) * r[17];
+	cSystem->WriteMem(LLL(r[16] + 0x6c),64,ftell(ali->get_ide_disk(tmp_ctl,tmp_drv)));
+	pc -= 8;
+//	printf("IDE-R: ctl: %x, drv: %x, fps: %" LL "x, sze: %" LL "x, cnt: %" LL "x, dsr: %" LL "x, ret: %" LL "x    \n",tmp_ctl, tmp_drv, tmp_fps, r[17], r[18], r[19], r[0]);
+	TRC_DEV6("%%SRM-I-RDIDE: Read %" LL "d blocks of %" LL "d bytes from IDE disk %d.%d. @ LBA %d\n",r[18],r[17],tmp_ctl,tmp_drv,(long)(tmp_fps/512));
+      }
+
 #if defined(IDB)
   }
 #endif

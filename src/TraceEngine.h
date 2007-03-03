@@ -118,6 +118,7 @@ extern CTraceEngine * trc;
 #define TRC_DEV3(a,b,c) { if (bTrace) { char t [1000]; sprintf(t,a,b,c); trc->trace_dev(t); } }
 #define TRC_DEV4(a,b,c,d) { if (bTrace) { char t [1000]; sprintf(t,a,b,c,d); trc->trace_dev(t); } }
 #define TRC_DEV5(a,b,c,d,e) { if (bTrace) { char t [1000]; sprintf(t,a,b,c,d,e); trc->trace_dev(t); } }
+#define TRC_DEV6(a,b,c,d,e,f) { if (bTrace) { char t [1000]; sprintf(t,a,b,c,d,e,f); trc->trace_dev(t); } }
 
 #define DO_ACTION !bListing
 
@@ -128,6 +129,7 @@ extern CTraceEngine * trc;
 #define TRC_DEV3(a,b,c) ;
 #define TRC_DEV4(a,b,c,d) ;
 #define TRC_DEV5(a,b,c,d,e) ;
+#define TRC_DEV6(a,b,c,d,e,f) ;
 
 #define DO_ACTION 1
 

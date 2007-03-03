@@ -74,6 +74,7 @@ class CAliM1543C : public CSystemComponent
   CAliM1543C(class CSystem * c);
   virtual ~CAliM1543C();
   void pic_interrupt(int index, int intno);
+  FILE * get_ide_disk(int controller, int drive);
  private:
 
   // REGISTERS 60 & 64: KEYBOARD
@@ -151,5 +152,10 @@ class CAliM1543C : public CSystemComponent
   struct disk_info ide_info[2][2];
 
 };
+
+inline FILE * CAliM1543C::get_ide_disk(int controller, int drive)
+{
+  return ide_info[controller][drive].handle;
+}
 
 #endif // !defined(INCLUDED_ALIM1543C_H)
