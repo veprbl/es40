@@ -204,7 +204,7 @@
  	    dtb->write_tag(0,r[REG_2]);						\
 	    break;								\
         case 0x21: /* DTB_PTE0 */						\
- 	    dtb->write_pte(0,r[REG_2],asn0);				\
+ 	    dtb->write_pte(0,r[REG_2],asn0);					\
 	    break;								\
         case 0x24: /* DTB_IS0 */						\
  	    dtb->InvalidateSingle(r[REG_2],asn0);				\
@@ -225,11 +225,13 @@
         case 0x2a: /* DC_STAT */						\
  	    dc_stat &= ~r[REG_2];						\
 	    break;								\
+	case 0x2d: /* NEED TO FIND OUT WHAT THIS IS!!!!!! */			\
+	    break;								\
         case 0xa0: /* DTB_TAG1 */						\
  	    dtb->write_tag(1,r[REG_2]);						\
 	    break;								\
         case 0xa1: /* DTB_PTE1 */						\
- 	    dtb->write_pte(1,r[REG_2],asn1);				\
+ 	    dtb->write_pte(1,r[REG_2],asn1);					\
 	    break;								\
         case 0xa2: /* DTB_IAP */						\
  	    dtb->InvalidateAllProcess();					\
