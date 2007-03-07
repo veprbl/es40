@@ -35,9 +35,9 @@
 
 #if !defined(ES40_LITTLE_ENDIAN) && !defined(ES40_BIG_ENDIAN)
 
-#if defined(_WIN32)
+#if defined(_WIN32) || defined(__VMS)
 #define ES40_LITTLE_ENDIAN
-#else // defined (_WIN32)
+#else // defined (_WIN32) || defined(__VMS)
 
 #include <sys/param.h>
 #if (defined(__BYTE_ORDER) && (__BYTE_ORDER == __BIG_ENDIAN)) || defined(sparc)
@@ -46,7 +46,7 @@
 #define ES40_LITTLE_ENDIAN
 #endif
 
-#endif // defined (_WIN32)
+#endif // defined (_WIN32) || defined(__VMS)
 
 #endif // !defined(ES40_LITTLE_ENDIAN) && !defined(ES40_BIG_ENDIAN)
 
