@@ -55,17 +55,17 @@
 #define DO_INSWL r[REG_3] = (r[REG_1]&X64_WORD) << ((V_2&7)*8);
 #define DO_INSLL r[REG_3] = (r[REG_1]&X64_LONG) << ((V_2&7)*8);
 #define DO_INSQL r[REG_3] = (r[REG_1]         ) << ((V_2&7)*8);
-#define DO_INSWH r[REG_3] = (r[REG_1]&X64_WORD) >> ((64-((V_2&7)*8))&63);
-#define DO_INSLH r[REG_3] = (r[REG_1]&X64_LONG) >> ((64-((V_2&7)*8))&63);
-#define DO_INSQH r[REG_3] = (r[REG_1]&X64_QUAD) >> ((64-((V_2&7)*8))&63);
+#define DO_INSWH r[REG_3] = (V_2&7) ? ((r[REG_1]&X64_WORD) >> ((64-((V_2&7)*8))&63)) : 0;
+#define DO_INSLH r[REG_3] = (V_2&7) ? ((r[REG_1]&X64_LONG) >> ((64-((V_2&7)*8))&63)) : 0;
+#define DO_INSQH r[REG_3] = (V_2&7) ? ((r[REG_1]&X64_QUAD) >> ((64-((V_2&7)*8))&63)) : 0;
 
 #define DO_MSKBL r[REG_3] = r[REG_1] & ~(X64_BYTE<<((V_2&7)*8));
 #define DO_MSKWL r[REG_3] = r[REG_1] & ~(X64_WORD<<((V_2&7)*8));
 #define DO_MSKLL r[REG_3] = r[REG_1] & ~(X64_LONG<<((V_2&7)*8));
 #define DO_MSKQL r[REG_3] = r[REG_1] & ~(X64_QUAD<<((V_2&7)*8));
-#define DO_MSKWH r[REG_3] = (V_2&7) ? r[REG_1] & ~(X64_WORD>>((64-((V_2&7)*8))&63)) : r[REG_1];
-#define DO_MSKLH r[REG_3] = (V_2&7) ? r[REG_1] & ~(X64_LONG>>((64-((V_2&7)*8))&63)) : r[REG_1];
-#define DO_MSKQH r[REG_3] = (V_2&7) ? r[REG_1] & ~(X64_QUAD>>((64-((V_2&7)*8))&63)) : r[REG_1];
+#define DO_MSKWH r[REG_3] = (V_2&7) ? (r[REG_1] & ~(X64_WORD>>((64-((V_2&7)*8))&63))) : r[REG_1];
+#define DO_MSKLH r[REG_3] = (V_2&7) ? (r[REG_1] & ~(X64_LONG>>((64-((V_2&7)*8))&63))) : r[REG_1];
+#define DO_MSKQH r[REG_3] = (V_2&7) ? (r[REG_1] & ~(X64_QUAD>>((64-((V_2&7)*8))&63))) : r[REG_1];
 
 #define DO_SEXTB r[REG_3] = SEXT(V_2,8);
 #define DO_SEXTW r[REG_3] = SEXT(V_2,16);
