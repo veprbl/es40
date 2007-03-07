@@ -150,7 +150,10 @@ void CTraceEngine::trace(CAlphaCPU * cpu, u64 f, u64 t, bool down, bool up, cons
 	    }
 	}
     }
-	
+
+  if(asPRBRs[p].trchide != -1)
+    return;
+ 
   if (!down)
     {
       trace_br(cpu,f,t);
