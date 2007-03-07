@@ -349,6 +349,10 @@ int CAlphaCPU::DoClock()
 	     || get_clean_pc()==X64(8bb78)	// write in memory test (aa)
 	     || get_clean_pc()==X64(8bc0c)	// write in memory test (bb)
 	     || get_clean_pc()==X64(8bc94)	// write in memory test (00)
+
+	     // HACK: APB.EXE fault on boot flags...
+
+	     || get_clean_pc()==X64(2005e470)	
 	     )
 	next_pc();
 

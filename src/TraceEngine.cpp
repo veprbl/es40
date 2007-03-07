@@ -51,7 +51,8 @@ CTraceEngine * trc;
 
 inline void write_printable_s(char * dest, char * org)
 {
-  while (*org)
+  int cnt = 100;
+  while (*org && cnt--)
     {
       *(dest++) = printable(*(org++));
     }
@@ -192,7 +193,9 @@ void CTraceEngine::trace(CAlphaCPU * cpu, u64 f, u64 t, bool down, bool up, cons
 	}
     }
 
-  fprintf(asPRBRs[p].f,"%08x  (r27 = %" LL "x, r16 = %" LL "x, r17 = %" LL "x, r18 = %" LL "x, )\n",pc_t, cpu->get_r(27,true), cpu->get_r(16,true), cpu->get_r(17,true), cpu->get_r(18,true));
+  fprintf(asPRBRs[p].f,"%08x",pc_t);
+  write_arglist(cpu,asPRBRs[p].f,"(%s|16%, %s|17%, %s|18%, %s|19%)");
+  fprintf(asPRBRs[p].f,"\n");
 }
 
 void CTraceEngine::trace_br(CAlphaCPU * cpu, u64 f, u64 t)
@@ -356,6 +359,8 @@ void CTraceEngine::write_arglist(CAlphaCPU * c, FILE * fl, char * a)
   char * rp;
   int r;
   u64 value;
+  u64 phys;
+  bool b;
 
   while (*ap)
     {
@@ -379,12 +384,19 @@ void CTraceEngine::write_arglist(CAlphaCPU * c, FILE * fl, char * a)
 	      sprintf(op,"%" LL "x (",value);
 	      while (*op)
 		op++;
-	      if ((value&X64(fffffffff0000000))
-		  ==X64(0000000020000000))
-		value-=X64(000000001fe00000);
-	      if ((value&X64(fffffffff0000000))
-		  ==X64(0000000010000000))
-		value-=X64(000000000fffe000);
+	      if (!c->get_tb(false)->convert_address(value,&phys,0,false,0,c->get_asn(false),c->get_spe(false),&b))
+	      {
+		      value = phys;
+	      }
+	      else
+	      {
+	        if ((value&X64(fffffffff0000000))
+		    ==X64(0000000020000000))
+		  value-=X64(000000001fe00000);
+	        if ((value&X64(fffffffff0000000))
+		    ==X64(0000000010000000))
+		  value-=X64(000000000fffe000);
+	      }
 	      if ((value > 0) && (value < (X64(1)<<cSystem->get_memory_bits())))
 		write_printable_s(op, cSystem->PtrToMem(value));
 	      else

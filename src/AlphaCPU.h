@@ -85,6 +85,10 @@ class CAlphaCPU : public CSystemComponent
   void next_pc();
   void set_pc(u64 p_pc);
 
+  CTranslationBuffer * get_tb(bool bIBOX);
+  int get_asn(bool bIBOX);
+  int get_spe(bool bIBOX);
+
 #if defined(IDB)
   void listing(u64 from, u64 to);
 #endif
@@ -369,4 +373,27 @@ inline u64 CAlphaCPU::get_prbr(void)
     return cSystem->ReadMem(0x70a8 + (0x200 * get_cpuid()),64);
 }
 
+inline CTranslationBuffer * CAlphaCPU::get_tb(bool bIBOX)
+{
+  if (bIBOX)
+    return itb;
+  else
+    return dtb;
+};
+
+inline int CAlphaCPU::get_asn(bool bIBOX)
+{
+  if (bIBOX)
+    return asn;
+  else
+    return asn0;
+}
+
+inline int CAlphaCPU::get_spe(bool bIBOX)
+{
+  if (bIBOX)
+    return i_ctl_spe;
+  else
+    return m_ctl_spe;
+}
 #endif // !defined(INCLUDED_ALPHACPU_H)
