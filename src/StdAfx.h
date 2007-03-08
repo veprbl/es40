@@ -37,7 +37,7 @@
 #define INCLUDED_STDAFX_H
 
 #include "datatypes.h"
-#include "endian.h"
+#include "es40_endian.h"
 
 #if defined(_WIN32)
 

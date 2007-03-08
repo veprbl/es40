@@ -83,18 +83,24 @@ CTraceEngine::~CTraceEngine(void)
 void CTraceEngine::trace(CAlphaCPU * cpu, u64 f, u64 t, bool down, bool up, const char * x, int y)
 {
   int p;
-  u64 f1 = ((f&X64(fffffffff0000000))==
+  u64 f1;
+  u64 t1;
+  bool b;
+
+  if (!cpu->get_tb(true)->convert_address(f,&f1,0,false,0,cpu->get_asn(true),cpu->get_spe(true),&b))
+    f1 = ((f&X64(fffffffff0000000))==
+  	    X64(0000000020000000))?
+      f-X64(000000001fe00000):
+      (((f&X64(fffffffff0000000))==
+        X64(0000000010000000))?
+       f-X64(000000000fffe000):f);
+  if (!cpu->get_tb(true)->convert_address(t,&t1,0,false,0,cpu->get_asn(true),cpu->get_spe(true),&b))
+    t1 = ((t&X64(fffffffff0000000))==
 	    X64(0000000020000000))?
-    f-X64(000000001fe00000):
-    (((f&X64(fffffffff0000000))==
-      X64(0000000010000000))?
-     f-X64(000000000fffe000):f);
-  u64 t1 = ((t&X64(fffffffff0000000))==
-	    X64(0000000020000000))?
-    t-X64(000000001fe00000):
-    (((t&X64(fffffffff0000000))==
-      X64(0000000010000000))?
-     t-X64(000000000fffe000):t);
+      t-X64(000000001fe00000):
+      (((t&X64(fffffffff0000000))==
+        X64(0000000010000000))?
+       t-X64(000000000fffe000):t);
 
 
   p = get_prbr(cpu->get_prbr());
@@ -201,18 +207,24 @@ void CTraceEngine::trace(CAlphaCPU * cpu, u64 f, u64 t, bool down, bool up, cons
 void CTraceEngine::trace_br(CAlphaCPU * cpu, u64 f, u64 t)
 {
   int p;
-  u64 f1 = ((f&X64(fffffffff0000000))==
+  u64 f1;
+  u64 t1;
+  bool b;
+
+  if (!cpu->get_tb(true)->convert_address(f,&f1,0,false,0,cpu->get_asn(true),cpu->get_spe(true),&b))
+    f1 = ((f&X64(fffffffff0000000))==
+  	    X64(0000000020000000))?
+      f-X64(000000001fe00000):
+      (((f&X64(fffffffff0000000))==
+        X64(0000000010000000))?
+       f-X64(000000000fffe000):f);
+  if (!cpu->get_tb(true)->convert_address(t,&t1,0,false,0,cpu->get_asn(true),cpu->get_spe(true),&b))
+    t1 = ((t&X64(fffffffff0000000))==
 	    X64(0000000020000000))?
-    f-X64(000000001fe00000):
-    (((f&X64(fffffffff0000000))==
-      X64(0000000010000000))?
-     f-X64(000000000fffe000):f);
-  u64 t1 = ((t&X64(fffffffff0000000))==
-	    X64(0000000020000000))?
-    t-X64(000000001fe00000):
-    (((t&X64(fffffffff0000000))==
-      X64(0000000010000000))?
-     t-X64(000000000fffe000):t);
+      t-X64(000000001fe00000):
+      (((t&X64(fffffffff0000000))==
+        X64(0000000010000000))?
+       t-X64(000000000fffe000):t);
   p = get_prbr(cpu->get_prbr());
 
   if (asPRBRs[p].trc_waitfor)
@@ -282,18 +294,20 @@ void CTraceEngine::set_waitfor(CAlphaCPU * cpu, u64 address)
   if(asPRBRs[p].trc_waitfor == 0)
     asPRBRs[p].trc_waitfor = address;
 }
-bool CTraceEngine::get_fnc_name(u64 address, char ** p_fn_name)
+bool CTraceEngine::get_fnc_name(CAlphaCPU * c, u64 address, char ** p_fn_name)
 {
   int i;
-  u64 a = ((address&X64(fffffffff0000000))
-	   ==X64(0000000020000000))?
-    address-X64(000000001fe00000):
-    (((address&X64(fffffffff0000000))==
-      X64(0000000010000000))?
-     address-X64(000000000fffe000):address);
 
-    
-  address;
+  u64 a;
+  bool b;
+  
+  if (c->get_tb(true)->convert_address(address,&a,0,false,0,c->get_asn(true),c->get_spe(true),&b))
+    a = ((address&X64(fffffffff0000000))
+  	     ==X64(0000000020000000))?
+     address-X64(000000001fe00000):
+      (((address&X64(fffffffff0000000))==
+        X64(0000000010000000))?
+       address-X64(000000000fffe000):address);
 
   for (i=0;i<iNumFunctions;i++)
     {
@@ -318,7 +332,7 @@ int CTraceEngine::get_prbr(u64 prbr)
 	{
 	  if (asPRBRs[i].f == current_trace_file)
 	    return i;
-	  if (!strcmp(asPRBRs[i].procname,cSystem->PtrToMem(prbr+0x154)))
+	  if (!strncmp(asPRBRs[i].procname,cSystem->PtrToMem(prbr+0x154),20))
 	    {
 	      current_trace_file = asPRBRs[i].f;
 	      return i;
@@ -336,7 +350,10 @@ int CTraceEngine::get_prbr(u64 prbr)
   asPRBRs[i].generation++;
 
   asPRBRs[i].prbr = prbr;
-  sprintf(asPRBRs[i].procname,"%s",cSystem->PtrToMem(prbr+0x154));
+  if (prbr > 0 && prbr < (X64(1)<<cSystem->get_memory_bits()))
+    strncpy(asPRBRs[i].procname, cSystem->PtrToMem(prbr+0x154), 20);
+  else
+    strcpy(asPRBRs[i].procname,"");
   sprintf(filename,"trace_%08" LL "x_%02d_%s.trc",prbr,asPRBRs[i].generation,asPRBRs[i].procname);
   asPRBRs[i].f = fopen(filename,"w");
   if (asPRBRs[i].f==0)

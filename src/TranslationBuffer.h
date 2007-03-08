@@ -36,7 +36,7 @@
 #include "datatypes.h"
 #include "System.h"
 
-#define TB_ENTRIES	128
+#define TB_ENTRIES	1024
 
 #define CM_KERNEL	0
 #define CM_EXECUTIVE	1
@@ -85,12 +85,12 @@ class CTranslationBuffer
  public:
   virtual void RestoreState(FILE * f);
   void SaveState(FILE * f);
-  int FindEntry(u64 virt, int asn);
+  int FindEntry(u64 virt);
   void InvalidateAll();
   void InvalidateAllProcess();
-  void InvalidateSingle(u64 address, int asn);
+  void InvalidateSingle(u64 address);
   int convert_address(u64 virt, u64 * phys, u8 access, bool check, int cm, int asn, int spe, bool * asm_bit);
-  void write_pte(int number, u64 value, int asn);
+  void write_pte(int number, u64 value);
   void write_tag(int number, u64 value);
   CTranslationBuffer(class CAlphaCPU * c, bool ibox);
   virtual ~CTranslationBuffer();
@@ -99,190 +99,10 @@ class CTranslationBuffer
   u64 v_mask;				/**< bitmask for the virtual part of the address. */
   u64 p_mask;				/**< bitmask for the physical part of the address. */
   bool bIBOX;
-  class CAlphaCPU * cCpu;
+  class CAlphaCPU * cCPU;
   struct STBEntry entry[TB_ENTRIES];
   int    next_entry;
   u64	   temp_tag[2];
 };
-
-
-inline void CTranslationBuffer::write_tag(int number, u64 value)
-{
-  temp_tag[number] = value;
-}
-
-inline void CTranslationBuffer::write_pte(int number, u64 value, int asn)
-{
-  int i,j;
-
-  if (FindEntry(temp_tag[number],asn) == -1)
-    {
-      entry[next_entry].gh      = (u8)((value>>GH_BIT)  & 3);
-      switch (entry[next_entry].gh)
-	{
-	case 0:
-	  v_mask = X64(0000ffffffffe000);  
-	  break;
-	case 1:
-	  v_mask = X64(0000ffffffff0000);
-	  break;
-	case 2:
-	  v_mask = X64(0000fffffff80000);
-	  break;
-	case 3:
-	  v_mask = X64(0000ffffffc00000);
-	  break;
-	}
-      entry[next_entry].virt = (temp_tag[number] & v_mask);
-	
-      if (bIBOX) 
-	{
-	  entry[next_entry].phys = value & v_mask;
-	  entry[next_entry].fault[0] = false;
-	  entry[next_entry].fault[1] = false;
-	  for (j=0;j<4;j++) {
-	    entry[next_entry].access[ACCESS_READ][j] = (value>>(ACCESS_BIT+j)) & 1;
-	    entry[next_entry].access[ACCESS_WRITE][j] = false;
-	  }
-
-	} 
-      else 
-	{
-	  entry[next_entry].phys = (value >> MBOX_PHYS_S) & v_mask;
-	  for (i=0;i<2;i++) 
-	    {
-	      entry[next_entry].fault[i] = (value>>(FAULT_BIT+i)) & 1;
-	      for (j=0;j<4;j++)
-		entry[next_entry].access[i][j] = (value>>(ACCESS_BIT+j+(i*4))) & 1;
-	    }
-	}
-
-      entry[next_entry].asm_bit = (value>>ASM_BIT) & 1;
-      if (!entry[next_entry].asm_bit)
-	entry[next_entry].asn = asn;
-      entry[next_entry].valid = true;
-	
-      next_entry++;
-      if (next_entry==TB_ENTRIES)
-	next_entry = 0;
-    }
-}
-
-inline int CTranslationBuffer::FindEntry(u64 virt, int asn)
-{
-  int i;
-
-  for (i=0;i<TB_ENTRIES;i++)
-    {
-      switch (entry[i].gh)
-	{
-	case 0:
-	  v_mask = X64(0000ffffffffe000);
-	  p_mask = X64(0000000000001fff);
-	  break;
-	case 1:
-	  v_mask = X64(0000ffffffff0000);
-	  p_mask = X64(000000000000ffff);
-	  break;
-	case 2:
-	  v_mask = X64(0000fffffff80000);
-	  p_mask = X64(000000000007ffff);
-	  break;
-	case 3:
-	  v_mask = X64(0000ffffffc00000);
-	  p_mask = X64(00000000003fffff);
-	  break;
-	}
-
-      if (     entry[i].valid
-	       && !((entry[i].virt ^ virt) & v_mask)
-	       &&  (     entry[i].asm_bit
-			 || (entry[i].asn == asn)
-			 )
-	       )
-	return i;
-    }
-  return -1;
-}
-
-inline int CTranslationBuffer::convert_address(u64 virt, u64 *phys, u8 access, bool check, int cm, int asn, int spe, bool * asm_bit)
-{
-  int i;
-
-  if (spe && !cm)
-    {
-      if (   (((virt>>46)&3) == 2)
-	     && (spe&4))
-	{
-	  *phys = virt & X64(00000fffffffffff);
-	  *asm_bit = false;
-	  return 0;
-	}
-      else if (   (((virt>>41)&0x7f) == 0x7e)
-		  && (spe & 2))
-	{
-	  *phys =   (virt & X64(000001ffffffffff)) 
-	    | ((virt & X64(0000010000000000)) * 6);
-	  *asm_bit = false;
-	  return 0;
-	}
-      else if (   (((virt>>30)&0x3ffff) == 0x3fffe)
-		  && (spe & 1))
-	{
-	  *phys = virt & X64(000000003fffffff);
-	  *asm_bit = false;
-	  return 0;
-	}
-    }
-
-  i = FindEntry(virt, asn);
-  if (i<0)
-    return E_NOT_FOUND;
-
-  // check access...
-  if (check)
-  {
-    if (!entry[i].access[access][cm])
-      return E_ACCESS;
-    if (entry[i].fault[access])
-      return E_FAULT;
-  }
-  // all is ok...
-
-  *phys = (entry[i].phys & v_mask) | (virt & p_mask);
-  *asm_bit = entry[i].asm_bit;
-
-  return 0;
-}
-
-inline void CTranslationBuffer::InvalidateAll()
-{
-  int i;
-  for (i=0;i<TB_ENTRIES;i++)
-    entry[i].valid = false;
-
-  next_entry = 0;
-}
-
-inline void CTranslationBuffer::InvalidateAllProcess()
-{
-  int i;
-  for (i=0;i<TB_ENTRIES;i++)
-    {
-      if (!entry[i].asm_bit)
-	entry[i].valid = false;
-    }
-
-  next_entry = 0;
-}
-
-inline void CTranslationBuffer::InvalidateSingle(u64 address, int asn)
-{
-  int i;
-  i = FindEntry(address, asn);
-  if (i<0)
-    return;
-  entry[i].valid = false;
-}
 
 #endif // !defined(INCLUDED_TRANSLATIONBUFFER_H)

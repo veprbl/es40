@@ -41,8 +41,9 @@
 	  r[REG_1] = READ_PHYS(8);
 
 #define DO_LDL									\
+	if (FREG_1 != 31) {							\
 	  DATA_PHYS(r[REG_2] + DISP_16, ACCESS_READ, true, false, false);	\
-	  r[REG_1] = SEXT(READ_PHYS(32),32);
+	  r[REG_1] = SEXT(READ_PHYS(32),32); }
 
 #define DO_LDL_L								\
 	  lock_flag = true;							\
@@ -50,8 +51,9 @@
 	  r[REG_1] = SEXT(READ_PHYS(32),32);
 
 #define DO_LDQ									\
+	if (FREG_1 != 31) {							\
 	  DATA_PHYS(r[REG_2] + DISP_16, ACCESS_READ, true, false, false);	\
-	  r[REG_1] = READ_PHYS(64);
+	  r[REG_1] = READ_PHYS(64); }
 
 #define DO_LDQ_L								\
 	  lock_flag = true;							\

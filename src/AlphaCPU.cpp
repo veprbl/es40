@@ -185,7 +185,7 @@ CAlphaCPU::CAlphaCPU(CSystem * system) : CSystemComponent (system)
   // SROM imitation...
 
   dtb->write_tag(0,0);
-  dtb->write_pte(0,X64(ff61),asn0);
+  dtb->write_pte(0,X64(ff61));
 
 #if defined(IDB)
   bListing = false;
@@ -350,9 +350,6 @@ int CAlphaCPU::DoClock()
 	     || get_clean_pc()==X64(8bc0c)	// write in memory test (bb)
 	     || get_clean_pc()==X64(8bc94)	// write in memory test (00)
 
-	     // HACK: APB.EXE fault on boot flags...
-
-	     || get_clean_pc()==X64(2005e470)	
 	     )
 	next_pc();
 

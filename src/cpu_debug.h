@@ -122,7 +122,7 @@ char * IPR_NAME[] = {
 #if defined(IDB)
 
 #define DEBUG_XX							\
-  if (trc->get_fnc_name(current_pc&~X64(3),&funcname))			\
+  if (trc->get_fnc_name(this, current_pc&~X64(3),&funcname))			\
     {									\
       if (bListing && !strcmp(funcname,""))				\
         {								\
@@ -184,7 +184,7 @@ char * IPR_NAME[] = {
 	  printf("\n%s:\n",&(funcname[5]));				\
 	  pc = current_pc;						\
 	  while (   (pc==current_pc)					\
-		    || !trc->get_fnc_name(pc,&funcname) )		\
+		    || !trc->get_fnc_name(this,pc,&funcname) )		\
 	    {								\
               printf("%08x: %016" LL "x\n",(u32)pc, cSystem->ReadMem(pc,64)); \
 	      pc += 8;							\
@@ -196,7 +196,7 @@ char * IPR_NAME[] = {
 	  printf("\n%s:\n",&(funcname[5]));				\
 	  pc = current_pc;						\
 	  while (   (pc==current_pc)					\
-		    || !trc->get_fnc_name(pc,&funcname) )		\
+		    || !trc->get_fnc_name(this,pc,&funcname) )		\
 	    {								\
 	      printf("%08x: %08" LL "x\n",(u32)pc, cSystem->ReadMem(pc,32)); \
 	      pc += 4;							\
@@ -266,7 +266,7 @@ char * IPR_NAME[] = {
       DEBUG_XX								\
       sprintf(dbg_strptr,#mnemonic " r%d, ", REG_1&31);			\
       dbg_strptr += strlen(dbg_strptr);					\
-      if (trc->get_fnc_name(dbg_x,&funcname))				\
+      if (trc->get_fnc_name(this,dbg_x,&funcname))				\
 	sprintf(dbg_strptr,"%s",funcname);				\
       else								\
 	sprintf (dbg_strptr,"%" LL "x", dbg_x);				\
@@ -282,7 +282,7 @@ char * IPR_NAME[] = {
       DEBUG_XX								\
       sprintf(dbg_strptr,#mnemonic " r%d, ", REG_1&31);			\
       dbg_strptr += strlen(dbg_strptr);					\
-      if (trc->get_fnc_name(dbg_x,&funcname))				\
+      if (trc->get_fnc_name(this,dbg_x,&funcname))				\
 	sprintf(dbg_strptr,"%s",funcname);				\
       else								\
 	sprintf (dbg_strptr,"%" LL "x", dbg_x);				\
@@ -302,7 +302,7 @@ char * IPR_NAME[] = {
       DEBUG_XX								\
       sprintf(dbg_strptr,#mnemonic " r%d, ", REG_1&31);			\
       dbg_strptr += strlen(dbg_strptr);					\
-      if (trc->get_fnc_name(dbg_x,&funcname))				\
+      if (trc->get_fnc_name(this,dbg_x,&funcname))				\
 	sprintf(dbg_strptr,"%s",funcname);				\
       else								\
 	sprintf (dbg_strptr,"%" LL "x", dbg_x);				\

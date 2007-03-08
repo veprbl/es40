@@ -55,11 +55,11 @@ struct STraceFunction {
 struct STracePRBR {
   u64 prbr;
   FILE * f;
-  u64 trcadd[700];
+  u64 trcadd[701];
   int trclvl;
   int trchide;
   u64 trc_waitfor;
-  char procname[1000];
+  char procname[30];
   int generation;
 };
 
@@ -84,7 +84,7 @@ class CTraceEngine
   void trace(class CAlphaCPU * cpu, u64 f, u64 t, bool down, bool up, const char * x, int y);
   void trace_br(class CAlphaCPU * cpu, u64 f, u64 t);
   void add_function(u64 address, char * fn_name, char * fn_arglist, bool step_over);
-  bool get_fnc_name(u64 address, char ** p_fn_name);
+  bool get_fnc_name(class CAlphaCPU * cpu, u64 address, char ** p_fn_name);
   void set_waitfor(class CAlphaCPU * cpu, u64 address);
   FILE * trace_file();
   void trace_dev(const char * text);

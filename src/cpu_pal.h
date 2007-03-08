@@ -49,7 +49,7 @@
  	    r[REG_1] = exc_addr;				\
 	    break;						\
         case 0x07: /* IVA_FORM */				\
- 	    r[REG_1] = va_form(exc_addr,i_ctl_va_mode,i_ctl_vptb);	\
+ 	    r[REG_1] = va_form(exc_addr,true);			\
 	    break;						\
         case 0x08: /* IER_CM   */				\
         case 0x09: /* CM       */				\
@@ -112,7 +112,7 @@
  	    r[REG_1] = fault_va;				\
 	    break;						\
         case 0xc3: /* VA_FORM */				\
- 	    r[REG_1] = va_form(fault_va, va_ctl_va_mode, va_ctl_vptb);	\
+ 	    r[REG_1] = va_form(fault_va, false);		\
 	    break;						\
         default:						\
 	  UNKNOWN2;						\
@@ -139,7 +139,7 @@
  	    itb->write_tag(0,r[REG_2]);						\
 	    break;								\
         case 0x01: /* ITB_PTE */						\
- 	    itb->write_pte(0,r[REG_2],asn);				\
+ 	    itb->write_pte(0,r[REG_2]);				\
             break;								\
         case 0x02: /* ITB_IAP */						\
  	    itb->InvalidateAllProcess();					\
@@ -148,7 +148,7 @@
  	    itb->InvalidateAll();						\
 	    break;								\
         case 0x04: /* ITB_IS */							\
- 	    itb->InvalidateSingle(r[REG_2],asn);				\
+ 	    itb->InvalidateSingle(r[REG_2]);				\
 	    break;								\
         case 0x09: /* CM */							\
  	    cm = (int)(r[REG_2]>>3) & 3;					\
@@ -204,10 +204,10 @@
  	    dtb->write_tag(0,r[REG_2]);						\
 	    break;								\
         case 0x21: /* DTB_PTE0 */						\
- 	    dtb->write_pte(0,r[REG_2],asn0);					\
+ 	    dtb->write_pte(0,r[REG_2]);						\
 	    break;								\
         case 0x24: /* DTB_IS0 */						\
- 	    dtb->InvalidateSingle(r[REG_2],asn0);				\
+ 	    dtb->InvalidateSingle(r[REG_2]);					\
 	    break;								\
         case 0x25: /* DTB_ASN0 */						\
  	    asn0 = (int)(r[REG_2] >> 56);					\
@@ -231,7 +231,7 @@
  	    dtb->write_tag(1,r[REG_2]);						\
 	    break;								\
         case 0xa1: /* DTB_PTE1 */						\
- 	    dtb->write_pte(1,r[REG_2],asn1);					\
+ 	    dtb->write_pte(1,r[REG_2]);						\
 	    break;								\
         case 0xa2: /* DTB_IAP */						\
  	    dtb->InvalidateAllProcess();					\
@@ -240,7 +240,7 @@
  	    dtb->InvalidateAll();						\
 	    break;								\
         case 0xa4: /* DTB_IS1 */						\
- 	    dtb->InvalidateSingle(r[REG_2],asn1);				\
+ 	    dtb->InvalidateSingle(r[REG_2]);					\
 	    break;								\
         case 0xa5: /* DTB_ASN1 */						\
  	    asn1 = (int)(r[REG_2] >> 56);					\

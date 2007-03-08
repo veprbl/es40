@@ -88,6 +88,7 @@ class CAlphaCPU : public CSystemComponent
   CTranslationBuffer * get_tb(bool bIBOX);
   int get_asn(bool bIBOX);
   int get_spe(bool bIBOX);
+  u64 va_form(u64 address, bool bIBOX);
 
 #if defined(IDB)
   void listing(u64 from, u64 to);
@@ -139,7 +140,6 @@ class CAlphaCPU : public CSystemComponent
   int m_ctl_spe;		/**< IPR M_CTL: spe (Super Page mode enabled) [HRM p 5-29..30] */
   int i_ctl_spe;		/**< IPR I_CTL: spe (Super Page mode enabled) [HRM p 5-15..18] */
 
-  u64 va_form(u64 address, int va_ctl, u64 ptbr);
   u64 exc_addr;				/**< IPR EXC_ADDR: address of last exception [HRM p 5-8] */
   u64 pmpc;
   u64 fpcr;				/**< Floating-Point Control Register [HRM p 2-36] */
@@ -253,19 +253,19 @@ inline int CAlphaCPU::get_icache(u64 address, u32 * data)
  * Used for IPR VA_FORM [HRM 5-5..6] and IPR IVA_FORM [HRM 5-9].
  **/
 
-inline u64 CAlphaCPU::va_form(u64 address, int va_ctl, u64 ptbr)
+inline u64 CAlphaCPU::va_form(u64 address, bool bIBOX)
 {
-  switch( va_ctl)
+  switch( bIBOX?i_ctl_va_mode:va_ctl_va_mode)
     {
     case 0:
-      return  (ptbr            & X64(fffffffe00000000))
+      return  ((bIBOX?i_ctl_vptb:va_ctl_vptb) & X64(fffffffe00000000))
 	| ((address>>10)   & X64(00000001fffffff8));
     case 1:
-      return   (ptbr	         & X64(fffff80000000000))
+      return   ((bIBOX?i_ctl_vptb:va_ctl_vptb) & X64(fffff80000000000))
 	| ((address>>10)  & X64(0000003ffffffff8))
 	| (((address>>10) & X64(0000002000000000)) * X64(3e));
     case 2:
-      return  (ptbr			 & X64(ffffffffc0000000))
+      return  ((bIBOX?i_ctl_vptb:va_ctl_vptb) & X64(ffffffffc0000000))
 	|((address>>10)   & X64(00000000003ffff8));
     }
   return 0;
@@ -386,7 +386,11 @@ inline int CAlphaCPU::get_asn(bool bIBOX)
   if (bIBOX)
     return asn;
   else
+  {
+    if (asn0 != asn1)
+      printf("Warning: MBOX-ASN needed, and asn0 != asn1!\n");
     return asn0;
+  }
 }
 
 inline int CAlphaCPU::get_spe(bool bIBOX)
