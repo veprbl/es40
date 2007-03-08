@@ -192,6 +192,7 @@ int CTranslationBuffer::convert_address(u64 virt, u64 *phys, u8 access, bool che
   u64 phys_pte;
   u64 pte;
   u64 va_form;
+  bool b;
 
   if (cCPU->get_spe(bIBOX) && !cm)
     {
@@ -225,10 +226,18 @@ int CTranslationBuffer::convert_address(u64 virt, u64 *phys, u8 access, bool che
     if (cCPU->get_r(22+32,false)&X64(8000000000000000))
       return E_NOT_FOUND;
     va_form = cCPU->va_form(virt,bIBOX);
-    i = FindEntry(va_form);
-    if (i<0)
-      return E_NOT_FOUND;
-    phys_pte = (entry[i].phys & v_mask) | (va_form & p_mask);
+    if (bIBOX)
+    {
+      if (cCPU->get_tb(false)->convert_address(va_form, &phys_pte, 0, false, 0, cCPU->get_asn(false), cCPU->get_spe(false), &b))
+	return E_NOT_FOUND;
+    }
+    else
+    {
+      i = FindEntry(va_form);
+      if (i<0)
+        return E_NOT_FOUND;
+      phys_pte = (entry[i].phys & v_mask) | (va_form & p_mask);
+    }
     pte = systm->ReadMem(phys_pte,64);
     if (!(pte&1))
       return E_NOT_FOUND;
