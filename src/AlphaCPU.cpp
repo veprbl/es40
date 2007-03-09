@@ -843,14 +843,14 @@ void CAlphaCPU::listing(u64 from, u64 to)
   bSavedDebug = bDisassemble;
   bDisassemble = true;
   bListing = true;
-  pc = from;
-  for(;;)
-  {
-    DoClock();
-    if (pc>to)
-      break;
-  }
-  for(pc=from;pc<=to;DoClock())
+//  pc = from;
+//  for(;;)
+//  {
+//    DoClock();
+//    if (pc>to)
+//      break;
+//  }
+  for(pc=from;pc<=to;DoClock());
   bListing = false;
   pc = iSavedPC;
   bDisassemble = bSavedDebug;

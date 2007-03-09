@@ -83,6 +83,7 @@ CTraceEngine::~CTraceEngine(void)
 void CTraceEngine::trace(CAlphaCPU * cpu, u64 f, u64 t, bool down, bool up, const char * x, int y)
 {
   int p;
+  int o;
   u64 f1;
   u64 t1;
   bool b;
@@ -104,13 +105,14 @@ void CTraceEngine::trace(CAlphaCPU * cpu, u64 f, u64 t, bool down, bool up, cons
 
 
   p = get_prbr(cpu->get_prbr());
-  if (p!= asCPUs[cpu->get_cpuid()].last_prbr)
+  o = asCPUs[cpu->get_cpuid()].last_prbr;
+  if (p != o)
     {
-      if (asCPUs[cpu->get_cpuid()].last_prbr != -1)
+      if (o != -1)
 	{
-	  fprintf(asPRBRs[asCPUs[cpu->get_cpuid()].last_prbr].f, "\n==> Switch to PRBR %" LL "x (%s)\n", cpu->get_prbr(), cSystem->PtrToMem(cpu->get_prbr()+0x154));
-	  fprintf(asPRBRs[p].f, "    This is PRBR %" LL "x (%s)\n", cpu->get_prbr(), cSystem->PtrToMem(cpu->get_prbr()+0x154));
-	  fprintf(asPRBRs[p].f,"<== Switch from PRBR %" LL "x (%s)\n\n", asPRBRs[asCPUs[cpu->get_cpuid()].last_prbr].prbr, cSystem->PtrToMem(asPRBRs[asCPUs[cpu->get_cpuid()].last_prbr].prbr+0x154));
+	  fprintf(asPRBRs[o].f, "\n==> Switch to PRBR %" LL "x (%s)\n",   asPRBRs[p].prbr, asPRBRs[p].procname);
+	  fprintf(asPRBRs[p].f, "    This is PRBR %" LL "x (%s)\n",       asPRBRs[p].prbr, asPRBRs[p].procname);
+	  fprintf(asPRBRs[p].f, "<== Switch from PRBR %" LL "x (%s)\n\n", asPRBRs[o].prbr, asPRBRs[o].procname);
 	}
       asCPUs[cpu->get_cpuid()].last_prbr = p;
     }

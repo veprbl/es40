@@ -365,12 +365,24 @@ inline u64 CAlphaCPU::get_f(int i)
 
 inline u64 CAlphaCPU::get_prbr(void)
 {
+  u64 v_prbr;	// virtual
+  u64 p_prbr;	// physical
+  bool b;
+
   if (r[21+32] && (   (r[21+32]+0xa8)< (128*1024*1024)))
     {
-      return cSystem->ReadMem(r[21+32] + 0xa8,64);
+      v_prbr = cSystem->ReadMem(r[21+32] + 0xa8,64);
     }
   else
-    return cSystem->ReadMem(0x70a8 + (0x200 * get_cpuid()),64);
+    v_prbr = cSystem->ReadMem(0x70a8 + (0x200 * get_cpuid()),64);
+
+  if (dtb->convert_address(v_prbr, &p_prbr, 0, false, 0, asn0, m_ctl_spe, &b))
+    p_prbr = v_prbr;
+
+  if (v_prbr < 0 || v_prbr > (X64(1)<<cSystem->get_memory_bits()))
+    v_prbr = 0;
+
+  return v_prbr;
 }
 
 inline CTranslationBuffer * CAlphaCPU::get_tb(bool bIBOX)
