@@ -89,7 +89,7 @@ class CTranslationBuffer
   void InvalidateAll();
   void InvalidateAllProcess();
   void InvalidateSingle(u64 address);
-  int convert_address(u64 virt, u64 * phys, u8 access, bool check, int cm, int asn, int spe, bool * asm_bit);
+  int convert_address(u64 virt, u64 * phys, u8 access, bool check, int cm, bool * asm_bit, bool cascade, bool forreal);
   void write_pte(int number, u64 value);
   void write_tag(int number, u64 value);
   CTranslationBuffer(class CAlphaCPU * c, bool ibox);

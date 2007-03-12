@@ -88,14 +88,14 @@ void CTraceEngine::trace(CAlphaCPU * cpu, u64 f, u64 t, bool down, bool up, cons
   u64 t1;
   bool b;
 
-  if (!cpu->get_tb(true)->convert_address(f,&f1,0,false,0,cpu->get_asn(true),cpu->get_spe(true),&b))
+  if (!cpu->get_tb(true)->convert_address(f,&f1,0,false,0,&b, false, false))
     f1 = ((f&X64(fffffffff0000000))==
   	    X64(0000000020000000))?
       f-X64(000000001fe00000):
       (((f&X64(fffffffff0000000))==
         X64(0000000010000000))?
        f-X64(000000000fffe000):f);
-  if (!cpu->get_tb(true)->convert_address(t,&t1,0,false,0,cpu->get_asn(true),cpu->get_spe(true),&b))
+  if (!cpu->get_tb(true)->convert_address(t,&t1,0,false,0,&b, false, false))
     t1 = ((t&X64(fffffffff0000000))==
 	    X64(0000000020000000))?
       t-X64(000000001fe00000):
@@ -213,14 +213,14 @@ void CTraceEngine::trace_br(CAlphaCPU * cpu, u64 f, u64 t)
   u64 t1;
   bool b;
 
-  if (!cpu->get_tb(true)->convert_address(f,&f1,0,false,0,cpu->get_asn(true),cpu->get_spe(true),&b))
+  if (!cpu->get_tb(true)->convert_address(f,&f1,0,false,0,&b, false, false))
     f1 = ((f&X64(fffffffff0000000))==
   	    X64(0000000020000000))?
       f-X64(000000001fe00000):
       (((f&X64(fffffffff0000000))==
         X64(0000000010000000))?
        f-X64(000000000fffe000):f);
-  if (!cpu->get_tb(true)->convert_address(t,&t1,0,false,0,cpu->get_asn(true),cpu->get_spe(true),&b))
+  if (!cpu->get_tb(true)->convert_address(t,&t1,0,false,0,&b, false, false))
     t1 = ((t&X64(fffffffff0000000))==
 	    X64(0000000020000000))?
       t-X64(000000001fe00000):
@@ -303,7 +303,7 @@ bool CTraceEngine::get_fnc_name(CAlphaCPU * c, u64 address, char ** p_fn_name)
   u64 a;
   bool b;
   
-  if (c->get_tb(true)->convert_address(address,&a,0,false,0,c->get_asn(true),c->get_spe(true),&b))
+  if (c->get_tb(true)->convert_address(address,&a,0,false,0,&b, false, false))
     a = ((address&X64(fffffffff0000000))
   	     ==X64(0000000020000000))?
      address-X64(000000001fe00000):
@@ -403,7 +403,7 @@ void CTraceEngine::write_arglist(CAlphaCPU * c, FILE * fl, char * a)
 	      sprintf(op,"%" LL "x (",value);
 	      while (*op)
 		op++;
-	      if (!c->get_tb(false)->convert_address(value,&phys,0,false,0,c->get_asn(false),c->get_spe(false),&b))
+	      if (!c->get_tb(false)->convert_address(value,&phys,0,false,0,&b, false, false))
 	      {
 		      value = phys;
 	      }
@@ -648,6 +648,9 @@ int CTraceEngine::parse(char command[100][100])
       printf("  HASHING [ ON | OFF ]                                               \n");
       printf("  BREAKPOINT [ OFF | > | < | = ] <hex value>                         \n");
       printf("  DISASSEMBLE [ON | OFF ]	                                           \n");
+#if defined(DEBUG_TB)
+      printf("  TBDEBUG [ON | OFF ]	                                           \n");
+#endif
       printf("  LIST <hex address> - <hex address>                                 \n");
       printf("  RUN [ <max cycles> ]                                               \n");
       printf("  LOAD [STATE | DPR | FLASH | CSV ] <file>                           \n");
@@ -786,6 +789,23 @@ int CTraceEngine::parse(char command[100][100])
 	return 0;
       }
     }
+#if defined(DEBUG_TB)
+    if (!strncasecmp(command[0],"TBDEBUG",strlen(command[0])))
+    {
+      if (!strcasecmp(command[1],"ON"))
+      {
+	printf("%%IDB-I-TBDON : Translation Buffer Debugging enabled.\n");
+	bTB_Debug = true;
+	return 0;
+      }
+      if (!strcasecmp(command[1],"OFF"))
+      {
+	printf("%%IDB-I-TBDOFF: Translation Buffer Debugging disabled.\n");
+	bTB_Debug =false;
+	return 0;
+      }
+    }
+#endif
     if (!strncasecmp(command[0],"HASHING",strlen(command[0])))
     {
       if (!strcasecmp(command[1],"ON"))
@@ -1047,5 +1067,9 @@ int CTraceEngine::parse(char command[100][100])
 bool bTrace = false;
 bool bDisassemble = false;
 bool bHashing = false;
+
+#if defined(DEBUG_TB)
+bool bTB_Debug = false;
+#endif
 
 #endif // IDB

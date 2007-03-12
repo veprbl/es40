@@ -101,6 +101,11 @@ char * IPR_NAME[] = {
     if (bTrace) trc->trace_br(this, current_pc,pc); }
 
 #define GO_PAL(offset) {						\
+    if (bDisassemble) {							\
+      sprintf(dbg_strptr," ==> PAL %x!\n",offset);			\
+      dbg_strptr += strlen(dbg_strptr);					\
+    }									\
+    handle_debug_string(dbg_string);					\
     exc_addr = current_pc;						\
     pc =  pal_base | offset | 1;					\
     if ((offset==DTBM_SINGLE || offset==ITB_MISS) && bTrace)		\
@@ -122,11 +127,11 @@ char * IPR_NAME[] = {
 #if defined(IDB)
 
 #define DEBUG_XX							\
-  if (trc->get_fnc_name(this, current_pc&~X64(3),&funcname))			\
+  if (trc->get_fnc_name(this, current_pc&~X64(3),&funcname))		\
     {									\
       if (bListing && !strcmp(funcname,""))				\
         {								\
-	  printf("%08x: \"%s\"\n",(u32)current_pc,			\
+	  printf("%08" LL "x: \"%s\"\n",current_pc,			\
 		 cSystem->PtrToMem(current_pc));		        \
 	  pc = (current_pc + strlen(cSystem->PtrToMem(current_pc)) + 4)	\
 	    & ~X64(3);							\
@@ -148,7 +153,7 @@ char * IPR_NAME[] = {
 	      pc = current_pc;						\
 	      while (pc < xx_upto)					\
 		{							\
-		  printf("%08x: \"%s\"\n",(u32)pc, cSystem->PtrToMem(pc)); \
+		  printf("%08" LL "x: \"%s\"\n", pc, cSystem->PtrToMem(pc)); \
 		  pc += strlen(cSystem->PtrToMem(pc));			\
 		  while (pc < xx_upto && cSystem->ReadMem(pc,8)==0)	\
 		    pc++;						\
@@ -171,7 +176,7 @@ char * IPR_NAME[] = {
 		  stringlen = (int)cSystem->ReadMem(pc++,8);		\
 		  memset(stringval,0,300);				\
 		  strncpy(stringval,cSystem->PtrToMem(pc),stringlen);	\
-		  printf("%08x: \"%s\"\n",(u32)pc-1, stringval);	\
+		  printf("%08" LL "x: \"%s\"\n",pc-1, stringval);	\
 		  pc += stringlen;					\
 		  while (pc < xx_upto && cSystem->ReadMem(pc,8)==0)	\
 		    pc++;						\
@@ -186,7 +191,7 @@ char * IPR_NAME[] = {
 	  while (   (pc==current_pc)					\
 		    || !trc->get_fnc_name(this,pc,&funcname) )		\
 	    {								\
-              printf("%08x: %016" LL "x\n",(u32)pc, cSystem->ReadMem(pc,64)); \
+              printf("%08" LL "x: %016" LL "x\n",pc, cSystem->ReadMem(pc,64)); \
 	      pc += 8;							\
 	    }								\
 	  return 0;							\
@@ -198,7 +203,7 @@ char * IPR_NAME[] = {
 	  while (   (pc==current_pc)					\
 		    || !trc->get_fnc_name(this,pc,&funcname) )		\
 	    {								\
-	      printf("%08x: %08" LL "x\n",(u32)pc, cSystem->ReadMem(pc,32)); \
+	      printf("%08" LL "x: %08" LL "x\n",pc, cSystem->ReadMem(pc,32)); \
 	      pc += 4;							\
 	    }								\
 	  return 0;							\
@@ -211,14 +216,15 @@ char * IPR_NAME[] = {
 	dbg_strptr += strlen(dbg_strptr);				\
       }                                                                 \
     }									\
-  sprintf(dbg_strptr,"%08x: ", (u32)current_pc);			\
+    sprintf(dbg_strptr,bListing?"%08" LL "x":"%016" LL "x", current_pc);	\
   dbg_strptr += strlen(dbg_strptr);					\
-  if (bListing) {							\
-    sprintf(dbg_strptr,"%08x %c%c%c%c: ", (u32)ins,			\
+  if (!bListing)							\
+    sprintf(dbg_strptr, "(%08" LL "x): ", current_pc_physical);		\
+  else									\
+    sprintf(dbg_strptr,"%08x %c%c%c%c: ", ins,				\
 	   printable((char)(ins)),     printable((char)(ins>>8)),	\
 	   printable((char)(ins>>16)), printable((char)(ins>>24)));	\
-    dbg_strptr += strlen(dbg_strptr);					\
-  }
+  dbg_strptr += strlen(dbg_strptr);
 
 #define UNKNOWN1 							\
   if (bDisassemble) {							\
@@ -528,7 +534,7 @@ char * IPR_NAME[] = {
 	  break;							\
         }								\
       dbg_strptr += strlen(dbg_strptr);					\
-      sprintf(dbg_strptr," r%d, %04xH(r%d)", REG_1&31, (u32)DISP_16, REG_2&31);	\
+      sprintf(dbg_strptr," r%d, %04xH(r%d)", REG_1&31, (u32)DISP_12, REG_2&31);	\
       dbg_strptr += strlen(dbg_strptr);					\
       if (!bListing) { 							\
         sprintf(dbg_strptr,": (%" LL "x)", r[REG_2]);			\
@@ -558,7 +564,7 @@ char * IPR_NAME[] = {
 	  break;							\
         }								\
       dbg_strptr += strlen(dbg_strptr);					\
-      sprintf(dbg_strptr," r%d, %04xH(r%d)", REG_1&31, (u32)DISP_16, REG_2&31);	\
+      sprintf(dbg_strptr," r%d, %04xH(r%d)", REG_1&31, (u32)DISP_12, REG_2&31);	\
       dbg_strptr += strlen(dbg_strptr);					\
       if (!bListing) {							\
         sprintf(dbg_strptr,": (%" LL "x)", r[REG_2]);			\

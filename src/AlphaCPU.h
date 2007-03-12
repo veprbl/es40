@@ -46,8 +46,9 @@
  
 struct SICache {
   int asn;		/**< Address Space Number */
-  u32 data[16];		/**< Actual cached instructions */
-  u64 address;		/**< Address of first instruction*/
+  u32 data[16];		/**< Actual cached instructions  */
+  u64 address;		/**< Address of first instruction */
+  u64 p_address;	/**< Physical address of first instruction */
   bool asm_bit;		/**< Address Space Match bit */
   bool valid;		/**< Valid cache entry */
 };
@@ -81,6 +82,12 @@ class CAlphaCPU : public CSystemComponent
   u64 get_f(int i);
   u64 get_prbr(void);
   u64 get_pc();
+  u64 get_pal_base();
+
+#ifdef IDB
+  u64 get_current_pc_physical();
+#endif
+  
   u64 get_clean_pc();
   void next_pc();
   void set_pc(u64 p_pc);
@@ -143,8 +150,11 @@ class CAlphaCPU : public CSystemComponent
   u64 exc_addr;				/**< IPR EXC_ADDR: address of last exception [HRM p 5-8] */
   u64 pmpc;
   u64 fpcr;				/**< Floating-Point Control Register [HRM p 2-36] */
-  bool bIntrFlag;
-  u64 current_pc;
+  bool bIntrFlag;			
+  u64 current_pc;			/**< Virtual address of current instruction */
+#ifdef IDB
+  u64 current_pc_physical;		/**< Physical address of current instruction */
+#endif
   struct SICache icache[1024];		/**< Instruction cache entries [HRM p 2-11] */
   int next_icache;			/**< Number of next cache entry to use */
   int get_icache(u64 address, u32 * data);
@@ -217,6 +227,11 @@ inline int CAlphaCPU::get_icache(u64 address, u32 * data)
 		&& icache[i].address == (address & X64(ffffffffffffffc1)))
 	{
 	  *data = icache[i].data[(address>>2)&X64(0f)];
+
+#ifdef IDB
+	  current_pc_physical = icache[i].p_address + (address & X64(3c));
+#endif
+
 	  return 0;
 	}
     }
@@ -228,7 +243,7 @@ inline int CAlphaCPU::get_icache(u64 address, u32 * data)
 	p_a = v_a & X64(00000fffffffffff);
       else
       {     
-	  result = itb->convert_address(v_a,&p_a,ACCESS_READ,true,cm,asn,i_ctl_spe,&asm_bit);
+	  result = itb->convert_address(v_a, &p_a, ACCESS_READ, true, cm, &asm_bit, false, true);
 	  if (result)
 	    return result;
 	}
@@ -239,8 +254,13 @@ inline int CAlphaCPU::get_icache(u64 address, u32 * data)
   icache[next_icache].asn = asn;
   icache[next_icache].asm_bit = asm_bit;
   icache[next_icache].address = address & X64(ffffffffffffffc1);
+  icache[next_icache].p_address = p_a & X64(ffffffffffffffc0);
 	
   *data = icache[next_icache].data[(address>>2)&X64(0f)];
+
+#ifdef IDB
+  current_pc_physical = icache[next_icache].p_address + (address & X64(3c));
+#endif
 
   next_icache++;
   if (next_icache==1024)
@@ -309,6 +329,13 @@ inline u64 CAlphaCPU::get_pc()
 	return pc;
 }
 
+#ifdef IDB
+inline u64 CAlphaCPU::get_current_pc_physical()
+{
+	return current_pc_physical;
+}
+#endif
+
 /**
  * Return program counter value without PALmode bit.
  **/
@@ -355,9 +382,13 @@ inline u64 CAlphaCPU::get_r(int i, bool translate)
 
 inline u64 CAlphaCPU::get_f(int i)
 {
-    return f[i];
+  return f[i];
 }
 
+inline u64 CAlphaCPU::get_pal_base()
+{
+  return pal_base;
+}
 /**
  * Get the processor base register.
  * A bit fuzzy...
@@ -376,7 +407,7 @@ inline u64 CAlphaCPU::get_prbr(void)
   else
     v_prbr = cSystem->ReadMem(0x70a8 + (0x200 * get_cpuid()),64);
 
-  if (dtb->convert_address(v_prbr, &p_prbr, 0, false, 0, asn0, m_ctl_spe, &b))
+  if (dtb->convert_address(v_prbr, &p_prbr, 0, false, 0, &b, false, false))
     p_prbr = v_prbr;
 
   if (v_prbr < 0 || v_prbr > (X64(1)<<cSystem->get_memory_bits()))

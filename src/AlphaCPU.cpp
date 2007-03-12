@@ -217,18 +217,33 @@ CAlphaCPU::~CAlphaCPU()
 
 #define DATA_PHYS(addr,access,check,alt,vpte) {				\
     int dp_result;							\
-    dp_result = dtb->convert_address(addr, &phys_address, access, check, alt?alt_cm:cm,asn0,m_ctl_spe, &temp_bool); \
+    dp_result = dtb->convert_address(addr, &phys_address, access, check, alt?alt_cm:cm, &temp_bool, false, true); \
     if (dp_result) {							\
       fault_va = addr;							\
       switch (dp_result) {						\
       case E_NOT_FOUND:							\
-	if (vpte)							\
-	  GO_PAL(DTBM_DOUBLE_3)						\
-	  else								\
-	    GO_PAL(DTBM_SINGLE)						\
-	      break;							\
+        if (vpte) {							\
+	  exc_sum = REG_3<<8;						\
+	  GO_PAL(DTBM_DOUBLE_3);					\
+	} else {							\
+          mm_stat = (((opcode==0x1b || opcode==0x1f)?opcode-0x18:opcode)<<4) |	\
+		    (access);						\
+	  exc_sum = REG_3<<8;						\
+	  GO_PAL(DTBM_SINGLE);						\
+	}								\
+	break;								\
       case E_ACCESS:							\
+        if (!vpte)							\
+	  mm_stat = (((opcode==0x1b || opcode==0x1f)?opcode-0x18:opcode)<<4) |	\
+		    (access) | 2;					\
+	exc_sum = REG_3<<8;						\
+	GO_PAL(DFAULT);							\
+	break;								\
       case E_FAULT:							\
+       if (!vpte)							\
+	  mm_stat = (((opcode==0x1b || opcode==0x1f)?opcode-0x18:opcode)<<4) |	\
+	  (access?9:4);							\
+	exc_sum = REG_3<<8;						\
 	GO_PAL(DFAULT);							\
 	break; }							\
       return 0;	} }
@@ -843,13 +858,6 @@ void CAlphaCPU::listing(u64 from, u64 to)
   bSavedDebug = bDisassemble;
   bDisassemble = true;
   bListing = true;
-//  pc = from;
-//  for(;;)
-//  {
-//    DoClock();
-//    if (pc>to)
-//      break;
-//  }
   for(pc=from;pc<=to;DoClock());
   bListing = false;
   pc = iSavedPC;

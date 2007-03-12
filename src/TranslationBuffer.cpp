@@ -186,13 +186,21 @@ int CTranslationBuffer::FindEntry(u64 virt)
   return -1;
 }
 
-int CTranslationBuffer::convert_address(u64 virt, u64 *phys, u8 access, bool check, int cm, int asn, int spe, bool * asm_bit)
+int CTranslationBuffer::convert_address(u64 virt, u64 *phys, u8 access, bool check, int cm, bool * asm_bit, bool cascade, bool forreal)
 {
   int i;
   u64 phys_pte;
   u64 pte;
   u64 va_form;
   bool b;
+
+#if defined(DEBUG_TB)
+  if (forreal)
+#if defined(IDB)
+  if (bTB_Debug)
+#endif
+    printf("%s %" LL "x: ",bIBOX?"I":"D", virt);
+#endif
 
   if (cCPU->get_spe(bIBOX) && !cm)
     {
@@ -201,6 +209,13 @@ int CTranslationBuffer::convert_address(u64 virt, u64 *phys, u8 access, bool che
 	{
 	  *phys = virt & X64(00000fffffffffff);
 	  *asm_bit = false;
+#if defined(DEBUG_TB)
+  if (forreal)
+#if defined(IDB)
+          if (bTB_Debug)
+#endif
+	    printf("SPE\n");
+#endif
 	  return 0;
 	}
       else if (   (((virt>>41)&0x7f) == 0x7e)
@@ -209,6 +224,13 @@ int CTranslationBuffer::convert_address(u64 virt, u64 *phys, u8 access, bool che
 	  *phys =   (virt & X64(000001ffffffffff)) 
 	    | ((virt & X64(0000010000000000)) * 6);
 	  *asm_bit = false;
+#if defined(DEBUG_TB)
+  if (forreal)
+#if defined(IDB)
+          if (bTB_Debug)
+#endif
+	    printf("SPE\n");
+#endif
 	  return 0;
 	}
       else if (   (((virt>>30)&0x3ffff) == 0x3fffe)
@@ -216,6 +238,13 @@ int CTranslationBuffer::convert_address(u64 virt, u64 *phys, u8 access, bool che
 	{
 	  *phys = virt & X64(000000003fffffff);
 	  *asm_bit = false;
+#if defined(DEBUG_TB)
+  if (forreal)
+#if defined(IDB)
+          if (bTB_Debug)
+#endif
+	    printf("SPE\n");
+#endif
 	  return 0;
 	}
     }
@@ -223,48 +252,188 @@ int CTranslationBuffer::convert_address(u64 virt, u64 *phys, u8 access, bool che
   i = FindEntry(virt);
   if (i<0)
   {
-    if (cCPU->get_r(22+32,false)&X64(8000000000000000))
+    if (cascade)
+    {
+#if defined(DEBUG_TB)
+  if (forreal)
+#if defined(IDB)
+      if (bTB_Debug)
+#endif
+        printf("cascade not found\n");
+#endif
+      return E_NOT_FOUND; 
+    }
+    if ((cCPU->get_pal_base()!= 0x8000))
+    {
+#if defined(DEBUG_TB)
+  if (forreal)
+#if defined(IDB)
+      if (bTB_Debug)
+#endif
+        printf("other PAL base\n");
+#endif
       return E_NOT_FOUND;
+    }
     va_form = cCPU->va_form(virt,bIBOX);
-//    if (bIBOX)
-//    {
-//      // translate va_form to a physical address using the DTB
-//      if (cCPU->get_tb(false)->convert_address(va_form, &phys_pte, 0, false, 0, cCPU->get_asn(false), cCPU->get_spe(false), &b))
-//	return E_NOT_FOUND;
-//    }
-//    else
-//    {
-      // manually translate va_form to a physical address to avoid recursion (which would occur when using convert_address)
-      i = FindEntry(va_form);
-      if (i<0)
-        return E_NOT_FOUND;
-      phys_pte = (entry[i].phys & v_mask) | (va_form & p_mask);
-//    }
-    pte = systm->ReadMem(phys_pte,64);
+    if (bIBOX) {
+      if (cCPU->get_r(22+32,false) & X64(8000000000000000)) {
+        pte = (cCPU->get_pal_base() & X64(ffffffffffe00000)) | (virt & X64(ffffffffffffe000)) | 0xf01;
+      } else {
+	if (cCPU->get_tb(false)->convert_address(va_form, &phys_pte, 0, false, 0, &b, true, forreal))
+	{
+#if defined(DEBUG_TB)
+  if (forreal)
+#if defined(IDB)
+          if (bTB_Debug)
+#endif
+	    printf("can't convert %" LL "x\n",va_form);
+#endif
+	  return E_NOT_FOUND;
+        }
+	pte = systm->ReadMem(phys_pte,64);
+	if (pte&8)
+	{
+#if defined(DEBUG_TB)
+  if (forreal)
+#if defined(IDB)
+          if (bTB_Debug)
+#endif
+	    printf("PTE & 8\n");
+#endif
+	  return E_NOT_FOUND;
+	}
+	pte = ((pte >> 0x20) << 0x0d) | (pte & 0xfff);
+      }
+    } else {	// bIBOX
+      if (cCPU->get_r(22+32,false)&X64(8000000000000000)) {
+	if (virt&X64(80000000000)) {
+	  u64 t1;
+	  u64 t2 = X64(10f44);
+
+	  t1 = (virt >> 0xd) & ~X64(ffffffffbfc00000);
+	  for(;;)
+	  {
+	    if (t1 < systm->ReadMem(t2,32)) {
+	      pte = (t1 << 0x20) | 0xff01;
+	      break;
+	    }
+	    if (t1 <= systm->ReadMem(t2+4,32))
+	    {
+#if defined(DEBUG_TB)
+  if (forreal)
+#if defined(IDB)
+              if (bTB_Debug)
+#endif
+	        printf("complex-2\n");
+#endif
+	      return E_NOT_FOUND;
+	    }
+	    t2 += 8;
+	  }
+	} else {
+          pte = (((cCPU->get_pal_base() & X64(ffffffffffe00000)) | (virt & X64(ffffffffffffe000)))<<0x13)| 0xff01;
+	}
+      } else {
+	if (convert_address(va_form, &phys_pte, 0, false, 0, &b, true, forreal))
+	{
+#if defined(DEBUG_TB)
+  if (forreal)
+#if defined(IDB)
+          if (bTB_Debug)
+#endif
+	    printf("can't convert %" LL "x\n",va_form);
+#endif
+	  return E_NOT_FOUND;
+	}
+        pte = systm->ReadMem(phys_pte,64);
+      }
+    }
+
+#if defined(DEBUG_TB)
+  if (forreal)
+#if defined(IDB)
+    if (bTB_Debug)
+#endif
+      printf("PTE: %" LL "x - ", pte);
+#endif
+
     if (!(pte&1))
+    {
+#if defined(DEBUG_TB)
+  if (forreal)
+#if defined(IDB)
+      if (bTB_Debug)
+#endif
+        printf("PTE not valid\n");
+#endif
       return E_NOT_FOUND;
+    }
+
     write_tag(0,virt);
     write_pte(0,pte);
     i = FindEntry(virt);
     if (i<0)
+    {
+#if defined(DEBUG_TB)
+  if (forreal)
+#if defined(IDB)
+      if (bTB_Debug)
+#endif
+        printf("still not found\n");
+#endif
       return E_NOT_FOUND;
- //   else
- //     printf("virt: %" LL "x; va_f: %" LL "x; ph_p: %" LL "x; pte: %" LL "x\n",virt,va_form,phys_pte,pte);
+    }
   }
+#if defined(DEBUG_TB)
+  else
+  {
+  if (forreal)
+#if defined(IDB)
+    if (bTB_Debug)
+#endif
+      printf("entry %d - ", i);
+  }
+#endif
 
   // check access...
   if (check)
   {
     if (!entry[i].access[access][cm])
+    {
+#if defined(DEBUG_TB)
+  if (forreal)
+#if defined(IDB)
+      if (bTB_Debug)
+#endif
+        printf("acv\n");
+#endif
       return E_ACCESS;
+    }
     if (entry[i].fault[access])
-      return E_FAULT;
+    {
+#if defined(DEBUG_TB)
+  if (forreal)
+#if defined(IDB)
+      if (bTB_Debug)
+#endif
+        printf("fault\n");
+#endif
+        return E_FAULT;
+    }
   }
   // all is ok...
 
   *phys = (entry[i].phys & v_mask) | (virt & p_mask);
   *asm_bit = entry[i].asm_bit;
 
+#if defined(DEBUG_TB)
+  if (forreal)
+#if defined(IDB)
+  if (bTB_Debug)
+#endif
+    printf("phys: %" LL "x - OK\n", *phys);
+#endif
+  
   return 0;
 }
 

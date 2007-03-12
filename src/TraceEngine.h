@@ -111,6 +111,10 @@ extern bool bTrace;
 extern bool bDisassemble;
 extern bool bHashing;
 
+#if defined(DEBUG_TB)
+extern bool bTB_Debug;
+#endif
+
 extern CTraceEngine * trc;
 
 #define TRC_DEV(a) { if (bTrace) { char t [1000]; sprintf(t, a); trc->trace_dev(t); } }
