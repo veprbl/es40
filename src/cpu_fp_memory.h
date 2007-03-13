@@ -30,3 +30,39 @@
  *
  * \author Camiel Vanderhoeven (camiel@camicom.com / http://www.camicom.com)
  **/
+
+#define DO_LDF									\
+	if (FREG_1 != 31) {							\
+	  DATA_PHYS(r[REG_2] + DISP_16, ACCESS_READ, true, false, false);	\
+	  f[FREG_1] = f2g(swap_f((u32)READ_PHYS(32))); }
+
+#define DO_LDG									\
+	if (FREG_1 != 31) {							\
+	  DATA_PHYS(r[REG_2] + DISP_16, ACCESS_READ, true, false, false);	\
+	  f[FREG_1] = swap_g(READ_PHYS(64)); }
+
+#define DO_LDS									\
+	if (FREG_1 != 31) {							\
+	  DATA_PHYS(r[REG_2] + DISP_16, ACCESS_READ, true, false, false);	\
+	  f[FREG_1] = s2t((u32)READ_PHYS(32)); }
+
+#define DO_LDT									\
+	if (FREG_1 != 31) {							\
+	  DATA_PHYS(r[REG_2] + DISP_16, ACCESS_READ, true, false, false);	\
+	  f[FREG_1] = READ_PHYS(64); }
+
+#define DO_STF									\
+	  DATA_PHYS(r[REG_2] + DISP_16, ACCESS_WRITE, true, false, false);	\
+	  WRITE_PHYS(swap_f(g2f(f[FREG_1])),32);
+
+#define DO_STG									\
+	  DATA_PHYS(r[REG_2] + DISP_16, ACCESS_WRITE, true, false, false);	\
+	  WRITE_PHYS(swap_g(f[FREG_1]),64);
+
+#define DO_STS									\
+	  DATA_PHYS(r[REG_2] + DISP_16, ACCESS_WRITE, true, false, false);	\
+	  WRITE_PHYS(t2s(f[FREG_1]),32);
+
+#define DO_STT									\
+	  DATA_PHYS(r[REG_2] + DISP_16, ACCESS_WRITE, true, false, false);	\
+	  WRITE_PHYS(f[FREG_1],64);

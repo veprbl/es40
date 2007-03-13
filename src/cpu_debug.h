@@ -230,7 +230,7 @@ char * IPR_NAME[] = {
   if (bDisassemble) {							\
     DEBUG_XX								\
   }									\
-  sprintf(dbg_strptr,"Unknown opcode: %02x", opcode);			\
+  sprintf(dbg_strptr,"Unknown opcode: %02x   ", opcode);		\
   dbg_strptr += strlen(dbg_strptr);					\
   handle_debug_string(dbg_string);					\
   return 0;
@@ -239,7 +239,7 @@ char * IPR_NAME[] = {
   if (bDisassemble) {							\
     DEBUG_XX								\
   }									\
-  sprintf(dbg_strptr,"Unknown opcode: %02x.%02x", opcode, function);	\
+  sprintf(dbg_strptr,"Unknown opcode: %02x.%02x   ", opcode, function);	\
   dbg_strptr += strlen(dbg_strptr);					\
   handle_debug_string(dbg_string);					\
   return 0;
@@ -300,6 +300,26 @@ char * IPR_NAME[] = {
     }
 
 #define POST_COND							\
+  TRC_BR;
+
+#define PRE_FCOND(mnemonic)						\
+  if (bDisassemble) {							\
+      u64 dbg_x = (current_pc + 4 + (DISP_21 * 4))&~X64(3);		\
+      DEBUG_XX								\
+      sprintf(dbg_strptr,#mnemonic " f%d, ", FREG_1);			\
+      dbg_strptr += strlen(dbg_strptr);					\
+      if (trc->get_fnc_name(this,dbg_x,&funcname))			\
+	sprintf(dbg_strptr,"%s",funcname);				\
+      else								\
+	sprintf (dbg_strptr,"%" LL "x", dbg_x);				\
+      dbg_strptr += strlen(dbg_strptr);					\
+      if (!bListing) {							\
+        sprintf(dbg_strptr,": (%" LL "x)", f[FREG_1]);			\
+        dbg_strptr += strlen(dbg_strptr);				\
+      }									\
+    }
+
+#define POST_FCOND							\
   TRC_BR;
 
 #define PRE_BSR(mnemonic)						\
@@ -421,6 +441,22 @@ char * IPR_NAME[] = {
 #define POST_R12_R3							\
 	POST_X64(r[REG_3]);
 	
+
+#define PRE_F12_F3(mnemonic)						\
+  if (bDisassemble)							\
+    {									\
+      DEBUG_XX;								\
+      sprintf(dbg_strptr,#mnemonic " r%d, r%d, r%d", FREG_1, FREG_2, FREG_3);	\
+      dbg_strptr += strlen(dbg_strptr);					\
+      if (!bListing) {							\
+        sprintf(dbg_strptr,": (%" LL "x,%" LL "x)",f[FREG_1],f[FREG_2]);	\
+        dbg_strptr += strlen(dbg_strptr);				\
+      }									\
+    }
+
+#define POST_F12_F3							\
+	POST_X64(f[FREG_3]);
+
 #define PRE_R1_F3(mnemonic)						\
   if (bDisassemble)							\
     {									\
@@ -575,14 +611,42 @@ char * IPR_NAME[] = {
 #define POST_HW_ST							\
   POST_X64(r[REG_1]);
 
+#define PRE_FMEM(mnemonic)						\
+  if (bDisassemble) {							\
+      DEBUG_XX;								\
+      sprintf(dbg_strptr, #mnemonic " f%d, %04xH(r%d)", FREG_1, (u32)DISP_16, REG_2&31);	\
+      dbg_strptr += strlen(dbg_strptr);					\
+      if (!bListing) {							\
+        sprintf(dbg_strptr,": (%" LL "x)", r[REG_2]);			\
+        dbg_strptr += strlen(dbg_strptr);				\
+      }									\
+    }	
+
+#define POST_FMEM							\
+  POST_X64(f[FREG_1]);
+
+#define PRE_F2_F3(mnemonic)						\
+  if (bDisassemble) {							\
+      DEBUG_XX;								\
+      sprintf(dbg_strptr, #mnemonic " f%d, f%d", FREG_2, FREG_3);	\
+      dbg_strptr += strlen(dbg_strptr);					\
+      if (!bListing) {							\
+        sprintf(dbg_strptr,": (%" LL "x)", d[FREG_2]);			\
+        dbg_strptr += strlen(dbg_strptr);				\
+      }									\
+    }	
+
+#define POST_F2_F3							\
+  POST_X64(f[FREG_3]);
+
 #else
 
 #define UNKNOWN1							\
-      printf("Unknown opcode: %02x\n", opcode);				\
+      printf("Unknown opcode: %02x   \n", opcode);				\
       return 0;		
 
 #define UNKNOWN2							\
-      printf("Unknown opcode: %02x.%02x\n", opcode, function);		\
+      printf("Unknown opcode: %02x.%02x   \n", opcode, function);		\
       return 0;	
 
 #endif

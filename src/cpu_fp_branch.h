@@ -30,3 +30,10 @@
  *
  * \author Camiel Vanderhoeven (camiel@camicom.com / http://www.camicom.com)
  **/
+
+#define DO_FBEQ  if (f[FREG_1] == X64(0000000000000000) || f[FREG_1] == X64(8000000000000000))	pc += (DISP_21 * 4);
+#define DO_FBGE  if (!(f[FREG_1]& X64(8000000000000000)) || f[FREG_1] == X64(8000000000000000))	pc += (DISP_21 * 4);
+#define DO_FBGT  if (!(f[FREG_1]& X64(8000000000000000)) && f[FREG_1] != X64(0000000000000000))	pc += (DISP_21 * 4);
+#define DO_FBLE  if ((f[FREG_1]& X64(8000000000000000)) || f[FREG_1] == X64(0000000000000000))	pc += (DISP_21 * 4);
+#define DO_FBLT  if ((f[FREG_1]& X64(8000000000000000)) && f[FREG_1] != X64(8000000000000000))	pc += (DISP_21 * 4);
+#define DO_FBNE  if (f[FREG_1] != X64(0000000000000000) && f[FREG_1] != X64(8000000000000000))	pc += (DISP_21 * 4);

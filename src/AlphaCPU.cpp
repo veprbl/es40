@@ -34,6 +34,7 @@
 #include "AlphaCPU.h"
 #include "TraceEngine.h"
 #include "lockstep.h"
+#include "es40_float.h"
 #include "cpu_memory.h"
 #include "cpu_control.h"
 #include "cpu_arith.h"
@@ -448,6 +449,7 @@ int CAlphaCPU::DoClock()
     pc += 4;
 
   r[31] = 0;
+  f[31] = 0;
 
   if (cc_ena)
   {
@@ -660,17 +662,50 @@ int CAlphaCPU::DoClock()
         UNKNOWN2;
       }
 
+    case 0x15:
+      function = (ins>>5) & 0x7ff;
+      switch(function)
+      {
+      case 0xa0: OP(ADDG,F12_F3);
+      case 0xa3: OP(DIVG,F12_F3);
+      case 0xa5: OP(CMPGEQ,F12_F3);
+      case 0xa6: OP(CMPGLT,F12_F3);
+      case 0xa7: OP(CMPGLE,F12_F3);
+      case 0xaf: OP(CVTGQ,F2_F3);
+      case 0xbe: OP(CVTQG,F2_F3);
+      default:   UNKNOWN2;
+      }
+    case 0x16:
+      function = (ins>>5) & 0x7ff;
+      switch(function)
+      {
+      case 0xa0: OP(ADDT,F12_F3);
+      case 0xa3: OP(DIVT,F12_F3);
+      case 0xa4: OP(CMPTUN,F12_F3);
+      case 0xa5: OP(CMPTEQ,F12_F3);
+      case 0xa6: OP(CMPTLT,F12_F3);
+      case 0xa7: OP(CMPTLE,F12_F3);
+      case 0xaf: OP(CVTTQ,F2_F3);
+      case 0xbe: OP(CVTQT,F2_F3);
+      default:   UNKNOWN2;
+      }
     case 0x17:
       function = (ins>>5) & 0x7ff;
       switch (function)
-	{
-	case 0x24: //MT_FPCR
-		OP(MT_FPCR,X_F1);
-	case 0x25: //MF_FPCR
-		OP(MF_FPCR,X_F1);
-	default:
-	  UNKNOWN2;
-	}
+      {
+      case 0x20: OP(CPYS,F12_F3);
+      case 0x21: OP(CPYSN,F12_F3);
+      case 0x22: OP(CPYSE,F12_f3);
+      case 0x24: OP(MT_FPCR,X_F1);
+      case 0x25: OP(MF_FPCR,X_F1);
+      case 0x2a: OP(FCMOVEQ,F12_F3);
+      case 0x2b: OP(FCMOVNE,F12_F3);
+      case 0x2c: OP(FCMOVLT,F12_F3);
+      case 0x2d: OP(FCMOVGE,F12_F3);
+      case 0x2e: OP(FCMOVLE,F12_F3);
+      case 0x2f: OP(FCMOVGT,F12_F3);
+      default:   UNKNOWN2;
+      }
 
     case 0x18:
       function = (ins & 0xffff);
@@ -782,6 +817,30 @@ int CAlphaCPU::DoClock()
 	OP(HW_STL,HW_ST);
       }
 
+    case 0x20: // LDF
+	    OP(LDF, FMEM);
+
+    case 0x21: // LDG
+	    OP(LDG, FMEM);
+
+    case 0x22: // LDS
+	    OP(LDS, FMEM);
+
+    case 0x23: // LDT
+	    OP(LDT,FMEM);
+
+    case 0x24: // STF
+	    OP(STF,FMEM);
+
+    case 0x25: // STG
+	    OP(STG,FMEM);
+
+    case 0x26: // STS
+	    OP(STS,FMEM);
+
+    case 0x27:
+            OP(STT,FMEM);
+
     case 0x28: // LDL
       OP(LDL,MEM);
 
@@ -809,8 +868,26 @@ int CAlphaCPU::DoClock()
     case 0x30: // BR
 	    OP(BR,BR);
 
+    case 0x31: // FBEQ
+	    OP(FBEQ,FCOND);
+
+    case 0x32: //FBLT
+	    OP(FBLT,FCOND);
+
+    case 0x33: // FBLE
+	    OP(FBLE,FCOND);
+
     case 0x34: // BSR
 	    OP(BSR,BSR);
+
+    case 0x35: // FBNE
+	    OP(FBNE,FCOND);
+
+    case 0x36: // FBGE
+	    OP(FBGE,FCOND);
+
+    case 0x37: //FBGT
+	    OP(FBGT,FCOND);
 
     case 0x38: // BLBC
 	    OP(BLBC,COND);
