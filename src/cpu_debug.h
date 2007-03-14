@@ -91,11 +91,11 @@ char * IPR_NAME[] = {
 
 #define TRC_(down,up,x,y) {						\
     if (bTrace)								\
-      trc->trace(this, current_pc,pc,down,up,x,y); }
+      trc->trace(this, current_pc, pc, down, up, x, y); }
 
 #define TRC(down,up) {							\
     if (bTrace)								\
-      trc->trace(this, current_pc,pc,down,up,(char*)0,0); }
+      trc->trace(this, current_pc, pc, down, up, (char*)0, 0); }
 
 #define TRC_BR {							\
     if (bTrace) trc->trace_br(this, current_pc,pc); }
@@ -208,7 +208,7 @@ char * IPR_NAME[] = {
 	    }								\
 	  return 0;							\
         }								\
-      else if (bListing && !strncmp(funcname,":",1)) {			\
+      else if (!strncmp(funcname,":",1)) {				\
 	sprintf(dbg_strptr,"%s:\n",funcname);				\
 	dbg_strptr += strlen(dbg_strptr);				\
       } else {								\
@@ -216,7 +216,7 @@ char * IPR_NAME[] = {
 	dbg_strptr += strlen(dbg_strptr);				\
       }                                                                 \
     }									\
-    sprintf(dbg_strptr,bListing?"%08" LL "x":"%016" LL "x", current_pc);	\
+    sprintf(dbg_strptr,bListing?"%08" LL "x: ":"%016" LL "x", current_pc);	\
   dbg_strptr += strlen(dbg_strptr);					\
   if (!bListing)							\
     sprintf(dbg_strptr, "(%08" LL "x): ", current_pc_physical);		\
@@ -263,7 +263,7 @@ char * IPR_NAME[] = {
     }
 
 #define POST_PAL							\
-  TRC(true, false);						
+  TRC(1,0);						
 
 
 #define PRE_BR(mnemonic)						\

@@ -167,10 +167,6 @@ class CAlphaCPU : public CSystemComponent
 
   CTranslationBuffer * itb;	/**< Instruction-Stream Translation Buffer [HRM p 2-5] */
   CTranslationBuffer * dtb;	/**< Data-Stream Translation Buffer [HRM p 2-13] */
-
-#if defined(IDB)
-  bool bListing;
-#endif
 };
 
 #define RREG(a) (((a) & 0x1f) + (((pc&1) && (((a)&0xc)==0x4) && sde)?32:0))

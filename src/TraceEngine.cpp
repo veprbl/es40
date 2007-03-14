@@ -59,6 +59,23 @@ inline void write_printable_s(char * dest, char * org)
   *dest='\0';
 }
 
+inline u64 real_address(u64 address, CAlphaCPU * c, bool bIBOX)
+{
+  bool b;
+  u64 a;
+
+  if (bIBOX && (address&1))
+    return address & X64(fffffffffffffffc);
+
+  if (!(c->get_tb(bIBOX)->convert_address(address,&a,0,false,0,&b, false, false)))
+    return a & (bIBOX?X64(fffffffffffffffc):X64(ffffffffffffffff));
+
+  return ((address&X64(fffffffff0000000)) ==X64(0000000020000000))?
+     address-X64(000000001fe00000):
+      (((address&X64(fffffffff0000000))== X64(0000000010000000))?
+       address-X64(000000000fffe000):address) & (bIBOX?X64(fffffffffffffffc):X64(ffffffffffffffff));
+}
+
 CTraceEngine::CTraceEngine(CSystem * sys)
 {
   int i;
@@ -82,30 +99,13 @@ CTraceEngine::~CTraceEngine(void)
 
 void CTraceEngine::trace(CAlphaCPU * cpu, u64 f, u64 t, bool down, bool up, const char * x, int y)
 {
-  int p;
-  int o;
-  u64 f1;
-  u64 t1;
-  bool b;
+  if (      (t == f+4)  
+	 || (t == f) )
+    return;
 
-  if (!cpu->get_tb(true)->convert_address(f,&f1,0,false,0,&b, false, false))
-    f1 = ((f&X64(fffffffff0000000))==
-  	    X64(0000000020000000))?
-      f-X64(000000001fe00000):
-      (((f&X64(fffffffff0000000))==
-        X64(0000000010000000))?
-       f-X64(000000000fffe000):f);
-  if (!cpu->get_tb(true)->convert_address(t,&t1,0,false,0,&b, false, false))
-    t1 = ((t&X64(fffffffff0000000))==
-	    X64(0000000020000000))?
-      t-X64(000000001fe00000):
-      (((t&X64(fffffffff0000000))==
-        X64(0000000010000000))?
-       t-X64(000000000fffe000):t);
-
-
-  p = get_prbr(cpu->get_prbr());
-  o = asCPUs[cpu->get_cpuid()].last_prbr;
+  int p = get_prbr(cpu->get_prbr());
+  int o = asCPUs[cpu->get_cpuid()].last_prbr;
+  
   if (p != o)
     {
       if (o != -1)
@@ -123,16 +123,13 @@ void CTraceEngine::trace(CAlphaCPU * cpu, u64 f, u64 t, bool down, bool up, cons
 	asPRBRs[p].trc_waitfor = 0;
       return;
     }
-	
+
+  u64 pc_f = real_address(f,cpu,true);
+  u64 pc_t = real_address(f,cpu,true);
+  
   int oldlvl = asPRBRs[p].trclvl;
   int i, j;
 
-  u32 pc_f = (u32)(f1&X64(fffffffc));
-  u32 pc_t = (u32)(t1&X64(fffffffc));
-	
-  if (      (pc_t <= pc_f+4)  
-	 && (pc_t >= pc_f) )
-    return;
   if (up)
     {
       for (i=oldlvl-1; i>=0;i--)
@@ -149,12 +146,12 @@ void CTraceEngine::trace(CAlphaCPU * cpu, u64 f, u64 t, bool down, bool up, cons
 
 	      for (j=0;j<oldlvl;j++)
 		fprintf(asPRBRs[p].f," ");
-	      fprintf(asPRBRs[p].f,"%08x ($r0 = %" LL "x)\n", pc_f, cpu->get_r(0,true));
+	      fprintf(asPRBRs[p].f,"%016" LL "x(%08" LL "x) ($r0 = %" LL "x)\n", f, pc_f, cpu->get_r(0,true));
 			
 	      for (j=0;j<asPRBRs[p].trclvl;j++)
 		fprintf(asPRBRs[p].f," ");
 				
-	      fprintf(asPRBRs[p].f,"%08x <--\n",pc_t);
+	      fprintf(asPRBRs[p].f,"%016" LL "x(%08" LL "x) <--\n", t, pc_t);
 	      return;
 	    }
 	}
@@ -183,7 +180,7 @@ void CTraceEngine::trace(CAlphaCPU * cpu, u64 f, u64 t, bool down, bool up, cons
 	
   for (i=0;i<oldlvl;i++)
     fprintf(asPRBRs[p].f," ");
-  fprintf(asPRBRs[p].f,"%08x -->\n", pc_f);
+  fprintf(asPRBRs[p].f,"%016" LL "x(%08" LL "x) -->\n", f, pc_f);
 
   for(i=0;i<asPRBRs[p].trclvl;i++)
     fprintf(asPRBRs[p].f," ");
@@ -192,7 +189,7 @@ void CTraceEngine::trace(CAlphaCPU * cpu, u64 f, u64 t, bool down, bool up, cons
     {
       if (asFunctions[i].address == pc_t)
 	{
-	  fprintf(asPRBRs[p].f,asFunctions[i].fn_name);
+	  fprintf(asPRBRs[p].f,"%016" LL "x(%s)", t, asFunctions[i].fn_name);
 	  write_arglist(cpu,asPRBRs[p].f,asFunctions[i].fn_arglist);
 	  fprintf(asPRBRs[p].f,"\n");
 	  if (asFunctions[i].step_over)
@@ -201,7 +198,7 @@ void CTraceEngine::trace(CAlphaCPU * cpu, u64 f, u64 t, bool down, bool up, cons
 	}
     }
 
-  fprintf(asPRBRs[p].f,"%08x",pc_t);
+  fprintf(asPRBRs[p].f,"%016" LL "x(%08" LL "x)", t, pc_t);
   write_arglist(cpu,asPRBRs[p].f,"(%s|16%, %s|17%, %s|18%, %s|19%)");
   fprintf(asPRBRs[p].f,"\n");
 }
@@ -209,24 +206,9 @@ void CTraceEngine::trace(CAlphaCPU * cpu, u64 f, u64 t, bool down, bool up, cons
 void CTraceEngine::trace_br(CAlphaCPU * cpu, u64 f, u64 t)
 {
   int p;
-  u64 f1;
-  u64 t1;
-  bool b;
+  u64 pc_f = real_address(f, cpu, true);
+  u64 pc_t = real_address(t, cpu, true);
 
-  if (!cpu->get_tb(true)->convert_address(f,&f1,0,false,0,&b, false, false))
-    f1 = ((f&X64(fffffffff0000000))==
-  	    X64(0000000020000000))?
-      f-X64(000000001fe00000):
-      (((f&X64(fffffffff0000000))==
-        X64(0000000010000000))?
-       f-X64(000000000fffe000):f);
-  if (!cpu->get_tb(true)->convert_address(t,&t1,0,false,0,&b, false, false))
-    t1 = ((t&X64(fffffffff0000000))==
-	    X64(0000000020000000))?
-      t-X64(000000001fe00000):
-      (((t&X64(fffffffff0000000))==
-        X64(0000000010000000))?
-       t-X64(000000000fffe000):t);
   p = get_prbr(cpu->get_prbr());
 
   if (asPRBRs[p].trc_waitfor)
@@ -252,22 +234,19 @@ void CTraceEngine::trace_br(CAlphaCPU * cpu, u64 f, u64 t)
 
   int i;
 
-  u32 pc_f = (u32)(f1&X64(fffffffc));
-  u32 pc_t = (u32)(t1&X64(fffffffc));
-
   if (   (pc_t > pc_f + 4) 
 	 || (pc_t < pc_f))
     {
       for (i=0;i<asPRBRs[p].trclvl;i++)
 	fprintf(asPRBRs[p].f," ");
-      fprintf(asPRBRs[p].f,"%08x --+\n", pc_f);
+      fprintf(asPRBRs[p].f,"%016" LL "x(%08" LL "x) --+\n", f, pc_f);
       for(i=0;i<asPRBRs[p].trclvl;i++)
 	fprintf(asPRBRs[p].f," ");
 
       for (i=0;i<iNumFunctions;i++)
 	if (asFunctions[i].address == pc_t)
 	  {
-	    fprintf(asPRBRs[p].f,asFunctions[i].fn_name);
+	    fprintf(asPRBRs[p].f,"%016" LL "x(%s)", t, asFunctions[i].fn_name);
 	    write_arglist(cpu,asPRBRs[p].f,asFunctions[i].fn_arglist);
 	    fprintf(asPRBRs[p].f," <-+\n");
 	    if (asFunctions[i].step_over)
@@ -275,7 +254,7 @@ void CTraceEngine::trace_br(CAlphaCPU * cpu, u64 f, u64 t)
 	    return;
 	  }
 
-      fprintf(asPRBRs[p].f,"%08x <-+\n",pc_t);
+      fprintf(asPRBRs[p].f,"%016" LL "x(%08" LL "x) <-+\n", t, pc_t);
     }
 }
 
@@ -294,22 +273,13 @@ void CTraceEngine::set_waitfor(CAlphaCPU * cpu, u64 address)
   p = get_prbr(cpu->get_prbr());
 
   if(asPRBRs[p].trc_waitfor == 0)
-    asPRBRs[p].trc_waitfor = address;
+    asPRBRs[p].trc_waitfor = address & ~X64(3);
 }
 bool CTraceEngine::get_fnc_name(CAlphaCPU * c, u64 address, char ** p_fn_name)
 {
   int i;
 
-  u64 a;
-  bool b;
-  
-  if (c->get_tb(true)->convert_address(address,&a,0,false,0,&b, false, false))
-    a = ((address&X64(fffffffff0000000))
-  	     ==X64(0000000020000000))?
-     address-X64(000000001fe00000):
-      (((address&X64(fffffffff0000000))==
-        X64(0000000010000000))?
-       address-X64(000000000fffe000):address);
+  u64 a = real_address(address, c, true);
 
   for (i=0;i<iNumFunctions;i++)
     {
@@ -378,8 +348,6 @@ void CTraceEngine::write_arglist(CAlphaCPU * c, FILE * fl, char * a)
   char * rp;
   int r;
   u64 value;
-  u64 phys;
-  bool b;
 
   while (*ap)
     {
@@ -403,19 +371,7 @@ void CTraceEngine::write_arglist(CAlphaCPU * c, FILE * fl, char * a)
 	      sprintf(op,"%" LL "x (",value);
 	      while (*op)
 		op++;
-	      if (!c->get_tb(false)->convert_address(value,&phys,0,false,0,&b, false, false))
-	      {
-		      value = phys;
-	      }
-	      else
-	      {
-	        if ((value&X64(fffffffff0000000))
-		    ==X64(0000000020000000))
-		  value-=X64(000000001fe00000);
-	        if ((value&X64(fffffffff0000000))
-		    ==X64(0000000010000000))
-		  value-=X64(000000000fffe000);
-	      }
+	      value = real_address(value, c, false);
 	      if ((value > 0) && (value < (X64(1)<<cSystem->get_memory_bits())))
 		write_printable_s(op, cSystem->PtrToMem(value));
 	      else
@@ -466,6 +422,7 @@ void CTraceEngine::read_procfile(char *filename)
   char * sov;
   int step_over;
   int result;
+  int i = 0;
 
   f = fopen(filename,"r");
 
@@ -496,6 +453,7 @@ void CTraceEngine::read_procfile(char *filename)
 			  if (result==1)
                             {
 			      add_function(address,fn_name,fn_args,step_over?true:false);
+			      i++;
                             }
                         }
                         
@@ -505,6 +463,7 @@ void CTraceEngine::read_procfile(char *filename)
             }
         }
       fclose(f);
+      printf("%%IDB-I-RDTRC : Read %d entries from trace-file %s\n",i,filename);
     }
 
 }
@@ -1089,7 +1048,7 @@ void CTraceEngine::list_all()
 
   for (;;)
   {
-    while (!pM[f] && f<ms)
+    while ((!pM[f] || pM[f] == X64(efefefefefefefef) || pM[f] == X64(ffffffffffffffff)) && f<ms)
     {
       f++;
       if (!(f&0x1ffff)) printf(".");
@@ -1099,13 +1058,18 @@ void CTraceEngine::list_all()
     t = f;
     for(;;)
     {
-      while (pM[t] && t<ms)
+      while (pM[t] && pM[t] != X64(efefefefefefefef) && pM[t] != X64(ffffffffffffffff) && t<ms)
       {
         t++;
         if (!(t&0x1ffff)) printf("x");
       }
-      if (t+3<ms && !pM[t+1] && !pM[t+2] && !pM[t+3])
-	break;
+      if (t+3<ms)
+	if ((!pM[t+1] || pM[t+1] == X64(efefefefefefefef) || pM[t+1] == X64(ffffffffffffffff))
+		&& (!pM[t+2] || pM[t+2] == X64(efefefefefefefef) || pM[t+2] == X64(ffffffffffffffff)) 
+		&& (!pM[t+3] || pM[t+3] == X64(efefefefefefefef) || pM[t+3] == X64(ffffffffffffffff)))
+	  break;
+      if (t>=ms)
+        break;
       t++;
       if (!(t&0x1ffff)) printf("x");
     }
@@ -1131,6 +1095,7 @@ void CTraceEngine::list_all()
 bool bTrace = false;
 bool bDisassemble = false;
 bool bHashing = false;
+bool bListing = false;
 
 #if defined(DEBUG_TB)
 bool bTB_Debug = false;

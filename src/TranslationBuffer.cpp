@@ -33,9 +33,9 @@
 #include "StdAfx.h"
 #include "TranslationBuffer.h"
 #include "AlphaCPU.h"
+#include "TraceEngine.h"
 
 extern CSystem * systm;
-
 /**
  * Constructor.
  * Creates a translation buffer and invalidates all entries.
@@ -193,6 +193,14 @@ int CTranslationBuffer::convert_address(u64 virt, u64 *phys, u8 access, bool che
   u64 pte;
   u64 va_form;
   bool b;
+
+#if defined IDB
+  if (bListing)
+  {
+    *phys = virt;
+    return 0;
+  }
+#endif
 
 #if defined(DEBUG_TB)
   if (forreal)

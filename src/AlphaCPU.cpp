@@ -711,40 +711,26 @@ int CAlphaCPU::DoClock()
       function = (ins & 0xffff);
       switch (function)
 	{
-	case 0x0000: // TRAPB
-		OP(TRAPB,NOP);
-	case 0x0400: // EXCB
-		OP(EXCB,NOP);
-	case 0x4000: // MB
-		OP(MB,NOP);
-	case 0x4400: // WMB
-		OP(WMB,NOP);
-	case 0x8000: // FETCH
-		OP(FETCH,NOP);
-	case 0xA000: // FETCH_M
-		OP(FETCH_M,NOP);
-	case 0xE800: // ECB
-		OP(ECB,NOP);
-	case 0xF800: // WH64
-		OP(WH64,NOP);
-	case 0xFC00: // WH64EN
-		OP(WH64EN,NOP);
-	case 0xC000: // RPCC
-		OP(RPCC,X_R1);
-	case 0xE000: // RC
-		OP(RC,X_R1);
-	case 0xF000: // RS
-		OP(RS,X_R1);
-	default:
-	  UNKNOWN2;
+	case 0x0000: OP(TRAPB,NOP);
+	case 0x0400: OP(EXCB,NOP);
+	case 0x4000: OP(MB,NOP);
+	case 0x4400: OP(WMB,NOP);
+	case 0x8000: OP(FETCH,NOP);
+	case 0xA000: OP(FETCH_M,NOP);
+	case 0xE800: OP(ECB,NOP);
+	case 0xF800: OP(WH64,NOP);
+	case 0xFC00: OP(WH64EN,NOP);
+	case 0xC000: OP(RPCC,X_R1);
+	case 0xE000: OP(RC,X_R1);
+	case 0xF000: OP(RS,X_R1);
+	default:     UNKNOWN2;
 	}
 
     case 0x19: // HW_MFPR
       function = (ins>>8) & 0xff;
       OP(HW_MFPR,MFPR);
 
-    case 0x1a: // JMP...
-	    OP(JMP,JMP);
+    case 0x1a: OP(JMP,JMP);
 
     case 0x1b: // HW_LD
       function = (ins>>12) & 0xf;
@@ -758,56 +744,34 @@ int CAlphaCPU::DoClock()
       function = (ins>>5) & 0x7f;
       switch (function)
         {
-        case 0x00: //SEXTB
-		OP(SEXTB,R2_R3);
-        case 0x01: // SEXTW
-		OP(SEXTW,R2_R3);
-        case 0x30: // CTPOP
-		OP(CTPOP,R2_R3);
-        case 0x31: // PERR
-		OP(PERR,R2_R3);
-        case 0x32: // CTLZ
-		OP(CTLZ,R2_R3);
-        case 0x33: // CTTZ
-		OP(CTTZ,R2_R3);
-        case 0x34: // UNPKBW
-		OP(UNPKBW,R2_R3);
-        case 0x35: // UNPKBL
-		OP(UNPKBL,R2_R3);
-        case 0x36: // PKBW
-		OP(PKWB,R2_R3);
-        case 0x37: // PKBL
-		OP(PKLB,R2_R3);
-        case 0x38: // MINSB8
-		OP(MINSB8,R12_R3);
-        case 0x39: // MINSW4
-		OP(MINSW4,R12_R3);
-        case 0x3a: // MINUB8
-		OP(MINUB8,R12_R3);
-        case 0x3b: // MINUW4
-		OP(MINUW4,R12_R3);
-        case 0x3c: // MAXUB8
-		OP(MAXUB8,R12_R3);
-        case 0x3d: // MAXUW4
-		OP(MAXUW4,R12_R3);
-        case 0x3e: // MAXSB8
-		OP(MAXSB8,R12_R3);
-        case 0x3f: // MAXSW4
-		OP(MAXSW4,R12_R3);
-        case 0x70: // FTOIT
-		OP(FTOIT,F1_R3);
-        case 0x78: // FTOIS
-		OP(FTOIS,F1_R3);
-        default:
-	  UNKNOWN2;
+        case 0x00: OP(SEXTB,R2_R3);
+        case 0x01: OP(SEXTW,R2_R3);
+        case 0x30: OP(CTPOP,R2_R3);
+        case 0x31: OP(PERR,R2_R3);
+        case 0x32: OP(CTLZ,R2_R3);
+        case 0x33: OP(CTTZ,R2_R3);
+        case 0x34: OP(UNPKBW,R2_R3);
+        case 0x35: OP(UNPKBL,R2_R3);
+        case 0x36: OP(PKWB,R2_R3);
+        case 0x37: OP(PKLB,R2_R3);
+        case 0x38: OP(MINSB8,R12_R3);
+        case 0x39: OP(MINSW4,R12_R3);
+        case 0x3a: OP(MINUB8,R12_R3);
+        case 0x3b: OP(MINUW4,R12_R3);
+        case 0x3c: OP(MAXUB8,R12_R3);
+        case 0x3d: OP(MAXUW4,R12_R3);
+        case 0x3e: OP(MAXSB8,R12_R3);
+        case 0x3f: OP(MAXSW4,R12_R3);
+        case 0x70: OP(FTOIT,F1_R3);
+        case 0x78: OP(FTOIS,F1_R3);
+        default:   UNKNOWN2;
         }
 
     case 0x1d: // HW_MTPR
             function = (ins>>8) & 0xff;
 	    OP(HW_MTPR,MTPR);
 
-    case 0x1e: // HW_RET
-	    OP(HW_RET,RET);
+    case 0x1e: OP(HW_RET,RET);
 
     case 0x1f: // HW_ST
       function = (ins>>12) & 0xf;
@@ -817,101 +781,38 @@ int CAlphaCPU::DoClock()
 	OP(HW_STL,HW_ST);
       }
 
-    case 0x20: // LDF
-	    OP(LDF, FMEM);
-
-    case 0x21: // LDG
-	    OP(LDG, FMEM);
-
-    case 0x22: // LDS
-	    OP(LDS, FMEM);
-
-    case 0x23: // LDT
-	    OP(LDT,FMEM);
-
-    case 0x24: // STF
-	    OP(STF,FMEM);
-
-    case 0x25: // STG
-	    OP(STG,FMEM);
-
-    case 0x26: // STS
-	    OP(STS,FMEM);
-
-    case 0x27:
-            OP(STT,FMEM);
-
-    case 0x28: // LDL
-      OP(LDL,MEM);
-
-    case 0x29: // LDQ
-      OP(LDQ,MEM);
-
-    case 0x2a: // LDL_L
-      OP(LDL_L,MEM);
-
-    case 0x2b: // LDQ_L
-	    OP(LDQ_L,MEM);
-
-    case 0x2c: // STL
-	    OP(STL,MEM);
-
-    case 0x2d: // STQ
-	    OP(STQ,MEM);
-
-    case 0x2e: // STL_C
-	    OP(STL_C,MEM);
-
-    case 0x2f: // STQ_C
-	    OP(STQ_C,MEM);
-
-    case 0x30: // BR
-	    OP(BR,BR);
-
-    case 0x31: // FBEQ
-	    OP(FBEQ,FCOND);
-
-    case 0x32: //FBLT
-	    OP(FBLT,FCOND);
-
-    case 0x33: // FBLE
-	    OP(FBLE,FCOND);
-
-    case 0x34: // BSR
-	    OP(BSR,BSR);
-
-    case 0x35: // FBNE
-	    OP(FBNE,FCOND);
-
-    case 0x36: // FBGE
-	    OP(FBGE,FCOND);
-
-    case 0x37: //FBGT
-	    OP(FBGT,FCOND);
-
-    case 0x38: // BLBC
-	    OP(BLBC,COND);
-
-    case 0x39: // BEQ
-	    OP(BEQ,COND);
-
-    case 0x3a: // BLT
-	    OP(BLT,COND);
-
-    case 0x3b: // BLE
-	    OP(BLE,COND);
-
-    case 0x3c: // BLBS
-	    OP(BLBS,COND);
-
-    case 0x3d: // BNE
-	    OP(BNE,COND);
-
-    case 0x3e: // BGE
-	    OP(BGE,COND);
-
-    case 0x3f: // BGT
-	    OP(BGT,COND);
+    case 0x20: OP(LDF, FMEM);
+    case 0x21: OP(LDG, FMEM);
+    case 0x22: OP(LDS, FMEM);
+    case 0x23: OP(LDT,FMEM);
+    case 0x24: OP(STF,FMEM);
+    case 0x25: OP(STG,FMEM);
+    case 0x26: OP(STS,FMEM);
+    case 0x27: OP(STT,FMEM);
+    case 0x28: OP(LDL,MEM);
+    case 0x29: OP(LDQ,MEM);
+    case 0x2a: OP(LDL_L,MEM);
+    case 0x2b: OP(LDQ_L,MEM);
+    case 0x2c: OP(STL,MEM);
+    case 0x2d: OP(STQ,MEM);
+    case 0x2e: OP(STL_C,MEM);
+    case 0x2f: OP(STQ_C,MEM);
+    case 0x30: OP(BR,BR);
+    case 0x31: OP(FBEQ,FCOND);
+    case 0x32: OP(FBLT,FCOND);
+    case 0x33: OP(FBLE,FCOND);
+    case 0x34: OP(BSR,BSR);
+    case 0x35: OP(FBNE,FCOND);
+    case 0x36: OP(FBGE,FCOND);
+    case 0x37: OP(FBGT,FCOND);
+    case 0x38: OP(BLBC,COND);
+    case 0x39: OP(BEQ,COND);
+    case 0x3a: OP(BLT,COND);
+    case 0x3b: OP(BLE,COND);
+    case 0x3c: OP(BLBS,COND);
+    case 0x3d: OP(BNE,COND);
+    case 0x3e: OP(BGE,COND);
+    case 0x3f: OP(BGT,COND);
 
     case 0x01:
     case 0x02:

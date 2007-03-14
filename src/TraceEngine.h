@@ -111,6 +111,7 @@ class CTraceEngine
 extern bool bTrace;
 extern bool bDisassemble;
 extern bool bHashing;
+extern bool bListing;
 
 #if defined(DEBUG_TB)
 extern bool bTB_Debug;
