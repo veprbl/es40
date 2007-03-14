@@ -651,10 +651,10 @@ int CTraceEngine::parse(char command[100][100])
 #if defined(DEBUG_TB)
       printf("  TBDEBUG [ON | OFF ]	                                           \n");
 #endif
-      printf("  LIST <hex address> - <hex address>                                 \n");
+      printf("  LIST [ ALL |<hex address> - <hex address> ]                        \n");
       printf("  RUN [ <max cycles> ]                                               \n");
-      printf("  LOAD [STATE | DPR | FLASH | CSV ] <file>                           \n");
-      printf("  SAVE [STATE | DPR | FLASH ] <file>                                 \n");
+      printf("  LOAD [ STATE | DPR | FLASH | CSV ] <file>                          \n");
+      printf("  SAVE [ STATE | DPR | FLASH ] <file>                                \n");
       printf("  JUMP <hex address>                                                 \n");
       printf("  PAL [ ON | OFF ]                                                   \n"); 
       printf("  DUMPREGS                                                           \n");
@@ -774,6 +774,11 @@ int CTraceEngine::parse(char command[100][100])
 #endif // !defined(IDB) || !defined(LS_SLAVE)
     break;
   case 2:
+    if (!strncasecmp(command[0],"LIST",strlen(command[0])) && !strncasecmp(command[1],"ALL",strlen(command[1])))
+      {
+	list_all();
+	return 0;
+      }
     if (!strncasecmp(command[0],"TRACE",strlen(command[0])))
     {
       if (!strcasecmp(command[1],"ON"))
@@ -1062,6 +1067,65 @@ int CTraceEngine::parse(char command[100][100])
   }
   printf("%%IDB-F-SYNTAX: Syntax error. Type \"?\" or \"HELP\" for help.\n");
   return 0;
+}
+
+struct sRegion
+{
+  u64 from;
+  u64 to;
+  struct sRegion * pNext;
+};
+
+void CTraceEngine::list_all()
+{
+  struct sRegion * pR = NULL;
+  struct sRegion ** ppN = &pR;
+  struct sRegion *p = NULL;
+  int f = 0;
+  int t = 0;
+  int ms   = 1<<(systm->get_memory_bits() - 3);
+  u64 * pM = (u64*) systm->PtrToMem(0);
+  
+
+  for (;;)
+  {
+    while (!pM[f] && f<ms)
+    {
+      f++;
+      if (!(f&0x1ffff)) printf(".");
+    }
+    if (f>=ms)
+      break;
+    t = f;
+    for(;;)
+    {
+      while (pM[t] && t<ms)
+      {
+        t++;
+        if (!(t&0x1ffff)) printf("x");
+      }
+      if (t+3<ms && !pM[t+1] && !pM[t+2] && !pM[t+3])
+	break;
+      t++;
+      if (!(t&0x1ffff)) printf("x");
+    }
+    *ppN = new sRegion;
+    (*ppN)->from = (u64)f*8;
+    (*ppN)->to = (u64)((t-1)*8)+4;
+    (*ppN)->pNext = NULL;
+    ppN = &((*ppN)->pNext);
+    f = t;
+  }
+  printf("\n");
+
+  p = pR;
+
+  while (p)
+  {
+    printf("\n======== DISASSEMBLING %08" LL "x TO %08" LL "x ========\n\n",p->from, p->to);
+    cpu[0]->listing(p->from,p->to);
+    p = p->pNext;
+  }
 }
 
 bool bTrace = false;

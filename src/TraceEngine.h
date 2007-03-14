@@ -90,6 +90,7 @@ class CTraceEngine
   void trace_dev(const char * text);
   int parse(char command[100][100]);
   void run_script(char * filename);
+  void list_all();
 
  protected:
   class CSystem * cSystem;
