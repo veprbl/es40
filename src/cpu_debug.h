@@ -631,7 +631,7 @@ char * IPR_NAME[] = {
       sprintf(dbg_strptr, #mnemonic " f%d, f%d", FREG_2, FREG_3);	\
       dbg_strptr += strlen(dbg_strptr);					\
       if (!bListing) {							\
-        sprintf(dbg_strptr,": (%" LL "x)", d[FREG_2]);			\
+        sprintf(dbg_strptr,": (%" LL "x)", f[FREG_2]);			\
         dbg_strptr += strlen(dbg_strptr);				\
       }									\
     }	

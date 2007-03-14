@@ -695,7 +695,7 @@ int CAlphaCPU::DoClock()
       {
       case 0x20: OP(CPYS,F12_F3);
       case 0x21: OP(CPYSN,F12_F3);
-      case 0x22: OP(CPYSE,F12_f3);
+      case 0x22: OP(CPYSE,F12_F3);
       case 0x24: OP(MT_FPCR,X_F1);
       case 0x25: OP(MF_FPCR,X_F1);
       case 0x2a: OP(FCMOVEQ,F12_F3);
