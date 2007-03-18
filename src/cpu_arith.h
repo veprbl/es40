@@ -47,7 +47,7 @@
  	    temp_64 = 0;							\
 	    temp_64_2 = V_2;							\
 	    for (i=63;i>=0;i--)							\
-	      if ((temp_64>>i)&1)						\
+	      if ((temp_64_2>>i)&1)						\
 	        break;								\
 	      else								\
 	        temp_64++;							\
@@ -65,7 +65,7 @@
 	temp_64 = 0;								\
 	    temp_64_2 = V_2;							\
 	    for (i=0;i<64;i++)							\
-	      if ((temp_64>>i)&1)						\
+	      if ((temp_64_2>>i)&1)						\
 	        break;								\
 	      else								\
 	        temp_64++;							\

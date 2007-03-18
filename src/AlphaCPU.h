@@ -406,7 +406,7 @@ inline u64 CAlphaCPU::get_prbr(void)
   if (dtb->convert_address(v_prbr, &p_prbr, 0, false, 0, &b, false, false))
     p_prbr = v_prbr;
 
-  if (v_prbr < 0 || v_prbr > (X64(1)<<cSystem->get_memory_bits()))
+  if (v_prbr > (X64(1)<<cSystem->get_memory_bits()))
     v_prbr = 0;
 
   return v_prbr;
