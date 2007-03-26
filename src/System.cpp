@@ -27,7 +27,7 @@
  * \file 
  * Contains the code for the emulated Typhoon Chipset devices.
  *
- * \author Camiel Vanderhoeven (camiel@camicom.com / www.camicom.com)
+ * \author Camiel Vanderhoeven (camiel@camicom.com / http://www.camicom.com)
  **/
 
 #include "StdAfx.h"
@@ -437,6 +437,9 @@ void CSystem::WriteMem(u64 address, int dsize, u64 data)
 	case X64(0000080380000800):
 	  return;
 	default:
+#ifdef DEBUG_UNKMEM
+	printf("%%MEM-I-WRUNKNWN: Attempt to write %d bytes (%016" LL "x) from unknown addres %011" LL "x\n",dsize/8,data,a);
+#endif
 	  return;
 	}
     }
@@ -513,7 +516,7 @@ u64 CSystem::ReadMem(u64 address, int dsize)
 	}
       }
 
-      switch (address)
+      switch (a)
 	{
 
 	  // PError registers
@@ -628,12 +631,15 @@ u64 CSystem::ReadMem(u64 address, int dsize)
 	  return tig_HaltB;
 
 	default:
+#ifdef DEBUG_UNKMEM
+	printf("%%MEM-I-RDUNKNWN: Attempt to read %d bytes from unknown addres %011" LL "x\n",dsize/8,a);
+#endif
 	  return 0;
 	  //			return 0x77; // 7f
 	}
     }
 
-  p = (u8*)memory + address;
+  p = (u8*)memory + a;
 
   switch(dsize)
     {

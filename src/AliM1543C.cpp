@@ -682,11 +682,8 @@ void CAliM1543C::pic_write(int index, u64 address, u8 data)
 	      break;
 	    case 3:
 	      // specific EOI
-	      //					pic_asserted[index] &= ~(1<<level);
+	      pic_asserted[index] &= ~(1<<level);
 	      //
-	      // BIG HACK: deassert all interrupts instead of just one...
-	      //
-	      pic_asserted[index] = 0;
 	      if ((index==0) && (!pic_asserted[0]))
 		cSystem->interrupt(55,false);
 	      break;				
@@ -716,9 +713,30 @@ void CAliM1543C::pic_write(int index, u64 address, u8 data)
 
 void CAliM1543C::pic_interrupt(int index, int intno)
 {
+#ifdef DEBUG_PIC
+  if (index!=0 || intno <3 || intno >4) printf("%%PIC-I-INCOMING: Interrupt %d incomming on PIC %d",intno,index);
+#endif
+
   // do we have this interrupt enabled?
   if (pic_mask[index] & (1<<intno))
+  {
+#ifdef DEBUG_PIC
+  if (index!=0 || intno <3 || intno >4)     printf(" (masked)\n");
+#endif
     return;
+  }
+
+  if (pic_asserted[index] & (1<<intno))
+  {
+#ifdef DEBUG_PIC
+  if (index!=0 || intno <3 || intno >4)     printf(" (already asserted)\n");
+#endif
+    return;
+  }
+
+#ifdef DEBUG_PIC
+  if (index!=0 || intno <3 || intno >4)   printf("\n");
+#endif
 
   pic_asserted[index] |= (1<<intno);
 	
@@ -825,6 +843,15 @@ u64 CAliM1543C::ide_command_read(int index, u64 address)
 
   data = ide_command[index][address];
 
+  if (!(ide_info[index][ide_selected[index]].handle))
+  {
+    // nonexistent drive
+    if (address)
+      return 0xff;
+    else
+      return 0xffff;
+  }
+
   switch (address)
     {
     case 0:
@@ -841,6 +868,8 @@ u64 CAliM1543C::ide_command_read(int index, u64 address)
 	    {
 	      fread(&(ide_data[index][0]),1,512,ide_info[index][ide_selected[index]].handle);
 	      ide_sectors[index]--;
+	      if (!(ide_command[index][6]&2))
+		pic_interrupt(1,6);
 	    }
 	  else
 	    {
@@ -858,6 +887,10 @@ u64 CAliM1543C::ide_command_read(int index, u64 address)
       break;
     }
   TRC_DEV4("%%ALI-I-READIDECMD: read port %d on IDE command %d: 0x%02x\n", (u32)(address), index, data);
+#ifdef DEBUG_IDE
+  if (address)
+    printf("%%ALI-I-READIDECMD: read port %d on IDE command %d: 0x%02x\n", (u32)(address), index, data);
+#endif
   return data;
 }
 
@@ -868,6 +901,11 @@ void CAliM1543C::ide_command_write(int index, u64 address, u64 data)
   int l;
 
   TRC_DEV4("%%ALI-I-WRITEIDECMD: write port %d on IDE command %d: 0x%02x\n",  (u32)(address),index, data);
+
+#ifdef DEBUG_IDE
+//  if (address)
+//    printf("%%ALI-I-WRITEIDECMD: write port %d on IDE command %d: 0x%02x\n",  (u32)(address),index, data);
+#endif
 
   ide_command[index][address]=(u8)data;
 	
@@ -888,6 +926,8 @@ void CAliM1543C::ide_command_write(int index, u64 address, u64 data)
 	  fwrite(&(ide_data[index][0]),1,512,ide_info[index][ide_selected[index]].handle);
 	  ide_sectors[index]--;
 	  ide_data_ptr[index] = 0;
+	  if (!(ide_command[index][6]&2))
+            pic_interrupt(1,6);
 	}
 	if (ide_sectors[index])
 	  ide_status[index] = 0x48;
@@ -896,21 +936,20 @@ void CAliM1543C::ide_command_write(int index, u64 address, u64 data)
       }
       else if (address==7)	// command
 	{
-	      // DEBUGGING
-//	      printf("IDE Command: ");
-//	      for (x=0;x<8;x++) printf("%02x ",ide_command[index][x]);
-//	      printf("\n");
 	  switch (data)
 	    {
 	    case 0xec:	// identify drive
+#ifdef DEBUG_IDE
+	      printf("%%IDE-I-IDENTIFY: Identify IDE disk\n");
+#endif
 	      ide_data_ptr[index] = 0;
 	      ide_data[index][0] = 0x0140;	// flags
 	      ide_data[index][1] = 1000;	// cylinders
-	      ide_data[index][2] = 0;
+	      ide_data[index][2] = 0xc837;	// specific configuration (ATA-4 specs)
 	      ide_data[index][3] = 14;		// heads
 	      ide_data[index][4] = 51200;	// bytes per track
 	      ide_data[index][5] = 512;		// bytes per sector
-	      ide_data[index][6] = 100;		// sectors per track
+	      ide_data[index][6] = 150;		// sectors per track
 	      ide_data[index][7] = 0;		// spec. bytes
 	      ide_data[index][8] = 0;		// spec. bytes
 	      ide_data[index][9] = 0;		// unique vendor status words
@@ -954,7 +993,7 @@ void CAliM1543C::ide_command_write(int index, u64 address, u64 data)
 	      ide_data[index][53] = 1;			// field_valid
 	      ide_data[index][54] = 1000;		// cylinders
 	      ide_data[index][55] = 14;		// heads
-	      ide_data[index][56] = 100;		// sectors
+	      ide_data[index][56] = 150;		// sectors
 	      ide_data[index][57] = ide_info[index][ide_selected[index]].size & 0xFFFF;	// total_sectors
 	      ide_data[index][58] = ide_info[index][ide_selected[index]].size >> 16;	// ""
 	      ide_data[index][59] = 0;							// multiple sector count
@@ -977,26 +1016,33 @@ void CAliM1543C::ide_command_write(int index, u64 address, u64 data)
 	      break;
 	    case 0x20: // read sector
 	      lba =      *((int*)(&(ide_command[index][3]))) & 0x0fffffff;
-	      TRC_DEV3("Read %d sectors from LBA %d\n",ide_command[index][2]?ide_command[index][2]:256,lba);
-//	      printf("Read %d sectors from LBA %d\n",ide_command[index][2]?ide_command[index][2]:256,lba);
+	      TRC_DEV5("%%IDE-I-READSECT: Read  %3d sectors @ IDE %d.%d LBA %8d\n",ide_command[index][2]?ide_command[index][2]:256,index,ide_selected[index],lba);
+#ifdef DEBUG_IDE
+//	      printf("%%IDE-I-READSECT: Read  %3d sectors @ IDE %d.%d LBA %8d\n",ide_command[index][2]?ide_command[index][2]:256,index,ide_selected[index],lba);
+#endif
 	      fseek(ide_info[index][ide_selected[index]].handle,lba*512,0);
 	      fread(&(ide_data[index][0]),1,512,ide_info[index][ide_selected[index]].handle);
 	      ide_data_ptr[index] = 0;
 	      ide_status[index] = 0x48;
 	      ide_sectors[index] = ide_command[index][2]-1;
 	      if (ide_sectors[index]) ide_reading[index] = true;
+	      if (!(ide_command[index][6]&2))
+		pic_interrupt(1,6);
 	      break;
 	    case 0x30:
 	      if (!ide_info[index][ide_selected[index]].mode)
 	      {
-	        printf("%%ALI-W-WRITPROT: Attempt to write to write-protected disk.\n");
+	        printf("%%IDE-W-WRITPROT: Attempt to write to write-protected disk.\n");
 		ide_status[index] = 0x41;
 		ide_error[index] = 0x04;
 	      }
 	      else
 	      {
 	        lba =      *((int*)(&(ide_command[index][3]))) & 0x0fffffff;
-	        TRC_DEV3("Write %d sectors from LBA %d\n",ide_command[index][2]?ide_command[index][2]:256,lba);
+	        TRC_DEV5("%%IDE-I-WRITSECT: Write %3d sectors @ IDE %d.%d @ LBA %8d\n",ide_command[index][2]?ide_command[index][2]:256,index,ide_selected[index],lba);
+#ifdef DEBUG_IDE
+//	        printf("%%IDE-I-WRITSECT: Write %3d sectors @ IDE %d.%d @ LBA %8d\n",ide_command[index][2]?ide_command[index][2]:256,index,ide_selected[index],lba);
+#endif
 	        fseek(ide_info[index][ide_selected[index]].handle,lba*512,0);
 	        ide_data_ptr[index] = 0;
 	        ide_status[index] = 0x48;
@@ -1004,11 +1050,31 @@ void CAliM1543C::ide_command_write(int index, u64 address, u64 data)
 	        ide_writing[index] = true;
 	      }
 	      break;
+        default:
+	      ide_status[index] = 0x41;	// ERROR
+	      ide_error[index] = 0x20;	// ABORTED
+
+#ifdef DEBUG_IDE
+	      printf("%%IDE-I-UNKCMND : Unknown IDE Command: ");
+	      for (x=0;x<8;x++) printf("%02x ",ide_command[index][x]);
+	      printf("\n");
+#endif
 	  }
 	}
-    }
+  }
   else
+  {
+#ifdef DEBUG_IDE
+    if (address==7)
+    {
+      printf("%%IDE-I-NODRIVE : IDE Command for non-existing drive %d.%d: ",index,ide_selected[index]);
+      for (x=0;x<8;x++) printf("%02x ",ide_command[index][x]);
+        printf("\n");
+    }
+#endif
     ide_status[index] = 0;
+
+  }
 }
 
 /**
@@ -1023,7 +1089,11 @@ u64 CAliM1543C::ide_control_read(int index, u64 address)
   data = 0;
   if (address==2) data = ide_status[index];
 
-  TRC_DEV4("%%ALI-I-READIDECTL: read port %d on IDE control %d: 0x%02x\n", (u32)(address), index, data);
+  TRC_DEV4("%%IDE-I-READCTRL: read port %d on IDE control %d: 0x%02x\n", (u32)(address), index, data);
+#ifdef DEBUG_IDE
+//  if (address!=2)
+    printf("%%IDE-I-READCTRL: read port %d on IDE control %d: 0x%02x\n", (u32)(address), index, data);
+#endif
   return data;
 }
 
@@ -1034,7 +1104,10 @@ u64 CAliM1543C::ide_control_read(int index, u64 address)
 
 void CAliM1543C::ide_control_write(int index, u64 address, u64 data)
 {
-  TRC_DEV4("%%ALI-I-WRITEIDECTL: write port %d on IDE control %d: 0x%02x\n",  (u32)(address),index, data);
+  TRC_DEV4("%%IDE-I-WRITCRTL: write port %d on IDE control %d: 0x%02x\n",  (u32)(address),index, data);
+#ifdef DEBUG_IDE
+  printf("%%IDE-I-WRITCTRL: write port %d on IDE control %d: 0x%02x\n",  (u32)(address),index, data);
+#endif
 }
 
 /**
@@ -1048,7 +1121,10 @@ u64 CAliM1543C::ide_busmaster_read(int index, u64 address)
 
   data = 0;
 
-  TRC_DEV4("%%ALI-I-READIDEBM: read port %d on IDE bus master %d: 0x%02x\n", (u32)(address), index, data);
+  TRC_DEV4("%%IDE-I-READBUSM: read port %d on IDE bus master %d: 0x%02x\n", (u32)(address), index, data);
+#ifdef DEBUG_IDE
+  printf("%%IDE-I-READBUSM: read port %d on IDE bus master %d: 0x%02x\n", (u32)(address), index, data);
+#endif
   return data;
 }
 
@@ -1059,7 +1135,11 @@ u64 CAliM1543C::ide_busmaster_read(int index, u64 address)
 
 void CAliM1543C::ide_busmaster_write(int index, u64 address, u64 data)
 {
-  TRC_DEV4("%%ALI-I-WRITEIDEBM: write port %d on IDE bus master %d: 0x%02x\n",  (u32)(address),index, data);
+  TRC_DEV4("%%IDE-I-WRITBUSM: write port %d on IDE bus master %d: 0x%02x\n",  (u32)(address),index, data);
+#ifdef DEBUG_IDE
+  printf("%%IDE-I-WRITBUSM: write port %d on IDE bus master %d: 0x%02x\n",  (u32)(address),index, data);
+#endif
+
 }
 
 /**
@@ -1178,10 +1258,6 @@ void CAliM1543C::SaveState(FILE *f)
   // ISA bridge
   fwrite(isa_config_data,1,256,f);
 
-  // FLASH ROM
-  //u8 rom_ext_data[0x60000];
-  //u8 rom_low_data[0x10000];
-
   // Timer/Counter
   fwrite(&pit_enable,1,sizeof(bool),f);
 
@@ -1223,10 +1299,6 @@ void CAliM1543C::RestoreState(FILE *f)
 
   // ISA bridge
   fread(isa_config_data,256,1,f);
-
-  // FLASH ROM
-  //u8 rom_ext_data[0x60000];
-  //u8 rom_low_data[0x10000];
 
   // Timer/Counter
   fread(&pit_enable,1,sizeof(bool),f);

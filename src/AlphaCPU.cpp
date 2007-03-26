@@ -49,13 +49,11 @@
 #include "cpu_pal.h"
 #include "cpu_debug.h"
 
-// DEBUGGING --
 #include "Serial.h"
 #include "AliM1543C.h"
 
 extern CSerial * srl[2];
 extern CAliM1543C * ali;
-// -- DEBUGGING
 
 #if defined(IDB)
 
@@ -357,6 +355,8 @@ int CAlphaCPU::DoClock()
   if (!bListing)
   {
 #endif
+
+#if !defined(SRM_NO_SPEEDUPS
       // known speedups
       if  (     get_clean_pc()==X64(14248) 
 	     || get_clean_pc()==X64(14288)
@@ -365,9 +365,9 @@ int CAlphaCPU::DoClock()
 	     || get_clean_pc()==X64(8bb78)	// write in memory test (aa)
 	     || get_clean_pc()==X64(8bc0c)	// write in memory test (bb)
 	     || get_clean_pc()==X64(8bc94)	// write in memory test (00)
-
 	     )
 	next_pc();
+#endif
 
       // PALcode emulations (for speed...)
 
@@ -376,7 +376,7 @@ int CAlphaCPU::DoClock()
 #define WWW(a) cSystem->ReadMem(a,16)
 #define BBB(a) cSystem->ReadMem(a,8)
       
-      
+#if !defined(SRM_NO_SRL)
       if ( get_clean_pc()==X64(a8b38) )		// tt_fwrite
       {
 	u64 tmp_add;
@@ -390,14 +390,18 @@ int CAlphaCPU::DoClock()
 	    if (tmp_chr[0]=='\n')
               srl[tmp_prt]->write("\r");
 	    srl[tmp_prt]->write(tmp_chr);
-	    TRC_DEV4("%%SRM-I-WRSRL: Write character %02x (%c) on serial port %d.\n",tmp_chr[0],printable(tmp_chr[0]),tmp_prt);
-//  	    printf("SRL-W: %d: %s\n",tmp_prt,tmp_chr);
+	    TRC_DEV4("%%SRM-I-WRITSRL : Write character %02x (%c) on serial port %d.\n",tmp_chr[0],printable(tmp_chr[0]),tmp_prt);
+#if defined(DEBUG_SRM) || defined(DEBUG_SRM_SRL)
+	    printf("%%SRM-I-WRITSRL : Write character %02x (%c) on serial port %d.\n",tmp_chr[0],printable(tmp_chr[0]),tmp_prt);
+#endif
 	  }
   	  r[0] = r[17] * r[18];
 	  pc -= 4;
 	}
       }
+#endif
 
+#if !defined(SRM_NO_IDE)
       if ( get_clean_pc()==X64(0b66c0) )		// ide_fread
       {
 	u64 tmp_fps = QQQ(LLL(r[16] + 0x6c));		// file pos
@@ -407,9 +411,12 @@ int CAlphaCPU::DoClock()
 	r[0] = fread(cSystem->PtrToMem(r[19]),(size_t)r[17],(size_t)r[18],ali->get_ide_disk(tmp_ctl,tmp_drv)) * r[17];
 	cSystem->WriteMem(LLL(r[16] + 0x6c),64,ftell(ali->get_ide_disk(tmp_ctl,tmp_drv)));
 	pc -= 8;
-//	printf("IDE-R: ctl: %x, drv: %x, fps: %" LL "x, sze: %" LL "x, cnt: %" LL "x, dsr: %" LL "x, ret: %" LL "x    \n",tmp_ctl, tmp_drv, tmp_fps, r[17], r[18], r[19], r[0]);
-	TRC_DEV6("%%SRM-I-RDIDE: Read %" LL "d blocks of %" LL "d bytes from IDE disk %d.%d. @ LBA %d\n",r[18],r[17],tmp_ctl,tmp_drv,(long)(tmp_fps/512));
+	TRC_DEV5("%%SRM-I-READIDE : Read  %3" LL "d sectors @ IDE %d.%d @ LBA %8d\n",r[18]*r[17]/512,tmp_ctl,tmp_drv,(long)(tmp_fps/512));
+#if defined(DEBUG_SRM) || defined(DEBUG_SRM_IDE)
+	printf("%%SRM-I-READIDE : Read  %3" LL "d sectors @ IDE %d.%d @ LBA %8d\n",r[18]*r[17]/512,tmp_ctl,tmp_drv,(long)(tmp_fps/512));
+#endif
       }
+#endif
 
 #if defined(IDB)
   }
@@ -420,7 +427,7 @@ int CAlphaCPU::DoClock()
    if (DO_ACTION)
     {
       // check for interrupts
-      if ((!(pc&X64(1))) && (eien & eir))
+      if ((!(pc&X64(1))) && ((eien & eir) || (sien & sir)))
 	{
 	  GO_PAL(INTERRUPT);
 	  return 0;

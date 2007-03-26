@@ -27,7 +27,7 @@
  * \file
  * Contains the code for the emulated Serial Port devices.
  *
- * \author Camiel Vanderhoeven (camiel@camicom.com / www.camicom.com)
+ * \author Camiel Vanderhoeven (camiel@camicom.com / http://www.camicom.com)
  **/
 
 #include "StdAfx.h"
@@ -45,9 +45,7 @@
 
 extern CAliM1543C * ali;
 
-bool bStopping = false;
 int  iCounter  = 0;
-bool bStop     = false;
 
 #define FIFO_SIZE 1024
 
