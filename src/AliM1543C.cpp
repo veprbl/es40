@@ -34,6 +34,10 @@
 #include "AliM1543C.h"
 #include "System.h"
 
+#ifdef DEBUG_PIC
+bool pic_messages = false;
+#endif
+
 /**
  * Constructor.
  **/
@@ -627,6 +631,10 @@ u8 CAliM1543C::pic_read(int index, u64 address)
   if (address == 1) 
     data = pic_mask[index];
 
+#ifdef DEBUG_PIC
+  if (pic_messages) printf("%%PIC-I-READ: read %02x from port %" LL "d on PIC %d\n",data,address,index);
+#endif
+
   return data;
 }
 
@@ -637,7 +645,24 @@ u8 CAliM1543C::pic_read_vector()
   if (pic_asserted[0] & 2)
     return pic_intvec[0]+1;
   if (pic_asserted[0] & 4)
-    return pic_intvec[0]+2;
+  {
+    if (pic_asserted[1] & 1)
+      return pic_intvec[1];
+    if (pic_asserted[1] & 2)
+      return pic_intvec[1]+1;
+    if (pic_asserted[1] & 4)
+      return pic_intvec[1]+2;
+    if (pic_asserted[1] & 8)
+      return pic_intvec[1]+3;
+    if (pic_asserted[1] & 16)
+      return pic_intvec[1]+4;
+    if (pic_asserted[1] & 32)
+      return pic_intvec[1]+5;
+    if (pic_asserted[1] & 64)
+      return pic_intvec[1]+6;
+    if (pic_asserted[1] & 128)
+      return pic_intvec[1]+7;
+  }
   if (pic_asserted[0] & 8)
     return pic_intvec[0]+3;
   if (pic_asserted[0] & 16)
@@ -655,6 +680,9 @@ void CAliM1543C::pic_write(int index, u64 address, u8 data)
 {
   int level;
   int op;
+#ifdef DEBUG_PIC
+  if (pic_messages) printf("%%PIC-I-WRITE: write %02x to port %" LL "d on PIC %d\n",data,address,index);
+#endif
 
   switch(address)
     {
@@ -677,15 +705,28 @@ void CAliM1543C::pic_write(int index, u64 address, u8 data)
 	    case 1:
 	      //non-specific EOI
 	      pic_asserted[index] = 0;
-	      if (index==0)
+	      //
+	      if (index==1)
+	        pic_asserted[0] &= ~(1<<2);
+	      //
+	      if (!pic_asserted[0])
 		cSystem->interrupt(55,false);
+#ifdef DEBUG_PIC
+	      pic_messages = false;
+#endif
 	      break;
 	    case 3:
 	      // specific EOI
 	      pic_asserted[index] &= ~(1<<level);
 	      //
-	      if ((index==0) && (!pic_asserted[0]))
+	      if ((index==1) && (!pic_asserted[1]))
+	        pic_asserted[0] &= ~(1<<2);
+	      //
+	      if (!pic_asserted[0])
 		cSystem->interrupt(55,false);
+#ifdef DEBUG_PIC
+	      pic_messages = false;
+#endif
 	      break;				
 	    }
 	}
@@ -714,7 +755,11 @@ void CAliM1543C::pic_write(int index, u64 address, u8 data)
 void CAliM1543C::pic_interrupt(int index, int intno)
 {
 #ifdef DEBUG_PIC
-  if (index!=0 || intno <3 || intno >4) printf("%%PIC-I-INCOMING: Interrupt %d incomming on PIC %d",intno,index);
+  if (index!=0 || intno <3 || intno >4) 
+  {
+    printf("%%PIC-I-INCOMING: Interrupt %d incomming on PIC %d",intno,index);
+    pic_messages = true;
+  }
 #endif
 
   // do we have this interrupt enabled?
@@ -722,6 +767,7 @@ void CAliM1543C::pic_interrupt(int index, int intno)
   {
 #ifdef DEBUG_PIC
   if (index!=0 || intno <3 || intno >4)     printf(" (masked)\n");
+  pic_messages = false;
 #endif
     return;
   }
@@ -883,6 +929,13 @@ u64 CAliM1543C::ide_command_read(int index, u64 address)
       data = ide_error[index]; // no error
       break;
     case 7:
+      //
+      // HACK FOR STRANGE ERROR WHEN SAVING/LOADING STATE
+      //
+      if (ide_status[index]==0xb9)
+        ide_status[index] = 0x40;
+      //
+      //
       data = ide_status[index];
       break;
     }
@@ -944,12 +997,12 @@ void CAliM1543C::ide_command_write(int index, u64 address, u64 data)
 #endif
 	      ide_data_ptr[index] = 0;
 	      ide_data[index][0] = 0x0140;	// flags
-	      ide_data[index][1] = 1000;	// cylinders
+	      ide_data[index][1] = 3000;	// cylinders
 	      ide_data[index][2] = 0xc837;	// specific configuration (ATA-4 specs)
 	      ide_data[index][3] = 14;		// heads
-	      ide_data[index][4] = 51200;	// bytes per track
+	      ide_data[index][4] = 25600;	// bytes per track
 	      ide_data[index][5] = 512;		// bytes per sector
-	      ide_data[index][6] = 150;		// sectors per track
+	      ide_data[index][6] = 50;		// sectors per track
 	      ide_data[index][7] = 0;		// spec. bytes
 	      ide_data[index][8] = 0;		// spec. bytes
 	      ide_data[index][9] = 0;		// unique vendor status words
@@ -991,9 +1044,9 @@ void CAliM1543C::ide_command_write(int index, u64 address, u64 data)
 	      ide_data[index][51] = 0x101;		// cycle time
 	      ide_data[index][52] = 0x101;		// cycle time
 	      ide_data[index][53] = 1;			// field_valid
-	      ide_data[index][54] = 1000;		// cylinders
+	      ide_data[index][54] = 3000;		// cylinders
 	      ide_data[index][55] = 14;		// heads
-	      ide_data[index][56] = 150;		// sectors
+	      ide_data[index][56] = 50;		// sectors
 	      ide_data[index][57] = ide_info[index][ide_selected[index]].size & 0xFFFF;	// total_sectors
 	      ide_data[index][58] = ide_info[index][ide_selected[index]].size >> 16;	// ""
 	      ide_data[index][59] = 0;							// multiple sector count
@@ -1012,6 +1065,9 @@ void CAliM1543C::ide_command_write(int index, u64 address, u64 data)
 
 
 	      ide_status[index] = 0x48;	// RDY+DRQ
+
+	      if (!(ide_command[index][6]&2))
+		pic_interrupt(1,6);
 
 	      break;
 	    case 0x20: // read sector
@@ -1050,6 +1106,14 @@ void CAliM1543C::ide_command_write(int index, u64 address, u64 data)
 	        ide_writing[index] = true;
 	      }
 	      break;
+	case 0x91:			// SET TRANSLATION
+#ifdef DEBUG_IDE
+	      printf("%%IDE-I-SETTRANS: Set IDE translation\n");
+#endif
+	      ide_status[index] = 0x40;
+	      if (!(ide_command[index][6]&2))
+		pic_interrupt(1,6);
+	      break;
         default:
 	      ide_status[index] = 0x41;	// ERROR
 	      ide_error[index] = 0x20;	// ABORTED
@@ -1059,6 +1123,8 @@ void CAliM1543C::ide_command_write(int index, u64 address, u64 data)
 	      for (x=0;x<8;x++) printf("%02x ",ide_command[index][x]);
 	      printf("\n");
 #endif
+	      if (!(ide_command[index][6]&2))
+		pic_interrupt(1,6);
 	  }
 	}
   }
@@ -1087,7 +1153,17 @@ u64 CAliM1543C::ide_control_read(int index, u64 address)
   u64 data;
 
   data = 0;
-  if (address==2) data = ide_status[index];
+  if (address==2) 
+  {
+      //
+      // HACK FOR STRANGE ERROR WHEN SAVING/LOADING STATE
+      //
+      if (ide_status[index]==0xb9)
+        ide_status[index] = 0x40;
+      //
+      //
+    data = ide_status[index];
+  }
 
   TRC_DEV4("%%IDE-I-READCTRL: read port %d on IDE control %d: 0x%02x\n", (u32)(address), index, data);
 #ifdef DEBUG_IDE

@@ -259,6 +259,18 @@ int CTranslationBuffer::convert_address(u64 virt, u64 *phys, u8 access, bool che
 
   i = FindEntry(virt);
   if (i<0)
+#if defined(NO_INTELLIGENT_TB)
+  {
+#if defined(DEBUG_TB)
+    if (forreal)
+#if defined(IDB)
+      if (bTB_Debug)
+#endif
+        printf("not found\n");
+#endif
+      return E_NOT_FOUND;
+  }
+#else
   {
     if (cascade)
     {
@@ -395,13 +407,14 @@ int CTranslationBuffer::convert_address(u64 virt, u64 *phys, u8 access, bool che
 #if defined(DEBUG_TB)
   else
   {
-  if (forreal)
+    if (forreal)
 #if defined(IDB)
-    if (bTB_Debug)
+      if (bTB_Debug)
 #endif
-      printf("entry %d - ", i);
+        printf("entry %d - ", i);
   }
 #endif
+#endif // NO_INTELLIGENT_TB
 
   // check access...
   if (check)
