@@ -120,8 +120,8 @@ inline u64 f2v(double val)
   u64 f = fr * (double)X64(10000000000000);
 
   f =                (s?X64(800000000000000):0) | 
-	  (((u64)e << 52) & 0x7ff0000000000000) |
-	  (f              & 0x000fffffffffffff);
+	  (((u64)e << 52) & X64(7ff0000000000000)) |
+	  (f              & X64(000fffffffffffff));
 
   printf("f2v: %016" LL "x <== %g\n", f, val);
   return f;
@@ -145,8 +145,8 @@ inline u64 f2i(double val)
   u64 f = fr * (double)X64(10000000000000);
 
   f =                (s?X64(800000000000000):0) | 
-	  (((u64)e << 52) & 0x7ff0000000000000) |
-	  (f              & 0x000fffffffffffff);
+	  (((u64)e << 52) & X64(7ff0000000000000)) |
+	  (f              & X64(000fffffffffffff));
 
   printf("f2i: %016" LL "x <== %g\n", f, val);
   return f;

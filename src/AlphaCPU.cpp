@@ -356,7 +356,7 @@ int CAlphaCPU::DoClock()
   {
 #endif
 
-#if !defined(SRM_NO_SPEEDUPS
+#if !defined(SRM_NO_SPEEDUPS)
       // known speedups
       if  (     get_clean_pc()==X64(14248) 
 	     || get_clean_pc()==X64(14288)
