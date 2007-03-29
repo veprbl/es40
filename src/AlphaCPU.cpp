@@ -27,6 +27,10 @@
  * \file 
  * Contains the code for the emulated DecChip 21264CB EV68 Alpha processor.
  *
+ * X-1.32	Camiel Vanderhoeven				29-MAR-2007
+ *	Added AST to the list of conditions that cause the processor to go to 
+ *	the interrupt PAL vector (680).
+ *
  * \author Camiel Vanderhoeven (camiel@camicom.com / http://www.camicom.com)
  **/
 
@@ -427,7 +431,7 @@ int CAlphaCPU::DoClock()
    if (DO_ACTION)
     {
       // check for interrupts
-      if ((!(pc&X64(1))) && ((eien & eir) || (sien & sir)))
+      if ((!(pc&X64(1))) && ((eien & eir) || (sien & sir) || (asten && (aster & astrr & ((1<<(cm+1))-1) ))))
 	{
 	  GO_PAL(INTERRUPT);
 	  return 0;
