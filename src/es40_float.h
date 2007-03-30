@@ -30,6 +30,9 @@
  * point registers, and to convert them to/from the host's native floating point 
  * format when required.
  *
+ * X-1.4	Brian Wheeler					30-MAR-2007
+ *	Added a couple of typecasts to avoid compiler warnings 
+ *
  * X-1.3        Camiel Vanderhoeven                             30-MAR-2007
  *      Added old changelog comments.
  *
@@ -52,7 +55,7 @@
 inline double v2f(u64 val)
 {
   int s = (val & X64(8000000000000000))?1:0;
-  int e = (val & X64(7ff0000000000000))>>52;
+  int e = (int)((val & X64(7ff0000000000000))>>52);
   s64 f = (val & X64(000fffffffffffff));
 
   double res;
@@ -75,7 +78,7 @@ inline double v2f(u64 val)
 inline double i2f(u64 val)
 {
   int s = (val & X64(8000000000000000))?1:0;
-  int e = (val & X64(7ff0000000000000))>>52;
+  int e = (int)((val & X64(7ff0000000000000))>>52);
   s64 f = (val & X64(000fffffffffffff));
   double res;
 
@@ -105,7 +108,7 @@ inline double i2f(u64 val)
 
 inline bool i_isnan(u64 val)
 {
-  int e = (val & X64(7ff0000000000000))>>52;
+  int e = (int)((val & X64(7ff0000000000000))>>52);
   s64 f = (val & X64(000fffffffffffff));
 
   return (e==2047) && f;
@@ -121,12 +124,12 @@ inline u64 f2v(double val)
   double v = val * 0.25;
   int s = (v<0.0)?1:0;
   if (s) v *= -1.0;
-  int e = log(v) / log(2);
+  int e = (int)(log(v) / log(2));
   double fr = v / pow(2,e) - 1;
 
   e += 1023;
 
-  u64 f = fr * (double)X64(10000000000000);
+  u64 f = (u64)(fr * (double)X64(10000000000000));
 
   f =                (s?X64(800000000000000):0) | 
 	  (((u64)e << 52) & X64(7ff0000000000000)) |
@@ -146,12 +149,12 @@ inline u64 f2i(double val)
   double v = val;
   int s = (v<0.0)?1:0;
   if (s) v *= -1.0;
-  int e = log(v) / log(2);
+  int e = (int)(log(v) / log(2));
   double fr = v / pow(2,e) - 1;
 
   e += 1023;
   
-  u64 f = fr * (double)X64(10000000000000);
+  u64 f = (u64)(fr * (double)X64(10000000000000));
 
   f =                (s?X64(800000000000000):0) | 
 	  (((u64)e << 52) & X64(7ff0000000000000)) |
