@@ -27,9 +27,136 @@
  * \file 
  * Contains the code for the emulated DecChip 21264CB EV68 Alpha processor.
  *
+ * X-1.33       Camiel Vanderhoeven                             30-MAR-2007
+ *      Formatting.
+ *
  * X-1.32	Camiel Vanderhoeven				29-MAR-2007
  *	Added AST to the list of conditions that cause the processor to go to 
  *	the interrupt PAL vector (680).
+ *
+ * X-1.31	Brian Wheeler					28-MAR-2007
+ *	Fixed missing ) after #if !defined(SRM_NO_SPEEDUPS
+ *
+ * X-1.30	Camiel Vanderhoeven				26-MAR-2007
+ *   a)	Possibility to disable SRM-code replacements with the defines
+ *	SRM_NO_IDE, SRM_NO_SRL, and SRM_NO_SPEEDUPS
+ *   b) Possibility to send SRM-code replacement debugging messages to the
+ *	console, with the defines DEBUG_SRM_IDE and DEBUG_SRM_SRL
+ *   c)	Added software-interrupts to the list of conditions that can cause
+ *	the processot to go to the interrupt PAL vector (680)
+ *
+ * X-1.29	Camiel Vanderhoeven				14-MAR-2007
+ *	Formatting.
+ *
+ * X-1.28	Camiel Vanderhoeven				14-MAR-2007
+ *	Fixed typo in "case 0x22: OP(CPYSE,F12_f3);"
+ *
+ * X-1.27	Camiel Vanderhoeven				13-MAR-2007
+ *	Added some floating-point opcodes, added es_float.h inclusion
+ *
+ * X-1.26	Camiel Vanderhoeven				12-MAR-2007
+ *   a)	Changed call to CTranslationBuffer::convert_address (arguments list
+ *	changed)
+ *   b) Set values for EXC_SUM and MM_STAT on various exceptions
+ *
+ * X-1.25	Camiel Vanderhoeven				9-MAR-2007
+ *	In the listing-process, addresses were executed twice
+ *
+ * X-1.24	Camiel Vanderhoeven				8-MAR-2007
+ *   a)	Changed call to CTranslationBuffer::write_pte (arguments list
+ *	changed)
+ *   b)	Backed-out X-1.23 as real problem was solved. (X-1.3 in cpu_bwx.h)
+ *
+ * X-1.23	Camiel Vanderhoeven				7-MAR-2007				
+ *	HACK to stop APB.EXE from crashing when passing bootflags
+ *
+ * X-1.22	Camiel Vanderhoeven				3-MAR-2007
+ *	Wrote code to be executed in stead of SRM console code for writing
+ *	to the serial port, and reading from IDE disks. Mechanism is based 
+ *	on recognition of the PC value. Should be replaced with a better 
+ *	mechanism in the future.
+ *
+ * X-1.21	Camiel Vanderhoeven				2-MAR-2007
+ *	Initialize debug_string to "".
+ *
+ * X-1.20	Camiel Vanderhoeven				2-MAR-2007
+ *	Fixed problem in Save and RestoreState; argument f conflicted with
+ *	class member f.
+ *
+ * X-1.19	Camiel Vanderhoeven				28-FEB-2007
+ *	Added support for the lockstep-mechanism.
+ *
+ * X-1.18	Camiel Vanderhoeven				27-FEB-2007
+ *	Removed an unreachable "return 0;" line from DoClock
+ *
+ * X-1.17	Camiel Vanderhoeven				22-FEB-2007
+ *	E_FAULT returned from translation buffer now causes DFAULT exception
+ *
+ * X-1.16	Camiel Vanderhoven				22-FEB-2007
+ *   a)	Changed call to CTranslationBuffer::convert_address (arguments list
+ *	changed)
+ *   b)	Fixed HW_MTPR and HW_MFPR opcodes
+ *
+ * X-1.15	Camiel Vanderhoeven				19-FEB-2007
+ *	Fixed preprocessor macro concatenation bug (used ## both before and
+ *	after the literal; changed this to only before).
+ *
+ * X-1.14	Camiel Vanderhoeven				18-FEB-2007
+ *	Put all actual code behind the processor opcodes in cpu_xxx.h include
+ *	files, and replaced them with OP(...,...) macro's in this file.
+ *
+ * X-1.13       Camiel Vanderhoeven                             16-FEB-2007
+ *   a) Added CAlphaCPU::listing.
+ *   b) Clocking changes (due to changes in CSystem): CAlphaCPU::DoClock now 
+ *      returns a value, and the CPU is registered as a fast clocked device.
+ *      
+ * X-1.12       Brian Wheeler                                   13-FEB-2007
+ *      Different algorithm used for UMULH (previous algorithm suffered from
+ *      portability issues).
+ *
+ * X-1.11       Camiel Vanderhoeven                             13-FEB-2007
+ *   a) Bugfix in the UMULH instruction.
+ *   b) Bugfix in the HW_MTPR VA_CTL instruction. Now updates va_ctl_va_mode
+ *      instead of i_ctl_va_mode.
+ *
+ * X-1.10       Camiel Vanderhoeven                             12-FEB-2007
+ *   a) Moved debugging macro's to cpu_debug.h
+ *   b) Cleaned up SEXT and REG macro's (a lot neater now)
+ *   c) Moved CAlphaCPU::get_r and CAlphaCPU::get_prbr to AlphaCPU.h as
+ *      inline functions
+ *   d) Use SEXT macro in a some places where exotic constructions were used 
+ *      previously
+ *
+ * X-1.9        Camiel Vanderhoeven                             12-FEB-2007
+ *   a) Added X64_BYTE, X64_WORD, X64_LONG and X64_QUAD, and used these 
+ *      instead of the corresponding values.
+ *   b) Added ier to the variables that are saved to the state file.
+ *
+ * X-1.8        Camiel Vanderhoeven                             9-FEB-2007
+ *   a) Moved debugging flags (booleans) to CSystem.cpp.
+ *   b) Removed loggin of last_write_loc and last_write_val
+ *
+ * X-1.7        Camiel Vanderhoeven                             7-FEB-2007
+ *      Made various dubugging-related statements dependent on the 
+ *      definition of IDB (interactive debugger)
+ *
+ * X-1.6        Camiel Vanderhoeven                             3-FEB-2007
+ *      Inline function printable moved to StdAfx.h
+ *
+ * X-1.5        Brian Wheeler                                   3-FEB-2007
+ *      Formatting.
+ *
+ * X-1.4        Brian Wheeler                                   3-FEB-2007
+ *      More scanf and printf statements made compatible with Linux/GCC/glibc.
+ *
+ * X-1.3        Brian Wheeler                                   3-FEB-2007
+ *      More scanf and printf statements made compatible with Linux/GCC/glibc.
+ *      
+ * X-1.2        Brian Wheeler                                   3-FEB-2007
+ *      Includes are now case-correct (necessary on Linux)
+ *
+ * X-1.1        Camiel Vanderhoeven                             19-JAN-2007
+ *      Initial version in CVS.
  *
  * \author Camiel Vanderhoeven (camiel@camicom.com / http://www.camicom.com)
  **/
@@ -481,196 +608,112 @@ int CAlphaCPU::DoClock()
       function = ins&0x1fffffff;
       OP(CALL_PAL,PAL);
 
-    case 0x08: // LDA
-      OP(LDA,MEM);
-
-    case 0x09: // LDAH
-      OP(LDAH,MEM);
-
-    case 0x0a: // LDBU
-      OP(LDBU,MEM);
-
-    case 0x0b: // LDQ_U
-      OP(LDQ_U,MEM);
-
-    case 0x0c: // LDWU
-      OP(LDWU,MEM);
-
-    case 0x0d: // STW
-	    OP(STW,MEM);
-
-    case 0x0e: // STB
-	    OP(STB,MEM);
-
-    case 0x0f: // STQ_U
-	    OP(STQ_U,MEM);
+    case 0x08: OP(LDA,MEM);
+    case 0x09: OP(LDAH,MEM);
+    case 0x0a: OP(LDBU,MEM);
+    case 0x0b: OP(LDQ_U,MEM);
+    case 0x0c: OP(LDWU,MEM);
+    case 0x0d: OP(STW,MEM);
+    case 0x0e: OP(STB,MEM);
+    case 0x0f: OP(STQ_U,MEM);
 
     case 0x10: // op
       function = (ins>>5) & 0x7f;
       switch (function)
-        {
-        case 0x00: // ADDL
-		OP(ADDL,R12_R3);
-        case 0x02: // S4ADDL
-		OP(S4ADDL,R12_R3);
-        case 0x09: // SUBL
-	        OP(SUBL,R12_R3);
-        case 0x0b: // S4SUBL
-		OP(S4SUBL,R12_R3);
-        case 0x0f:  // CMPBGE
-		OP(CMPBGE,R12_R3);
-        case 0x12: // S8ADDL
-		OP(S8ADDL,R12_R3);
-        case 0x1b: // S8SUBL
-		OP(S8SUBL,R12_R3);
-        case 0x1d: // CMPULT
-		OP(CMPULT,R12_R3);
-        case 0x20: // ADDQ
-		OP(ADDQ,R12_R3);
-        case 0x22: // S4ADDQ
-		OP(S4ADDQ,R12_R3);
-        case 0x29: // SUBQ
-		OP(SUBQ,R12_R3);
-        case 0x2b: // S4SUBQ
-		OP(S4SUBQ,R12_R3);
-        case 0x2d: // CMPEQ
-		OP(CMPEQ,R12_R3);
-        case 0x32: // S8ADDQ
-		OP(S8ADDQ,R12_R3);
-        case 0x3b: // S8SUBQ
-		OP(S8SUBQ,R12_R3);
-        case 0x3d: // CMPULE
-		OP(CMPULE,R12_R3);
-        case 0x4d: // CMPLT
-		OP(CMPLT,R12_R3);
-        case 0x6d: // CMPLE
-		OP(CMPLE,R12_R3);
-        default:
-	  UNKNOWN2;
-        }
+      {
+        case 0x00: OP(ADDL,R12_R3);
+        case 0x02: OP(S4ADDL,R12_R3);
+        case 0x09: OP(SUBL,R12_R3);
+        case 0x0b: OP(S4SUBL,R12_R3);
+        case 0x0f: OP(CMPBGE,R12_R3);
+        case 0x12: OP(S8ADDL,R12_R3);
+        case 0x1b: OP(S8SUBL,R12_R3);
+        case 0x1d: OP(CMPULT,R12_R3);
+        case 0x20: OP(ADDQ,R12_R3);
+        case 0x22: OP(S4ADDQ,R12_R3);
+        case 0x29: OP(SUBQ,R12_R3);
+        case 0x2b: OP(S4SUBQ,R12_R3);
+        case 0x2d: OP(CMPEQ,R12_R3);
+        case 0x32: OP(S8ADDQ,R12_R3);
+        case 0x3b: OP(S8SUBQ,R12_R3);
+        case 0x3d: OP(CMPULE,R12_R3);
+        case 0x4d: OP(CMPLT,R12_R3);
+        case 0x6d: OP(CMPLE,R12_R3);
+        default:   UNKNOWN2;
+      }
 
     case 0x11: // op
       function = (ins>>5) & 0x7f;
       switch (function)
-        {
-        case 0x00: // AND
-		OP(AND,R12_R3);
-        case 0x08: // BIC
-		OP(BIC,R12_R3);
-        case 0x14: // CMOVLBS
-		OP(CMOVLBS,R12_R3);
-        case 0x16: // CMOVLBC
-		OP(CMOVLBC,R12_R3);
-        case 0x20: // BIS
-		OP(BIS,R12_R3);
-        case 0x24: // CMOVEQ
-		OP(CMOVEQ,R12_R3);
-        case 0x26: // CMOVNE
-		OP(CMOVNE,R12_R3);
-        case 0x28: // ORNOT
-		OP(ORNOT,R12_R3);
-        case 0x40: // XOR
-		OP(XOR,R12_R3);
-        case 0x44: // CMOVLT
-		OP(CMOVLT,R12_R3);
-        case 0x46: // CMOVGE
-		OP(CMOVGE,R12_R3);
-        case 0x48: // EQV
-		OP(EQV,R12_R3);
-        case 0x61: // AMASK
-		OP(AMASK,R2_R3);
-        case 0x64: // CMOVLE
-		OP(CMOVLE,R12_R3);
-        case 0x66: // CMOVGT
-		OP(CMOVGT,R12_R3);
-        case 0x6c: // IMPLVER
-		OP(IMPLVER,X_R3);
-        default:
-	  UNKNOWN2;
-        }
+      {
+        case 0x00: OP(AND,R12_R3);
+        case 0x08: OP(BIC,R12_R3);
+        case 0x14: OP(CMOVLBS,R12_R3);
+        case 0x16: OP(CMOVLBC,R12_R3);
+        case 0x20: OP(BIS,R12_R3);
+        case 0x24: OP(CMOVEQ,R12_R3);
+        case 0x26: OP(CMOVNE,R12_R3);
+        case 0x28: OP(ORNOT,R12_R3);
+        case 0x40: OP(XOR,R12_R3);
+        case 0x44: OP(CMOVLT,R12_R3);
+        case 0x46: OP(CMOVGE,R12_R3);
+        case 0x48: OP(EQV,R12_R3);
+        case 0x61: OP(AMASK,R2_R3);
+        case 0x64: OP(CMOVLE,R12_R3);
+        case 0x66: OP(CMOVGT,R12_R3);
+        case 0x6c: OP(IMPLVER,X_R3);
+        default:   UNKNOWN2;
+      }
 
     case 0x12:
       function = (ins>>5) & 0x7f;
       switch (function)
-        {
-        case 0x02: //MSKBL
-		OP(MSKBL,R12_R3);
-        case 0x06: // EXTBL
-		OP(EXTBL,R12_R3);
-        case 0x0b: // INSBL
-		OP(INSBL,R12_R3);
-        case 0x12: // MSKWL
-		OP(MSKWL,R12_R3);
-        case 0x16: // EXTWL
-		OP(EXTWL,R12_R3);
-        case 0x1b: // INSWL
-		OP(INSWL,R12_R3);
-        case 0x22: // MSKLL
-		OP(MSKLL,R12_R3);
-        case 0x26: // EXTLL
-		OP(EXTLL,R12_R3);
-        case 0x2b: // INSLL
-		OP(INSLL,R12_R3);
-        case 0x32: // MSKQL
-		OP(MSKQL,R12_R3);
-        case 0x36: // EXTQL
-		OP(EXTQL,R12_R3);
-        case 0x3b: // INSQL
-		OP(INSQL,R12_R3);
-        case 0x30: // ZAP
-		OP(ZAP,R12_R3);
-        case 0x31: // ZAPNOT
-		OP(ZAPNOT,R12_R3);
-        case 0x34: // SRL
-		OP(SRL,R12_R3);
-        case 0x39: // SLL
-		OP(SLL,R12_R3);
-        case 0x3c: // SRA
-		OP(SRA,R12_R3);
-        case 0x52: //MSKWH
-		OP(MSKWH,R12_R3);
-        case 0x57: // INSWH
-		OP(INSWH,R12_R3);
-        case 0x5a: // EXTWH
-		OP(EXTWH,R12_R3);
-        case 0x62: //MSKLH
-		OP(MSKLH,R12_R3);
-        case 0x67: // INSLH
-		OP(INSLH,R12_R3);
-        case 0x6a: // EXTLH
-		OP(EXTLH,R12_R3);
-        case 0x72: //MSKQH
-		OP(MSKQH,R12_R3);
-        case 0x77: // INSQH
-		OP(INSQH,R12_R3);
-        case 0x7a: // EXTQH
-		OP(EXTQH,R12_R3);
-        default:
-	  UNKNOWN2;
-        }
+      {
+        case 0x02: OP(MSKBL,R12_R3);
+        case 0x06: OP(EXTBL,R12_R3);
+        case 0x0b: OP(INSBL,R12_R3);
+        case 0x12: OP(MSKWL,R12_R3);
+        case 0x16: OP(EXTWL,R12_R3);
+        case 0x1b: OP(INSWL,R12_R3);
+        case 0x22: OP(MSKLL,R12_R3);
+        case 0x26: OP(EXTLL,R12_R3);
+        case 0x2b: OP(INSLL,R12_R3);
+        case 0x32: OP(MSKQL,R12_R3);
+        case 0x36: OP(EXTQL,R12_R3);
+        case 0x3b: OP(INSQL,R12_R3);
+        case 0x30: OP(ZAP,R12_R3);
+        case 0x31: OP(ZAPNOT,R12_R3);
+        case 0x34: OP(SRL,R12_R3);
+        case 0x39: OP(SLL,R12_R3);
+        case 0x3c: OP(SRA,R12_R3);
+        case 0x52: OP(MSKWH,R12_R3);
+        case 0x57: OP(INSWH,R12_R3);
+        case 0x5a: OP(EXTWH,R12_R3);
+        case 0x62: OP(MSKLH,R12_R3);
+        case 0x67: OP(INSLH,R12_R3);
+        case 0x6a: OP(EXTLH,R12_R3);
+        case 0x72: OP(MSKQH,R12_R3);
+        case 0x77: OP(INSQH,R12_R3);
+        case 0x7a: OP(EXTQH,R12_R3);
+        default:   UNKNOWN2;
+      }
 
     case 0x13:
       function = (ins>>5) & 0x7f;
       switch (function)
-        {
-	case 0x00: // MULL
-		OP(MULL,R12_R3);
-	case 0x20: // MULQ
-		OP(MULQ,R12_R3);
-	case 0x30: // UMULH
-		OP(UMULH,R12_R3);
-	default:
-	  UNKNOWN2;
-	}
+      {
+	case 0x00: OP(MULL,R12_R3);
+	case 0x20: OP(MULQ,R12_R3);
+	case 0x30: OP(UMULH,R12_R3);
+	default:   UNKNOWN2;
+      }
 
     case 0x14:
       function = (ins>>5) & 0x7ff;
       switch(function)
       {
-      case 0x24: // ITOFT
-	      OP(ITOFT,R1_F3);
-      default:
-        UNKNOWN2;
+      case 0x24: OP(ITOFT,R1_F3);
+      default:   UNKNOWN2;
       }
 
     case 0x15:
@@ -779,8 +822,8 @@ int CAlphaCPU::DoClock()
         }
 
     case 0x1d: // HW_MTPR
-            function = (ins>>8) & 0xff;
-	    OP(HW_MTPR,MTPR);
+      function = (ins>>8) & 0xff;
+      OP(HW_MTPR,MTPR);
 
     case 0x1e: OP(HW_RET,RET);
 

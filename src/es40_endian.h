@@ -27,6 +27,19 @@
  * \file
  * Contains macro's for byte-swapping on big-endian host architectures.
  *
+ * X-1.2        Camiel Vanderhoeven                             30-MAR-2007
+ *      Added old changelog comments.
+ *
+ * X-1.1        Brian Wheeler                                   8-MAR-2007
+ *      Renamed this file from endian.h to es40_endian.h to avoid conflicts
+ *      with system-include files.
+ *
+ * X-A1-1.2     Camiel Vanderhoeven                             7-MAR-2007
+ *      Properly handle OpenVMS
+ *
+ * X-A1-1.1     Camiel Vanderhoeven                             1-MAR-2007
+ *      File created to support the Solaris/SPARC port.
+ *
  * \author Camiel Vanderhoeven (camiel@camicom.com / http://www.camicom.com)
  **/
 

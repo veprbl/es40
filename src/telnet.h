@@ -27,6 +27,12 @@
  * \file
  * Contains telnet declarations used by the serial port emulator and lock-step code.
  *
+ * X-1.2        Camiel Vanderhoeven                             30-MAR-2007
+ *      Added old changelog comments.
+ *
+ * X-1.1        Camiel Vanderhoeven                             28-FEB-2007
+ *      File created. Code was previously found in Serial.cpp and Serial.h
+ *
  * \author Camiel Vanderhoeven (camiel@camicom.com / http://www.camicom.com)
  **/
 

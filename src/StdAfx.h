@@ -30,7 +30,53 @@
  * or project specific include files that are used frequently, but
  * are changed infrequently.
  *
- * \author Camiel Vanderhoeven (camiel@camicom.com / www.camicom.com)
+ * X-1.14       Camiel Vanderhoeven                             30-MAR-2007
+ *      Added old changelog comments.
+ *
+ * X-1.13       Brian Wheeler                                   8-MAR-2007
+ *      endian.h renamed to es40_endian.h
+ *
+ * X-1.12       Camiel Vanderhoeven                             1-MAR-2007
+ *      Included endian.h to support the Solaris/SPARC port.
+ *
+ * X-1.11       Camiel Vanderhoeven                             28-FEB-2007
+ *      Included datatypes.h
+ *
+ *
+ * X-1.10       Camiel Vanderhoeven                             16-FEB-2007
+ *   a) Changed header guards
+ *   b) Re-design of #if-#else-#endif constructions to make more sense.
+ *   c) Added strcasecmp and strncasecmp definitions for Win32.
+ *   d) Added _strdup for non-Win32.
+ *
+ * X-1.9        Camiel Vanderhoeven                             12-FEB-2007
+ *      Added comments.
+ *
+ * X-1.8        Camiel Vanderhoeven                             9-FEB-2007
+ *      Added comments.
+ *
+ * X-1.7        Camiel Vanderhoeven                             7-FEB-2007
+ *      Added isblank for DEC CXX (Linux/Alpha).
+ *
+ * X-1.6        Camiel Vanderhoeven                             3-FEB-2007
+ *      Added sleep_ms.
+ *
+ * X-1.5        Camiel Vanderhoeven                             3-FEB-2007
+ *      Added printable.
+ *
+ * X-1.4        Camiel Vanderhoeven                             3-FEB-2007
+ *      Added is_blank for Win32.
+ *
+ * X-1.3        Brian Wheeler                                   3-FEB-2007
+ *      Formatting.
+ *
+ * X-1.2        Brian Wheeler                                   3-FEB-2007
+ *      Linux support added.
+ *
+ * X-1.1        Camiel Vanderhoeven                             19-JAN-2007
+ *      Initial version in CVS.
+ *
+ * \author Camiel Vanderhoeven (camiel@camicom.com / http://www.camicom.com)
  **/
 
 #if !defined(INCLUDED_STDAFX_H)

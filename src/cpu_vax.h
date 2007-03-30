@@ -27,6 +27,12 @@
  * \file 
  * Contains code macros for the processor VAX compatibility instructions.
  *
+ * X-1.2        Camiel Vanderhoeven                             30-MAR-2007
+ *      Added old changelog comments.
+ *
+ * X-1.1        Camiel Vanderhoeven                             18-FEB-2007
+ *      File created. Contains code previously found in AlphaCPU.h
+ *
  * \author Camiel Vanderhoeven (camiel@camicom.com / http://www.camicom.com)
  **/
 

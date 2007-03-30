@@ -28,6 +28,24 @@
  * Contains code macros for the processor BWX (byte and word extension) instructions.
  * Based on ARM chapter 4.6.
  *
+ * X-1.5        Camiel Vanderhoeven                             30-MAR-2007
+ *      Added old changelog comments.
+ *
+ * X-1.4        Camiel Vanderhoeven                             7-MAR-2007
+ *      Bugfix in INSxH. The Wrong Thing(tm) was done when V_2 = 0. Fixes
+ *      bug # 1676093.
+ *
+ * X-1.3        Camiel Vanderhoeven                             7-MAR-2007
+ *      Bugfix in EXTxH. The Wrong Thing(tm) was done when V_2 = 0. Fixes
+ *      bugs # 1667015, 1667018, 1674311, 1676079 and 1676081.
+ *
+ * X-1.2        Camiel Vanderhoeven                             19-FEB-2007
+ *      Fixed a compiler-dependent bug (possible >> or <<by 64) in EXTxH, 
+ *      INSxH and MSKxH SRA opcodes.
+ *
+ * X-1.1        Camiel Vanderhoeven                             18-FEB-2007
+ *      File created. Contains code previously found in AlphaCPU.h
+ *
  * \author Camiel Vanderhoeven (camiel@camicom.com / http://www.camicom.com)
  **/
 

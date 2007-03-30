@@ -28,6 +28,25 @@
  * Contains code macros for the processor PALmode instructions.
  * Based on HRM.
  *
+ * \bug What is IPR 0x2d???
+ *
+ * X-1.5        Camiel Vanderhoeven                             30-MAR-2007
+ *      Added old changelog comments.
+ *
+ * X-1.4        Camiel Vanderhoeven                             8-MAR-2007
+ *      Different argument list for CTranslationBuffer methods, and for
+ *      va_form function.
+ *
+ * X-1.3        Camiel Vanderhoeven                             3-MAR-2007
+ *      Put 0x2d in HW_MTPR to get rid of error messages about this unknown
+ *      IPR. WE STILL NEED TO FIND OUT WHAT THIS REGISTER DOES. 
+ *
+ * X-1.2        Camiel Vanderhoeven                             22-FEB-2007
+ *      Got rid of calls to get_asn.
+ *
+ * X-1.1        Camiel Vanderhoeven                             18-FEB-2007
+ *      File created. Contains code previously found in AlphaCPU.h
+ *
  * \author Camiel Vanderhoeven (camiel@camicom.com / http://www.camicom.com)
  **/
 

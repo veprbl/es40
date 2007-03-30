@@ -27,7 +27,53 @@
  * \file 
  * Contains the definitions for the CPU tracing engine.
  *
- * \author Camiel Vanderhoeven (camiel@camicom.com / www.camicom.com)
+ * X-1.15       Camiel Vanderhoeven                             30-MAR-2007
+ *      Added old changelog comments.
+ *
+ * X-1.14       Camiel Vanderhoeven                             14-MAR-2007
+ *      bListing moved here from CAlphaCPU.
+ *
+ * X-1.13       Camiel Vanderhoeven                             14-MAR-2007
+ *      Added list_all method.
+ *
+ * X-1.12       Camiel Vanderhoeven                             12-MAR-2007
+ *      Added support for TranslationBuffer debugging.
+ *
+ * X-1.11       Camiel Vanderhoeven                             8-MAR-2007
+ *      get_fnc_name now requires CCPU * as an argument.
+ *
+ * X-1.10       Camiel Vanderhoeven                             3-MAR-2007
+ *      Added TRC_DEV6 macro.
+ *
+ * X-1.9        Camiel Vanderhoeven                             1-MAR-2007
+ *      Made a couple of arguments const char *.
+ *
+ * X-1.8        Camiel Vanderhoeven                             18-FEB-2007
+ *      Added bHashing.
+ *
+ * X-1.7        Camiel Vanderhoeven                             16-FEB-2007
+ *      Added support for Interactive Debugger (IDB).
+ *
+ * X-1.6        Camiel Vanderhoeven                             12-FEB-2007
+ *      Formatting.
+ *
+ * X-1.5        Camiel Vanderhoeven                             12-FEB-2007
+ *      Added comments.
+ *
+ * X-1.4        Camiel Vanderhoeven                             9-FEB-2007
+ *      Debugging flqags (booleans) moved here from CAlphaCPU.
+ *
+ * X-1.3        Camiel Vanderhoeven                             7-FEB-2007
+ *      Debugging functions are enabled only when compiling with -DIDB 
+ *      (Interactive Debugger, a future feature)
+ *
+ * X-1.2        Brian Wheeler                                   3-FEB-2007
+ *      Formatting.
+ *
+ * X-1.1        Camiel Vanderhoeven                             19-JAN-2007
+ *      Initial version in CVS.
+ *
+ * \author Camiel Vanderhoeven (camiel@camicom.com / http://www.camicom.com)
  **/
 
 #if !defined(INCLUDED_TRACEENGINE_H)

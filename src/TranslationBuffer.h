@@ -27,7 +27,48 @@
  * \file 
  * Contains the definitions for the emulated on-cpu translation buffers.
  *
- * \author Camiel Vanderhoeven (camiel@camicom.com / www.camicom.com)
+ * X-1.12       Camiel Vanderhoeven                             30-MAR-2007
+ *      Added old changelog comments.
+ *
+ * X-1.11       Camiel Vanderhoeven                             12-MAR-2007
+ *      Added support for "smart" Translation Buffers.
+ *
+ * X-1.10       Camiel Vanderhoeven                             8-MAR-2007
+ *   a) Inline functions turned into normal functions, and moved to 
+ *      TranslationBuffer.cpp
+ *   b) TranslationBuffer functions get their asn information from 
+ *      CAlphaCPU, rather than getting the ASN number as an argument.
+ *
+ * X-1.9        Camiel Vanderhoeven                             22-FEB-2007
+ *   a) convert_address returns the ASM bit in a pointer-to-boolean argument.
+ *   b) convert_address now also may return E_FAULT when FOR or FOW is set in
+ *      the PTE.
+ *
+ * X-1.8        Camiel Vanderhoeven                             16-FEB-2007
+ *      Changed header guards
+ *
+ * X-1.7        Camiel Vanderhoeven                             12-FEB-2007
+ *      Members p_mask and v_mask are now private.
+ *
+ * X-1.6        Camiel Vanderhoeven                             12-FEB-2007
+ *      Added comments.
+ *
+ * X-1.5        Camiel Vanderhoeven                             7-FEB-2007
+ *      Added comments.
+ *
+ * X-1.4        Brian Wheeler                                   3-FEB-2007
+ *      Formatting.
+ *
+ * X-1.3        Brian Wheeler                                   3-FEB-2007
+ *      Constants made Linux-compatible
+ *
+ * X-1.2        Brian Wheeler                                   3-FEB-2007
+ *      Includes are now case-correct (necessary on Linux)
+ *
+ * X-1.1        Camiel Vanderhoeven                             19-JAN-2007
+ *      Initial version in CVS.
+ *
+ * \author Camiel Vanderhoeven (camiel@camicom.com / http://www.camicom.com)
  **/
 
 #if !defined(INCLUDED_TRANSLATIONBUFFER_H)

@@ -27,7 +27,25 @@
  * \file 
  * Contains the definitions for the emulated Floppy Controller devices.
  *
- * \author Camiel Vanderhoeven (camiel@camicom.com / www.camicom.com)
+ * X-1.6        Camiel Vanderhoeven                             30-MAR-2007
+ *      Added old changelog comments.
+ *
+ * X-1.5        Camiel Vanderhoeven                             16-FEB-2007
+ *      Changed header guards
+ *
+ * X-1.4        Camiel Vanderhoeven                             12-FEB-2007
+ *      Added comments.
+ *
+ * X-1.3        Camiel Vanderhoeven                             7-FEB-2007
+ *      Added comments.
+ *
+ * X-1.2        Brian Wheeler                                   3-FEB-2007
+ *      Formatting.
+ *
+ * X-1.1        Camiel Vanderhoeven                             19-JAN-2007
+ *      Initial version in CVS.
+ *
+ * \author Camiel Vanderhoeven (camiel@camicom.com / http://www.camicom.com)
  **/
 
 #if !defined(INCLUDED_FLOPPYCONTROLLER_H)

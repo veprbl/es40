@@ -28,6 +28,15 @@
  * Contains code macros for the processor memory load/store instructions.
  * Based on ARM chapter 4.2.
  *
+ * X-1.3        Camiel Vanderhoeven                             30-MAR-2007
+ *      Added old changelog comments.
+ *
+ * X-1.2        Camiel Vanderhoeven                             8-MAR-2007
+ *      LDL and LDQ where the destination is R31 do not cause exceptions.
+ *
+ * X-1.1        Camiel Vanderhoeven                             18-FEB-2007
+ *      File created. Contains code previously found in AlphaCPU.h
+ *
  * \author Camiel Vanderhoeven (camiel@camicom.com / http://www.camicom.com)
  **/
 

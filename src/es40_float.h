@@ -30,6 +30,15 @@
  * point registers, and to convert them to/from the host's native floating point 
  * format when required.
  *
+ * X-1.3        Camiel Vanderhoeven                             30-MAR-2007
+ *      Added old changelog comments.
+ *
+ * X-1.2        Camiel Vanderhoeven                             28-MAR-2007
+ *      Properly put in all 64-bit constants as X64(...) instead of 0x...
+ *
+ * X-1.1        Camiel Vanderhoeven                             18-MAR-2007
+ *      File created to support basic floating point operations.
+ *
  * \author Camiel Vanderhoeven (camiel@camicom.com / http://www.camicom.com)
  **/
 

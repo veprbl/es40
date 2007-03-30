@@ -27,7 +27,7 @@
  * \file 
  * Contains the code for the emulated Ali M1543C chipset devices.
  *
- * \author Camiel Vanderhoeven (camiel@camicom.com / www.camicom.com)
+ * \author Camiel Vanderhoeven (camiel@camicom.com / http://www.camicom.com)
  **/
 
 #include "StdAfx.h"

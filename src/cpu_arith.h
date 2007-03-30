@@ -28,6 +28,16 @@
  * Contains code macros for the processor integer arithmetic instructions.
  * Based on ARM chapter 4.4.
  *
+ * X-1.3        Camiel Vanderhoeven                             30-MAR-2007
+ *      Added old changelog comments.
+ *
+ * X-1.2        Camiel Vanderhoeven                             18-MAR-2007
+ *      Bugfix in CTLZ and CTTZ instructions. Fixes the INCON_SCHED 
+ *      bugcheck (bug # 1680064).
+ *
+ * X-1.1        Camiel Vanderhoeven                             18-FEB-2007
+ *      File created. Contains code previously found in AlphaCPU.h
+ *
  * \author Camiel Vanderhoeven (camiel@camicom.com / http://www.camicom.com)
  **/
 

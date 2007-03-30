@@ -27,6 +27,53 @@
  * \file 
  * Contains debugging macros used by AlphaCPU.cpp
  *
+ * X-1.12       Camiel Vanderhoeven                             30-MAR-2007
+ *      Added old changelog comments.
+ *
+ * X-1.11       Camiel Vanderhoeven                             14-MAR-2007
+ *      Small bugfix in DEBUG_XX macro.
+ *
+ * X-1.10       Camiel Vanderhoeven                             14-MAR-2007
+ *      Small bugfix in FP debugging macro's.
+ *
+ * X-1.9        Camiel Vanderhoeven                             13-MAR-2007
+ *      Added FP debugging macro's.
+ *
+ * X-1.8        Camiel Vanderhoeven                             12-MAR-2007
+ *   a) When an exception occurs, debugging information for the previous 
+ *      instruction is no longer lost.
+ *   b) Made various printf-statements 64-bit safe in a neater way. (Use
+ *      printf("%" LL "x",value) instead of printf("%x",(u64)value)).
+ *
+ * X-1.7        Camiel Vanderhoeven                             8-MAR-2007
+ *      Pass "this" as an argument to CTraceEngine::get_fnc_name.
+ *
+ * X-1.6        Camiel Vanderhoeven                             28-FEB-2007
+ *   a) Removed MINI_DEBUG_XX
+ *   b) Debugging now writes to the char* debug_string, rather than using
+ *      printf directly. This allows us to do other things with debugger
+ *      output. 
+ *
+ * X-1.5        Camiel Vanderhoeven                             22-FEB-2007
+ *   a) Replaced IPR macro's with separate MTPR and MFPR macro's (because
+ *      these instructions use different registers).
+ *   b) Made a couple of printf's multi-platform-safe.
+ *
+ * X-1.4        Camiel Vanderhoeven                             18-FEB-2007
+ *      Introduced POST_xxx and PRE_xxx macro's. When debugging, these are
+ *      included from the OP macro in AlphaCPU.cpp.
+ *
+ * X-1.3        Camiel Vanderhoeven                             16-FEB-2007
+ *   a) Macro's that end CAlphaCPU::DoClock() now return 0.
+ *   b) Made a couple of printf's multi-platform-safe.
+ *      
+ * X-1.2        Brian Wheeler                                   13-FEB-2007
+ *      Added mini-version of DEBUG_XX, that dumps all registers in a
+ *      concise format.
+ *
+ * X-1.1        Camiel Vanderhoeven                             12-FEB-2007
+ *      File created. Contains code previously found in AlphaCPU.h
+ *
  * \author Camiel Vanderhoeven (camiel@camicom.com / http://www.camicom.com)
  **/
 
