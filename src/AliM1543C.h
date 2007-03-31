@@ -27,7 +27,43 @@
  * \file 
  * Contains the definitions for the emulated Ali M1543C chipset devices.
  *
- * \author Camiel Vanderhoeven (camiel@camicom.com / www.camicom.com)
+ * X-1.12       Camiel Vanderhoeven                             31-MAR-2007
+ *      Added old changelog comments.
+ *
+ * X-1.11	Camiel Vanderhoeven				3-MAR-2007
+ *	Added inline function get_ide_disk, which returns a file handle.
+ *
+ * X-1.10	Camiel Vanderhoeven				20-FEB-2007
+ *	Added member variable to keep error status.
+ *
+ * X-1.9	Brian Wheeler					20-FEB-2007
+ *	Information about IDE disks is now kept in the ide_info structure.
+ *
+ * X-1.8	Camiel Vanderhoeven				16-FEB-2007
+ *	DoClock now returns int.
+ *
+ * X-1.7	Camiel Vanderhoeven				12-FEB-2007
+ *	Formatting.
+ *
+ * X-1.6	Camiel Vanderhoeven				12-FEB-2007
+ *	Added comments.
+ *
+ * X-1.5        Camiel Vanderhoeven                             9-FEB-2007
+ *      Replaced f_ variables with ide_ members.
+ *
+ * X-1.4        Camiel Vanderhoeven                             9-FEB-2007
+ *      Added comments.
+ *
+ * X-1.3        Brian Wheeler                                   3-FEB-2007
+ *      Formatting.
+ *
+ * X-1.2        Brian Wheeler                                   3-FEB-2007
+ *      Includes are now case-correct (necessary on Linux)
+ *
+ * X-1.1        Camiel Vanderhoeven                             19-JAN-2007
+ *      Initial version in CVS.
+ *
+ * \author Camiel Vanderhoeven (camiel@camicom.com / http://www.camicom.com)
  **/
 
 #if !defined(INCLUDED_ALIM1543C_H_)

@@ -28,7 +28,64 @@
  * \file
  * Contains the definitions for the emulated DecChip 21264CB EV68 Alpha processor.
  *
- * \author Camiel Vanderhoeven (camiel@camicom.com / www.camicom.com)
+ * X-1.18       Camiel Vanderhoeven                             31-MAR-2007
+ *      Added old changelog comments.
+ *
+ * X-1.17	Camiel Vanderhoeven				18-MAR-2007
+ *   	Removed pointles comparison (v_prbr > 0).
+ *
+ * X-1.16	Camiel Vanderhoeven				14-MAR-2007
+ *	bListing removed.
+ *
+ * X-1.15	Camiel Vanderhoeven				12-MAR-2007
+ *   a)	Added possibility to retrieve physical address of current instruction.
+ *   b) Added member function get_pal_base.
+ *
+ * X-1.14	Camiel Vanderhoeven				9-MAR-2007
+ *	Try to translate a virtual PRBR value to a physical one in get_prbr.
+ *
+ * X-1.13	Camiel Vanderhoeven				8-MAR-2007
+ *	va_form now takes a boolean argument bIBOX to determine which ASN
+ *	and VPTB to use.
+ *
+ * X-1.12	Camiel Vanderhoeven				7-MAR-2007				
+ *	Added get_tb, get_asn and get_spe functions.
+ *
+ * X-1.11	Camiel Vanderhoeven				22-FEB-2007
+ *	Add ASM bit to the instruction cache & corresponding functions.
+ *
+ * X-1.10	Camiel Vanderhoeven				18-FEB-2007
+ *	Add get_f function.
+ *
+ * X-1.9        Camiel Vanderhoeven                             16-FEB-2007
+ *   a) Added CAlphaCPU::listing.
+ *   b) CAlphaCPU::DoClock now returns a value.
+ *
+ * X-1.8        Camiel Vanderhoeven                             12-FEB-2007
+ *	Added get_r and get_prbr functions as inlines.
+ *
+ * X-1.7        Camiel Vanderhoeven                             12-FEB-2007
+ *	Added inline functions to get and update the program counter (pc).
+ *
+ * X-1.6	Camiel Vanderhoeven				12-FEB-2007
+ *	Added comments.
+ *
+ * X-1.5        Camiel Vanderhoeven                             9-FEB-2007
+ *	Added comments.
+ *
+ * X-1.4        Camiel Vanderhoeven                             9-FEB-2007
+ *      Moved debugging flags (booleans) to TraceEngine.
+ *
+ * X-1.3	Camiel Vanderhoeven				7-FEB-2007
+ *	Added comments.
+ *
+ * X-1.2        Brian Wheeler                                   3-FEB-2007
+ *      Formatting.
+ *
+ * X-1.1        Camiel Vanderhoeven                             19-JAN-2007
+ *      Initial version in CVS.
+ *
+ * \author Camiel Vanderhoeven (camiel@camicom.com / http://www.camicom.com)
  **/
 
 #if !defined(INCLUDED_ALPHACPU_H)

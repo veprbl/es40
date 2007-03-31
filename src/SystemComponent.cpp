@@ -27,7 +27,28 @@
  * \file 
  * Contains code for the base class for devices that connect to the chipset.
  *
- * \author Camiel Vanderhoeven (camiel@camicom.com / www.camicom.com)
+ * X-1.7        Camiel Vanderhoeven                             30-MAR-2007
+ *      Added old changelog comments.
+ *
+ * X-1.6        Brian Wheeler                                   13-FEB-2007
+ *      Formatting.
+ *
+ * X-1.5        Camiel Vanderhoeven                             12-FEB-2007
+ *      Added comments.
+ *
+ * X-1.4        Camiel Vanderhoeven                             9-FEB-2007
+ *      Added comments.
+ *
+ * X-1.3        Brian Wheeler                                   3-FEB-2007
+ *      Formatting.
+ *
+ * X-1.2        Brian Wheeler                                   3-FEB-2007
+ *      Includes are now case-correct (necessary on Linux)
+ *
+ * X-1.1        Camiel Vanderhoeven                             19-JAN-2007
+ *      Initial version in CVS.
+ *
+ * \author Camiel Vanderhoeven (camiel@camicom.com / http://www.camicom.com)
  **/
 
 #include "StdAfx.h"
