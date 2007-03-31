@@ -27,6 +27,100 @@
  * \file 
  * Contains the code for the emulated Ali M1543C chipset devices.
  *
+ * \bug When restoring state, the ide_status may be 0xb9...
+ *
+ * X-1.21       Camiel Vanderhoeven                             31-MAR-2007
+ *      Added old changelog comments.
+ *
+ * X-1.20	Camiel Vanderhoeven				30-MAR-2007
+ *	Unintentional CVS commit / version number increase.
+ *
+ * X-1.19	Camiel Vanderhoeven				27-MAR-2007
+ *   a) When DEBUG_PIC is defined, generate more debugging messages.
+ *   b)	When an interrupt originates from the cascaded interrupt controller,
+ *	the interrupt vector from the cascaded controller is returned.
+ *   c)	When interrupts are ended on the cascaded controller, and no 
+ *	interrupts are left on that controller, the cascade interrupt (2)
+ *	on the primary controller is ended as well. I'M NOT COMPLETELY SURE
+ *	IF THIS IS CORRECT, but what goes on in OpenVMS seems to imply this.
+ *   d) When the system state is saved to a vms file, and then restored, the
+ *	ide_status may be 0xb9, this bug has not been found yet, but as a 
+ *	workaround, we detect the value 0xb9, and replace it with 0x40.
+ *   e) Changed the values for cylinders/heads/sectors on the IDE identify
+ *	command, because it looks like OpenVMS' DQDRIVER doesn't like it if
+ *	the number of sectors is greater than 63.
+ *   f) All IDE commands generate an interrupt upon completion.
+ *   g) IDE command SET TRANSLATION (0x91) is recognized, but has no effect.
+ *	This is allright, as long as OpenVMS NEVER DOES CHS-mode access to 
+ *	the disk.
+ *
+ * X-1.18	Camiel Vanderhoeven				26-MAR-2007
+ *   a) Specific-EOI's (end-of-interrupt) now only end the interrupt they 
+ *	are meant for.
+ *   b) When DEBUG_PIC is defined, debugging messages for the interrupt 
+ *	controllers are output to the console, same with DEBUG_IDE and the
+ *	IDE controller.
+ *   c) If IDE registers for a non-existing drive are read, 0xff is returned.
+ *   d) Generate an interrupt when a sector is read or written from a disk.
+ *
+ * X-1.17	Camiel Vanderhoeven				1-MAR-2007
+ *   a) Accesses to IDE-configuration space are byte-swapped on a big-endian 
+ *	architecture. This is done through the endian_bits macro.
+ *   b) Access to the IDE databuffers (16-bit transfers) are byte-swapped on 
+ *	a big-endian architecture. This is done through the endian_16 macro.
+ *
+ * X-1.16	Camiel Vanderhoeven				20-FEB-2007
+ *	Write sectors to disk when the IDE WRITE command (0x30) is executed.
+ *
+ * X-1.15	Brian Wheeler					20-FEB-2007
+ *	Information about IDE disks is now kept in the ide_info structure.
+ *
+ * X-1.14	Camiel Vanderhoeven				16-FEB-2007
+ *   a) This is now a slow-clocked device.
+ *   b) Removed #ifdef _WIN32 from printf statements.
+ *
+ * X-1.13	Brian Wheeler					13-FEB-2007
+ *      Corrected some typecasts in printf statements.
+ *
+ * X-1.12	Camiel Vanderhoeven				12-FEB-2007
+ *	Added comments.
+ *
+ * X-1.11       Camiel Vanderhoeven                             9-FEB-2007
+ *      Replaced f_ variables with ide_ members.
+ *
+ * X-1.10       Camiel Vanderhoeven                             9-FEB-2007
+ *      Only open an IDE disk image, if there is a filename.
+ *
+ * X-1.9 	Brian Wheeler					7-FEB-2007
+ *	Load disk images according to the configuration file.
+ *
+ * X-1.8	Camiel Vanderhoeven				7-FEB-2007
+ *   a)	Removed a lot of pointless messages.
+ *   b)	Calls to trace_dev now use the TRC_DEVx macro's.
+ *
+ * X-1.7	Camiel Vanderhoeven				3-FEB-2007
+ *      Removed last conditional for supporting another system than an ES40
+ *      (#ifdef DS15)
+ *
+ * X-1.6        Brian Wheeler                                   3-FEB-2007
+ *      Formatting.
+ *
+ * X-1.5	Brian Wheeler					3-FEB-2007
+ *	Fixed some problems with sprintf statements.
+ *
+ * X-1.4	Brian Wheeler					3-FEB-2007
+ *	Space for 4 disks in f_img.
+ *
+ * X-1.3        Brian Wheeler                                   3-FEB-2007
+ *      Scanf, printf and 64-bit literals made compatible with 
+ *	Linux/GCC/glibc.
+ *      
+ * X-1.2        Brian Wheeler                                   3-FEB-2007
+ *      Includes are now case-correct (necessary on Linux)
+ *
+ * X-1.1        Camiel Vanderhoeven                             19-JAN-2007
+ *      Initial version in CVS.
+ *
  * \author Camiel Vanderhoeven (camiel@camicom.com / http://www.camicom.com)
  **/
 

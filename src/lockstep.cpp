@@ -27,6 +27,15 @@
  * \file
  * Contains the code for the lockstep debugging mechanism.
  *
+ * X-1.3        Camiel Vanderhoeven                             31-MAR-2007
+ *      Added old changelog comments.
+ *
+ * X-1.2        Camiel Vanderhoeven                             28-FEB-2007
+ *      Fixed a silly bug (forgot to declare nAddressSize)
+ *
+ * X-1.1        Camiel Vanderhoeven                             28-FEB-2007
+ *      Created to support lockstep mechanism.
+ *
  * \author Camiel Vanderhoeven (camiel@camicom.com / http://www.camicom.com)
  **/
 

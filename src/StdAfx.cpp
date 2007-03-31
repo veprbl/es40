@@ -33,7 +33,7 @@
  * AlphaSim.pch will be the pre-compiled header.
  * stdafx.obj will contain the pre-compiled type information.
  *
- * \author Camiel Vanderhoeven (camiel@camicom.com / www.camicom.com)
+ * \author Camiel Vanderhoeven (camiel@camicom.com / http://www.camicom.com)
  **/
 
 #include "StdAfx.h"

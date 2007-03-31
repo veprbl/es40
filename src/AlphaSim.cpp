@@ -27,7 +27,77 @@
  * \file
  * Defines the entry point for the application.
  *
- * \author Camiel Vanderhoeven (camiel@camicom.com / www.camicom.com)
+ * X-1.20       Camiel Vanderhoeven                             31-MAR-2007
+ *      Added old changelog comments.
+ *
+ * X-1.19	Camiel Vanderhoeven				28-FEB-2007
+ *	Call lockstep_init() if needed.
+ *
+ * X-1.18	Camiel Vanderhoeven				16-FEB-2007
+ *	No longer load CSV files, this can be done with the LOAD CSV command
+ *	in the Interactive De-Bugger.
+ *
+ * X-1.17	Camiel Vanderhoeven				16-FEB-2007
+ *   a)	Removed most of the code from this file. The main function no longer
+ *	controls every clocktick, but rather transfers control directly to
+ *	CSystem::Run(), or to the Interactive Debugger.
+ *   b)	In the IDB-version, the name of a script to execute can be specified
+ *	on the command line (es40_idb @script).
+ *
+ * X-1.16	Camiel Vanderhoeven				13-FEB-2007
+ *	The define DISASM_START can be set to the number of processor cycles
+ *	after which the disassembly will start.
+ *
+ * X-1.15	Camiel Vanderhoeven				13-FEB-2007
+ *	The define DO_SETPC can be set to the address of the first 
+ *	instruction to be executed.
+ *
+ * X-1.14	Camiel Vanderhoeven				12-FEB-2007
+ *	Use methods provided by CCPU rather than directly accessing its 
+ *	member variables.
+ *
+ * X-1.13	Camiel Vanderhoeven				12-FEB-2007
+ *	Added comments.
+ *
+ * X-1.12	Camiel Vanderhoeven				9-FEB-2007
+ *	Removed an obscure hack.
+ *
+ * X-1.11       Camiel Vanderhoeven                             9-FEB-2007
+ *      If DO_DISASM is set, disassembly will be output.
+ *
+ * X-1.10	Brian Wheeler					7-FEB-2007
+ *	Configuration file may be specified on the command line.
+ *
+ * X-1.9	Camiel Vanderhoeven				7-FEB-2007
+ *	Add instantiation of trace engine.
+ *
+ * X-1.8	Camiel Vanderhoeven				3-FEB-2007
+ *	RUN_LT can be set to provide a breakpoint (end if pc < defined value)
+ *
+ * X-1.7        Brian Wheeler                                   3-FEB-2007
+ *      Formatting.
+ *
+ * X-1.6	Brian Wheeler					3-FEB-2007
+ *	Support for execution speed timing on Linux
+ *
+ * X-1.5	Brian Wheeler					3-FEB-2007
+ *	Support for configuration file.
+ *
+ * X-1.4	Brian Wheeler					3-FEB-2007
+ *	Made execution speed timing dependent on _WIN32 (since this code
+ *	uses a lot of Windows-specific features, and won't compile on
+ *	Linux.
+ *
+ * X-1.3        Brian Wheeler                                   3-FEB-2007
+ *      Scanf calls made compatible with Linux/GCC/glibc.
+ *      
+ * X-1.2        Brian Wheeler                                   3-FEB-2007
+ *      Includes are now case-correct (necessary on Linux)
+ *
+ * X-1.1        Camiel Vanderhoeven                             19-JAN-2007
+ *      Initial version in CVS.
+ *
+ * \author Camiel Vanderhoeven (camiel@camicom.com / http://www.camicom.com)
  **/
 
 #include "StdAfx.h"

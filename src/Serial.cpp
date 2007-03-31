@@ -27,6 +27,76 @@
  * \file
  * Contains the code for the emulated Serial Port devices.
  *
+ * X-1.21       Camiel Vanderhoeven                             31-MAR-2007
+ *      Added old changelog comments.
+ *
+ * X-1.20	Camiel Vanderhoeven				26-MAR-2007
+ *	Unintentional CVS commit / version number increase.
+ *
+ * X-1.19	Camiel Vanderhoeven				27-FEB-2007
+ *   a)	Moved tons of defines to telnet.h
+ *   b) When this emulator is the lockstep-master, connect to the slave's
+ *	serial port.
+ *
+ * X-1.18	Camiel Vanderhoeven				27-FEB-2007
+ *	Define socklen_t as unsigned int on OpenVMS.
+ *
+ * X-1.17	Camiel Vanderhoeven				27-FEB-2007
+ *	Add support for OpenVMS.
+ *
+ * X-1.16	Camiel Vanderhoeven				20-FEB-2007
+ *	Use small menu to determine what to do when a <BREAK> is received.
+ *
+ * X-1.15	Camiel Vanderhoeven				16-FEB-2007
+ *	Directly use thw winsock functions, don't use the CTelnet class
+ *	any more. windows and Linux code are more alike now.
+ *
+ * X-1.14	Brian Wheeler					13-FEB-2007
+ *	Formatting.
+ *
+ * X-1.13	Camiel Vanderhoeven				12-FEB-2007
+ *	Added comments.
+ *
+ * X-1.12       Camiel Vanderhoeven                             9-FEB-2007
+ *      Added comments.
+ *
+ * X-1.11	Camiel Vanderhoeven				9-FEB-2007
+ *	Enable eating of first characters (needed for now for WINDOWS).
+ *
+ * X-1.10	Brian Wheeler					7-FEB-2007
+ *	Disable eating of first characters. Treat Telnet commands properly
+ *	for Linux.
+ *
+ * X-1.9	Camiel Vanderhoeven				7-FEB-2007
+ * 	Calls to trace_dev now use the TRC_DEVx macro's.
+ *
+ * X-1.8	Camiel Vanderhoeven				3-FEB-2007
+ *   a)	Restructure Linux/Windows code mixing to make more sense.
+ *   b)	Eat first incoming characters (so we don't burden the SRM with 
+ *	weird incoming characters.
+ *
+ * X-1.7	Camiel Vanderhoeven				3-FEB-2007
+ * 	No longer start PuTTy. We might just want to do something wild like
+ *	connecting from a different machine!
+ *
+ * X-1.6        Brian Wheeler                                   3-FEB-2007
+ *      Formatting.
+ *
+ * X-1.5	Brian Wheeler					3-FEB-2007
+ *	Get the Telnet port number from the configuration file.
+ *
+ * X-1.4	Brian Wheeler					3-FEB-2007
+ *	Add support for Linux.
+ *
+ * X-1.3        Brian Wheeler                                   3-FEB-2007
+ *      64-bit literals made compatible with Linux/GCC/glibc.
+ *      
+ * X-1.2        Brian Wheeler                                   3-FEB-2007
+ *      Includes are now case-correct (necessary on Linux)
+ *
+ * X-1.1        Camiel Vanderhoeven                             19-JAN-2007
+ *      Initial version in CVS.
+ *
  * \author Camiel Vanderhoeven (camiel@camicom.com / http://www.camicom.com)
  **/
 

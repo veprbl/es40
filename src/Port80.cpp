@@ -27,6 +27,30 @@
  * \file
  * Contains the code for the emulated Port 80 device.
  *
+ * X-1.8        Camiel Vanderhoeven                             31-MAR-2007
+ *      Added old changelog comments.
+ *
+ * X-1.7	Brian Wheeler					13-FEB-2007
+ *	Formatting.
+ *
+ * X-1.6 	Camiel Vanderhoeven				12-FEB-2007
+ *	Added comments.
+ *
+ * X-1.5        Camiel Vanderhoeven                             9-FEB-2007
+ *      Added comments.
+ *
+ * X-1.4        Brian Wheeler                                   3-FEB-2007
+ *      Formatting.
+ *
+ * X-1.3        Brian Wheeler                                   3-FEB-2007
+ *      64-bit literals made compatible with Linux/GCC/glibc.
+ *      
+ * X-1.2        Brian Wheeler                                   3-FEB-2007
+ *      Includes are now case-correct (necessary on Linux)
+ *
+ * X-1.1        Camiel Vanderhoeven                             19-JAN-2007
+ *      Initial version in CVS.
+ *
  * \author Camiel Vanderhoeven (camiel@camicom.com / www.camicom.com)
  **/
 
