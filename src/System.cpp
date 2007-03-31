@@ -27,6 +27,92 @@
  * \file 
  * Contains the code for the emulated Typhoon Chipset devices.
  *
+ * X-1.21       Brian Wheeler                                   31-MAR-2007
+ *      Removed ; after #endif to avoid compiler warnings.
+ *
+ * X-1.20       Camiel Vanderhoeven                             26-MAR-2007
+ *      Show references to unknown memory regions when DEBUG_UNKMEM is 
+ *	defined.
+ *
+ * X-1.19	Camiel Vanderhoeven				1-MAR-2007
+ *	Changes for Solaris/SPARC port:
+ *   a)	All $-signs in variable names are replaced with underscores.
+ *   b) Some functions now get a const char * argument i.s.o. char * to avoid
+ *	compiler warnings.
+ *   c) If ALIGN_MEM_ACCESS is defined, memory accesses are checked for natural
+ *	alignment. If access is not naturally aligned, it is performed one byte
+ *	at a time.
+ *   d) Accesses to main-memory are byte-swapped on a big-endian architecture.
+ *	This is done through the endian_xx macro's, that differ according to
+ *	the endianness of the architecture.
+ *
+ * X-1.18	Camiel Vanderhoeven				28-FEB-2007
+ *	In the lockstep-versions of the emulator, perform lockstep 
+ *	synchronisation for every clock tick.
+ *
+ * X-1.17	Camiel Vanderhoeven				27-FEB-2007
+ *	Removed an unreachable "return 0;" line.
+ *
+ * X-1.16	Camiel Vanderhoeven				18-FEB-2007
+ *	Keep track of the cycle-counter in single-step mode (using the
+ *	iSSCycles variable.
+ *
+ * X-1.15	Camiel Vanderhoeven				16-FEB-2007
+ *   a) Provide slow and fast clocks for devices. Typical fast-clocked 
+ *	devices are the CPU(s); most other devices that need a clock should 
+ *	probably be slow clock devices.
+ *   b) DoClock() was replaced with Run(), which runs until one of the 
+ *	connected devices returns something other than 0; and SingleStep().
+ *   c) Corrected some signed/unsigned integer comparison warnings.
+ *
+ * X-1.14	Brian Wheeler					13-FEB-2007
+ *   a) Corrected some typo's in printf statements.
+ *   b) Fixed some compiler warnings (assignment inside if()).
+ *
+ * X-1.13	Camiel Vanderhoeven				12-FEB-2007
+ *	Removed error messages when accessing unknown memory.
+ *
+ * X-1.12       Camiel Vanderhoeven                             12-FEB-2007
+ *      Corrected a signed/unsigned integer comparison warning.
+ *
+ * X-1.11       Camiel Vanderhoeven                             9-FEB-2007
+ *      Added comments.
+ *
+ * X-1.10	Brian Wheeler					7-FEB-2007
+ *	Remove FindConfig function, and load configuration file from the
+ *	constructor.
+ *
+ * X-1.9	Camiel Vanderhoeven				7-FEB-2007
+ *   a)	CTraceEngine is no longer instantiated as a member of CSystem.
+ *   b)	Calls to trace_dev now use the TRC_DEVx macro's.
+ *
+ * X-1.8	Camiel Vanderhoeven				3-FEB-2007
+ *   a) Removed last conditional for supporting another system than an ES40
+ *      (#ifdef DS15)
+ *   b) FindConfig() now returns the default value rather than crashing 
+ *	when none of the standard configuration files can be found.
+ *
+ * X-1.7        Brian Wheeler                                   3-FEB-2007
+ *      Formatting.
+ *
+ * X-1.6	Brian Wheeler					3-FEB-2007
+ *	Replaced several 64-bit values in 0x... syntax with X64(...).
+ *
+ * X-1.5	Brian Wheeler					3-FEB-2007
+ *	Added possibility to load a configuration file.
+ *
+ * X-1.4	Brian Wheeler					3-FEB-2007
+ *	Replaced 1i64 with X64(1) in two instances.
+ *
+ * X-1.3        Brian Wheeler                                   3-FEB-2007
+ *      Scanf and printf statements made compatible with Linux/GCC/glibc.
+ *      
+ * X-1.2        Brian Wheeler                                   3-FEB-2007
+ *      Includes are now case-correct (necessary on Linux)
+ *
+ * X-1.1        Camiel Vanderhoeven                             19-JAN-2007
+ *      Initial version in CVS.
+ *
  * \author Camiel Vanderhoeven (camiel@camicom.com / http://www.camicom.com)
  **/
 
@@ -265,7 +351,7 @@ void CSystem::WriteMem(u64 address, int dsize, u64 data)
   u64 t64;
   u32 t32;
   u16 t16;
-#endif;
+#endif
 
   a = address & X64(00000fffffffffff);
 
