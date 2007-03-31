@@ -27,13 +27,59 @@
  * \file 
  * Contains the code for the emulated on-cpu translation buffers.
  *
- * \author Camiel Vanderhoeven (camiel@camicom.com / www.camicom.com)
+ * X-1.13       Camiel Vanderhoeven                             31-MAR-2007
+ *      Define NO_INTELLIGENT_TB by default, because some bug causes the 
+ *	translation buffer to return bogus translations for IDE addresses
+ *	to the DQDRIVER.
+ *
+ * X-1.12	Camiel Vanderhoeven				27-MAR-2007
+ *	Add possibility to disable "smart" Translation Buffers by defining
+ *	NO_INTELLIGENT_TB
+ *
+ * X-1.11	Camiel Vanderhoeven				14-MAR-2007
+ *	Do not perform translations when we are listing.
+ *
+ * X-1.10       Camiel Vanderhoeven                             12-MAR-2007
+ *   a) Added support for "smart" Translation Buffers.
+ *   b)	Added support for Translation Buffer debugging.
+ *
+ * X-1.9	Camiel Vanderhoeven				9-MAR-2007
+ *	Formatting.
+ *
+ * X-1.8	Camiel Vanderhoeven				8-MAR-2007
+ *	When doing a double-lookup, do it manually.
+ *
+ * X-1.7	Camiel Vanderhoeven				8-MAR-2007
+ *	When no entry is found, try to look it up in the page table ourselves.
+ *
+ * X-1.6       Camiel Vanderhoeven                             8-MAR-2007
+ *	Inline functions from TranslationBuffer.h turned into normal 
+ *	functions, and moved here.
+ *
+ * X-1.5        Camiel Vanderhoeven                             12-FEB-2007
+ *      Added comments.
+ *
+ * X-1.4        Camiel Vanderhoeven                             7-FEB-2007
+ *      Added comments.
+ *
+ * X-1.3        Brian Wheeler                                   3-FEB-2007
+ *      Formatting.
+ *
+ * X-1.2        Brian Wheeler                                   3-FEB-2007
+ *      Includes are now case-correct (necessary on Linux)
+ *
+ * X-1.1        Camiel Vanderhoeven                             19-JAN-2007
+ *      Initial version in CVS.
+ *
+ * \author Camiel Vanderhoeven (camiel@camicom.com / http://www.camicom.com)
  **/
 
 #include "StdAfx.h"
 #include "TranslationBuffer.h"
 #include "AlphaCPU.h"
 #include "TraceEngine.h"
+
+#define NO_INTELLIGENT_TB
 
 extern CSystem * systm;
 /**
