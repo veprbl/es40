@@ -1,3 +1,57 @@
+################################################################################
+# ES40 emulator.
+# Copyright (C) 2007 by Camiel Vanderhoeven
+#
+# Website: www.camicom.com
+# E-mail : camiel@camicom.com
+# 
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 2
+# of the License, or (at your option) any later version.
+# 
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+# 
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+# 
+# Although this is not required, the author would appreciate being notified of, 
+# and receiving any modifications you may make to the source code that might serve
+# the general public.
+#
+################################################################################
+# 
+# Makefile for GNU Linux. (And possibly many UNIX'es).
+#
+# X-1.7		Camiel Vanderhoeven				1-APR-2007
+#	Added old changelog comments.
+#
+# X-1.6		Camiel Vanderhoeven				28-FEB-2007
+#	Added lockstep targets (es40_lss and es40_lsm).
+#
+# X-1.5		Brian Wheeler					16-FEB-2007
+#	Added Interactive Debugger target (es40_idb).
+#
+# X-1.4		Brian Wheeler					13-FEB-207
+#	Added Doxygen target (doc).
+#
+# X-1.3		Brian Wheeler					3-FEB-2007
+#	Make clean now also removes old trace files.
+#
+# X-1.2		Brian wheeler					3-FEB-2007
+#	Added Serial.o.
+#
+# X-1.1		Brian Wheeler					3-FEB-2007
+#	Created this file for the Linux port.
+#
+# \author Brian Wheeler
+#
+################################################################################
+
 #to use G++
 CC = g++
 LDFLAGS =

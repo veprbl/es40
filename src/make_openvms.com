@@ -24,9 +24,23 @@ $! Although this is not required, the author would appreciate being notified of,
 $! and receiving any modifications you may make to the source code that might serve
 $! the general public.
 $!
-$! MAKEFILE FOR OPENVMS
+$!==========================================================================================
+$! 
+$! Makefile for Solaris/SPARC (Sun Studio 11).
+$!
+$! X-1.3	Camiel Vanderhoeven				1-APR-2007
+$!	Added old changelog comments.
+$!
+$! X-1.2	Camiel Vanderhoeven				28-FEB-2007
+$!	Added es40_lsm.exe and es40_lss.exe (lockstep versions)
+$!
+$! X-1.1        Camiel Vanderhoeven				27-FEB-2007
+$!	Created this file for the OpenVMS port.
+$!
+$! \author Camiel Vanderhoeven (camiel@camicom.com / http://www.camicom.com)
 $!
 $!==========================================================================================
+$!
 $! START
 $!
 $! Edit the folloing line to point to your UNIX porting library include files:
