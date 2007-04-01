@@ -27,6 +27,10 @@
  * \file 
  * Contains the code for the emulated on-cpu translation buffers.
  *
+ * X-1.14	Camiel Vanderhoeven				1-APR-2007
+ *	InvalidateSingle invalidates all matching entries, if more than
+ *	one match.
+ *
  * X-1.13       Camiel Vanderhoeven                             31-MAR-2007
  *      Define NO_INTELLIGENT_TB by default, because some bug causes the 
  *	translation buffer to return bogus translations for IDE addresses
@@ -509,8 +513,6 @@ void CTranslationBuffer::InvalidateAll()
   int i;
   for (i=0;i<TB_ENTRIES;i++)
     entry[i].valid = false;
-
-  next_entry = 0;
 }
 
 void CTranslationBuffer::InvalidateAllProcess()
@@ -521,15 +523,11 @@ void CTranslationBuffer::InvalidateAllProcess()
       if (!entry[i].asm_bit)
 	entry[i].valid = false;
     }
-
-  next_entry = 0;
 }
 
 void CTranslationBuffer::InvalidateSingle(u64 address)
 {
   int i;
-  i = FindEntry(address);
-  if (i<0)
-    return;
-  entry[i].valid = false;
+  while ((i = FindEntry(address)) >= 0)
+    entry[i].valid = false;
 }
