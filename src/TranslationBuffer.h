@@ -27,6 +27,9 @@
  * \file 
  * Contains the definitions for the emulated on-cpu translation buffers.
  *
+ * X-1.13	Camiel Vanderhoeven				1-APR-2007
+ *	Back to the "normal" amount of 128 entries.
+ *
  * X-1.12       Camiel Vanderhoeven                             30-MAR-2007
  *      Added old changelog comments.
  *
@@ -77,7 +80,7 @@
 #include "datatypes.h"
 #include "System.h"
 
-#define TB_ENTRIES	1024
+#define TB_ENTRIES	128
 
 #define CM_KERNEL	0
 #define CM_EXECUTIVE	1
