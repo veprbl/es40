@@ -29,6 +29,9 @@
  *
  * \bug When restoring state, the ide_status may be 0xb9...
  *
+ * X-1.22	Camiel Vanderhoeven				1-APR-2007
+ *	Uncommented the IDE debugging statements.
+ *
  * X-1.21       Camiel Vanderhoeven                             31-MAR-2007
  *      Added old changelog comments.
  *
@@ -1050,8 +1053,8 @@ void CAliM1543C::ide_command_write(int index, u64 address, u64 data)
   TRC_DEV4("%%ALI-I-WRITEIDECMD: write port %d on IDE command %d: 0x%02x\n",  (u32)(address),index, data);
 
 #ifdef DEBUG_IDE
-//  if (address)
-//    printf("%%ALI-I-WRITEIDECMD: write port %d on IDE command %d: 0x%02x\n",  (u32)(address),index, data);
+  if (address)
+    printf("%%ALI-I-WRITEIDECMD: write port %d on IDE command %d: 0x%02x\n",  (u32)(address),index, data);
 #endif
 
   ide_command[index][address]=(u8)data;
@@ -1168,7 +1171,7 @@ void CAliM1543C::ide_command_write(int index, u64 address, u64 data)
 	      lba =      *((int*)(&(ide_command[index][3]))) & 0x0fffffff;
 	      TRC_DEV5("%%IDE-I-READSECT: Read  %3d sectors @ IDE %d.%d LBA %8d\n",ide_command[index][2]?ide_command[index][2]:256,index,ide_selected[index],lba);
 #ifdef DEBUG_IDE
-//	      printf("%%IDE-I-READSECT: Read  %3d sectors @ IDE %d.%d LBA %8d\n",ide_command[index][2]?ide_command[index][2]:256,index,ide_selected[index],lba);
+	      printf("%%IDE-I-READSECT: Read  %3d sectors @ IDE %d.%d LBA %8d\n",ide_command[index][2]?ide_command[index][2]:256,index,ide_selected[index],lba);
 #endif
 	      fseek(ide_info[index][ide_selected[index]].handle,lba*512,0);
 	      fread(&(ide_data[index][0]),1,512,ide_info[index][ide_selected[index]].handle);
@@ -1191,7 +1194,7 @@ void CAliM1543C::ide_command_write(int index, u64 address, u64 data)
 	        lba =      *((int*)(&(ide_command[index][3]))) & 0x0fffffff;
 	        TRC_DEV5("%%IDE-I-WRITSECT: Write %3d sectors @ IDE %d.%d @ LBA %8d\n",ide_command[index][2]?ide_command[index][2]:256,index,ide_selected[index],lba);
 #ifdef DEBUG_IDE
-//	        printf("%%IDE-I-WRITSECT: Write %3d sectors @ IDE %d.%d @ LBA %8d\n",ide_command[index][2]?ide_command[index][2]:256,index,ide_selected[index],lba);
+	        printf("%%IDE-I-WRITSECT: Write %3d sectors @ IDE %d.%d @ LBA %8d\n",ide_command[index][2]?ide_command[index][2]:256,index,ide_selected[index],lba);
 #endif
 	        fseek(ide_info[index][ide_selected[index]].handle,lba*512,0);
 	        ide_data_ptr[index] = 0;
