@@ -27,6 +27,10 @@
  * \file 
  * Contains the code for the emulated on-cpu translation buffers.
  *
+ * X-1.15	Camiel Vanderhoeven				3-APR-2007
+ *	Backed out X-1.13, because this did not solve the problem, and the
+ *	real problem was found and fixed (AliM1543C.cpp/X-1.23).
+ *
  * X-1.14	Camiel Vanderhoeven				1-APR-2007
  *	InvalidateSingle invalidates all matching entries, if more than
  *	one match.
@@ -82,8 +86,6 @@
 #include "TranslationBuffer.h"
 #include "AlphaCPU.h"
 #include "TraceEngine.h"
-
-#define NO_INTELLIGENT_TB
 
 extern CSystem * systm;
 /**
