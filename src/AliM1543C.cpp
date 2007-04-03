@@ -29,6 +29,10 @@
  *
  * \bug When restoring state, the ide_status may be 0xb9...
  *
+ * X-1.23	Camiel Vanderhoeven				3-APR-2007
+ *	Fixed wrong IDE configuration mask (address ranges masked were too 
+ *	short, leading to overlapping memory regions.)	
+ *
  * X-1.22	Camiel Vanderhoeven				1-APR-2007
  *	Uncommented the IDE debugging statements.
  *
@@ -306,7 +310,7 @@ CAliM1543C::CAliM1543C(CSystem * c): CSystemComponent(c)
 
   ide_config_mask[0x0d] = 0xff;	// latency timer
 
-  ide_config_mask[0x10] = 0xfc;	// address I
+  ide_config_mask[0x10] = 0xf8;	// address I
   ide_config_mask[0x11] = 0xff;	
   ide_config_mask[0x12] = 0xff;	
   ide_config_mask[0x13] = 0xff;	
@@ -314,7 +318,7 @@ CAliM1543C::CAliM1543C(CSystem * c): CSystemComponent(c)
   ide_config_mask[0x15] = 0xff;	
   ide_config_mask[0x16] = 0xff;	
   ide_config_mask[0x17] = 0xff;	
-  ide_config_mask[0x18] = 0xfc;	// address III
+  ide_config_mask[0x18] = 0xf8;	// address III
   ide_config_mask[0x19] = 0xff;	
   ide_config_mask[0x1a] = 0xff;	
   ide_config_mask[0x1b] = 0xff;	
@@ -322,7 +326,7 @@ CAliM1543C::CAliM1543C(CSystem * c): CSystemComponent(c)
   ide_config_mask[0x1d] = 0xff;	
   ide_config_mask[0x1e] = 0xff;	
   ide_config_mask[0x1f] = 0xff;	
-  ide_config_mask[0x20] = 0xfc;	// address V
+  ide_config_mask[0x20] = 0xf0;	// address V
   ide_config_mask[0x21] = 0xff;	
   ide_config_mask[0x22] = 0xff;	
   ide_config_mask[0x23] = 0xff;	
