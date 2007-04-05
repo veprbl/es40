@@ -28,6 +28,10 @@
  * \file
  * Contains the definitions for the emulated DecChip 21264CB EV68 Alpha processor.
  *
+ * X-1.19	Camiel Vanderhoeven				5-APR-2007
+ *	Fixed X-1.14. The virtual address was returned instead of the 
+ *	physical one!
+ *
  * X-1.18       Camiel Vanderhoeven                             31-MAR-2007
  *      Added old changelog comments.
  *
@@ -453,20 +457,18 @@ inline u64 CAlphaCPU::get_prbr(void)
   u64 p_prbr;	// physical
   bool b;
 
-  if (r[21+32] && (   (r[21+32]+0xa8)< (128*1024*1024)))
-    {
-      v_prbr = cSystem->ReadMem(r[21+32] + 0xa8,64);
-    }
+  if (r[21+32] && (   (r[21+32]+0xaf) < (X64(1)<<cSystem->get_memory_bits())))
+    v_prbr = cSystem->ReadMem(r[21+32] + 0xa8,64);
   else
     v_prbr = cSystem->ReadMem(0x70a8 + (0x200 * get_cpuid()),64);
 
   if (dtb->convert_address(v_prbr, &p_prbr, 0, false, 0, &b, false, false))
     p_prbr = v_prbr;
 
-  if (v_prbr > (X64(1)<<cSystem->get_memory_bits()))
-    v_prbr = 0;
+  if (p_prbr > (X64(1)<<cSystem->get_memory_bits()))
+    p_prbr = 0;
 
-  return v_prbr;
+  return p_prbr;
 }
 
 inline CTranslationBuffer * CAlphaCPU::get_tb(bool bIBOX)
