@@ -27,6 +27,9 @@
  * \file 
  * Contains the definitions for the CPU tracing engine.
  *
+ * X-1.16	Camiel Vanderhoeven				7-APR-2007
+ *	Added hwpcb to PRBR structure.
+ *
  * X-1.15       Camiel Vanderhoeven                             30-MAR-2007
  *      Added old changelog comments.
  *
@@ -100,6 +103,7 @@ struct STraceFunction {
 
 struct STracePRBR {
   u64 prbr;
+  u64 hwpcb;
   FILE * f;
   u64 trcadd[701];
   int trclvl;
@@ -146,7 +150,7 @@ class CTraceEngine
   struct STraceFunction asFunctions[25000];
   struct STraceCPU asCPUs[4];
   struct STracePRBR asPRBRs[1000];
-  int get_prbr(u64 prbr);
+  int get_prbr(u64 prbr, u64 hwpcb);
   void write_arglist(CAlphaCPU * c, FILE * f, char * a);
   FILE * current_trace_file;
   u64 iBreakPoint;
