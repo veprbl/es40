@@ -28,6 +28,9 @@
  * Contains the code for the CPU tracing engine.
  * This will become the debugging engine (interactive debugger) soon.
  *
+ * X-1.25	Camiel Vanderhoeven				7-APR-2007
+ *	Added PCB to job context recognition.
+ *
  * X-1.24       Camiel Vanderhoeven                             30-MAR-2007
  *      Added old changelog comments.
  *
@@ -187,16 +190,16 @@ void CTraceEngine::trace(CAlphaCPU * cpu, u64 f, u64 t, bool down, bool up, cons
 	 || (t == f) )
     return;
 
-  int p = get_prbr(cpu->get_prbr());
+  int p = get_prbr(cpu->get_prbr(),cpu->get_hwpcb());
   int o = asCPUs[cpu->get_cpuid()].last_prbr;
   
   if (p != o)
     {
       if (o != -1)
 	{
-	  fprintf(asPRBRs[o].f, "\n==> Switch to PRBR %" LL "x (%s)\n",   asPRBRs[p].prbr, asPRBRs[p].procname);
-	  fprintf(asPRBRs[p].f, "    This is PRBR %" LL "x (%s)\n",       asPRBRs[p].prbr, asPRBRs[p].procname);
-	  fprintf(asPRBRs[p].f, "<== Switch from PRBR %" LL "x (%s)\n\n", asPRBRs[o].prbr, asPRBRs[o].procname);
+	  fprintf(asPRBRs[o].f, "\n==>   Switch to PRBR %08" LL "x %08" LL "x (%s)\n",   asPRBRs[p].prbr, asPRBRs[p].hwpcb, asPRBRs[p].procname);
+	  fprintf(asPRBRs[p].f,   "        This is PRBR %08" LL "x %08" LL "x (%s)\n",   asPRBRs[p].prbr, asPRBRs[p].hwpcb, asPRBRs[p].procname);
+	  fprintf(asPRBRs[p].f,   "<== Switch from PRBR %08" LL "x %08" LL "x (%s)\n\n", asPRBRs[o].prbr, asPRBRs[o].hwpcb, asPRBRs[o].procname);
 	}
       asCPUs[cpu->get_cpuid()].last_prbr = p;
     }
@@ -289,11 +292,12 @@ void CTraceEngine::trace(CAlphaCPU * cpu, u64 f, u64 t, bool down, bool up, cons
 
 void CTraceEngine::trace_br(CAlphaCPU * cpu, u64 f, u64 t)
 {
-  int p;
+  int p, o;
   u64 pc_f = real_address(f, cpu, true);
   u64 pc_t = real_address(t, cpu, true);
 
-  p = get_prbr(cpu->get_prbr());
+  p = get_prbr(cpu->get_prbr(),cpu->get_hwpcb());
+  o = asCPUs[cpu->get_cpuid()].last_prbr;
 
   if (asPRBRs[p].trc_waitfor)
     {
@@ -305,13 +309,13 @@ void CTraceEngine::trace_br(CAlphaCPU * cpu, u64 f, u64 t)
   if (asPRBRs[p].trchide != -1)
     return;
     
-  if (p!= asCPUs[cpu->get_cpuid()].last_prbr)
+  if (p!= o)
     {
-      if (asCPUs[cpu->get_cpuid()].last_prbr != -1)
+      if (o != -1)
 	{
-	  fprintf(asPRBRs[asCPUs[cpu->get_cpuid()].last_prbr].f, "\n==> Switch to PRBR %" LL "x (%s)\n", cpu->get_prbr(), cSystem->PtrToMem(cpu->get_prbr()+0x154));
-	  fprintf(asPRBRs[p].f, "    This is PRBR %" LL "x (%s)\n", cpu->get_prbr(), cSystem->PtrToMem(cpu->get_prbr()+0x154));
-	  fprintf(asPRBRs[p].f,"<== Switch from PRBR %" LL "x (%s)\n\n", asPRBRs[asCPUs[cpu->get_cpuid()].last_prbr].prbr, cSystem->PtrToMem(asPRBRs[asCPUs[cpu->get_cpuid()].last_prbr].prbr+0x154));
+	  fprintf(asPRBRs[o].f, "\n==>   Switch to PRBR %08" LL "x %08" LL "x (%s)\n",   asPRBRs[p].prbr, asPRBRs[p].hwpcb, asPRBRs[p].procname);
+	  fprintf(asPRBRs[p].f,   "        This is PRBR %08" LL "x %08" LL "x (%s)\n",   asPRBRs[p].prbr, asPRBRs[p].hwpcb, asPRBRs[p].procname);
+	  fprintf(asPRBRs[p].f,   "<== Switch from PRBR %08" LL "x %08" LL "x (%s)\n\n", asPRBRs[o].prbr, asPRBRs[o].hwpcb, asPRBRs[o].procname);
 	}
       asCPUs[cpu->get_cpuid()].last_prbr = p;
     }
@@ -354,7 +358,7 @@ void CTraceEngine::add_function(u64 address, char * fn_name, char * fn_arglist, 
 void CTraceEngine::set_waitfor(CAlphaCPU * cpu, u64 address)
 {
   int p;
-  p = get_prbr(cpu->get_prbr());
+  p = get_prbr(cpu->get_prbr(),cpu->get_hwpcb());
 
   if(asPRBRs[p].trc_waitfor == 0)
     asPRBRs[p].trc_waitfor = address & ~X64(3);
@@ -377,14 +381,14 @@ bool CTraceEngine::get_fnc_name(CAlphaCPU * c, u64 address, char ** p_fn_name)
   return false;
 }
 
-int CTraceEngine::get_prbr(u64 prbr)
+int CTraceEngine::get_prbr(u64 prbr, u64 hwpcb)
 {
   int i;
   char filename[100];
 
   for (i=0;i<iNumPRBRs;i++)
     {
-      if (asPRBRs[i].prbr == prbr)
+      if ((asPRBRs[i].prbr == prbr) && (asPRBRs[i].hwpcb == hwpcb))
 	{
 	  if (asPRBRs[i].f == current_trace_file)
 	    return i;
@@ -406,11 +410,12 @@ int CTraceEngine::get_prbr(u64 prbr)
   asPRBRs[i].generation++;
 
   asPRBRs[i].prbr = prbr;
+  asPRBRs[i].hwpcb = hwpcb;
   if (prbr > 0 && prbr < (X64(1)<<cSystem->get_memory_bits()))
     strncpy(asPRBRs[i].procname, cSystem->PtrToMem(prbr+0x154), 20);
   else
     strcpy(asPRBRs[i].procname,"");
-  sprintf(filename,"trace_%08" LL "x_%02d_%s.trc",prbr,asPRBRs[i].generation,asPRBRs[i].procname);
+  sprintf(filename,"trace_%08" LL "x_%08" LL "x_%02d_%s.trc",prbr,hwpcb,asPRBRs[i].generation,asPRBRs[i].procname);
   asPRBRs[i].f = fopen(filename,"w");
   if (asPRBRs[i].f==0)
     printf("Failed to open file!!\n");
@@ -418,7 +423,7 @@ int CTraceEngine::get_prbr(u64 prbr)
   asPRBRs[i].trchide = -1;
   asPRBRs[i].trc_waitfor = 0;
   current_trace_file = asPRBRs[i].f;
-  printf("Add PRBR: %" LL "x\n",prbr);
+  printf("Add PRBR: %08" LL "x_%08" LL "x\n",prbr,hwpcb);
   return i;
 }
 
