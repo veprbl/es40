@@ -27,6 +27,13 @@
  * \file 
  * Contains the code for the emulated Typhoon Chipset devices.
  *
+ * X-1.24	Camiel Vanderhoeven				10-APR-2007
+ *	New mechanism for SRM replacements. Where these need to be executed,
+ *	CSystem::LoadROM() puts a special opcode (a CALL_PAL instruction
+ *	with an otherwise illegal operand of 0x01234xx) in memory. 
+ *	CAlphaCPU::DoClock() recognizes these opcodes and performs the SRM
+ *	action.
+ *
  * X-1.23       Camiel Vanderhoeven                             10-APR-2007
  *      Extended ROM-handling code to favor loading decompressed ROM code
  *      over loading compressed code, and to save decompressed ROM code
@@ -832,29 +839,53 @@ int CSystem::LoadROM()
     if (!f)
     {
       printf("%%SYS-W-NOWRITE: Couldn't write decompressed rom to %s.\n", GetConfig("rom.decompressed","decompressed.rom"));
-      printf("%%SYS-I-ROMLOADED: ROM Image loaded successfully!\n");
-      return 0;
     }
-    printf("%%SYS-I-ROMWRT: Writing decompressed rom to %s.\n", GetConfig("rom.decompressed","decompressed.rom"));
-    temp = acCPUs[0]->get_pc();
-    fwrite(&temp,1,sizeof(u64),f);
-    temp = acCPUs[0]->get_pal_base();
-    fwrite(&temp,1,sizeof(u64),f);
-    buffer = PtrToMem(0);
-    fwrite(buffer,1,0x200000,f);
-    fclose(f);
-
-    printf("%%SYS-I-ROMLOADED: ROM Image loaded successfully!\n");
-    return 0;
+    else
+    {
+      printf("%%SYS-I-ROMWRT: Writing decompressed rom to %s.\n", GetConfig("rom.decompressed","decompressed.rom"));
+      temp = acCPUs[0]->get_pc();
+      fwrite(&temp,1,sizeof(u64),f);
+      temp = acCPUs[0]->get_pal_base();
+      fwrite(&temp,1,sizeof(u64),f);
+      buffer = PtrToMem(0);
+      fwrite(buffer,1,0x200000,f);
+      fclose(f);
+    }
   }
-  printf("%%SYS-I-READROM: Reading decompressed ROM image from %s.\n", GetConfig("rom.decompressed","decompressed.rom"));
-  fread(&temp,1,sizeof(u64),f);
-  acCPUs[0]->set_pc(temp);
-  fread(&temp,1,sizeof(u64),f);
-  acCPUs[0]->set_PAL_BASE(temp);
-  buffer = PtrToMem(0);
-  fread(buffer,1,0x200000,f);
-  fclose(f);
+  else
+  {
+    printf("%%SYS-I-READROM: Reading decompressed ROM image from %s.\n", GetConfig("rom.decompressed","decompressed.rom"));
+    fread(&temp,1,sizeof(u64),f);
+    acCPUs[0]->set_pc(temp);
+    fread(&temp,1,sizeof(u64),f);
+    acCPUs[0]->set_PAL_BASE(temp);
+    buffer = PtrToMem(0);
+    fread(buffer,1,0x200000,f);
+    fclose(f);
+  }
+#if !defined(SRM_NO_SPEEDUPS) || !defined(SRM_NO_SRL) || !defined(SRM_NO_IDE)
+  printf("%%SYM-I-PATCHROM: Patching ROM for speed.\n");
+#endif
+
+#if !defined(SRM_NO_SPEEDUPS)
+  WriteMem(X64(14248),32,0xe7e00000);       // e7e00000 = BEQ r31, +0
+  WriteMem(X64(14288),32,0xe7e00000);       
+  WriteMem(X64(142c8),32,0xe7e00000);       
+  WriteMem(X64(68320),32,0xe7e00000);       
+  WriteMem(X64(8bb78),32,0xe7e00000);       // memory test (aa)
+  WriteMem(X64(8bc0c),32,0xe7e00000);       // memory test (bb)
+  WriteMem(X64(8bc94),32,0xe7e00000);       // memory test (00)
+#endif
+
+#if !defined(SRM_NO_SRL)
+  WriteMem(X64(a8b38),32,0x00123400);       // SRM_WRITE_SERIAL
+  WriteMem(X64(a8b3c),32,0x6bfa8001);       // JMP r31, r26
+#endif
+
+#if !defined(SRM_NO_IDE)
+  WriteMem(X64(b66c0),32,0x00123401);       // SRM_READ_IDE_DISK
+  WriteMem(X64(b66c4),32,0x6bfa8001);       // JMP r31, r26
+#endif
 
   printf("%%SYS-I-ROMLOADED: ROM Image loaded successfully!\n");
   return 0;
