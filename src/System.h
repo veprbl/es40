@@ -27,6 +27,9 @@
  * \file 
  * Contains the definitions for the emulated Typhoon Chipset devices.
  *
+ * X-1.11       Camiel Vanderhoeven                             10-APR-2007
+ *      Removed obsolete ROM-handling code.
+ *
  * X-1.10       Camiel Vanderhoeven                             30-MAR-2007
  *      Added old changelog comments.
  *
@@ -87,25 +90,6 @@ struct SMemoryUser {
 };
 
 /**
- * Structure used for information about available ROM images.
- **/
-
-struct SROM_data
-{
-  char * filename;
-  u32 header_size;
-  u32 cksum;
-  u32 image_size;
-  u32 compression;
-  u64 load_at;
-  u32 romsize;
-  u32 hdrck;
-  u8 id;
-  char revision[9];
-  char tp[4];
-};
-
-/**
  * Structure used for configuration values.
  **/
 
@@ -129,9 +113,8 @@ class CSystem
   u64 PCI_ReadMem(int pcibus, u32 address, int dsize);
   void PCI_WriteMem(int pcibus, u32 address, int dsize, u64 data);
   void interrupt(int number, bool assert);
-  u64 Select_ROM();
-  int load_ROM(char * filename);
-  int load_ROM2(char* filename, int start_at, u64 load_at, u8 type);
+  u64 SelectROM();
+  int LoadROM(char* filename, int start_at, u64 load_at);
   u64 ReadMem(u64 address, int dsize);
   void WriteMem(u64 address, int dsize, u64 data);
   int Run();
@@ -174,6 +157,7 @@ class CSystem
   u64 p_WSM[2][4];
   u64 p_TBA[2][4];
   u64 d_STR;
+  u64 RomLoadedAt;
   void * memory;
   //	void * memmap;
 
@@ -186,8 +170,6 @@ class CSystem
   int iNumMemories;
   struct SMemoryUser * asMemories[MAX_COMPONENTS];
 
-  struct SROM_data * asROMs[10];
-  int iNumROMs;
   class CAlphaCPU * acCPUs[4];
 
   struct SConfig *asConfig[30];
