@@ -27,6 +27,10 @@
  * \file 
  * Contains the definitions for the emulated Typhoon Chipset devices.
  *
+ * X-1.12       Camiel Vanderhoeven                             10-APR-2007
+ *      Replaced LoadROM(...) and SelectROM() calls with a single LoadROM()
+ *      call. (See System.cpp, X-1.23).
+ *
  * X-1.11       Camiel Vanderhoeven                             10-APR-2007
  *      Removed obsolete ROM-handling code.
  *
@@ -113,14 +117,11 @@ class CSystem
   u64 PCI_ReadMem(int pcibus, u32 address, int dsize);
   void PCI_WriteMem(int pcibus, u32 address, int dsize, u64 data);
   void interrupt(int number, bool assert);
-  u64 SelectROM();
-  int LoadROM(char* filename, int start_at, u64 load_at);
+  int LoadROM();
   u64 ReadMem(u64 address, int dsize);
   void WriteMem(u64 address, int dsize, u64 data);
   int Run();
-#if defined(IDB)
   int SingleStep();
-#endif
 
   int RegisterMemory(CSystemComponent * component, int index, u64 base, u64 length);
   int RegisterClock(CSystemComponent * component, bool slow);
@@ -175,8 +176,9 @@ class CSystem
   struct SConfig *asConfig[30];
   int iNumConfig;
 
-#if defined(IDB)
   int iSingleStep;
+
+#if defined(IDB)
   int iSSCycles;
 #endif
 };
