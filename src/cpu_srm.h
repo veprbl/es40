@@ -27,8 +27,16 @@
  * \file 
  * Contains code macros for the SRM-replacement pseudo instructions.
  *
+ * X-1.2	Camiel Vanderhoeven				10-APR-2007
+ *	Unintentional version number increase.
+ *
  * X-1.1        Camiel Vanderhoeven                             10-APR-2007
- *      File created. Contains code previously found in AlphaCPU.cpp
+ *      File created. Contains code previously found in AlphaCPU.cpp:
+ *	New mechanism for SRM replacements. Where these need to be executed,
+ *	CSystem::LoadROM() puts a special opcode (a CALL_PAL instruction
+ *	with an otherwise illegal operand of 0x01234xx) in memory. 
+ *	CAlphaCPU::DoClock() recognizes these opcodes and performs the SRM
+ *	action.
  *
  * \author Camiel Vanderhoeven (camiel@camicom.com / http://www.camicom.com)
  **/
