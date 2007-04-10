@@ -27,6 +27,9 @@
  * \file
  * Defines the entry point for the application.
  *
+ * X-1.21       Camiel Vanderhoeven                             10-APR-2007
+ *      Calls to LoadROM and SelectROM changed to fit X-1.22 of System.cpp.
+ *
  * X-1.20       Camiel Vanderhoeven                             31-MAR-2007
  *      Added old changelog comments.
  *
@@ -178,7 +181,7 @@ int main(int argc, char* argv[])
   trc = new CTraceEngine(systm);
 #endif
 
-  systm->load_ROM2(systm->GetConfig("rom.srm","cl67srmrom.exe"),0x240,X64(900000),2);
+  systm->LoadROM(systm->GetConfig("rom.srm","cl67srmrom.exe"),0x240,X64(900000));
 
   cpu[0] = new CAlphaCPU(systm);
 
@@ -193,7 +196,7 @@ int main(int argc, char* argv[])
   srom = new CFlash(systm);
   dpr = new CDPR(systm);
 
-  loadat = systm->Select_ROM();
+  loadat = systm->SelectROM();
   cpu[0]->set_pc(loadat+1);
   cpu[0]->set_PAL_BASE(loadat);
 
