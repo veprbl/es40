@@ -27,6 +27,10 @@
  * \file
  * Defines the entry point for the application.
  *
+ * X-1.22       Camiel Vanderhoeven                             10-APR-2007
+ *      Replaced LoadROM(...) and SelectROM() calls with a single LoadROM()
+ *      call. (See System.cpp, X-1.23).
+ *
  * X-1.21       Camiel Vanderhoeven                             10-APR-2007
  *      Calls to LoadROM and SelectROM changed to fit X-1.22 of System.cpp.
  *
@@ -143,8 +147,6 @@ char *path[]={
 
 int main(int argc, char* argv[])
 {
-  u64 loadat;
-
   printf("%%SYS-I-INITSTART: System initialization started.\n");
 
 #if defined(IDB) && (defined(LS_MASTER) || defined(LS_SLAVE))
@@ -181,8 +183,6 @@ int main(int argc, char* argv[])
   trc = new CTraceEngine(systm);
 #endif
 
-  systm->LoadROM(systm->GetConfig("rom.srm","cl67srmrom.exe"),0x240,X64(900000));
-
   cpu[0] = new CAlphaCPU(systm);
 
   ali = new CAliM1543C(systm);
@@ -196,9 +196,7 @@ int main(int argc, char* argv[])
   srom = new CFlash(systm);
   dpr = new CDPR(systm);
 
-  loadat = systm->SelectROM();
-  cpu[0]->set_pc(loadat+1);
-  cpu[0]->set_PAL_BASE(loadat);
+  systm->LoadROM();
 
   printf("%%SYS-I-INITEND: System initialization complete.\n");
 
