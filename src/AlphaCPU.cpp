@@ -27,6 +27,16 @@
  * \file 
  * Contains the code for the emulated DecChip 21264CB EV68 Alpha processor.
  *
+ * X-1.35	Camiel Vanderhoeven				10-APR-2007
+ *	New mechanism for SRM replacements. Where these need to be executed,
+ *	CSystem::LoadROM() puts a special opcode (a CALL_PAL instruction
+ *	with an otherwise illegal operand of 0x01234xx) in memory. 
+ *	CAlphaCPU::DoClock() recognizes these opcodes and performs the SRM
+ *	action.
+ *
+ * X-1.34	Camiel Vanderhoeven				10-APR-2007
+ *	Unintentional version number increase.
+ *
  * X-1.33       Camiel Vanderhoeven                             30-MAR-2007
  *      Formatting.
  *
@@ -482,69 +492,9 @@ int CAlphaCPU::DoClock()
 
 
 #if defined(IDB)
-
   char * funcname = 0;
   char dbg_string[1000] = "";
   char * dbg_strptr = dbg_string;
-
-  if (!bListing)
-  {
-#endif
-
-      // PALcode emulations (for speed...)
-
-#define QQQ(a) cSystem->ReadMem(a,64)
-#define LLL(a) cSystem->ReadMem(a,32)
-#define WWW(a) cSystem->ReadMem(a,16)
-#define BBB(a) cSystem->ReadMem(a,8)
-/*      
-#if !defined(SRM_NO_SRL)
-      if ( get_clean_pc()==X64(a8b38) )		// tt_fwrite
-      {
-	u64 tmp_add;
-	u32 tmp_prt = (u32)LLL(LLL(LLL(r[16] + 0x68) + 0x34) + 0x2c);	// serial port #
-	char tmp_chr[2]=" ";
-	if (tmp_prt<2)
-	{
-	  for (tmp_add = r[19]; tmp_add < r[19]+(r[17]*r[18]); tmp_add++) 
-	  {
-	    tmp_chr[0] = (char)BBB(tmp_add);
-	    if (tmp_chr[0]=='\n')
-              srl[tmp_prt]->write("\r");
-	    srl[tmp_prt]->write(tmp_chr);
-	    TRC_DEV4("%%SRM-I-WRITSRL : Write character %02x (%c) on serial port %d.\n",tmp_chr[0],printable(tmp_chr[0]),tmp_prt);
-#if defined(DEBUG_SRM) || defined(DEBUG_SRM_SRL)
-	    printf("%%SRM-I-WRITSRL : Write character %02x (%c) on serial port %d.\n",tmp_chr[0],printable(tmp_chr[0]),tmp_prt);
-#endif
-	  }
-  	  r[0] = r[17] * r[18];
-	  pc -= 4;
-	}
-      }
-#endif
-*/
-
-/*
-#if !defined(SRM_NO_IDE)
-      if ( get_clean_pc()==X64(0b66c0) )		// ide_fread
-      {
-	u64 tmp_fps = QQQ(LLL(r[16] + 0x6c));		// file pos
-	int tmp_drv = (int)LLL(LLL(LLL(LLL(r[16] + 0x68) + 0x34) + 0x14) + 0xac);	// drive
-	int tmp_ctl = (LLL(LLL(LLL(LLL(LLL(r[16] + 0x68) + 0x34) + 0x14)) + 0x21c)&0x80)?0:1;	// controller
-	fseek(ali->get_ide_disk(tmp_ctl,tmp_drv),(long)tmp_fps,0);
-	r[0] = fread(cSystem->PtrToMem(r[19]),(size_t)r[17],(size_t)r[18],ali->get_ide_disk(tmp_ctl,tmp_drv)) * r[17];
-	cSystem->WriteMem(LLL(r[16] + 0x6c),64,ftell(ali->get_ide_disk(tmp_ctl,tmp_drv)));
-	pc -= 8;
-	TRC_DEV5("%%SRM-I-READIDE : Read  %3" LL "d sectors @ IDE %d.%d @ LBA %8d\n",r[18]*r[17]/512,tmp_ctl,tmp_drv,(long)(tmp_fps/512));
-#if defined(DEBUG_SRM) || defined(DEBUG_SRM_IDE)
-	printf("%%SRM-I-READIDE : Read  %3" LL "d sectors @ IDE %d.%d @ LBA %8d\n",r[18]*r[17]/512,tmp_ctl,tmp_drv,(long)(tmp_fps/512));
-#endif
-      }
-#endif
-*/
-
-#if defined(IDB)
-  }
 #endif
 
    current_pc = pc;
