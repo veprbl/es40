@@ -27,6 +27,9 @@
  * \file 
  * Contains the code for the emulated Typhoon Chipset devices.
  *
+ * X-1.22       Camiel Vanderhoeven                             10-APR-2007
+ *      Removed obsolete ROM-handling code.
+ *
  * X-1.21       Brian Wheeler                                   31-MAR-2007
  *      Removed ; after #endif to avoid compiler warnings.
  *
@@ -137,8 +140,8 @@ CSystem::CSystem(const char *filename)
   iNumSlowClocks = 0;
   iNumMemories = 0;
   iNumCPUs = 0;
-  iNumROMs = 0;
   iNumMemoryBits = atoi(this->GetConfig("memory.bits","27"));
+  RomLoadedAt = X64(0);
 
 #if defined(IDB)
   iSingleStep = 0;
@@ -765,123 +768,7 @@ u64 CSystem::ReadMem(u64 address, int dsize)
     }
 }
 
-int CSystem::load_ROM(char *filename)
-{
-  FILE * f;
-  u32 read_u32;
-  int state = 0;
-  u64 * buffer;
-  u64 * bufptr;
-  u64 loadptr;
-
-  u32 scratch;
-
-  struct SROM_data * d;
-
-  f = fopen(filename,"rb");
-  if (!f)
-    {
-      printf("%%TYP-F-OPENROM: Couldn't open ROM file: %s\n", filename);
-      return -1;
-    }
-
-  printf("%%TYP-I-READROM: Reading ROM images from file: %s\n", filename);
-
-  while (!feof(f))
-    {
-      fread(&read_u32,1,4,f);
-      switch (state)
-        {
-        case 0:
-	  if (read_u32==0x5a5ac3c3)
-            {
-	      state = 1;
-	      //                printf("First magic field found...\n");
-            }
-	  break;
-        case 1:
-	  if (read_u32==0xa5a53c3c)
-            {
-	      //                printf("Second magic field found...\n");
-	      d = (struct SROM_data *) malloc(sizeof(struct SROM_data));
-	      if (d)
-		{
-		  d->filename = _strdup(filename);
-		  strcpy(d->revision,"        ");
-
-		  fread(&(d->header_size),1,4,f);
-		  fread(&(d->cksum),1,4,f);
-		  fread(&(d->image_size),1,4,f);
-		  fread(&(d->compression),1,4,f);
-		  fread(&(d->load_at),1,8,f);
-		  if (d->header_size >= 0x34)
-		    {
-		      fread(&scratch,1,1,f);
-		      fread(&d->id,1,1,f);
-		      fread(&scratch,1,2,f);
-		      fread(&d->romsize,1,4,f);
-		      switch (d->id)
-			{
-			case 0:
-			  printf("%%TYP-I-ROMTYPE: Image type:     DBM\n");
-			  strcpy(d->tp,"DBM");
-			  break;
-			case 1:
-			  printf("%%TYP-I-ROMTYPE: Image type:     WNT\n");
-			  strcpy(d->tp,"WNT");
-			  break;
-			case 2:
-			  printf("%%TYP-I-ROMTYPE: Image type:     SRM\n");
-			  strcpy(d->tp,"SRM");
-			  break;
-			case 6:
-			  printf("%%TYP-I-ROMTYPE: Image type:     FSB\n");
-			  strcpy(d->tp,"FSB");
-			  break;
-			default:
-			  printf("%%TYP-I-UNKROM: Unknown ROM type:   %d\n",d->id);
-			  sprintf(d->tp,"%02x ",d->id);
-			}
-		    }
-		  if (d->compression)
-		    {
-		      printf("%%TYP-F-ROMCPR: Sorry... I can't handle compressed ROM images (yet)\n");
-		      free(d->filename);
-		      free(d);
-		    }
-		  else
-		    {
-		      buffer = (u64*)malloc(d->image_size);
-		      if (buffer)
-			{
-			  if (d->header_size >= 0x34)
-			    fread(buffer,1,d->header_size-40,f);
-
-			  // load it
-			  fread(buffer,1,d->image_size,f);
-                    
-			  // and put it in memory at the right place...
-			  bufptr = buffer;
-			  for (loadptr=d->load_at; loadptr-d->load_at<d->image_size; loadptr+=8)
-			    WriteMem(loadptr,64,*bufptr++);
-			  free(buffer);
-			  asROMs[iNumROMs++] = d;
-
-			  printf("%%TYP-I-ROMLOADED: ROM Image loaded successfully!\n");
-			}
-		    }
-		}
-            }
-	  else
-	    printf("%%TYP-F-INVROM: Sorry... Invalid ROM.\n");
-	  state = 0;
-	  break;
-        }
-    }
-  return 0;
-}
-
-int CSystem::load_ROM2(char *filename, int start_at, u64 load_at, u8 rom_type)
+int CSystem::LoadROM(char *filename, int start_at, u64 load_at)
 {
   FILE * f;
   char * buffer;
@@ -889,8 +776,6 @@ int CSystem::load_ROM2(char *filename, int start_at, u64 load_at, u8 rom_type)
 
   u32 scratch;
 
-  struct SROM_data * d;
-
   f = fopen(filename,"rb");
   if (!f)
     {
@@ -898,7 +783,7 @@ int CSystem::load_ROM2(char *filename, int start_at, u64 load_at, u8 rom_type)
       return -1;
     }
 
-  printf("%%TYP-I-READROM: Reading ROM images from file: %s\n", filename);
+  printf("%%TYP-I-READROM: Reading ROM image from file: %s\n", filename);
   for(i=0;i<start_at;i++)
     {
       if (feof(f)) break;
@@ -906,82 +791,22 @@ int CSystem::load_ROM2(char *filename, int start_at, u64 load_at, u8 rom_type)
     }
   if (!feof(f))
     {
-      d = (struct SROM_data *) malloc(sizeof(struct SROM_data));
-      if (d)
-	{
-	  d->filename = _strdup(filename);
-	  strcpy(d->revision,"        ");
-	  d->header_size = 0;
-	  d->cksum = 0;
-	  d->image_size = 0;
-	  d->compression = 0;
-	  d->load_at = load_at;
-	  d->id = rom_type;
-	  switch (d->id)
-            {
-            case 0:
-	      printf("%%TYP-I-ROMTYPE: Image type:     DBM\n");
-	      strcpy(d->tp,"DBM");
-	      break;
-            case 1:
-	      printf("%%TYP-I-ROMTYPE: Image type:     WNT\n");
-	      strcpy(d->tp,"WNT");
-	      break;
-	    case 2:
-	      printf("%%TYP-I-ROMTYPE: Image type:     SRM\n");
-	      strcpy(d->tp,"SRM");
-	      break;
-            case 6:
-	      printf("%%TYP-I-ROMTYPE: Image type:     FSB\n");
-	      strcpy(d->tp,"FSB");
-	      break;
-	    default:
-	      printf("%%TYP-I-UNKROM: Unknown ROM type:   %d\n",d->id);
-	      sprintf(d->tp,"%02x ",d->id);
-	    }
-	  buffer = PtrToMem(load_at);
+          buffer = PtrToMem(load_at);
 	  while (!feof(f))
 	    {
 	      fread(buffer++,1,1,f);
 	    }
-	  asROMs[iNumROMs++] = d;
+          RomLoadedAt = load_at;
 
 	  printf("%%TYP-I-ROMLOADED: ROM Image loaded successfully!\n");
-        }
     }
   fclose(f);
   return 0;
 }
 
-u64 CSystem::Select_ROM()
+u64 CSystem::SelectROM()
 {
-  int i, result;
-
-  if (!iNumROMs)
-    {
-      printf("%%TYP-F-NOROM: No ROM image loaded. System cannot boot!\n");
-      return 0;
-    }
-
-  if (iNumROMs == 1)
-    {
-      printf("%%TYP-I-ROMSELECT: ROM Image %d selected for boot.\n",0);
-      return asROMs[0]->load_at;
-    }
-    
-  printf("==== Please select a ROM image to boot from: ====\n");
-  for (i=0;i<iNumROMs;i++)
-    printf("%d. %s ROM image from %s\n",i,asROMs[i]->tp,asROMs[i]->filename);
-  i=-1;
-  while (i<0 || i>iNumROMs-1)
-    {
-      printf(">>");
-      result = scanf("%d",&i);
-    }
-
-  printf("%%TYP-I-ROMSELECT: ROM Image %d selected for boot.\n",i);
-  return asROMs[i]->load_at;
-
+  return RomLoadedAt;
 }
 
 void CSystem::interrupt(int number, bool assert)
