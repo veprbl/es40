@@ -27,6 +27,11 @@
  * \file 
  * Contains the code for the emulated Typhoon Chipset devices.
  *
+ * X-1.23       Camiel Vanderhoeven                             10-APR-2007
+ *      Extended ROM-handling code to favor loading decompressed ROM code
+ *      over loading compressed code, and to save decompressed ROM code
+ *      during the first time the emulator is run.
+ *
  * X-1.22       Camiel Vanderhoeven                             10-APR-2007
  *      Removed obsolete ROM-handling code.
  *
@@ -308,7 +313,6 @@ int CSystem::Run()
   }
 }
 
-#if defined(IDB)
 int CSystem::SingleStep()
 {
   int i;
@@ -337,13 +341,14 @@ int CSystem::SingleStep()
 	if (result)
 	  return result;
      }
+#ifdef IDB
      iSSCycles++;
      if (bHashing)
        printf("%d0000 | %016" LL "x\r",iSSCycles,acCPUs[0]->get_pc());
+#endif
   }
   return 0;
 }
-#endif
 
 void CSystem::WriteMem(u64 address, int dsize, u64 data)
 {
@@ -768,47 +773,93 @@ u64 CSystem::ReadMem(u64 address, int dsize)
     }
 }
 
-int CSystem::LoadROM(char *filename, int start_at, u64 load_at)
+int CSystem::LoadROM()
 {
   FILE * f;
   char * buffer;
   int i;
-
+  int j;
+  u64 temp;
   u32 scratch;
 
-  f = fopen(filename,"rb");
+  f = fopen(GetConfig("rom.decompressed","decompressed.rom"),"rb");
   if (!f)
+  {
+    f = fopen(GetConfig("rom.srm","cl67srmrom.exe"),"rb");
+    if (!f)
     {
-      printf("%%TYP-F-OPENROM: Couldn't open ROM file: %s\n", filename);
+      printf("%%SYS-F-NOROM: No original or decompressed ROM image found!\n");
       return -1;
     }
-
-  printf("%%TYP-I-READROM: Reading ROM image from file: %s\n", filename);
-  for(i=0;i<start_at;i++)
+    printf("%%SYS-I-READROM: Reading original ROM image from %s.\n", GetConfig("rom.srm","cl67srmrom.exe"));
+    for(i=0;i<0x240;i++)
     {
       if (feof(f)) break;
       fread(&scratch,1,1,f);
     }
-  if (!feof(f))
+    if (feof(f))
     {
-          buffer = PtrToMem(load_at);
-	  while (!feof(f))
-	    {
-	      fread(buffer++,1,1,f);
-	    }
-          RomLoadedAt = load_at;
-
-	  printf("%%TYP-I-ROMLOADED: ROM Image loaded successfully!\n");
+      printf("%%SYS-F-2SMALL: File is too short to be a ROM image!\n");
+      return -1;
     }
+    buffer = PtrToMem(0x900000);
+    while (!feof(f))
+      fread(buffer++,1,1,f);
+    fclose(f);
+
+    printf("%%SYS-I-DECOMP: Decompressing ROM image.\n0%%");
+    acCPUs[0]->set_pc(0x900001);
+    acCPUs[0]->set_PAL_BASE(0x900000);
+
+    j = 0;
+    while (acCPUs[0]->get_clean_pc() > 0x200000)
+    {
+      for(i=0;i<1800000;i++)
+      {
+        SingleStep();
+        if (acCPUs[0]->get_clean_pc() < 0x200000)
+          break;
+      }
+      j++;
+      if (((j%5)==0) && (j<50))
+        printf("%d%%",j*2);
+      else
+        printf(".");
+    }
+    printf("100%%\n");
+
+    f = fopen(GetConfig("rom.decompressed","decompressed.rom"),"wb");
+    if (!f)
+    {
+      printf("%%SYS-W-NOWRITE: Couldn't write decompressed rom to %s.\n", GetConfig("rom.decompressed","decompressed.rom"));
+      printf("%%SYS-I-ROMLOADED: ROM Image loaded successfully!\n");
+      return 0;
+    }
+    printf("%%SYS-I-ROMWRT: Writing decompressed rom to %s.\n", GetConfig("rom.decompressed","decompressed.rom"));
+    temp = acCPUs[0]->get_pc();
+    fwrite(&temp,1,sizeof(u64),f);
+    temp = acCPUs[0]->get_pal_base();
+    fwrite(&temp,1,sizeof(u64),f);
+    buffer = PtrToMem(0);
+    fwrite(buffer,1,0x200000,f);
+    fclose(f);
+
+    printf("%%SYS-I-ROMLOADED: ROM Image loaded successfully!\n");
+    return 0;
+  }
+  printf("%%SYS-I-READROM: Reading decompressed ROM image from %s.\n", GetConfig("rom.decompressed","decompressed.rom"));
+  fread(&temp,1,sizeof(u64),f);
+  acCPUs[0]->set_pc(temp);
+  fread(&temp,1,sizeof(u64),f);
+  acCPUs[0]->set_PAL_BASE(temp);
+  buffer = PtrToMem(0);
+  fread(buffer,1,0x200000,f);
   fclose(f);
+
+  printf("%%SYS-I-ROMLOADED: ROM Image loaded successfully!\n");
   return 0;
 }
-
-u64 CSystem::SelectROM()
-{
-  return RomLoadedAt;
-}
-
+ 
 void CSystem::interrupt(int number, bool assert)
 {
   int i;
