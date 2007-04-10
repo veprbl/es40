@@ -150,7 +150,7 @@
  *      More scanf and printf statements made compatible with Linux/GCC/glibc.
  *
  * X-1.3        Brian Wheeler                                   3-FEB-2007
- *      More scanf and printf statements made compatible with Linux/GCC/glibc.
+ *      Scanf and printf statements made compatible with Linux/GCC/glibc.
  *      
  * X-1.2        Brian Wheeler                                   3-FEB-2007
  *      Includes are now case-correct (necessary on Linux)
@@ -178,6 +178,7 @@
 #include "cpu_vax.h"
 #include "cpu_mvi.h"
 #include "cpu_pal.h"
+#include "cpu_srm.h"
 #include "cpu_debug.h"
 
 #include "Serial.h"
@@ -471,6 +472,9 @@ int CAlphaCPU::DoClock()
   u64 temp_64_d;
   u64 temp_64_hi;
   u64 temp_64_lo;
+  u32 temp_32;
+  u32 temp_32_1;
+  char temp_char2[2];
   bool temp_bool;
 
   int opcode;
@@ -487,26 +491,13 @@ int CAlphaCPU::DoClock()
   {
 #endif
 
-#if !defined(SRM_NO_SPEEDUPS)
-      // known speedups
-      if  (     get_clean_pc()==X64(14248) 
-	     || get_clean_pc()==X64(14288)
-	     || get_clean_pc()==X64(142c8)
-	     || get_clean_pc()==X64(68320)
-	     || get_clean_pc()==X64(8bb78)	// write in memory test (aa)
-	     || get_clean_pc()==X64(8bc0c)	// write in memory test (bb)
-	     || get_clean_pc()==X64(8bc94)	// write in memory test (00)
-	     )
-	next_pc();
-#endif
-
       // PALcode emulations (for speed...)
 
 #define QQQ(a) cSystem->ReadMem(a,64)
 #define LLL(a) cSystem->ReadMem(a,32)
 #define WWW(a) cSystem->ReadMem(a,16)
 #define BBB(a) cSystem->ReadMem(a,8)
-      
+/*      
 #if !defined(SRM_NO_SRL)
       if ( get_clean_pc()==X64(a8b38) )		// tt_fwrite
       {
@@ -531,7 +522,9 @@ int CAlphaCPU::DoClock()
 	}
       }
 #endif
+*/
 
+/*
 #if !defined(SRM_NO_IDE)
       if ( get_clean_pc()==X64(0b66c0) )		// ide_fread
       {
@@ -548,6 +541,7 @@ int CAlphaCPU::DoClock()
 #endif
       }
 #endif
+*/
 
 #if defined(IDB)
   }
@@ -606,7 +600,18 @@ int CAlphaCPU::DoClock()
     {
     case 0x00: // CALL_PAL
       function = ins&0x1fffffff;
-      OP(CALL_PAL,PAL);
+      switch (function)
+      {
+#if !defined(SRM_NO_SRL)
+      case 0x0123400: OP(SRM_WRITE_SERIAL, NOP);
+#endif
+
+#if !defined(SRM_NO_IDE)
+      case 0x0123401: OP(SRM_READ_IDE_DISK, NOP);
+#endif
+
+        default: OP(CALL_PAL,PAL);
+      }
 
     case 0x08: OP(LDA,MEM);
     case 0x09: OP(LDAH,MEM);
