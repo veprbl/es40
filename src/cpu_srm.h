@@ -27,6 +27,9 @@
  * \file 
  * Contains code macros for the SRM-replacement pseudo instructions.
  *
+ * X-1.3	Camiel Vanderhoeven	                        11-APR-2007
+ *      Fixed bug in TRC_DEV in SRM_READ_IDE_DISK.
+ *
  * X-1.2	Camiel Vanderhoeven				10-APR-2007
  *	Unintentional version number increase.
  *
@@ -73,5 +76,5 @@
 	fseek(ali->get_ide_disk(temp_32_1,temp_32),(long)temp_64,0);            \
 	r[0] = fread(cSystem->PtrToMem(r[19]),(size_t)r[17],(size_t)r[18],ali->get_ide_disk(temp_32_1,temp_32)) * r[17];        \
 	cSystem->WriteMem(LLL(r[16] + 0x6c),64,ftell(ali->get_ide_disk(temp_32_1,temp_32)));    \
-	TRC_DEV5("%%SRM-I-READIDE : Read  %3" LL "d sectors @ IDE %d.%d @ LBA %8d\n",r[18]*r[17]/512,tmp_ctl,tmp_drv,(long)(tmp_fps/512));
+	TRC_DEV5("%%SRM-I-READIDE : Read  %3" LL "d sectors @ IDE %d.%d @ LBA %8d\n",r[18]*r[17]/512,temp_32_1,temp_32,(long)(temp_64/512));
 
