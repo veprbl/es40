@@ -30,6 +30,9 @@
  * point registers, and to convert them to/from the host's native floating point 
  * format when required.
  *
+ * X-1.5        Camiel Vanderhoeven                             11-APR-2007
+ *      Explicitly convert integers to double for calls to log/pow.
+ *
  * X-1.4	Brian Wheeler					30-MAR-2007
  *	Added a couple of typecasts to avoid compiler warnings 
  *
@@ -124,8 +127,8 @@ inline u64 f2v(double val)
   double v = val * 0.25;
   int s = (v<0.0)?1:0;
   if (s) v *= -1.0;
-  int e = (int)(log(v) / log(2));
-  double fr = v / pow(2,e) - 1;
+  int e = (int)(log((double)v) / log((double)2.0));
+  double fr = v / pow((double)2,e) - 1;
 
   e += 1023;
 
@@ -149,8 +152,8 @@ inline u64 f2i(double val)
   double v = val;
   int s = (v<0.0)?1:0;
   if (s) v *= -1.0;
-  int e = (int)(log(v) / log(2));
-  double fr = v / pow(2,e) - 1;
+  int e = (int)(log((double)v) / log((double)2.0));
+  double fr = v / pow((double)2,e) - 1;
 
   e += 1023;
   
