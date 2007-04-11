@@ -27,6 +27,10 @@
 <!--
  * VCPROJ file to build ES40 with Visual Studio .NET 2005.
  *
+ * X-1.2		Camiel Vanderhoeven				11-APR-2007
+ *   	Changed some compiler settings to allow the IDB versions to 
+ *	compile in a reasonable amount of time.
+ *
  * X-1.1		Camiel Vanderhoeven				11-APR-2007
  *   	File created.
  *
@@ -75,11 +79,11 @@
 			/>
 			<Tool
 				Name="VCCLCompilerTool"
-				Optimization="2"
+				Optimization="4"
 				InlineFunctionExpansion="2"
 				EnableIntrinsicFunctions="true"
 				FavorSizeOrSpeed="1"
-				WholeProgramOptimization="true"
+				WholeProgramOptimization="false"
 				PreprocessorDefinitions="WIN32;NDEBUG;_CONSOLE;IDB;LS_MASTER"
 				RuntimeLibrary="0"
 				PrecompiledHeaderFile=".\Release LSM/es40.pch"
@@ -104,11 +108,11 @@
 				Name="VCLinkerTool"
 				AdditionalDependencies="odbc32.lib odbccp32.lib ws2_32.lib"
 				OutputFile="bin/es40_lsm.exe"
-				LinkIncremental="1"
+				LinkIncremental="2"
 				SuppressStartupBanner="true"
 				ProgramDatabaseFile=".\Release LSM/es40_lsm.pdb"
 				SubSystem="1"
-				LinkTimeCodeGeneration="1"
+				LinkTimeCodeGeneration="0"
 				TargetMachine="1"
 			/>
 			<Tool
@@ -167,11 +171,11 @@
 			/>
 			<Tool
 				Name="VCCLCompilerTool"
-				Optimization="2"
+				Optimization="4"
 				InlineFunctionExpansion="2"
 				EnableIntrinsicFunctions="true"
 				FavorSizeOrSpeed="1"
-				WholeProgramOptimization="true"
+				WholeProgramOptimization="false"
 				PreprocessorDefinitions="WIN32;NDEBUG;_CONSOLE;IDB"
 				RuntimeLibrary="0"
 				PrecompiledHeaderFile=".\Release IDB/es40.pch"
@@ -196,11 +200,11 @@
 				Name="VCLinkerTool"
 				AdditionalDependencies="odbc32.lib odbccp32.lib ws2_32.lib"
 				OutputFile="bin/es40_idb.exe"
-				LinkIncremental="1"
+				LinkIncremental="2"
 				SuppressStartupBanner="true"
 				ProgramDatabaseFile=".\Release IDB/es40_idb.pdb"
 				SubSystem="1"
-				LinkTimeCodeGeneration="1"
+				LinkTimeCodeGeneration="0"
 				TargetMachine="1"
 			/>
 			<Tool
@@ -263,7 +267,7 @@
 				InlineFunctionExpansion="2"
 				EnableIntrinsicFunctions="true"
 				FavorSizeOrSpeed="1"
-				WholeProgramOptimization="true"
+				WholeProgramOptimization="false"
 				PreprocessorDefinitions="WIN32;NDEBUG;_CONSOLE"
 				StringPooling="true"
 				RuntimeLibrary="0"
@@ -290,11 +294,11 @@
 				Name="VCLinkerTool"
 				AdditionalDependencies="odbc32.lib odbccp32.lib ws2_32.lib"
 				OutputFile="bin/es40.exe"
-				LinkIncremental="1"
+				LinkIncremental="2"
 				SuppressStartupBanner="true"
 				ProgramDatabaseFile=".\Release/es40.pdb"
 				SubSystem="1"
-				LinkTimeCodeGeneration="1"
+				LinkTimeCodeGeneration="0"
 				TargetMachine="1"
 			/>
 			<Tool
@@ -353,11 +357,11 @@
 			/>
 			<Tool
 				Name="VCCLCompilerTool"
-				Optimization="2"
+				Optimization="4"
 				InlineFunctionExpansion="2"
 				EnableIntrinsicFunctions="true"
 				FavorSizeOrSpeed="1"
-				WholeProgramOptimization="true"
+				WholeProgramOptimization="false"
 				PreprocessorDefinitions="WIN32;NDEBUG;_CONSOLE;IDB;LS_SLAVE"
 				RuntimeLibrary="0"
 				PrecompiledHeaderFile=".\Release LSS/es40.pch"
@@ -382,11 +386,11 @@
 				Name="VCLinkerTool"
 				AdditionalDependencies="odbc32.lib odbccp32.lib ws2_32.lib"
 				OutputFile="bin/es40_lss.exe"
-				LinkIncremental="1"
+				LinkIncremental="2"
 				SuppressStartupBanner="true"
 				ProgramDatabaseFile=".\Release LSS/es40_lss.pdb"
 				SubSystem="1"
-				LinkTimeCodeGeneration="1"
+				LinkTimeCodeGeneration="0"
 				TargetMachine="1"
 			/>
 			<Tool
@@ -478,7 +482,7 @@
 				GenerateDebugInformation="true"
 				ProgramDatabaseFile=".\Debug/es40.pdb"
 				SubSystem="1"
-				LinkTimeCodeGeneration="1"
+				LinkTimeCodeGeneration="0"
 				TargetMachine="1"
 			/>
 			<Tool
