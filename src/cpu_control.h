@@ -28,6 +28,10 @@
  * Contains code macros for the processor control instructions.
  * Based on ARM chapter 4.3
  *
+ * X-1.3        Camiel Vanderhoeven                             11-APR-2007
+ *      Moved all data that should be saved to a state file to a structure
+ *      "state".
+ *
  * X-1.2        Camiel Vanderhoeven                             30-MAR-2007
  *      Added old changelog comments.
  *
@@ -38,24 +42,24 @@
  **/
 
 
-#define DO_BEQ  if (!r[REG_1])		pc += (DISP_21 * 4);
-#define DO_BGE  if ((s64)r[REG_1]>=0)   pc += (DISP_21 * 4);
-#define DO_BGT if ((s64)r[REG_1]>0)     pc += (DISP_21 * 4);
-#define DO_BLBC if (!(r[REG_1] & 1))	pc += (DISP_21 * 4);
-#define DO_BLBS if (r[REG_1] & 1)	pc += (DISP_21 * 4);
-#define DO_BLE  if ((s64)r[REG_1]<=0)   pc += (DISP_21 * 4);
-#define DO_BLT  if ((s64)r[REG_1]<0)    pc += (DISP_21 * 4);
-#define DO_BNE  if (r[REG_1])		pc += (DISP_21 * 4);
+#define DO_BEQ  if (!state.r[REG_1])		state.pc += (DISP_21 * 4);
+#define DO_BGE  if ((s64)state.r[REG_1]>=0)   state.pc += (DISP_21 * 4);
+#define DO_BGT if ((s64)state.r[REG_1]>0)     state.pc += (DISP_21 * 4);
+#define DO_BLBC if (!(state.r[REG_1] & 1))	state.pc += (DISP_21 * 4);
+#define DO_BLBS if (state.r[REG_1] & 1)	state.pc += (DISP_21 * 4);
+#define DO_BLE  if ((s64)state.r[REG_1]<=0)   state.pc += (DISP_21 * 4);
+#define DO_BLT  if ((s64)state.r[REG_1]<0)    state.pc += (DISP_21 * 4);
+#define DO_BNE  if (state.r[REG_1])		state.pc += (DISP_21 * 4);
 
 #define DO_BR					\
-	  r[REG_1] = pc & ~X64(3);		\
-	  pc += (DISP_21 * 4);
+	  state.r[REG_1] = state.pc & ~X64(3);		\
+	  state.pc += (DISP_21 * 4);
 
 #define DO_BSR DO_BR
 
 #define DO_JMP					\
-	  temp_64 = r[REG_2] & ~X64(3);		\
-	  r[REG_1] = pc & ~X64(3);		\
-	  pc = temp_64 | (pc & 3);
+	  temp_64 = state.r[REG_2] & ~X64(3);		\
+	  state.r[REG_1] = state.pc & ~X64(3);		\
+	  state.pc = temp_64 | (state.pc & 3);
 
 // JSR, RET and JSR_COROUTINE is really JMP, just with different prediction bits.

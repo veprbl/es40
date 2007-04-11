@@ -27,6 +27,10 @@
  * \file 
  * Contains the definitions for the emulated Ali M1543C chipset devices.
  *
+ * X-1.13       Camiel Vanderhoeven                             11-APR-2007
+ *      Moved all data that should be saved to a state file to a structure
+ *      "state".
+ *
  * X-1.12       Camiel Vanderhoeven                             31-MAR-2007
  *      Added old changelog comments.
  *
@@ -116,42 +120,27 @@ class CAliM1543C : public CSystemComponent
   // REGISTERS 60 & 64: KEYBOARD
   u8 kb_read(u64 address);
   void kb_write(u64 address, u8 data);
-  u8 kb_Input;
-  u8 kb_Output;   	
-  u8 kb_Status;   	
-  u8 kb_Command;
-  u8 kb_intState;
 
   // REGISTER 61 (NMI)
   u8 reg_61_read();
   void reg_61_write(u8 data);
-  u8 reg_61;
-    
+
   // REGISTERS 70 - 73: TOY
   u8 toy_read(u64 address);
   void toy_write(u64 address, u8 data);
-  u8 toy_stored_data[256];
-  u8 toy_access_ports[4];
 
   // ISA bridge
   u64 isa_config_read(u64 address, int dsize);
   void isa_config_write(u64 address, int dsize, u64 data);
-  u8 isa_config_data[256];
-  u8 isa_config_mask[256];
 
   // Timer/Counter
   u8 pit_read(u64 address);
   void pit_write(u64 address, u8 data);
-  bool pit_enable;
 
   // interrupt controller
   u8 pic_read(int index, u64 address);
   void pic_write(int index, u64 address, u8 data);
   u8 pic_read_vector();
-  int pic_mode[2];
-  u8 pic_intvec[2];
-  u8 pic_mask[2];
-  u8 pic_asserted[2];
 
   // IDE controller
   u64 ide_config_read(u64 address, int dsize);
@@ -162,31 +151,63 @@ class CAliM1543C : public CSystemComponent
   void ide_control_write(int channel, u64 address, u64 data);
   u64 ide_busmaster_read(int channel, u64 address);
   void ide_busmaster_write(int channel, u64 address, u64 data);
-  u8 ide_config_data[256];
-  u8 ide_config_mask[256];
 
   // USB host controller
   u64 usb_config_read(u64 address, int dsize);
   void usb_config_write(u64 address, int dsize, u64 data);
-  u8 usb_config_data[256];
-  u8 usb_config_mask[256];
 
   // DMA controller
   u8 dma_read(int channel, u64 address);
   void dma_write(int channel, u64 address, u8 data);
 
-  u8 ide_command[2][8];
-  u8 ide_status[2];
-  u8 ide_error[2];
-  u16 ide_data[2][256];
-  int ide_data_ptr[2];
-  bool ide_writing[2];
-  bool ide_reading[2];
-  int ide_sectors[2];
-  int ide_selected[2];
+  // The state structure contains all elements that need to be saved to the statefile.
+  struct SAliM1543CState {
+    // REGISTERS 60 & 64: KEYBOARD
+    u8 kb_Input;
+    u8 kb_Output;   	
+    u8 kb_Status;   	
+    u8 kb_Command;
+    u8 kb_intState;
+
+    // REGISTER 61 (NMI)
+    u8 reg_61;
+    
+    // REGISTERS 70 - 73: TOY
+    u8 toy_stored_data[256];
+    u8 toy_access_ports[4];
+
+    // ISA bridge
+    u8 isa_config_data[256];
+    u8 isa_config_mask[256];
+
+    // Timer/Counter
+    bool pit_enable;
+
+    // interrupt controller
+    int pic_mode[2];
+    u8 pic_intvec[2];
+    u8 pic_mask[2];
+    u8 pic_asserted[2];
+
+    // IDE controller
+    u8 ide_config_data[256];
+    u8 ide_config_mask[256];
+    u8 ide_command[2][8];
+    u8 ide_status[2];
+    u8 ide_error[2];
+    u16 ide_data[2][256];
+    int ide_data_ptr[2];
+    bool ide_writing[2];
+    bool ide_reading[2];
+    int ide_sectors[2];
+    int ide_selected[2];
+
+    // USB host controller
+    u8 usb_config_data[256];
+    u8 usb_config_mask[256];
+  } state;
 
   struct disk_info ide_info[2][2];
-
 };
 
 inline FILE * CAliM1543C::get_ide_disk(int controller, int drive)

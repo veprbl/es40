@@ -27,6 +27,10 @@
  * \file 
  * Contains the definitions for the emulated on-cpu translation buffers.
  *
+ * X-1.14       Camiel Vanderhoeven                             11-APR-2007
+ *      Moved all data that should be saved to a state file to a structure
+ *      "state".
+ *
  * X-1.13	Camiel Vanderhoeven				1-APR-2007
  *	Back to the "normal" amount of 128 entries.
  *
@@ -140,13 +144,15 @@ class CTranslationBuffer
   virtual ~CTranslationBuffer();
 
  private:
-  u64 v_mask;				/**< bitmask for the virtual part of the address. */
-  u64 p_mask;				/**< bitmask for the physical part of the address. */
-  bool bIBOX;
+  struct STranslationBufferState {
+    u64 v_mask;				/**< bitmask for the virtual part of the address. */
+    u64 p_mask;				/**< bitmask for the physical part of the address. */
+    bool bIBOX;
+    struct STBEntry entry[TB_ENTRIES];
+    int    next_entry;
+    u64	   temp_tag[2];
+  } state;
   class CAlphaCPU * cCPU;
-  struct STBEntry entry[TB_ENTRIES];
-  int    next_entry;
-  u64	   temp_tag[2];
 };
 
 #endif // !defined(INCLUDED_TRANSLATIONBUFFER_H)

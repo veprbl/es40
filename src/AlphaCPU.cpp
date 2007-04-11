@@ -27,6 +27,10 @@
  * \file 
  * Contains the code for the emulated DecChip 21264CB EV68 Alpha processor.
  *
+ * X-1.36       Camiel Vanderhoeven                             11-APR-2007
+ *      Moved all data that should be saved to a state file to a structure
+ *      "state".
+ *
  * X-1.35	Camiel Vanderhoeven				10-APR-2007
  *	New mechanism for SRM replacements. Where these need to be executed,
  *	CSystem::LoadROM() puts a special opcode (a CALL_PAL instruction
@@ -254,71 +258,70 @@ extern CAliM1543C * ali;
 
 CAlphaCPU::CAlphaCPU(CSystem * system) : CSystemComponent (system)
 {
-  iProcNum = cSystem->RegisterCPU(this);
+  state.iProcNum = cSystem->RegisterCPU(this);
   cSystem = system;
   int i;
 
   cSystem->RegisterClock(this, false);
 
-  pc = 0;
-  bIntrFlag = false;
+  state.pc = 0;
+  state.bIntrFlag = false;
 
   for(i=0;i<64;i++) 
     {
-      r[i] = 0;
-      f[i] = 0;
+      state.r[i] = 0;
+      state.f[i] = 0;
     }
 
   flush_icache();
 
-
-  alt_cm = 0;
-  asn = 0;
-  asn0 = 0;
-  asn1 = 0;
-  asten = 0;
-  aster = 0;
-  astrr = 0;
-  cc = 0;
-  cc_ena = false;
-  cc_offset = 0;
-  cm = 0;
-  cren = 0;
-  crr = 0;
-  current_pc = 0;
-  dc_ctl = 3;
-  dc_ctl = 0;
-  dc_stat = 0;
-  eien = 0;
-  eir = 0;
-  exc_addr = 0;
-  exc_sum = 0;
-  fault_va = 0;
-  fpcr = X64(8ff0000000000000);
-  fpen = true;
-  hwe = false;
-  i_ctl_other = X64(502086);
-  i_ctl_va_mode = 0;
-  i_ctl_vptb = 0;
-  i_stat = 0;
-  mm_stat = 0;
-  pal_base = 0;
-  pc = 0;
-  pcen = 0;
-  pcr = 0;
-  pctr_ctl = 0;
-  pmpc = 0;
-  ppcen = false;
-  sde = false;
-  sien = 0;
-  sir = 0;
-  slen = 0;
-  slr = 0;
-  smc = 1;
-  m_ctl_spe = 0;
-  i_ctl_spe = 0;
-  va_ctl_va_mode = 0;
-  va_ctl_vptb = 0;
+  state.alt_cm = 0;
+  state.asn = 0;
+  state.asn0 = 0;
+  state.asn1 = 0;
+  state.asten = 0;
+  state.aster = 0;
+  state.astrr = 0;
+  state.cc = 0;
+  state.cc_ena = false;
+  state.cc_offset = 0;
+  state.cm = 0;
+  state.cren = 0;
+  state.crr = 0;
+  state.current_pc = 0;
+  state.dc_ctl = 3;
+  state.dc_ctl = 0;
+  state.dc_stat = 0;
+  state.eien = 0;
+  state.eir = 0;
+  state.exc_addr = 0;
+  state.exc_sum = 0;
+  state.fault_va = 0;
+  state.fpcr = X64(8ff0000000000000);
+  state.fpen = true;
+  state.hwe = false;
+  state.i_ctl_other = X64(502086);
+  state.i_ctl_va_mode = 0;
+  state.i_ctl_vptb = 0;
+  state.i_stat = 0;
+  state.mm_stat = 0;
+  state.pal_base = 0;
+  state.pc = 0;
+  state.pcen = 0;
+  state.pcr = 0;
+  state.pctr_ctl = 0;
+  state.pmpc = 0;
+  state.ppcen = false;
+  state.sde = false;
+  state.sien = 0;
+  state.sir = 0;
+  state.slen = 0;
+  state.slr = 0;
+  state.smc = 1;
+  state.m_ctl_spe = 0;
+  state.i_ctl_spe = 0;
+  state.va_ctl_va_mode = 0;
+  state.va_ctl_vptb = 0;
 
   itb = new CTranslationBuffer (this, true);
   dtb = new CTranslationBuffer (this, false);
@@ -332,7 +335,7 @@ CAlphaCPU::CAlphaCPU(CSystem * system) : CSystemComponent (system)
   bListing = false;
 #endif
   
-  printf("%%CPU-I-INIT: Alpha AXP 21264 EV68 processor %d initialized.\n", iProcNum);
+  printf("%%CPU-I-INIT: Alpha AXP 21264 EV68 processor %d initialized.\n", state.iProcNum);
 }
 
 /**
@@ -358,33 +361,33 @@ CAlphaCPU::~CAlphaCPU()
 
 #define DATA_PHYS(addr,access,check,alt,vpte) {				\
     int dp_result;							\
-    dp_result = dtb->convert_address(addr, &phys_address, access, check, alt?alt_cm:cm, &temp_bool, false, true); \
+    dp_result = dtb->convert_address(addr, &phys_address, access, check, alt?state.alt_cm:state.cm, &temp_bool, false, true); \
     if (dp_result) {							\
-      fault_va = addr;							\
+      state.fault_va = addr;							\
       switch (dp_result) {						\
       case E_NOT_FOUND:							\
         if (vpte) {							\
-	  exc_sum = REG_3<<8;						\
+	  state.exc_sum = REG_3<<8;						\
 	  GO_PAL(DTBM_DOUBLE_3);					\
 	} else {							\
-          mm_stat = (((opcode==0x1b || opcode==0x1f)?opcode-0x18:opcode)<<4) |	\
+          state.mm_stat = (((opcode==0x1b || opcode==0x1f)?opcode-0x18:opcode)<<4) |	\
 		    (access);						\
-	  exc_sum = REG_3<<8;						\
+	  state.exc_sum = REG_3<<8;						\
 	  GO_PAL(DTBM_SINGLE);						\
 	}								\
 	break;								\
       case E_ACCESS:							\
         if (!vpte)							\
-	  mm_stat = (((opcode==0x1b || opcode==0x1f)?opcode-0x18:opcode)<<4) |	\
+	  state.mm_stat = (((opcode==0x1b || opcode==0x1f)?opcode-0x18:opcode)<<4) |	\
 		    (access) | 2;					\
-	exc_sum = REG_3<<8;						\
+	state.exc_sum = REG_3<<8;						\
 	GO_PAL(DFAULT);							\
 	break;								\
       case E_FAULT:							\
        if (!vpte)							\
-	  mm_stat = (((opcode==0x1b || opcode==0x1f)?opcode-0x18:opcode)<<4) |	\
+	  state.mm_stat = (((opcode==0x1b || opcode==0x1f)?opcode-0x18:opcode)<<4) |	\
 	  (access?9:4);							\
-	exc_sum = REG_3<<8;						\
+	state.exc_sum = REG_3<<8;						\
 	GO_PAL(DFAULT);							\
 	break; }							\
       return 0;	} }
@@ -439,7 +442,7 @@ CAlphaCPU::~CAlphaCPU()
 #define FREG_2 ((ins>>16) & 0x1f)
 #define FREG_3 ( ins      & 0x1f)
 
-#define V_2 ( (ins&0x1000)?((ins>>13)&0xff):r[REG_2] )
+#define V_2 ( (ins&0x1000)?((ins>>13)&0xff):state.r[REG_2] )
 
 #if defined(IDB)
 
@@ -497,19 +500,21 @@ int CAlphaCPU::DoClock()
   char * dbg_strptr = dbg_string;
 #endif
 
-   current_pc = pc;
+   state.current_pc = state.pc;
 
    if (DO_ACTION)
     {
       // check for interrupts
-      if ((!(pc&X64(1))) && ((eien & eir) || (sien & sir) || (asten && (aster & astrr & ((1<<(cm+1))-1) ))))
+      if ((!(state.pc&X64(1))) && ((state.eien & state.eir) || 
+                                   (state.sien & state.sir) || 
+                                   (state.asten && (state.aster & state.astrr & ((1<<(state.cm+1))-1) ))))
 	{
 	  GO_PAL(INTERRUPT);
 	  return 0;
 	}
 
       // get next instruction
-      result = get_icache(pc,&ins);
+      result = get_icache(state.pc,&ins);
       if (result)
 	{
 	  switch (result)
@@ -526,21 +531,21 @@ int CAlphaCPU::DoClock()
     }
   else
     {
-      ins = (u32)(cSystem->ReadMem(pc,32));
+      ins = (u32)(cSystem->ReadMem(state.pc,32));
     }
-    pc += 4;
+    state.pc += 4;
 
-  r[31] = 0;
-  f[31] = 0;
+  state.r[31] = 0;
+  state.f[31] = 0;
 
-  if (cc_ena)
+  if (state.cc_ena)
   {
     if (DO_ACTION)
     {
-      if (pc>X64(600000))
-	cc+=X64(1654321);
+      if (state.pc>X64(600000))
+	state.cc+=X64(1654321);
       else
-	cc+=83;
+	state.cc+=83;
     }
   }
 
@@ -841,13 +846,13 @@ void CAlphaCPU::listing(u64 from, u64 to)
   printf("%%CPU-I-LISTNG: Listing from %016" LL "x to %016" LL "x\n",from,to);
   u64 iSavedPC;
   bool bSavedDebug;
-  iSavedPC = pc;
+  iSavedPC = state.pc;
   bSavedDebug = bDisassemble;
   bDisassemble = true;
   bListing = true;
-  for(pc=from;pc<=to;DoClock());
+  for(state.pc=from;state.pc<=to;DoClock());
   bListing = false;
-  pc = iSavedPC;
+  state.pc = iSavedPC;
   bDisassemble = bSavedDebug;
 }
 #endif
@@ -856,136 +861,23 @@ void CAlphaCPU::listing(u64 from, u64 to)
  * Save state to a Virtual Machine State file.
  **/
 
-void CAlphaCPU::SaveState(FILE *pF)
+void CAlphaCPU::SaveState(FILE *f)
 {
-  fwrite(r,1,64*8,pF);
-  fwrite(this->f,1,32*8,pF);
-  fwrite(&pal_base,1,8,pF);
-  fwrite(&pc,1,8,pF);
-  fwrite(&dc_stat,1,8,pF);
-  fwrite(&i_stat,1,8,pF);
-  fwrite(&pctr_ctl,1,8,pF);
-  fwrite(&dc_ctl,1,8,pF);
-  fwrite(&fault_va,1,8,pF);
-  fwrite(&exc_sum,1,8,pF);
-  fwrite(&i_ctl_vptb,1,8,pF);
-  fwrite(&va_ctl_vptb,1,8,pF);
-  fwrite(&i_ctl_other,1,8,pF);
-  fwrite(&mm_stat,1,8,pF);
-  fwrite(&exc_addr,1,8,pF);
-  fwrite(&pmpc,1,8,pF);
-  fwrite(&fpcr,1,8,pF);
-
-  fwrite(&cc,1,4,pF);
-  fwrite(&cc_offset,1,4,pF);
-
-  fwrite(&ppcen,1,sizeof(bool),pF);
-  fwrite(&cc_ena,1,sizeof(bool),pF);
-  fwrite(&fpen,1,sizeof(bool),pF);
-  fwrite(&sde,1,sizeof(bool),pF);
-  fwrite(&ppcen,1,sizeof(bool),pF);
-  fwrite(&hwe,1,sizeof(bool),pF);
-  fwrite(&bIntrFlag,1,sizeof(bool),pF);
-
-  //	u64 current_pc;
-
-  fwrite(&alt_cm,1,sizeof(int),pF);
-  fwrite(&smc,1,sizeof(int),pF);
-  fwrite(&i_ctl_va_mode,1,sizeof(int),pF);
-  fwrite(&va_ctl_va_mode,1,sizeof(int),pF);
-  fwrite(&cm,1,sizeof(int),pF);
-  fwrite(&asn,1,sizeof(int),pF);
-  fwrite(&asn0,1,sizeof(int),pF);
-  fwrite(&asn1,1,sizeof(int),pF);
-  fwrite(&eien,1,sizeof(int),pF);
-  fwrite(&slen,1,sizeof(int),pF);
-  fwrite(&cren,1,sizeof(int),pF);
-  fwrite(&pcen,1,sizeof(int),pF);
-  fwrite(&sien,1,sizeof(int),pF);
-  fwrite(&asten,1,sizeof(int),pF);
-  fwrite(&sir,1,sizeof(int),pF);
-  fwrite(&eir,1,sizeof(int),pF);
-  fwrite(&slr,1,sizeof(int),pF);
-  fwrite(&crr,1,sizeof(int),pF);
-  fwrite(&pcr,1,sizeof(int),pF);
-  fwrite(&astrr,1,sizeof(int),pF);
-  fwrite(&aster,1,sizeof(int),pF);
-  fwrite(&m_ctl_spe,1,sizeof(int),pF);
-  fwrite(&i_ctl_spe,1,sizeof(int),pF);
-
-  fwrite(&next_icache,1,sizeof(int),pF);
-  fwrite(icache,1,1024*sizeof(struct SICache),pF);
-
-  itb->SaveState(pF);
-  dtb->SaveState(pF);
+  fwrite(&state,sizeof(state),1,f);
+  
+  itb->SaveState(f);
+  dtb->SaveState(f);
 }
 
 /**
  * Restore state from a Virtual Machine State file.
  **/
 
-void CAlphaCPU::RestoreState(FILE *pF)
+void CAlphaCPU::RestoreState(FILE *f)
 {
-  fread(r,1,64*8,pF);
-  fread(this->f,1,32*8,pF);
+  fread(&state,sizeof(state),1,f);
 
-  fread(&pal_base,1,8,pF);
-  fread(&pc,1,8,pF);
-  fread(&dc_stat,1,8,pF);
-  fread(&i_stat,1,8,pF);
-  fread(&pctr_ctl,1,8,pF);
-  fread(&dc_ctl,1,8,pF);
-  fread(&fault_va,1,8,pF);
-  fread(&exc_sum,1,8,pF);
-  fread(&i_ctl_vptb,1,8,pF);
-  fread(&va_ctl_vptb,1,8,pF);
-  fread(&i_ctl_other,1,8,pF);
-  fread(&mm_stat,1,8,pF);
-  fread(&exc_addr,1,8,pF);
-  fread(&pmpc,1,8,pF);
-  fread(&fpcr,1,8,pF);
-
-  fread(&cc,1,4,pF);
-  fread(&cc_offset,1,4,pF);
-
-  fread(&ppcen,1,sizeof(bool),pF);
-  fread(&cc_ena,1,sizeof(bool),pF);
-  fread(&fpen,1,sizeof(bool),pF);
-  fread(&sde,1,sizeof(bool),pF);
-  fread(&ppcen,1,sizeof(bool),pF);
-  fread(&hwe,1,sizeof(bool),pF);
-  fread(&bIntrFlag,1,sizeof(bool),pF);
-
-  //	u64 current_pc;
-
-  fread(&alt_cm,1,sizeof(int),pF);
-  fread(&smc,1,sizeof(int),pF);
-  fread(&i_ctl_va_mode,1,sizeof(int),pF);
-  fread(&va_ctl_va_mode,1,sizeof(int),pF);
-  fread(&cm,1,sizeof(int),pF);
-  fread(&asn,1,sizeof(int),pF);
-  fread(&asn0,1,sizeof(int),pF);
-  fread(&asn1,1,sizeof(int),pF);
-  fread(&eien,1,sizeof(int),pF);
-  fread(&slen,1,sizeof(int),pF);
-  fread(&cren,1,sizeof(int),pF);
-  fread(&pcen,1,sizeof(int),pF);
-  fread(&sien,1,sizeof(int),pF);
-  fread(&asten,1,sizeof(int),pF);
-  fread(&sir,1,sizeof(int),pF);
-  fread(&eir,1,sizeof(int),pF);
-  fread(&slr,1,sizeof(int),pF);
-  fread(&crr,1,sizeof(int),pF);
-  fread(&pcr,1,sizeof(int),pF);
-  fread(&astrr,1,sizeof(int),pF);
-  fread(&aster,1,sizeof(int),pF);
-  fread(&m_ctl_spe,1,sizeof(int),pF);
-  fread(&i_ctl_spe,1,sizeof(int),pF);
-
-  fread(&next_icache,1,sizeof(int),pF);
-  fread(icache,1,1024*sizeof(struct SICache),pF);
-
-  itb->RestoreState(pF);
-  dtb->RestoreState(pF);
+  itb->RestoreState(f);
+  dtb->RestoreState(f);
 }
 

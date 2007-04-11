@@ -27,6 +27,10 @@
  * \file 
  * Contains the code for the emulated on-cpu translation buffers.
  *
+ * X-1.16       Camiel Vanderhoeven                             11-APR-2007
+ *      Moved all data that should be saved to a state file to a structure
+ *      "state".
+ *
  * X-1.15	Camiel Vanderhoeven				3-APR-2007
  *	Backed out X-1.13, because this did not solve the problem, and the
  *	real problem was found and fixed (AliM1543C.cpp/X-1.23).
@@ -96,11 +100,11 @@ extern CSystem * systm;
 CTranslationBuffer::CTranslationBuffer(class CAlphaCPU * c, bool ibox)
 {
   cCPU = c;
-  bIBOX = ibox;
-  p_mask = 0;
-  v_mask = 0;
-  temp_tag[0] = 0;
-  temp_tag[1] = 0;
+  state.bIBOX = ibox;
+  state.p_mask = 0;
+  state.v_mask = 0;
+  state.temp_tag[0] = 0;
+  state.temp_tag[1] = 0;
 
   InvalidateAll();
 }
@@ -120,10 +124,7 @@ CTranslationBuffer::~CTranslationBuffer()
 
 void CTranslationBuffer::SaveState(FILE *f)
 {
-  fwrite(&bIBOX,1,sizeof(bool),f);
-  fwrite(entry,1,TB_ENTRIES * sizeof(struct STBEntry),f);
-  fwrite(&next_entry,1,sizeof(int),f);
-  fwrite(temp_tag,1,2*8,f);
+  fwrite(&state,sizeof(state),1,f);
 }
 
 /**
@@ -132,72 +133,69 @@ void CTranslationBuffer::SaveState(FILE *f)
 
 void CTranslationBuffer::RestoreState(FILE *f)
 {
-  fread(&bIBOX,1,sizeof(bool),f);
-  fread(entry,1,TB_ENTRIES * sizeof(struct STBEntry),f);
-  fread(&next_entry,1,sizeof(int),f);
-  fread(temp_tag,1,2*8,f);
+  fread(&state,sizeof(state),1,f);
 }
 
 
 void CTranslationBuffer::write_tag(int number, u64 value)
 {
-  temp_tag[number] = value;
+  state.temp_tag[number] = value;
 }
 
 void CTranslationBuffer::write_pte(int number, u64 value)
 {
   int i,j;
 
-  if (FindEntry(temp_tag[number]) == -1)
+  if (FindEntry(state.temp_tag[number]) == -1)
     {
-      entry[next_entry].gh      = (u8)((value>>GH_BIT)  & 3);
-      switch (entry[next_entry].gh)
+      state.entry[state.next_entry].gh      = (u8)((value>>GH_BIT)  & 3);
+      switch (state.entry[state.next_entry].gh)
 	{
 	case 0:
-	  v_mask = X64(0000ffffffffe000);  
+	  state.v_mask = X64(0000ffffffffe000);  
 	  break;
 	case 1:
-	  v_mask = X64(0000ffffffff0000);
+	  state.v_mask = X64(0000ffffffff0000);
 	  break;
 	case 2:
-	  v_mask = X64(0000fffffff80000);
+	  state.v_mask = X64(0000fffffff80000);
 	  break;
 	case 3:
-	  v_mask = X64(0000ffffffc00000);
+	  state.v_mask = X64(0000ffffffc00000);
 	  break;
 	}
-      entry[next_entry].virt = (temp_tag[number] & v_mask);
+      state.entry[state.next_entry].virt = (state.temp_tag[number] & state.v_mask);
 	
-      if (bIBOX) 
+      if (state.bIBOX) 
 	{
-	  entry[next_entry].phys = value & v_mask;
-	  entry[next_entry].fault[0] = false;
-	  entry[next_entry].fault[1] = false;
+	  state.entry[state.next_entry].phys = value & state.v_mask;
+	  state.entry[state.next_entry].fault[0] = false;
+	  state.entry[state.next_entry].fault[1] = false;
 	  for (j=0;j<4;j++) {
-	    entry[next_entry].access[ACCESS_READ][j] = (value>>(ACCESS_BIT+j)) & 1;
-	    entry[next_entry].access[ACCESS_WRITE][j] = false;
+	    state.entry[state.next_entry].access[ACCESS_READ][j] = (value>>(ACCESS_BIT+j)) & 1;
+	    state.entry[state.next_entry].access[ACCESS_WRITE][j] = false;
 	  }
 
 	} 
       else 
 	{
-	  entry[next_entry].phys = (value >> MBOX_PHYS_S) & v_mask;
+	  state.entry[state.next_entry].phys = (value >> MBOX_PHYS_S) & state.v_mask;
 	  for (i=0;i<2;i++) 
 	    {
-	      entry[next_entry].fault[i] = (value>>(FAULT_BIT+i)) & 1;
+	      state.entry[state.next_entry].fault[i] = (value>>(FAULT_BIT+i)) & 1;
 	      for (j=0;j<4;j++)
-		entry[next_entry].access[i][j] = (value>>(ACCESS_BIT+j+(i*4))) & 1;
+		state.entry[state.next_entry].access[i][j] = (value>>(ACCESS_BIT+j+(i*4))) & 1;
 	    }
 	}
 
-      entry[next_entry].asm_bit = (value>>ASM_BIT) & 1;
-      if (!entry[next_entry].asm_bit)
-	entry[next_entry].asn = cCPU->get_asn(bIBOX);
-      entry[next_entry].valid = true;
+      state.entry[state.next_entry].asm_bit = (value>>ASM_BIT) & 1;
+      if (!state.entry[state.next_entry].asm_bit)
+	state.entry[state.next_entry].asn = cCPU->get_asn(state.bIBOX);
+      state.entry[state.next_entry].valid = true;
 	
-      next_entry++;
-      if (next_entry==TB_ENTRIES)
-	next_entry = 0;
+      state.next_entry++;
+      if (state.next_entry==TB_ENTRIES)
+	state.next_entry = 0;
     }
 }
 
@@ -207,30 +205,30 @@ int CTranslationBuffer::FindEntry(u64 virt)
 
   for (i=0;i<TB_ENTRIES;i++)
     {
-      switch (entry[i].gh)
+      switch (state.entry[i].gh)
 	{
 	case 0:
-	  v_mask = X64(0000ffffffffe000);
-	  p_mask = X64(0000000000001fff);
+	  state.v_mask = X64(0000ffffffffe000);
+	  state.p_mask = X64(0000000000001fff);
 	  break;
 	case 1:
-	  v_mask = X64(0000ffffffff0000);
-	  p_mask = X64(000000000000ffff);
+	  state.v_mask = X64(0000ffffffff0000);
+	  state.p_mask = X64(000000000000ffff);
 	  break;
 	case 2:
-	  v_mask = X64(0000fffffff80000);
-	  p_mask = X64(000000000007ffff);
+	  state.v_mask = X64(0000fffffff80000);
+	  state.p_mask = X64(000000000007ffff);
 	  break;
 	case 3:
-	  v_mask = X64(0000ffffffc00000);
-	  p_mask = X64(00000000003fffff);
+	  state.v_mask = X64(0000ffffffc00000);
+	  state.p_mask = X64(00000000003fffff);
 	  break;
 	}
 
-      if (     entry[i].valid
-	       && !((entry[i].virt ^ virt) & v_mask)
-	       &&  (     entry[i].asm_bit
-			 || (entry[i].asn == cCPU->get_asn(bIBOX))
+      if (     state.entry[i].valid
+	       && !((state.entry[i].virt ^ virt) & state.v_mask)
+	       &&  (     state.entry[i].asm_bit
+			 || (state.entry[i].asn == cCPU->get_asn(state.bIBOX))
 			 )
 	       )
 	return i;
@@ -259,13 +257,13 @@ int CTranslationBuffer::convert_address(u64 virt, u64 *phys, u8 access, bool che
 #if defined(IDB)
   if (bTB_Debug)
 #endif
-    printf("%s %" LL "x: ",bIBOX?"I":"D", virt);
+    printf("%s %" LL "x: ",state.bIBOX?"I":"D", virt);
 #endif
 
-  if (cCPU->get_spe(bIBOX) && !cm)
+  if (cCPU->get_spe(state.bIBOX) && !cm)
     {
       if (   (((virt>>46)&3) == 2)
-	     && (cCPU->get_spe(bIBOX)&4))
+	     && (cCPU->get_spe(state.bIBOX)&4))
 	{
 	  *phys = virt & X64(00000fffffffffff);
 	  *asm_bit = false;
@@ -279,7 +277,7 @@ int CTranslationBuffer::convert_address(u64 virt, u64 *phys, u8 access, bool che
 	  return 0;
 	}
       else if (   (((virt>>41)&0x7f) == 0x7e)
-		  && (cCPU->get_spe(bIBOX) & 2))
+		  && (cCPU->get_spe(state.bIBOX) & 2))
 	{
 	  *phys =   (virt & X64(000001ffffffffff)) 
 	    | ((virt & X64(0000010000000000)) * 6);
@@ -294,7 +292,7 @@ int CTranslationBuffer::convert_address(u64 virt, u64 *phys, u8 access, bool che
 	  return 0;
 	}
       else if (   (((virt>>30)&0x3ffff) == 0x3fffe)
-		  && (cCPU->get_spe(bIBOX) & 1))
+		  && (cCPU->get_spe(state.bIBOX) & 1))
 	{
 	  *phys = virt & X64(000000003fffffff);
 	  *asm_bit = false;
@@ -346,8 +344,8 @@ int CTranslationBuffer::convert_address(u64 virt, u64 *phys, u8 access, bool che
 #endif
       return E_NOT_FOUND;
     }
-    va_form = cCPU->va_form(virt,bIBOX);
-    if (bIBOX) {
+    va_form = cCPU->va_form(virt,state.bIBOX);
+    if (state.bIBOX) {
       if (cCPU->get_r(22+32,false) & X64(8000000000000000)) {
         pte = (cCPU->get_pal_base() & X64(ffffffffffe00000)) | (virt & X64(ffffffffffffe000)) | 0xf01;
       } else {
@@ -376,7 +374,7 @@ int CTranslationBuffer::convert_address(u64 virt, u64 *phys, u8 access, bool che
 	}
 	pte = ((pte >> 0x20) << 0x0d) | (pte & 0xfff);
       }
-    } else {	// bIBOX
+    } else {	// state.bIBOX
       if (cCPU->get_r(22+32,false)&X64(8000000000000000)) {
 	if (virt&X64(80000000000)) {
 	  u64 t1;
@@ -471,7 +469,7 @@ int CTranslationBuffer::convert_address(u64 virt, u64 *phys, u8 access, bool che
   // check access...
   if (check)
   {
-    if (!entry[i].access[access][cm])
+    if (!state.entry[i].access[access][cm])
     {
 #if defined(DEBUG_TB)
   if (forreal)
@@ -482,7 +480,7 @@ int CTranslationBuffer::convert_address(u64 virt, u64 *phys, u8 access, bool che
 #endif
       return E_ACCESS;
     }
-    if (entry[i].fault[access])
+    if (state.entry[i].fault[access])
     {
 #if defined(DEBUG_TB)
   if (forreal)
@@ -496,8 +494,8 @@ int CTranslationBuffer::convert_address(u64 virt, u64 *phys, u8 access, bool che
   }
   // all is ok...
 
-  *phys = (entry[i].phys & v_mask) | (virt & p_mask);
-  *asm_bit = entry[i].asm_bit;
+  *phys = (state.entry[i].phys & state.v_mask) | (virt & state.p_mask);
+  *asm_bit = state.entry[i].asm_bit;
 
 #if defined(DEBUG_TB)
   if (forreal)
@@ -514,7 +512,7 @@ void CTranslationBuffer::InvalidateAll()
 {
   int i;
   for (i=0;i<TB_ENTRIES;i++)
-    entry[i].valid = false;
+    state.entry[i].valid = false;
 }
 
 void CTranslationBuffer::InvalidateAllProcess()
@@ -522,8 +520,8 @@ void CTranslationBuffer::InvalidateAllProcess()
   int i;
   for (i=0;i<TB_ENTRIES;i++)
     {
-      if (!entry[i].asm_bit)
-	entry[i].valid = false;
+      if (!state.entry[i].asm_bit)
+	state.entry[i].valid = false;
     }
 }
 
@@ -531,5 +529,5 @@ void CTranslationBuffer::InvalidateSingle(u64 address)
 {
   int i;
   while ((i = FindEntry(address)) >= 0)
-    entry[i].valid = false;
+    state.entry[i].valid = false;
 }

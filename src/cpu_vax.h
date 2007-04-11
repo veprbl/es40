@@ -27,6 +27,10 @@
  * \file 
  * Contains code macros for the processor VAX compatibility instructions.
  *
+ * X-1.3        Camiel Vanderhoeven                             11-APR-2007
+ *      Moved all data that should be saved to a state file to a structure
+ *      "state".
+ *
  * X-1.2        Camiel Vanderhoeven                             30-MAR-2007
  *      Added old changelog comments.
  *
@@ -37,9 +41,9 @@
  **/
 
 #define DO_RC				\
-	    r[REG_1] = bIntrFlag?1:0;	\
-	    bIntrFlag = false;
+	    state.r[REG_1] = state.bIntrFlag?1:0;	\
+	    state.bIntrFlag = false;
 
 #define DO_RS				\
- 	    r[REG_1] = bIntrFlag?1:0;	\
-	    bIntrFlag = true;
+ 	    state.r[REG_1] = state.bIntrFlag?1:0;	\
+	    state.bIntrFlag = true;

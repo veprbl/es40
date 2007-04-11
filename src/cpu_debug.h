@@ -27,6 +27,10 @@
  * \file 
  * Contains debugging macros used by AlphaCPU.cpp
  *
+ * X-1.13       Camiel Vanderhoeven                             11-APR-2007
+ *      Moved all data that should be saved to a state file to a structure
+ *      "state".
+ *
  * X-1.12       Camiel Vanderhoeven                             30-MAR-2007
  *      Added old changelog comments.
  *
@@ -138,14 +142,14 @@ char * IPR_NAME[] = {
 
 #define TRC_(down,up,x,y) {						\
     if (bTrace)								\
-      trc->trace(this, current_pc, pc, down, up, x, y); }
+      trc->trace(this, state.current_pc, state.pc, down, up, x, y); }
 
 #define TRC(down,up) {							\
     if (bTrace)								\
-      trc->trace(this, current_pc, pc, down, up, (char*)0, 0); }
+      trc->trace(this, state.current_pc, state.pc, down, up, (char*)0, 0); }
 
 #define TRC_BR {							\
-    if (bTrace) trc->trace_br(this, current_pc,pc); }
+    if (bTrace) trc->trace_br(this, state.current_pc,state.pc); }
 
 #define GO_PAL(offset) {						\
     if (bDisassemble) {							\
@@ -153,10 +157,10 @@ char * IPR_NAME[] = {
       dbg_strptr += strlen(dbg_strptr);					\
     }									\
     handle_debug_string(dbg_string);					\
-    exc_addr = current_pc;						\
-    pc =  pal_base | offset | 1;					\
+    state.exc_addr = state.current_pc;						\
+    state.pc =  state.pal_base | offset | 1;					\
     if ((offset==DTBM_SINGLE || offset==ITB_MISS) && bTrace)		\
-      trc->set_waitfor(this, exc_addr&~X64(3));				\
+      trc->set_waitfor(this, state.exc_addr&~X64(3));				\
     else								\
       TRC_(true,false,"GO_PAL %04x",offset); }
 
@@ -166,28 +170,28 @@ char * IPR_NAME[] = {
 #define TRC(down,up) ;
 #define TRC_BR ;
 #define GO_PAL(offset) {						\
-    exc_addr = current_pc;						\
-    pc = pal_base | offset | 1; }
+    state.exc_addr = state.current_pc;						\
+    state.pc = state.pal_base | offset | 1; }
 
 #endif
 
 #if defined(IDB)
 
 #define DEBUG_XX							\
-  if (trc->get_fnc_name(this, current_pc&~X64(3),&funcname))		\
+  if (trc->get_fnc_name(this, state.current_pc&~X64(3),&funcname))		\
     {									\
       if (bListing && !strcmp(funcname,""))				\
         {								\
-	  printf("%08" LL "x: \"%s\"\n",current_pc,			\
-		 cSystem->PtrToMem(current_pc));		        \
-	  pc = (current_pc + strlen(cSystem->PtrToMem(current_pc)) + 4)	\
+	  printf("%08" LL "x: \"%s\"\n",state.current_pc,			\
+		 cSystem->PtrToMem(state.current_pc));		        \
+	  state.pc = (state.current_pc + strlen(cSystem->PtrToMem(state.current_pc)) + 4)	\
 	    & ~X64(3);							\
-	  while (pc < 0x600000 && cSystem->ReadMem(pc,32)==0) pc += 4;	\
+	  while (state.pc < 0x600000 && cSystem->ReadMem(state.pc,32)==0) state.pc += 4;	\
 	  return 0;							\
         }								\
       else if (bListing && !strcmp(funcname,"!SKIP"))			\
         {								\
-	  while (pc < 0x600000 && cSystem->ReadMem(pc,32)==0) pc += 4;	\
+	  while (state.pc < 0x600000 && cSystem->ReadMem(state.pc,32)==0) state.pc += 4;	\
 	  return 0;							\
         }								\
       else if (bListing && !strncmp(funcname,"!CHAR-",6))		\
@@ -197,13 +201,13 @@ char * IPR_NAME[] = {
 	  xx_result = sscanf(&(funcname[6]),"%" LL "x",&xx_upto);	\
 	  if (xx_result==1)						\
 	    {								\
-	      pc = current_pc;						\
-	      while (pc < xx_upto)					\
+	      state.pc = state.current_pc;						\
+	      while (state.pc < xx_upto)					\
 		{							\
-		  printf("%08" LL "x: \"%s\"\n", pc, cSystem->PtrToMem(pc)); \
-		  pc += strlen(cSystem->PtrToMem(pc));			\
-		  while (pc < xx_upto && cSystem->ReadMem(pc,8)==0)	\
-		    pc++;						\
+		  printf("%08" LL "x: \"%s\"\n", state.pc, cSystem->PtrToMem(state.pc)); \
+		  state.pc += strlen(cSystem->PtrToMem(state.pc));			\
+		  while (state.pc < xx_upto && cSystem->ReadMem(state.pc,8)==0)	\
+		    state.pc++;						\
 		}							\
 	      return 0;							\
 	    }								\
@@ -217,16 +221,16 @@ char * IPR_NAME[] = {
 	  xx_result = sscanf(&(funcname[7]),"%" LL "x",&xx_upto);	\
 	  if (xx_result==1)						\
 	    {								\
-	      pc = current_pc;						\
-	      while (pc < xx_upto)					\
+	      state.pc = state.current_pc;						\
+	      while (state.pc < xx_upto)					\
 		{							\
-		  stringlen = (int)cSystem->ReadMem(pc++,8);		\
+		  stringlen = (int)cSystem->ReadMem(state.pc++,8);		\
 		  memset(stringval,0,300);				\
-		  strncpy(stringval,cSystem->PtrToMem(pc),stringlen);	\
-		  printf("%08" LL "x: \"%s\"\n",pc-1, stringval);	\
-		  pc += stringlen;					\
-		  while (pc < xx_upto && cSystem->ReadMem(pc,8)==0)	\
-		    pc++;						\
+		  strncpy(stringval,cSystem->PtrToMem(state.pc),stringlen);	\
+		  printf("%08" LL "x: \"%s\"\n",state.pc-1, stringval);	\
+		  state.pc += stringlen;					\
+		  while (state.pc < xx_upto && cSystem->ReadMem(state.pc,8)==0)	\
+		    state.pc++;						\
 		}							\
 	      return 0;							\
 	    }								\
@@ -234,24 +238,24 @@ char * IPR_NAME[] = {
       else if (bListing && !strncmp(funcname,"!X64-",5))		\
         {								\
 	  printf("\n%s:\n",&(funcname[5]));				\
-	  pc = current_pc;						\
-	  while (   (pc==current_pc)					\
-		    || !trc->get_fnc_name(this,pc,&funcname) )		\
+	  state.pc = state.current_pc;						\
+	  while (   (state.pc==state.current_pc)					\
+		    || !trc->get_fnc_name(this,state.pc,&funcname) )		\
 	    {								\
-              printf("%08" LL "x: %016" LL "x\n",pc, cSystem->ReadMem(pc,64)); \
-	      pc += 8;							\
+              printf("%08" LL "x: %016" LL "x\n",state.pc, cSystem->ReadMem(state.pc,64)); \
+	      state.pc += 8;							\
 	    }								\
 	  return 0;							\
         }								\
       else if (bListing&& !strncmp(funcname,"!X32-",5))			\
         {								\
 	  printf("\n%s:\n",&(funcname[5]));				\
-	  pc = current_pc;						\
-	  while (   (pc==current_pc)					\
-		    || !trc->get_fnc_name(this,pc,&funcname) )		\
+	  state.pc = state.current_pc;						\
+	  while (   (state.pc==state.current_pc)					\
+		    || !trc->get_fnc_name(this,state.pc,&funcname) )		\
 	    {								\
-	      printf("%08" LL "x: %08" LL "x\n",pc, cSystem->ReadMem(pc,32)); \
-	      pc += 4;							\
+	      printf("%08" LL "x: %08" LL "x\n",state.pc, cSystem->ReadMem(state.pc,32)); \
+	      state.pc += 4;							\
 	    }								\
 	  return 0;							\
         }								\
@@ -263,7 +267,7 @@ char * IPR_NAME[] = {
 	dbg_strptr += strlen(dbg_strptr);				\
       }                                                                 \
     }									\
-    sprintf(dbg_strptr,bListing?"%08" LL "x: ":"%016" LL "x", current_pc);	\
+    sprintf(dbg_strptr,bListing?"%08" LL "x: ":"%016" LL "x", state.current_pc);	\
   dbg_strptr += strlen(dbg_strptr);					\
   if (!bListing)							\
     sprintf(dbg_strptr, "(%08" LL "x): ", current_pc_physical);		\
@@ -315,7 +319,7 @@ char * IPR_NAME[] = {
 
 #define PRE_BR(mnemonic)						\
   if (bDisassemble) {							\
-      u64 dbg_x = (current_pc + 4 + (DISP_21 * 4))&~X64(3);		\
+      u64 dbg_x = (state.current_pc + 4 + (DISP_21 * 4))&~X64(3);		\
       DEBUG_XX								\
       sprintf(dbg_strptr,#mnemonic " r%d, ", REG_1&31);			\
       dbg_strptr += strlen(dbg_strptr);					\
@@ -331,7 +335,7 @@ char * IPR_NAME[] = {
 
 #define PRE_COND(mnemonic)						\
   if (bDisassemble) {							\
-      u64 dbg_x = (current_pc + 4 + (DISP_21 * 4))&~X64(3);		\
+      u64 dbg_x = (state.current_pc + 4 + (DISP_21 * 4))&~X64(3);		\
       DEBUG_XX								\
       sprintf(dbg_strptr,#mnemonic " r%d, ", REG_1&31);			\
       dbg_strptr += strlen(dbg_strptr);					\
@@ -341,7 +345,7 @@ char * IPR_NAME[] = {
 	sprintf (dbg_strptr,"%" LL "x", dbg_x);				\
       dbg_strptr += strlen(dbg_strptr);					\
       if (!bListing) {							\
-        sprintf(dbg_strptr,": (%" LL "x)", r[REG_1]);			\
+        sprintf(dbg_strptr,": (%" LL "x)", state.r[REG_1]);			\
         dbg_strptr += strlen(dbg_strptr);				\
       }									\
     }
@@ -351,7 +355,7 @@ char * IPR_NAME[] = {
 
 #define PRE_FCOND(mnemonic)						\
   if (bDisassemble) {							\
-      u64 dbg_x = (current_pc + 4 + (DISP_21 * 4))&~X64(3);		\
+      u64 dbg_x = (state.current_pc + 4 + (DISP_21 * 4))&~X64(3);		\
       DEBUG_XX								\
       sprintf(dbg_strptr,#mnemonic " f%d, ", FREG_1);			\
       dbg_strptr += strlen(dbg_strptr);					\
@@ -361,7 +365,7 @@ char * IPR_NAME[] = {
 	sprintf (dbg_strptr,"%" LL "x", dbg_x);				\
       dbg_strptr += strlen(dbg_strptr);					\
       if (!bListing) {							\
-        sprintf(dbg_strptr,": (%" LL "x)", f[FREG_1]);			\
+        sprintf(dbg_strptr,": (%" LL "x)", state.f[FREG_1]);			\
         dbg_strptr += strlen(dbg_strptr);				\
       }									\
     }
@@ -371,7 +375,7 @@ char * IPR_NAME[] = {
 
 #define PRE_BSR(mnemonic)						\
   if (bDisassemble) {							\
-      u64 dbg_x = (current_pc + 4 + (DISP_21 * 4))&~X64(3);		\
+      u64 dbg_x = (state.current_pc + 4 + (DISP_21 * 4))&~X64(3);		\
       DEBUG_XX								\
       sprintf(dbg_strptr,#mnemonic " r%d, ", REG_1&31);			\
       dbg_strptr += strlen(dbg_strptr);					\
@@ -396,7 +400,7 @@ char * IPR_NAME[] = {
       sprintf(dbg_strptr,#mnemonic " r%d, r%d", REG_1&31, REG_2&31);	\
       dbg_strptr += strlen(dbg_strptr);					\
       if (!bListing) { 							\
-        sprintf(dbg_strptr,": (%" LL "x)", r[REG_2]);			\
+        sprintf(dbg_strptr,": (%" LL "x)", state.r[REG_2]);			\
         dbg_strptr += strlen(dbg_strptr);				\
       }									\
     }
@@ -415,7 +419,7 @@ char * IPR_NAME[] = {
       sprintf(dbg_strptr,#mnemonic " r%d", REG_2&31);			\
       dbg_strptr += strlen(dbg_strptr);					\
       if (!bListing) {							\
-        sprintf(dbg_strptr,": (%" LL "x)", r[REG_2]);			\
+        sprintf(dbg_strptr,": (%" LL "x)", state.r[REG_2]);			\
         dbg_strptr += strlen(dbg_strptr);				\
       }									\
     }
@@ -431,7 +435,7 @@ char * IPR_NAME[] = {
     }
 
 #define POST_MFPR							\
-  POST_X64(r[REG_1]);
+  POST_X64(state.r[REG_1]);
 
 #define PRE_MTPR(mnemonic)						\
   if (bDisassemble) {							\
@@ -441,7 +445,7 @@ char * IPR_NAME[] = {
     }
 
 #define POST_MTPR							\
-  POST_X64(r[REG_2]);
+  POST_X64(state.r[REG_2]);
 
 #define PRE_NOP(mnemonic)						\
   if (bDisassemble) {							\
@@ -458,13 +462,13 @@ char * IPR_NAME[] = {
       sprintf(dbg_strptr, #mnemonic " r%d, %04xH(r%d)", REG_1&31, (u32)DISP_16, REG_2&31);	\
       dbg_strptr += strlen(dbg_strptr);					\
       if (!bListing) {							\
-        sprintf(dbg_strptr,": (%" LL "x)", r[REG_2]);			\
+        sprintf(dbg_strptr,": (%" LL "x)", state.r[REG_2]);			\
         dbg_strptr += strlen(dbg_strptr);				\
       }									\
     }	
 
 #define POST_MEM							\
-  POST_X64(r[REG_1]);
+  POST_X64(state.r[REG_1]);
 
 #define PRE_R12_R3(mnemonic)						\
   if (bDisassemble)							\
@@ -480,13 +484,13 @@ char * IPR_NAME[] = {
       sprintf(dbg_strptr,", r%d", REG_3&31);				\
       dbg_strptr += strlen(dbg_strptr);					\
       if (!bListing) {							\
-        sprintf(dbg_strptr,": (%" LL "x,%" LL "x)",r[REG_1],V_2);	\
+        sprintf(dbg_strptr,": (%" LL "x,%" LL "x)",state.r[REG_1],V_2);	\
         dbg_strptr += strlen(dbg_strptr);				\
       }									\
     }
 
 #define POST_R12_R3							\
-	POST_X64(r[REG_3]);
+	POST_X64(state.r[REG_3]);
 	
 
 #define PRE_F12_F3(mnemonic)						\
@@ -496,13 +500,13 @@ char * IPR_NAME[] = {
       sprintf(dbg_strptr,#mnemonic " r%d, r%d, r%d", FREG_1, FREG_2, FREG_3);	\
       dbg_strptr += strlen(dbg_strptr);					\
       if (!bListing) {							\
-        sprintf(dbg_strptr,": (%" LL "x,%" LL "x)",f[FREG_1],f[FREG_2]);	\
+        sprintf(dbg_strptr,": (%" LL "x,%" LL "x)",state.f[FREG_1],state.f[FREG_2]);	\
         dbg_strptr += strlen(dbg_strptr);				\
       }									\
     }
 
 #define POST_F12_F3							\
-	POST_X64(f[FREG_3]);
+	POST_X64(state.f[FREG_3]);
 
 #define PRE_R1_F3(mnemonic)						\
   if (bDisassemble)							\
@@ -511,13 +515,13 @@ char * IPR_NAME[] = {
       sprintf(dbg_strptr,#mnemonic " r%d, f%d ", REG_1&31, FREG_3);	\
       dbg_strptr += strlen(dbg_strptr);					\
       if (!bListing) {							\
-        sprintf(dbg_strptr,": (%" LL "x)",r[REG_1]);			\
+        sprintf(dbg_strptr,": (%" LL "x)",state.r[REG_1]);			\
         dbg_strptr += strlen(dbg_strptr);				\
       }									\
     }
 
 #define POST_R1_F3							\
-	POST_X64(f[FREG_3]);
+	POST_X64(state.f[FREG_3]);
 
 #define PRE_F1_R3(mnemonic)						\
   if (bDisassemble)							\
@@ -526,13 +530,13 @@ char * IPR_NAME[] = {
       sprintf(dbg_strptr,#mnemonic " f%d, r%d ", FREG_1, REG_3&31);	\
       dbg_strptr += strlen(dbg_strptr);					\
       if (!bListing) {							\
-        sprintf(dbg_strptr,": (%" LL "x)",f[FREG_1]);			\
+        sprintf(dbg_strptr,": (%" LL "x)",state.f[FREG_1]);			\
         dbg_strptr += strlen(dbg_strptr);				\
       }									\
     }
 
 #define POST_F1_R3							\
-	POST_X64(r[REG_3]);
+	POST_X64(state.r[REG_3]);
 
 #define PRE_X_F1(mnemonic)						\
   if (bDisassemble)							\
@@ -543,7 +547,7 @@ char * IPR_NAME[] = {
     }
 
 #define POST_X_F1							\
-	POST_X64(f[FREG_1]);
+	POST_X64(state.f[FREG_1]);
 	
 #define PRE_R2_R3(mnemonic)						\
   if (bDisassemble)							\
@@ -565,7 +569,7 @@ char * IPR_NAME[] = {
     }
 
 #define POST_R2_R3							\
-	POST_X64(r[REG_3]);
+	POST_X64(state.r[REG_3]);
 	
 #define PRE_X_R1(mnemonic)						\
   if (bDisassemble)							\
@@ -576,7 +580,7 @@ char * IPR_NAME[] = {
     }
 
 #define POST_X_R1							\
-	POST_X64(r[REG_1]);
+	POST_X64(state.r[REG_1]);
 
 #define PRE_X_R3(mnemonic)						\
   if (bDisassemble)							\
@@ -587,7 +591,7 @@ char * IPR_NAME[] = {
     }
 
 #define POST_X_R3							\
-	POST_X64(r[REG_3]);
+	POST_X64(state.r[REG_3]);
 	
 #define PRE_HW_LD(mnemonic)						\
   if (bDisassemble)							\
@@ -620,13 +624,13 @@ char * IPR_NAME[] = {
       sprintf(dbg_strptr," r%d, %04xH(r%d)", REG_1&31, (u32)DISP_12, REG_2&31);	\
       dbg_strptr += strlen(dbg_strptr);					\
       if (!bListing) { 							\
-        sprintf(dbg_strptr,": (%" LL "x)", r[REG_2]);			\
+        sprintf(dbg_strptr,": (%" LL "x)", state.r[REG_2]);			\
         dbg_strptr += strlen(dbg_strptr);				\
       }									\
     }	
 
 #define POST_HW_LD							\
-  POST_X64(r[REG_1]);
+  POST_X64(state.r[REG_1]);
 
 #define PRE_HW_ST(mnemonic)						\
   if (bDisassemble)							\
@@ -650,13 +654,13 @@ char * IPR_NAME[] = {
       sprintf(dbg_strptr," r%d, %04xH(r%d)", REG_1&31, (u32)DISP_12, REG_2&31);	\
       dbg_strptr += strlen(dbg_strptr);					\
       if (!bListing) {							\
-        sprintf(dbg_strptr,": (%" LL "x)", r[REG_2]);			\
+        sprintf(dbg_strptr,": (%" LL "x)", state.r[REG_2]);			\
         dbg_strptr += strlen(dbg_strptr);				\
       }									\
     }	
 
 #define POST_HW_ST							\
-  POST_X64(r[REG_1]);
+  POST_X64(state.r[REG_1]);
 
 #define PRE_FMEM(mnemonic)						\
   if (bDisassemble) {							\
@@ -664,13 +668,13 @@ char * IPR_NAME[] = {
       sprintf(dbg_strptr, #mnemonic " f%d, %04xH(r%d)", FREG_1, (u32)DISP_16, REG_2&31);	\
       dbg_strptr += strlen(dbg_strptr);					\
       if (!bListing) {							\
-        sprintf(dbg_strptr,": (%" LL "x)", r[REG_2]);			\
+        sprintf(dbg_strptr,": (%" LL "x)", state.r[REG_2]);			\
         dbg_strptr += strlen(dbg_strptr);				\
       }									\
     }	
 
 #define POST_FMEM							\
-  POST_X64(f[FREG_1]);
+  POST_X64(state.f[FREG_1]);
 
 #define PRE_F2_F3(mnemonic)						\
   if (bDisassemble) {							\
@@ -678,13 +682,13 @@ char * IPR_NAME[] = {
       sprintf(dbg_strptr, #mnemonic " f%d, f%d", FREG_2, FREG_3);	\
       dbg_strptr += strlen(dbg_strptr);					\
       if (!bListing) {							\
-        sprintf(dbg_strptr,": (%" LL "x)", f[FREG_2]);			\
+        sprintf(dbg_strptr,": (%" LL "x)", state.f[FREG_2]);			\
         dbg_strptr += strlen(dbg_strptr);				\
       }									\
     }	
 
 #define POST_F2_F3							\
-  POST_X64(f[FREG_3]);
+  POST_X64(state.f[FREG_3]);
 
 #else
 

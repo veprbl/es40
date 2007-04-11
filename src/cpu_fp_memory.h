@@ -28,6 +28,10 @@
  * Contains code macros for the processor floating-point load/store instructions.
  * Based on ARM chapter 4.8.
  *
+ * X-1.4        Camiel Vanderhoeven                             11-APR-2007
+ *      Moved all data that should be saved to a state file to a structure
+ *      "state".
+ *
  * X-1.3        Camiel Vanderhoeven                             30-MAR-2007
  *      Added old changelog comments.
  *
@@ -42,36 +46,36 @@
 
 #define DO_LDF									\
 	if (FREG_1 != 31) {							\
-	  DATA_PHYS(r[REG_2] + DISP_16, ACCESS_READ, true, false, false);	\
-	  f[FREG_1] = f2g(swap_f((u32)READ_PHYS(32))); }
+	  DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_READ, true, false, false);	\
+	  state.f[FREG_1] = f2g(swap_f((u32)READ_PHYS(32))); }
 
 #define DO_LDG									\
 	if (FREG_1 != 31) {							\
-	  DATA_PHYS(r[REG_2] + DISP_16, ACCESS_READ, true, false, false);	\
-	  f[FREG_1] = swap_g(READ_PHYS(64)); }
+	  DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_READ, true, false, false);	\
+	  state.f[FREG_1] = swap_g(READ_PHYS(64)); }
 
 #define DO_LDS									\
 	if (FREG_1 != 31) {							\
-	  DATA_PHYS(r[REG_2] + DISP_16, ACCESS_READ, true, false, false);	\
-	  f[FREG_1] = s2t((u32)READ_PHYS(32)); }
+	  DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_READ, true, false, false);	\
+	  state.f[FREG_1] = s2t((u32)READ_PHYS(32)); }
 
 #define DO_LDT									\
 	if (FREG_1 != 31) {							\
-	  DATA_PHYS(r[REG_2] + DISP_16, ACCESS_READ, true, false, false);	\
-	  f[FREG_1] = READ_PHYS(64); }
+	  DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_READ, true, false, false);	\
+	  state.f[FREG_1] = READ_PHYS(64); }
 
 #define DO_STF									\
-	  DATA_PHYS(r[REG_2] + DISP_16, ACCESS_WRITE, true, false, false);	\
-	  WRITE_PHYS(swap_f(g2f(f[FREG_1])),32);
+	  DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_WRITE, true, false, false);	\
+	  WRITE_PHYS(swap_f(g2f(state.f[FREG_1])),32);
 
 #define DO_STG									\
-	  DATA_PHYS(r[REG_2] + DISP_16, ACCESS_WRITE, true, false, false);	\
-	  WRITE_PHYS(swap_g(f[FREG_1]),64);
+	  DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_WRITE, true, false, false);	\
+	  WRITE_PHYS(swap_g(state.f[FREG_1]),64);
 
 #define DO_STS									\
-	  DATA_PHYS(r[REG_2] + DISP_16, ACCESS_WRITE, true, false, false);	\
-	  WRITE_PHYS(t2s(f[FREG_1]),32);
+	  DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_WRITE, true, false, false);	\
+	  WRITE_PHYS(t2s(state.f[FREG_1]),32);
 
 #define DO_STT									\
-	  DATA_PHYS(r[REG_2] + DISP_16, ACCESS_WRITE, true, false, false);	\
-	  WRITE_PHYS(f[FREG_1],64);
+	  DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_WRITE, true, false, false);	\
+	  WRITE_PHYS(state.f[FREG_1],64);

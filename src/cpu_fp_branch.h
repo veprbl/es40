@@ -28,6 +28,10 @@
  * Contains code macros for the processor floating-point branch instructions.
  * Based on ARM chapter 4.9.
  *
+ * X-1.4        Camiel Vanderhoeven                             11-APR-2007
+ *      Moved all data that should be saved to a state file to a structure
+ *      "state".
+ *
  * X-1.3        Camiel Vanderhoeven                             30-MAR-2007
  *      Added old changelog comments.
  *
@@ -40,9 +44,9 @@
  * \author Camiel Vanderhoeven (camiel@camicom.com / http://www.camicom.com)
  **/
 
-#define DO_FBEQ  if (f[FREG_1] == X64(0000000000000000) || f[FREG_1] == X64(8000000000000000))	pc += (DISP_21 * 4);
-#define DO_FBGE  if (!(f[FREG_1]& X64(8000000000000000)) || f[FREG_1] == X64(8000000000000000))	pc += (DISP_21 * 4);
-#define DO_FBGT  if (!(f[FREG_1]& X64(8000000000000000)) && f[FREG_1] != X64(0000000000000000))	pc += (DISP_21 * 4);
-#define DO_FBLE  if ((f[FREG_1]& X64(8000000000000000)) || f[FREG_1] == X64(0000000000000000))	pc += (DISP_21 * 4);
-#define DO_FBLT  if ((f[FREG_1]& X64(8000000000000000)) && f[FREG_1] != X64(8000000000000000))	pc += (DISP_21 * 4);
-#define DO_FBNE  if (f[FREG_1] != X64(0000000000000000) && f[FREG_1] != X64(8000000000000000))	pc += (DISP_21 * 4);
+#define DO_FBEQ  if (state.f[FREG_1] == X64(0000000000000000) || state.f[FREG_1] == X64(8000000000000000))	state.pc += (DISP_21 * 4);
+#define DO_FBGE  if (!(state.f[FREG_1]& X64(8000000000000000)) || state.f[FREG_1] == X64(8000000000000000))	state.pc += (DISP_21 * 4);
+#define DO_FBGT  if (!(state.f[FREG_1]& X64(8000000000000000)) && state.f[FREG_1] != X64(0000000000000000))	state.pc += (DISP_21 * 4);
+#define DO_FBLE  if ((state.f[FREG_1]& X64(8000000000000000)) || state.f[FREG_1] == X64(0000000000000000))	state.pc += (DISP_21 * 4);
+#define DO_FBLT  if ((state.f[FREG_1]& X64(8000000000000000)) && state.f[FREG_1] != X64(8000000000000000))	state.pc += (DISP_21 * 4);
+#define DO_FBNE  if (state.f[FREG_1] != X64(0000000000000000) && state.f[FREG_1] != X64(8000000000000000))	state.pc += (DISP_21 * 4);

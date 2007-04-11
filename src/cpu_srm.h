@@ -27,6 +27,10 @@
  * \file 
  * Contains code macros for the SRM-replacement pseudo instructions.
  *
+ * X-1.4        Camiel Vanderhoeven                             11-APR-2007
+ *      Moved all data that should be saved to a state file to a structure
+ *      "state".
+ *
  * X-1.3	Camiel Vanderhoeven	                        11-APR-2007
  *      Fixed bug in TRC_DEV in SRM_READ_IDE_DISK.
  *
@@ -51,13 +55,13 @@
 #define BBB(a) cSystem->ReadMem(a,8)
 
 #define DO_SRM_WRITE_SERIAL							\
-	temp_32 = (u32)LLL(LLL(LLL(r[16] + 0x68) + 0x34) + 0x2c);               \
+	temp_32 = (u32)LLL(LLL(LLL(state.r[16] + 0x68) + 0x34) + 0x2c);               \
         /* temp_32 now contains serial port number */                           \
 	temp_char2[0] = ' ';                                                    \
         temp_char2[1] = 0;                                                      \
 	if (temp_32<2)                                                          \
 	{                                                                       \
-	  for (temp_64 = r[19]; temp_64 < r[19]+(r[17]*r[18]); temp_64++)       \
+	  for (temp_64 = state.r[19]; temp_64 < state.r[19]+(state.r[17]*state.r[18]); temp_64++)       \
 	  {                                                                     \
 	    temp_char2[0] = (char)BBB(temp_64);                                 \
 	    if (temp_char2[0]=='\n')                                             \
@@ -66,15 +70,15 @@
 	    TRC_DEV4("%%SRM-I-WRITSRL : Write character %02x (%c) on serial port %d.\n",        \
                      temp_char2[0],printable(temp_char2[0]),temp_32);              \
 	  }                                                                     \
-  	  r[0] = r[17] * r[18];                                                 \
+  	  state.r[0] = state.r[17] * state.r[18];                                                 \
 	}
 
 #define DO_SRM_READ_IDE_DISK                                                        \
-        temp_64 = QQQ(LLL(r[16] + 0x6c));/* file position */                    \
-        temp_32 = (int)LLL(LLL(LLL(LLL(r[16] + 0x68) + 0x34) + 0x14) + 0xac); /* drive */       \
-        temp_32_1 = (LLL(LLL(LLL(LLL(LLL(r[16] + 0x68) + 0x34) + 0x14)) + 0x21c)&0x80)?0:1; /* controller */        \
+        temp_64 = QQQ(LLL(state.r[16] + 0x6c));/* file position */                    \
+        temp_32 = (int)LLL(LLL(LLL(LLL(state.r[16] + 0x68) + 0x34) + 0x14) + 0xac); /* drive */       \
+        temp_32_1 = (LLL(LLL(LLL(LLL(LLL(state.r[16] + 0x68) + 0x34) + 0x14)) + 0x21c)&0x80)?0:1; /* controller */        \
 	fseek(ali->get_ide_disk(temp_32_1,temp_32),(long)temp_64,0);            \
-	r[0] = fread(cSystem->PtrToMem(r[19]),(size_t)r[17],(size_t)r[18],ali->get_ide_disk(temp_32_1,temp_32)) * r[17];        \
-	cSystem->WriteMem(LLL(r[16] + 0x6c),64,ftell(ali->get_ide_disk(temp_32_1,temp_32)));    \
-	TRC_DEV5("%%SRM-I-READIDE : Read  %3" LL "d sectors @ IDE %d.%d @ LBA %8d\n",r[18]*r[17]/512,temp_32_1,temp_32,(long)(temp_64/512));
+	state.r[0] = fread(cSystem->PtrToMem(state.r[19]),(size_t)state.r[17],(size_t)state.r[18],ali->get_ide_disk(temp_32_1,temp_32)) * state.r[17];        \
+	cSystem->WriteMem(LLL(state.r[16] + 0x6c),64,ftell(ali->get_ide_disk(temp_32_1,temp_32)));    \
+	TRC_DEV5("%%SRM-I-READIDE : Read  %3" LL "d sectors @ IDE %d.%d @ LBA %8d\n",state.r[18]*state.r[17]/512,temp_32_1,temp_32,(long)(temp_64/512));
 

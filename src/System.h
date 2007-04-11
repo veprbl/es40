@@ -27,6 +27,10 @@
  * \file 
  * Contains the definitions for the emulated Typhoon Chipset devices.
  *
+ * X-1.13       Camiel Vanderhoeven                             11-APR-2007
+ *      Moved all data that should be saved to a state file to a structure
+ *      "state".
+ *
  * X-1.12       Camiel Vanderhoeven                             10-APR-2007
  *      Replaced LoadROM(...) and SelectROM() calls with a single LoadROM()
  *      call. (See System.cpp, X-1.23).
@@ -142,23 +146,26 @@ class CSystem
 
  private:
   int iNumCPUs;
-  u8  tig_FwWrite;
-  u8  tig_HaltA;
-  u8  tig_HaltB;
-  u64 p_PLAT[2];
-  u64 p_PERRMASK[2];
-  u64 p_PCTL[2];
-  u64 c_DIM[4];
-  u64 c_DRIR;
-  u64 c_MISC;
-  u64 c_CSC;
-  u64 c_TRR;
-  u64 c_TDR;
-  u64 p_WSBA[2][4];
-  u64 p_WSM[2][4];
-  u64 p_TBA[2][4];
-  u64 d_STR;
-  u64 RomLoadedAt;
+
+  // The state structure contains all elements that need to be saved to the statefile.
+  struct SSystemState{
+    u8  tig_FwWrite;
+    u8  tig_HaltA;
+    u8  tig_HaltB;
+    u64 p_PLAT[2];
+    u64 p_PERRMASK[2];
+    u64 p_PCTL[2];
+    u64 c_DIM[4];
+    u64 c_DRIR;
+    u64 c_MISC;
+    u64 c_CSC;
+    u64 c_TRR;
+    u64 c_TDR;
+    u64 p_WSBA[2][4];
+    u64 p_WSM[2][4];
+    u64 p_TBA[2][4];
+    u64 d_STR;
+  } state;
   void * memory;
   //	void * memmap;
 

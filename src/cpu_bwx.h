@@ -28,6 +28,10 @@
  * Contains code macros for the processor BWX (byte and word extension) instructions.
  * Based on ARM chapter 4.6.
  *
+ * X-1.6       Camiel Vanderhoeven                             11-APR-2007
+ *      Moved all data that should be saved to a state file to a structure
+ *      "state".
+ *
  * X-1.5        Camiel Vanderhoeven                             30-MAR-2007
  *      Added old changelog comments.
  *
@@ -50,46 +54,46 @@
  **/
 
 #define DO_CMPBGE								\
- 	    r[REG_3] =								\
-		(((u8)( r[REG_1]     &0xff)>=(u8)( V_2      & 0xff))?  1:0)	\
-	      | (((u8)((r[REG_1]>> 8)&0xff)>=(u8)((V_2>> 8) & 0xff))?  2:0)	\
-	      | (((u8)((r[REG_1]>>16)&0xff)>=(u8)((V_2>>16) & 0xff))?  4:0)	\
-	      | (((u8)((r[REG_1]>>24)&0xff)>=(u8)((V_2>>24) & 0xff))?  8:0)	\
-	      | (((u8)((r[REG_1]>>32)&0xff)>=(u8)((V_2>>32) & 0xff))? 16:0)	\
-	      | (((u8)((r[REG_1]>>40)&0xff)>=(u8)((V_2>>40) & 0xff))? 32:0)	\
-	      | (((u8)((r[REG_1]>>48)&0xff)>=(u8)((V_2>>48) & 0xff))? 64:0)	\
-	      | (((u8)((r[REG_1]>>56)&0xff)>=(u8)((V_2>>56) & 0xff))?128:0);
+ 	    state.r[REG_3] =								\
+		(((u8)( state.r[REG_1]     &0xff)>=(u8)( V_2      & 0xff))?  1:0)	\
+	      | (((u8)((state.r[REG_1]>> 8)&0xff)>=(u8)((V_2>> 8) & 0xff))?  2:0)	\
+	      | (((u8)((state.r[REG_1]>>16)&0xff)>=(u8)((V_2>>16) & 0xff))?  4:0)	\
+	      | (((u8)((state.r[REG_1]>>24)&0xff)>=(u8)((V_2>>24) & 0xff))?  8:0)	\
+	      | (((u8)((state.r[REG_1]>>32)&0xff)>=(u8)((V_2>>32) & 0xff))? 16:0)	\
+	      | (((u8)((state.r[REG_1]>>40)&0xff)>=(u8)((V_2>>40) & 0xff))? 32:0)	\
+	      | (((u8)((state.r[REG_1]>>48)&0xff)>=(u8)((V_2>>48) & 0xff))? 64:0)	\
+	      | (((u8)((state.r[REG_1]>>56)&0xff)>=(u8)((V_2>>56) & 0xff))?128:0);
 
 
-#define DO_EXTBL r[REG_3] = (r[REG_1] >> ((V_2&7)*8)) & X64_BYTE;
-#define DO_EXTWL r[REG_3] = (r[REG_1] >> ((V_2&7)*8)) & X64_WORD;
-#define DO_EXTLL r[REG_3] = (r[REG_1] >> ((V_2&7)*8)) & X64_LONG;
-#define DO_EXTQL r[REG_3] = (r[REG_1] >> ((V_2&7)*8));
-#define DO_EXTWH r[REG_3] = (r[REG_1] << ((64-((V_2&7)*8))&63)) & X64_WORD;
-#define DO_EXTLH r[REG_3] = (r[REG_1] << ((64-((V_2&7)*8))&63)) & X64_LONG;
-#define DO_EXTQH r[REG_3] = (r[REG_1] << ((64-((V_2&7)*8))&63)) & X64_QUAD;
+#define DO_EXTBL state.r[REG_3] = (state.r[REG_1] >> ((V_2&7)*8)) & X64_BYTE;
+#define DO_EXTWL state.r[REG_3] = (state.r[REG_1] >> ((V_2&7)*8)) & X64_WORD;
+#define DO_EXTLL state.r[REG_3] = (state.r[REG_1] >> ((V_2&7)*8)) & X64_LONG;
+#define DO_EXTQL state.r[REG_3] = (state.r[REG_1] >> ((V_2&7)*8));
+#define DO_EXTWH state.r[REG_3] = (state.r[REG_1] << ((64-((V_2&7)*8))&63)) & X64_WORD;
+#define DO_EXTLH state.r[REG_3] = (state.r[REG_1] << ((64-((V_2&7)*8))&63)) & X64_LONG;
+#define DO_EXTQH state.r[REG_3] = (state.r[REG_1] << ((64-((V_2&7)*8))&63)) & X64_QUAD;
 
-#define DO_INSBL r[REG_3] = (r[REG_1]&X64_BYTE) << ((V_2&7)*8);
-#define DO_INSWL r[REG_3] = (r[REG_1]&X64_WORD) << ((V_2&7)*8);
-#define DO_INSLL r[REG_3] = (r[REG_1]&X64_LONG) << ((V_2&7)*8);
-#define DO_INSQL r[REG_3] = (r[REG_1]         ) << ((V_2&7)*8);
-#define DO_INSWH r[REG_3] = (V_2&7) ? ((r[REG_1]&X64_WORD) >> ((64-((V_2&7)*8))&63)) : 0;
-#define DO_INSLH r[REG_3] = (V_2&7) ? ((r[REG_1]&X64_LONG) >> ((64-((V_2&7)*8))&63)) : 0;
-#define DO_INSQH r[REG_3] = (V_2&7) ? ((r[REG_1]&X64_QUAD) >> ((64-((V_2&7)*8))&63)) : 0;
+#define DO_INSBL state.r[REG_3] = (state.r[REG_1]&X64_BYTE) << ((V_2&7)*8);
+#define DO_INSWL state.r[REG_3] = (state.r[REG_1]&X64_WORD) << ((V_2&7)*8);
+#define DO_INSLL state.r[REG_3] = (state.r[REG_1]&X64_LONG) << ((V_2&7)*8);
+#define DO_INSQL state.r[REG_3] = (state.r[REG_1]         ) << ((V_2&7)*8);
+#define DO_INSWH state.r[REG_3] = (V_2&7) ? ((state.r[REG_1]&X64_WORD) >> ((64-((V_2&7)*8))&63)) : 0;
+#define DO_INSLH state.r[REG_3] = (V_2&7) ? ((state.r[REG_1]&X64_LONG) >> ((64-((V_2&7)*8))&63)) : 0;
+#define DO_INSQH state.r[REG_3] = (V_2&7) ? ((state.r[REG_1]&X64_QUAD) >> ((64-((V_2&7)*8))&63)) : 0;
 
-#define DO_MSKBL r[REG_3] = r[REG_1] & ~(X64_BYTE<<((V_2&7)*8));
-#define DO_MSKWL r[REG_3] = r[REG_1] & ~(X64_WORD<<((V_2&7)*8));
-#define DO_MSKLL r[REG_3] = r[REG_1] & ~(X64_LONG<<((V_2&7)*8));
-#define DO_MSKQL r[REG_3] = r[REG_1] & ~(X64_QUAD<<((V_2&7)*8));
-#define DO_MSKWH r[REG_3] = (V_2&7) ? (r[REG_1] & ~(X64_WORD>>((64-((V_2&7)*8))&63))) : r[REG_1];
-#define DO_MSKLH r[REG_3] = (V_2&7) ? (r[REG_1] & ~(X64_LONG>>((64-((V_2&7)*8))&63))) : r[REG_1];
-#define DO_MSKQH r[REG_3] = (V_2&7) ? (r[REG_1] & ~(X64_QUAD>>((64-((V_2&7)*8))&63))) : r[REG_1];
+#define DO_MSKBL state.r[REG_3] = state.r[REG_1] & ~(X64_BYTE<<((V_2&7)*8));
+#define DO_MSKWL state.r[REG_3] = state.r[REG_1] & ~(X64_WORD<<((V_2&7)*8));
+#define DO_MSKLL state.r[REG_3] = state.r[REG_1] & ~(X64_LONG<<((V_2&7)*8));
+#define DO_MSKQL state.r[REG_3] = state.r[REG_1] & ~(X64_QUAD<<((V_2&7)*8));
+#define DO_MSKWH state.r[REG_3] = (V_2&7) ? (state.r[REG_1] & ~(X64_WORD>>((64-((V_2&7)*8))&63))) : state.r[REG_1];
+#define DO_MSKLH state.r[REG_3] = (V_2&7) ? (state.r[REG_1] & ~(X64_LONG>>((64-((V_2&7)*8))&63))) : state.r[REG_1];
+#define DO_MSKQH state.r[REG_3] = (V_2&7) ? (state.r[REG_1] & ~(X64_QUAD>>((64-((V_2&7)*8))&63))) : state.r[REG_1];
 
-#define DO_SEXTB r[REG_3] = SEXT(V_2,8);
-#define DO_SEXTW r[REG_3] = SEXT(V_2,16);
+#define DO_SEXTB state.r[REG_3] = SEXT(V_2,8);
+#define DO_SEXTW state.r[REG_3] = SEXT(V_2,16);
 
 #define DO_ZAP								\
-	  r[REG_3] = r[REG_1] & (  ((V_2&  1)?0:              X64(ff))	\
+	  state.r[REG_3] = state.r[REG_1] & (  ((V_2&  1)?0:              X64(ff))	\
 				 | ((V_2&  2)?0:            X64(ff00))	\
 				 | ((V_2&  4)?0:          X64(ff0000))	\
 				 | ((V_2&  8)?0:        X64(ff000000))	\
@@ -99,7 +103,7 @@
 				 | ((V_2&128)?0:X64(ff00000000000000)));
 
 #define DO_ZAPNOT							\
- 	  r[REG_3] = r[REG_1] & (  ((V_2&  1)?              X64(ff):0)	\
+ 	  state.r[REG_3] = state.r[REG_1] & (  ((V_2&  1)?              X64(ff):0)	\
 				 | ((V_2&  2)?            X64(ff00):0)	\
 				 | ((V_2&  4)?          X64(ff0000):0)	\
 				 | ((V_2&  8)?        X64(ff000000):0)	\

@@ -28,6 +28,10 @@
  * Contains code macros for miscellaneous processor instructions.
  * Based on ARM chapter 4.11.
  *
+ * X-1.3        Camiel Vanderhoeven                             11-APR-2007
+ *      Moved all data that should be saved to a state file to a structure
+ *      "state".
+ *
  * X-1.2        Camiel Vanderhoeven                             30-MAR-2007
  *      Added old changelog comments.
  *
@@ -37,11 +41,11 @@
  * \author Camiel Vanderhoeven (camiel@camicom.com / http://www.camicom.com)
  **/
 
-#define DO_AMASK r[REG_3] = V_2 & ~CPU_AMASK; 
+#define DO_AMASK state.r[REG_3] = V_2 & ~CPU_AMASK; 
 
 #define DO_CALL_PAL				\
       if (   (   (function < 0x40)		\
-		 && ((cm != 0)			\
+		 && ((state.cm != 0)			\
 		 ))				\
 	     || (   (function > 0x3f)		\
     		    && (function < 0x80))	\
@@ -52,9 +56,9 @@
       else					\
       {						\
 	  if (function == 0x92)	/* REI */	\
-		  lock_flag = false;		\
-	  r[32+23] = pc;			\
-	  pc = pal_base				\
+		  state.lock_flag = false;		\
+	  state.r[32+23] = state.pc;			\
+	  state.pc = state.pal_base				\
 	    | (X64(1)<<13 )			\
 	    | (((u64)(function & 0x80)) <<5 )	\
 	    | (((u64)(function & 0x3f)) << 6 )	\
@@ -62,9 +66,9 @@
 	  TRC(true,false)			\
       }
 
-#define DO_IMPLVER r[REG_3] = CPU_IMPLVER;
+#define DO_IMPLVER state.r[REG_3] = CPU_IMPLVER;
 
-#define DO_RPCC r[REG_1] = ((u64)cc_offset)<<32 | cc;
+#define DO_RPCC state.r[REG_1] = ((u64)state.cc_offset)<<32 | state.cc;
 
 // The following ops have no function right now (at least, not until multiple CPU's are supported).
 #define DO_TRAPB ;
