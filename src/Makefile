@@ -27,6 +27,9 @@
 # 
 # Makefile for GNU Linux. (And possibly many UNIX'es).
 #
+# X-1.8		Camiel Vanderhoeven				14-APR-2007
+#	Added forgotten es40_lss and es40_lsm to make clean.
+#
 # X-1.7		Camiel Vanderhoeven				1-APR-2007
 #	Added old changelog comments.
 #
@@ -119,5 +122,5 @@ depend: $(SRCS)
 	$(DEPEND) $(SRCS)
 	$(DEPEND) -o.do -a -- $(IDB_CFLAGS) -- $(SRCS)
 clean:
-	rm -f es40 es40_idb *.o *.do *.mao *.slo *.trc
+	rm -f es40 es40_idb es40_lss es40_lsm *.o *.do *.mao *.slo *.trc
 
