@@ -29,6 +29,9 @@
  *
  * \bug When restoring state, the ide_status may be 0xb9...
  *
+ * X-1.25       Camiel Vanderhoeven                             16-APR-2007
+ *      Added ResetPCI()
+ *
  * X-1.24       Camiel Vanderhoeven                             11-APR-2007
  *      Moved all data that should be saved to a state file to a structure
  *      "state".
@@ -204,47 +207,7 @@ CAliM1543C::CAliM1543C(CSystem * c): CSystemComponent(c)
     state.toy_stored_data[i] = 0;
   //    state.toy_stored_data[0x17] = 1;
 
-  c->RegisterMemory(this, 3, X64(00000801fe003800),0x100);
-
-  for (i=0;i<256;i++) 
-    {
-      state.isa_config_data[i] = 0;
-      state.isa_config_mask[i] = 0;
-    }
-  state.isa_config_data[0x00] = 0xb9;
-  state.isa_config_data[0x01] = 0x10;
-  state.isa_config_data[0x02] = 0x33;
-  state.isa_config_data[0x03] = 0x15;
-  state.isa_config_data[0x04] = 0x0f;
-  state.isa_config_data[0x07] = 0x02;
-  state.isa_config_data[0x08] = 0xc3;
-  state.isa_config_data[0x0a] = 0x01; 
-  state.isa_config_data[0x0b] = 0x06;
-  state.isa_config_data[0x55] = 0x02;
-  state.isa_config_mask[0x40] = 0x7f;
-  state.isa_config_mask[0x41] = 0xff;
-  state.isa_config_mask[0x42] = 0xcf;
-  state.isa_config_mask[0x43] = 0xff;
-  state.isa_config_mask[0x44] = 0xdf;
-  state.isa_config_mask[0x45] = 0xcb;
-  state.isa_config_mask[0x47] = 0xff;
-  state.isa_config_mask[0x48] = 0xff;
-  state.isa_config_mask[0x49] = 0xff;
-  state.isa_config_mask[0x4a] = 0xff;
-  state.isa_config_mask[0x4b] = 0xff;
-  state.isa_config_mask[0x4c] = 0xff;
-  state.isa_config_mask[0x50] = 0xff;
-  state.isa_config_mask[0x51] = 0x8f;
-  state.isa_config_mask[0x52] = 0xff;
-  state.isa_config_mask[0x53] = 0xff;
-  state.isa_config_mask[0x55] = 0xff;
-  state.isa_config_mask[0x56] = 0xff;
-  state.isa_config_mask[0x57] = 0xf0;
-  state.isa_config_mask[0x58] = 0x7f;
-  state.isa_config_mask[0x59] = 0x0d;
-  state.isa_config_mask[0x5a] = 0x0f;
-  state.isa_config_mask[0x5b] = 0x03;
-  // ...
+  ResetPCI();
 									
   c->RegisterMemory(this, 6, X64(00000801fc000040), 4);
   c->RegisterClock(this, true);
@@ -260,127 +223,6 @@ CAliM1543C::CAliM1543C(CSystem * c): CSystemComponent(c)
       state.pic_mask[i] = 0;
       state.pic_asserted[i] = 0;
     }
-
-  c->RegisterMemory(this, 9, X64(00000801fe007800), 0x100);
-  cSystem->RegisterMemory(this,14, X64(00000801fc0001f0), 8);
-  cSystem->RegisterMemory(this,16, X64(00000801fc0003f4), 4);
-  cSystem->RegisterMemory(this,15, X64(00000801fc000170), 8);
-  cSystem->RegisterMemory(this,17, X64(00000801fc000374), 4);
-  cSystem->RegisterMemory(this,18, X64(00000801fc00f000), 8);
-  cSystem->RegisterMemory(this,19, X64(00000801fc00f008), 8);
-
-  for (i=0;i<256;i++)
-    {
-      state.ide_config_data[i] = 0;
-      state.ide_config_mask[i] = 0;
-    }
-  state.ide_config_data[0x00] = 0xb9;	// vendor
-  state.ide_config_data[0x01] = 0x10;
-  state.ide_config_data[0x02] = 0x29;	// device
-  state.ide_config_data[0x03] = 0x52;
-  state.ide_config_data[0x06] = 0x80;	// status
-  state.ide_config_data[0x07] = 0x02;	
-  state.ide_config_data[0x08] = 0x1c;	// revision
-  state.ide_config_data[0x09] = 0xFA;	// class code	
-  state.ide_config_data[0x0a] = 0x01;	
-  state.ide_config_data[0x0b] = 0x01;
-
-  state.ide_config_data[0x10] = 0xF1;	// address I	
-  state.ide_config_data[0x11] = 0x01;
-  state.ide_config_data[0x14] = 0xF5;	// address II	
-  state.ide_config_data[0x15] = 0x03;
-  state.ide_config_data[0x18] = 0x71;	// address III	
-  state.ide_config_data[0x19] = 0x01;
-  state.ide_config_data[0x1c] = 0x75;	// address IV	
-  state.ide_config_data[0x1d] = 0x03;
-  state.ide_config_data[0x20] = 0x01;	// address V	
-  state.ide_config_data[0x21] = 0xF0;
-
-  state.ide_config_data[0x3d] = 0x01;	// interrupt pin	
-  state.ide_config_data[0x3e] = 0x02;	// min_gnt
-  state.ide_config_data[0x3f] = 0x04;	// max_lat	
-  state.ide_config_data[0x4b] = 0x4a;	// udma test
-  state.ide_config_data[0x4e] = 0xba;	// reserved	
-  state.ide_config_data[0x4f] = 0x1a;
-  state.ide_config_data[0x54] = 0x55;	// fifo treshold ch 1	
-  state.ide_config_data[0x55] = 0x55;	// fifo treshold ch 2
-  state.ide_config_data[0x56] = 0x44;	// udma setting ch 1	
-  state.ide_config_data[0x57] = 0x44;	// udma setting ch 2
-  state.ide_config_data[0x78] = 0x21;	// ide clock	
-
-  //
-
-  state.ide_config_mask[0x04] = 0x45;	// command
-
-  state.ide_config_mask[0x0d] = 0xff;	// latency timer
-
-  state.ide_config_mask[0x10] = 0xf8;	// address I
-  state.ide_config_mask[0x11] = 0xff;	
-  state.ide_config_mask[0x12] = 0xff;	
-  state.ide_config_mask[0x13] = 0xff;	
-  state.ide_config_mask[0x14] = 0xfc;	// address II
-  state.ide_config_mask[0x15] = 0xff;	
-  state.ide_config_mask[0x16] = 0xff;	
-  state.ide_config_mask[0x17] = 0xff;	
-  state.ide_config_mask[0x18] = 0xf8;	// address III
-  state.ide_config_mask[0x19] = 0xff;	
-  state.ide_config_mask[0x1a] = 0xff;	
-  state.ide_config_mask[0x1b] = 0xff;	
-  state.ide_config_mask[0x1c] = 0xfc;	// address IV
-  state.ide_config_mask[0x1d] = 0xff;	
-  state.ide_config_mask[0x1e] = 0xff;	
-  state.ide_config_mask[0x1f] = 0xff;	
-  state.ide_config_mask[0x20] = 0xf0;	// address V
-  state.ide_config_mask[0x21] = 0xff;	
-  state.ide_config_mask[0x22] = 0xff;	
-  state.ide_config_mask[0x23] = 0xff;	
-
-  state.ide_config_mask[0x3c] = 0xff;	// interrupt
-  state.ide_config_mask[0x11] = 0xff;	
-  state.ide_config_mask[0x12] = 0xff;	
-  state.ide_config_mask[0x13] = 0xff;	
-
-  state.ide_status[0] = 0;
-  state.ide_reading[0] = false;
-  state.ide_writing[0] = false;
-  state.ide_sectors[0] = 0;
-  state.ide_selected[0] = 0;
-  state.ide_error[0] = 0;
-
-  state.ide_status[1] = 0;
-  state.ide_reading[1] = false;
-  state.ide_writing[1] = false;
-  state.ide_sectors[1] = 0;
-  state.ide_selected[1] = 0;
-  state.ide_error[1] = 0;
-
-  c->RegisterMemory(this, 11, X64(00000801fe009800), 0x100);
-  for (i=0;i<256;i++)
-    {
-      state.usb_config_data[i] = 0;
-      state.usb_config_mask[i] = 0;
-    }
-  state.usb_config_data[0x00] = 0xb9;
-  state.usb_config_data[0x01] = 0x10;
-  state.usb_config_data[0x02] = 0x37;
-  state.usb_config_data[0x03] = 0x52;
-  state.usb_config_mask[0x04] = 0x13;
-  state.usb_config_data[0x05] = 0x02;	state.usb_config_mask[0x05] = 0x01;
-  state.usb_config_data[0x06] = 0x80;
-  state.usb_config_data[0x07] = 0x02;
-  state.usb_config_data[0x09] = 0x10;
-  state.usb_config_data[0x0a] = 0x03;
-  state.usb_config_data[0x0b] = 0x0c;
-  state.usb_config_mask[0x0c] = 0x08;
-  state.usb_config_mask[0x0d] = 0xff;
-  state.usb_config_mask[0x11] = 0xf0;
-  state.usb_config_mask[0x12] = 0xff;
-  state.usb_config_mask[0x13] = 0xff;
-  state.usb_config_mask[0x3c] = 0xff;
-  state.usb_config_data[0x3d] = 0x01;	state.usb_config_mask[0x3d] = 0xff;
-  state.usb_config_mask[0x3e] = 0xff;
-  state.usb_config_mask[0x3f] = 0xff;
-
 
   c->RegisterMemory(this, 12, X64(00000801fc000000), 16);
   c->RegisterMemory(this, 13, X64(00000801fc0000c0), 32);
@@ -427,16 +269,22 @@ u64 CAliM1543C::ReadMem(int index, u64 address, int dsize)
     case 12:
       return dma_read(channel, address);
     case 15:
+    case 22:
       channel = 1;
     case 14:
+    case 21:
       return ide_command_read(channel,address);
     case 17:
+    case 24:
       channel = 1;
     case 16:
+    case 23:
       return ide_control_read(channel,address);
     case 19:
+    case 26:
       channel = 1;
     case 18:
+    case 25:
       return ide_busmaster_read(channel,address);
     }
 
@@ -483,18 +331,24 @@ void CAliM1543C::WriteMem(int index, u64 address, int dsize, u64 data)
       dma_write(channel, address, (u8) data);
       return;
     case 15:
+    case 22:
       channel = 1;
     case 14:
+    case 21:
       ide_command_write(channel,address, data);
       return;
     case 17:
+    case 24:
       channel = 1;
     case 16:
+    case 23:
       ide_control_write(channel,address, data);
       return;
     case 19:
+    case 26:
       channel = 1;
     case 18:
+    case 25:
       ide_busmaster_write(channel,address, data);
       return;
     }
@@ -965,25 +819,30 @@ void CAliM1543C::ide_config_write(u64 address, int dsize, u64 data)
       {
       case 0x10:
 	// command
-	cSystem->RegisterMemory(this,14, X64(00000801fc000000) + (endian_32(data)&0x00fffffe), 8);
+	cSystem->RegisterMemory(this,21, X64(00000801fc000000) + (endian_32(data)&0x00fffffe), 8);
+        printf("%%IDE-I-REG: Address 10 registered to %016" LL "x\n",X64(00000801fc000000) + (endian_32(data)&0x00fffffe));
 	return;
       case 0x14:
 	// control
-	cSystem->RegisterMemory(this,16, X64(00000801fc000000) + (endian_32(data)&0x00fffffe), 4);
+	cSystem->RegisterMemory(this,23, X64(00000801fc000000) + (endian_32(data)&0x00fffffe), 4);
+        printf("%%IDE-I-REG: Address 14 registered to %016" LL "x\n",X64(00000801fc000000) + (endian_32(data)&0x00fffffe));
 	return;
       case 0x18:
 	// command
-	cSystem->RegisterMemory(this,15, X64(00000801fc000000) + (endian_32(data)&0x00fffffe), 8);
+	cSystem->RegisterMemory(this,22, X64(00000801fc000000) + (endian_32(data)&0x00fffffe), 8);
+        printf("%%IDE-I-REG: Address 18 registered to %016" LL "x\n",X64(00000801fc000000) + (endian_32(data)&0x00fffffe));
 	return;
       case 0x1c:
 	// control
-	cSystem->RegisterMemory(this,17, X64(00000801fc000000) + (endian_32(data)&0x00fffffe), 4);
+	cSystem->RegisterMemory(this,24, X64(00000801fc000000) + (endian_32(data)&0x00fffffe), 4);
+        printf("%%IDE-I-REG: Address 1C registered to %016" LL "x\n",X64(00000801fc000000) + (endian_32(data)&0x00fffffe));
 	return;
       case 0x20:
 	// bus master control
-	cSystem->RegisterMemory(this,18, X64(00000801fc000000) + (endian_32(data)&0x00fffffe), 8);
+	cSystem->RegisterMemory(this,25, X64(00000801fc000000) + (endian_32(data)&0x00fffffe), 8);
 	// bus master control
-	cSystem->RegisterMemory(this,19, X64(00000801fc000000) + (endian_32(data)&0x00fffffe) + 8, 8);
+	cSystem->RegisterMemory(this,26, X64(00000801fc000000) + (endian_32(data)&0x00fffffe) + 8, 8);
+        printf("%%IDE-I-REG: Address 20 registered to %016" LL "x\n",X64(00000801fc000000) + (endian_32(data)&0x00fffffe));
 	return;
       }
 }
@@ -1414,6 +1273,173 @@ void CAliM1543C::dma_write(int index, u64 address, u8 data)
 void CAliM1543C::instant_tick()
 {
   DoClock();
+}
+
+void CAliM1543C::ResetPCI()
+{
+  int i;
+
+  printf("%%IDE-I-RESET: Reset PCI\n");
+
+  cSystem->RegisterMemory(this, 3, X64(00000801fe003800),0x100);
+
+  for (i=0;i<256;i++) 
+    {
+      state.isa_config_data[i] = 0;
+      state.isa_config_mask[i] = 0;
+    }
+  state.isa_config_data[0x00] = 0xb9;
+  state.isa_config_data[0x01] = 0x10;
+  state.isa_config_data[0x02] = 0x33;
+  state.isa_config_data[0x03] = 0x15;
+  state.isa_config_data[0x04] = 0x0f;
+  state.isa_config_data[0x07] = 0x02;
+  state.isa_config_data[0x08] = 0xc3;
+  state.isa_config_data[0x0a] = 0x01; 
+  state.isa_config_data[0x0b] = 0x06;
+  state.isa_config_data[0x55] = 0x02;
+  state.isa_config_mask[0x40] = 0x7f;
+  state.isa_config_mask[0x41] = 0xff;
+  state.isa_config_mask[0x42] = 0xcf;
+  state.isa_config_mask[0x43] = 0xff;
+  state.isa_config_mask[0x44] = 0xdf;
+  state.isa_config_mask[0x45] = 0xcb;
+  state.isa_config_mask[0x47] = 0xff;
+  state.isa_config_mask[0x48] = 0xff;
+  state.isa_config_mask[0x49] = 0xff;
+  state.isa_config_mask[0x4a] = 0xff;
+  state.isa_config_mask[0x4b] = 0xff;
+  state.isa_config_mask[0x4c] = 0xff;
+  state.isa_config_mask[0x50] = 0xff;
+  state.isa_config_mask[0x51] = 0x8f;
+  state.isa_config_mask[0x52] = 0xff;
+  state.isa_config_mask[0x53] = 0xff;
+  state.isa_config_mask[0x55] = 0xff;
+  state.isa_config_mask[0x56] = 0xff;
+  state.isa_config_mask[0x57] = 0xf0;
+  state.isa_config_mask[0x58] = 0x7f;
+  state.isa_config_mask[0x59] = 0x0d;
+  state.isa_config_mask[0x5a] = 0x0f;
+  state.isa_config_mask[0x5b] = 0x03;
+  // ...
+									
+  cSystem->RegisterMemory(this, 9, X64(00000801fe007800), 0x100);
+  cSystem->RegisterMemory(this,14, X64(00000801fc0001f0), 8);
+  cSystem->RegisterMemory(this,16, X64(00000801fc0003f4), 4);
+  cSystem->RegisterMemory(this,15, X64(00000801fc000170), 8);
+  cSystem->RegisterMemory(this,17, X64(00000801fc000374), 4);
+  cSystem->RegisterMemory(this,18, X64(00000801fc00f000), 8);
+  cSystem->RegisterMemory(this,19, X64(00000801fc00f008), 8);
+
+  for (i=0;i<256;i++)
+    {
+      state.ide_config_data[i] = 0;
+      state.ide_config_mask[i] = 0;
+    }
+  state.ide_config_data[0x00] = 0xb9;	// vendor
+  state.ide_config_data[0x01] = 0x10;
+  state.ide_config_data[0x02] = 0x29;	// device
+  state.ide_config_data[0x03] = 0x52;
+  state.ide_config_data[0x06] = 0x80;	// status
+  state.ide_config_data[0x07] = 0x02;	
+  state.ide_config_data[0x08] = 0x1c;	// revision
+  state.ide_config_data[0x09] = 0xFA;	// class code	
+  state.ide_config_data[0x0a] = 0x01;	
+  state.ide_config_data[0x0b] = 0x01;
+
+  state.ide_config_data[0x10] = 0xF1;	// address I	
+  state.ide_config_data[0x11] = 0x01;
+  state.ide_config_data[0x14] = 0xF5;	// address II	
+  state.ide_config_data[0x15] = 0x03;
+  state.ide_config_data[0x18] = 0x71;	// address III	
+  state.ide_config_data[0x19] = 0x01;
+  state.ide_config_data[0x1c] = 0x75;	// address IV	
+  state.ide_config_data[0x1d] = 0x03;
+  state.ide_config_data[0x20] = 0x01;	// address V	
+  state.ide_config_data[0x21] = 0xF0;
+
+  state.ide_config_data[0x3d] = 0x01;	// interrupt pin	
+  state.ide_config_data[0x3e] = 0x02;	// min_gnt
+  state.ide_config_data[0x3f] = 0x04;	// max_lat	
+  state.ide_config_data[0x4b] = 0x4a;	// udma test
+  state.ide_config_data[0x4e] = 0xba;	// reserved	
+  state.ide_config_data[0x4f] = 0x1a;
+  state.ide_config_data[0x54] = 0x55;	// fifo treshold ch 1	
+  state.ide_config_data[0x55] = 0x55;	// fifo treshold ch 2
+  state.ide_config_data[0x56] = 0x44;	// udma setting ch 1	
+  state.ide_config_data[0x57] = 0x44;	// udma setting ch 2
+  state.ide_config_data[0x78] = 0x21;	// ide clock	
+
+  //
+
+  state.ide_config_mask[0x04] = 0x45;	// command
+  state.ide_config_mask[0x0d] = 0xff;	// latency timer
+  state.ide_config_mask[0x10] = 0xf8;	// address I
+  state.ide_config_mask[0x11] = 0xff;	
+  state.ide_config_mask[0x12] = 0xff;	
+  state.ide_config_mask[0x13] = 0xff;	
+  state.ide_config_mask[0x14] = 0xfc;	// address II
+  state.ide_config_mask[0x15] = 0xff;	
+  state.ide_config_mask[0x16] = 0xff;	
+  state.ide_config_mask[0x17] = 0xff;	
+  state.ide_config_mask[0x18] = 0xf8;	// address III
+  state.ide_config_mask[0x19] = 0xff;	
+  state.ide_config_mask[0x1a] = 0xff;	
+  state.ide_config_mask[0x1b] = 0xff;	
+  state.ide_config_mask[0x1c] = 0xfc;	// address IV
+  state.ide_config_mask[0x1d] = 0xff;	
+  state.ide_config_mask[0x1e] = 0xff;	
+  state.ide_config_mask[0x1f] = 0xff;	
+  state.ide_config_mask[0x20] = 0xf0;	// address V
+  state.ide_config_mask[0x21] = 0xff;	
+  state.ide_config_mask[0x22] = 0xff;	
+  state.ide_config_mask[0x23] = 0xff;	
+
+  state.ide_config_mask[0x3c] = 0xff;	// interrupt
+  state.ide_config_mask[0x11] = 0xff;	
+  state.ide_config_mask[0x12] = 0xff;	
+  state.ide_config_mask[0x13] = 0xff;	
+
+  state.ide_status[0] = 0;
+  state.ide_reading[0] = false;
+  state.ide_writing[0] = false;
+  state.ide_sectors[0] = 0;
+  state.ide_selected[0] = 0;
+  state.ide_error[0] = 0;
+
+  state.ide_status[1] = 0;
+  state.ide_reading[1] = false;
+  state.ide_writing[1] = false;
+  state.ide_sectors[1] = 0;
+  state.ide_selected[1] = 0;
+  state.ide_error[1] = 0;
+
+  cSystem->RegisterMemory(this, 11, X64(00000801fe009800), 0x100);
+  for (i=0;i<256;i++)
+    {
+      state.usb_config_data[i] = 0;
+      state.usb_config_mask[i] = 0;
+    }
+  state.usb_config_data[0x00] = 0xb9;
+  state.usb_config_data[0x01] = 0x10;
+  state.usb_config_data[0x02] = 0x37;
+  state.usb_config_data[0x03] = 0x52;
+  state.usb_config_mask[0x04] = 0x13;
+  state.usb_config_data[0x05] = 0x02;	state.usb_config_mask[0x05] = 0x01;
+  state.usb_config_data[0x06] = 0x80;
+  state.usb_config_data[0x07] = 0x02;
+  state.usb_config_data[0x09] = 0x10;
+  state.usb_config_data[0x0a] = 0x03;
+  state.usb_config_data[0x0b] = 0x0c;
+  state.usb_config_mask[0x0c] = 0x08;
+  state.usb_config_mask[0x0d] = 0xff;
+  state.usb_config_mask[0x11] = 0xf0;
+  state.usb_config_mask[0x12] = 0xff;
+  state.usb_config_mask[0x13] = 0xff;
+  state.usb_config_mask[0x3c] = 0xff;
+  state.usb_config_data[0x3d] = 0x01;	state.usb_config_mask[0x3d] = 0xff;
+  state.usb_config_mask[0x3e] = 0xff;
+  state.usb_config_mask[0x3f] = 0xff;
 }
 
 /**
