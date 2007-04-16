@@ -27,6 +27,10 @@
  * \file
  * Contains the code for the emulated Serial Port devices.
  *
+ * X-1.23       Camiel Vanderhoeven                             16-APR-2007
+ *      Never start a telnet client when running as lockstep slave, because
+ *      we want to receive a connection from the master instead.
+ *
  * X-1.22       Camiel Vanderhoeven                             16-APR-2007
  *      Added possibility to start a Telnet client automatically.
  *
@@ -169,6 +173,7 @@ CSerial::CSerial(CSystem * c, u16 number) : CSystemComponent(c)
 
   printf("%%SRL-I-WAIT: Waiting for connection on port %d.\n",number+base);
 
+#if !defined(LS_SLAVE)
   sprintf(s2,"serial%d.action",number);
   strncpy(s, c->GetConfig(s2,""),999);
   printf("%%SRL-I-ACTION: Specified %s: %s\n",s2,c->GetConfig(s2,""));
@@ -195,6 +200,8 @@ CSerial::CSerial(CSystem * c, u16 number) : CSystemComponent(c)
       execvp(argv[0], argv);
 #endif
   }
+
+#endif
 
 //  Wait until we have a connection
 
