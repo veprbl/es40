@@ -27,6 +27,9 @@
  * \file 
  * Contains the definitions for the emulated Ali M1543C chipset devices.
  *
+ * X-1.14       Camiel Vanderhoeven                             16-APR-2007
+ *      Added ResetPCI()
+ *
  * X-1.13       Camiel Vanderhoeven                             11-APR-2007
  *      Moved all data that should be saved to a state file to a structure
  *      "state".
@@ -115,6 +118,7 @@ class CAliM1543C : public CSystemComponent
   virtual ~CAliM1543C();
   void pic_interrupt(int index, int intno);
   FILE * get_ide_disk(int controller, int drive);
+  virtual void ResetPCI();
  private:
 
   // REGISTERS 60 & 64: KEYBOARD

@@ -27,6 +27,9 @@
  * \file 
  * Contains definitions for the base class for devices that connect to the chipset.
  *
+ * X-1.9        Camiel Vanderhoeven                             16-APR-2007
+ *      Added ResetPCI()
+ *
  * X-1.8        Camiel Vanderhoeven                             30-MAR-2007
  *      Added old changelog comments.
  *
@@ -78,6 +81,7 @@ class CSystemComponent
   virtual u8 ReadTIG(int index, int address) {return 0;};
   virtual void WriteTIG(int index, int address, u8 data) {};
   virtual int DoClock() {return 0;};
+  virtual void ResetPCI() {};
 
  protected: 
   class CSystem * cSystem;

@@ -27,6 +27,10 @@
  * \file 
  * Contains the code for the emulated Typhoon Chipset devices.
  *
+ * X-1.27       Camiel Vanderhoeven                             16-APR-2007
+ *      Remove old address range if a new one is registered (same device/
+ *      same index)
+ *
  * X-1.26       Camiel Vanderhoeven                             16-APR-2007
  *      Allow configuration strings with spaces in them.
  *
@@ -282,6 +286,17 @@ int CSystem::RegisterClock(CSystemComponent *component, bool slow)
 int CSystem::RegisterMemory(CSystemComponent *component, int index, u64 base, u64 length)
 {
   struct SMemoryUser * m;
+  int i;
+  for (i=0;i<iNumMemories;i++)
+  {
+    if ((asMemories[i]->component == component) && (asMemories[i]->index == index))
+    {
+      asMemories[i]->base = base;
+      asMemories[i]->length = length;
+      return 0;
+    }
+  }
+
   m = (struct SMemoryUser*) malloc(sizeof(struct SMemoryUser));
   if (m)
     {
@@ -539,9 +554,12 @@ void CSystem::WriteMem(u64 address, int dsize, u64 data)
 	  //TLBIA
 	case X64(00000801800004c0):
 	case X64(00000803800004c0):
+          return;
 	  // PCI reset
 	case X64(0000080180000800):
 	case X64(0000080380000800):
+          for(i=0;i<iNumComponents;i++)
+            acComponents[i]->ResetPCI();
 	  return;
 	default:
 #ifdef DEBUG_UNKMEM
