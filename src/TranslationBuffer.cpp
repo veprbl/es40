@@ -27,6 +27,9 @@
  * \file 
  * Contains the code for the emulated on-cpu translation buffers.
  *
+ * X-1.17       Camiel Vanderhoeven                             16-APR-2007
+ *      Initialize state.next_entry to 0.
+ *
  * X-1.16       Camiel Vanderhoeven                             11-APR-2007
  *      Moved all data that should be saved to a state file to a structure
  *      "state".
@@ -105,6 +108,7 @@ CTranslationBuffer::CTranslationBuffer(class CAlphaCPU * c, bool ibox)
   state.v_mask = 0;
   state.temp_tag[0] = 0;
   state.temp_tag[1] = 0;
+  state.next_entry = 0;
 
   InvalidateAll();
 }
