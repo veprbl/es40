@@ -27,6 +27,9 @@
  * \file
  * Contains the code for the emulated Serial Port devices.
  *
+ * X-1.22       Camiel Vanderhoeven                             16-APR-2007
+ *      Added possibility to start a Telnet client automatically.
+ *
  * X-1.21       Camiel Vanderhoeven                             31-MAR-2007
  *      Added old changelog comments.
  *
@@ -107,6 +110,7 @@
 
 #include <stdlib.h>
 #include <ctype.h>
+#include <process.h>
 
 #include "telnet.h"
 #include "lockstep.h"
@@ -126,7 +130,11 @@ int  iCounter  = 0;
 CSerial::CSerial(CSystem * c, u16 number) : CSystemComponent(c)
 {
   u16 base = (u16)atoi(c->GetConfig("serial.base","8000"));
-  char s[100];
+  char s[1000];
+  char s2[20];
+  char * argv[20];
+  char * nargv = s;
+  int i = 0;
   
   c->RegisterMemory (this, 0, X64(00000801fc0003f8) - (0x100*number), 8);
 
@@ -161,6 +169,32 @@ CSerial::CSerial(CSystem * c, u16 number) : CSystemComponent(c)
 
   printf("%%SRL-I-WAIT: Waiting for connection on port %d.\n",number+base);
 
+  sprintf(s2,"serial%d.action",number);
+  strncpy(s, c->GetConfig(s2,""),999);
+  printf("%%SRL-I-ACTION: Specified %s: %s\n",s2,c->GetConfig(s2,""));
+
+  if (strcmp(s,""))
+  {
+    // spawn external program (telnet client)...
+    while (strcmp(nargv,""))
+    {
+      argv[i] = nargv;
+      nargv = strchr(nargv,' ');
+      if (!nargv)
+        break;
+      *nargv++ = '\0';
+      i++;
+      argv[i] = NULL;
+    }
+    argv[i+1] = NULL;
+    printf("%%SRL-I-START: Starting %s\n", argv[0]);
+#if defined(_WIN32)
+    _spawnvp(_P_NOWAIT, argv[0], argv);
+#else
+    if (!fork())
+      execvp(argv[0], argv);
+#endif
+  }
 
 //  Wait until we have a connection
 
