@@ -27,6 +27,10 @@
  * \file 
  * Contains the code for the emulated Typhoon Chipset devices.
  *
+ * X-1.26       Camiel Vanderhoeven                             16-APR-2007
+ *      Allow configuration strings with spaces in them.
+ *
+ *
  * X-1.25       Camiel Vanderhoeven                             11-APR-2007
  *      Moved all data that should be saved to a state file to a structure
  *      "state".
@@ -1175,9 +1179,10 @@ void CSystem::LoadConfig(const char *filename) {
         valp++;
       p=valp;
       // find end of value
-      while(!isblank(*p) && *p != '\n' && *p != '\r' && *p !=0) 
-        p++;
-      *p=0;
+      p += strlen(p) -1;
+      while(isblank(*p) || *p == '\n' || *p == '\r') 
+        p--;
+      *++p=0;
 
       // keyp and valp now point to valid strings for the variable
       // name and value name, respectively
