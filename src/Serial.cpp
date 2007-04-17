@@ -27,6 +27,10 @@
  * \file
  * Contains the code for the emulated Serial Port devices.
  *
+ * X-1.25       Camiel Vanderhoeven                             17-APR-2007
+ *      Allow a telnet client program to be in a directory containing 
+ *      spaces on Windows ("c:\program files\putty\putty.exe")
+ *
  * X-1.24       Camiel Vanderhoeven                             17-APR-2007
  *      Only include process.h on Windows.
  *
@@ -141,7 +145,7 @@ CSerial::CSerial(CSystem * c, u16 number) : CSystemComponent(c)
 {
   u16 base = (u16)atoi(c->GetConfig("serial.base","8000"));
   char s[1000];
-  char s2[20];
+  char s2[200];
   char * argv[20];
   char * nargv = s;
   int i = 0;
@@ -190,7 +194,10 @@ CSerial::CSerial(CSystem * c, u16 number) : CSystemComponent(c)
     while (strcmp(nargv,""))
     {
       argv[i] = nargv;
-      nargv = strchr(nargv,' ');
+      if (nargv[0] == '\"')
+        nargv = strchr(nargv+1,'\"');
+      if (nargv)
+        nargv = strchr(nargv,' ');
       if (!nargv)
         break;
       *nargv++ = '\0';
@@ -198,9 +205,16 @@ CSerial::CSerial(CSystem * c, u16 number) : CSystemComponent(c)
       argv[i] = NULL;
     }
     argv[i+1] = NULL;
-    printf("%%SRL-I-START: Starting %s\n", argv[0]);
+    strcpy(s2,argv[0]);
+    nargv = s2;
+    if (nargv[0] == '\"')
+    {
+      nargv++;
+      *(strchr(nargv,'\"')) = '\0';
+    }
+    printf("%%SRL-I-START: Starting %s\n", nargv);
 #if defined(_WIN32)
-    _spawnvp(_P_NOWAIT, argv[0], argv);
+    _spawnvp(_P_NOWAIT, nargv, argv);
 #else
     if (!fork())
       execvp(argv[0], argv);
