@@ -27,6 +27,9 @@
  * \file
  * Contains the code for the emulated Serial Port devices.
  *
+ * X-1.24       Camiel Vanderhoeven                             17-APR-2007
+ *      Only include process.h on Windows.
+ *
  * X-1.23       Camiel Vanderhoeven                             16-APR-2007
  *      Never start a telnet client when running as lockstep slave, because
  *      we want to receive a connection from the master instead.
@@ -114,7 +117,10 @@
 
 #include <stdlib.h>
 #include <ctype.h>
+
+#if defined(_WIN32)
 #include <process.h>
+#endif
 
 #include "telnet.h"
 #include "lockstep.h"
