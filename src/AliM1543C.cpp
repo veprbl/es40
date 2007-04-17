@@ -27,7 +27,8 @@
  * \file 
  * Contains the code for the emulated Ali M1543C chipset devices.
  *
- * \bug When restoring state, the ide_status may be 0xb9...
+ * X-1.26       Camiel Vanderhoeven                             17-APR-2007
+ *      Removed debugging messages.
  *
  * X-1.25       Camiel Vanderhoeven                             16-APR-2007
  *      Added ResetPCI()
@@ -820,29 +821,24 @@ void CAliM1543C::ide_config_write(u64 address, int dsize, u64 data)
       case 0x10:
 	// command
 	cSystem->RegisterMemory(this,21, X64(00000801fc000000) + (endian_32(data)&0x00fffffe), 8);
-        printf("%%IDE-I-REG: Address 10 registered to %016" LL "x\n",X64(00000801fc000000) + (endian_32(data)&0x00fffffe));
 	return;
       case 0x14:
 	// control
 	cSystem->RegisterMemory(this,23, X64(00000801fc000000) + (endian_32(data)&0x00fffffe), 4);
-        printf("%%IDE-I-REG: Address 14 registered to %016" LL "x\n",X64(00000801fc000000) + (endian_32(data)&0x00fffffe));
 	return;
       case 0x18:
 	// command
 	cSystem->RegisterMemory(this,22, X64(00000801fc000000) + (endian_32(data)&0x00fffffe), 8);
-        printf("%%IDE-I-REG: Address 18 registered to %016" LL "x\n",X64(00000801fc000000) + (endian_32(data)&0x00fffffe));
 	return;
       case 0x1c:
 	// control
 	cSystem->RegisterMemory(this,24, X64(00000801fc000000) + (endian_32(data)&0x00fffffe), 4);
-        printf("%%IDE-I-REG: Address 1C registered to %016" LL "x\n",X64(00000801fc000000) + (endian_32(data)&0x00fffffe));
 	return;
       case 0x20:
 	// bus master control
 	cSystem->RegisterMemory(this,25, X64(00000801fc000000) + (endian_32(data)&0x00fffffe), 8);
 	// bus master control
 	cSystem->RegisterMemory(this,26, X64(00000801fc000000) + (endian_32(data)&0x00fffffe) + 8, 8);
-        printf("%%IDE-I-REG: Address 20 registered to %016" LL "x\n",X64(00000801fc000000) + (endian_32(data)&0x00fffffe));
 	return;
       }
 }
@@ -1278,8 +1274,6 @@ void CAliM1543C::instant_tick()
 void CAliM1543C::ResetPCI()
 {
   int i;
-
-  printf("%%IDE-I-RESET: Reset PCI\n");
 
   cSystem->RegisterMemory(this, 3, X64(00000801fe003800),0x100);
 
