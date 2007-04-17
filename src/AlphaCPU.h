@@ -28,6 +28,9 @@
  * \file
  * Contains the definitions for the emulated DecChip 21264CB EV68 Alpha processor.
  *
+ * X-1.22       Camiel Vanderhoeven                             17-APR-2007
+ *      Give ASM bit a value (true) for PALmode Icache entries.
+ *
  * X-1.21       Camiel Vanderhoeven                             11-APR-2007
  *      Moved all data that should be saved to a state file to a structure
  *      "state".
@@ -306,7 +309,10 @@ inline int CAlphaCPU::get_icache(u64 address, u32 * data)
     {
       v_a = (address & X64(ffffffffffffffc0)) | (u64)i << 2;
       if (address & 1)
+      {
 	p_a = v_a & X64(00000fffffffffff);
+        asm_bit = true;
+      }
       else
       {     
 	  result = itb->convert_address(v_a, &p_a, ACCESS_READ, true, state.cm, &asm_bit, false, true);
