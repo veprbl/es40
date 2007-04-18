@@ -27,6 +27,10 @@
  * \file 
  * Contains the code for the emulated Ali M1543C chipset devices.
  *
+ * X-1.27       Camiel Vanderhoeven                             18-APR-2007
+ *      On a big-endian system, the LBA address for a read or write action
+ *      was byte-swapped. Fixed this.
+ *
  * X-1.26       Camiel Vanderhoeven                             17-APR-2007
  *      Removed debugging messages.
  *
@@ -1031,7 +1035,7 @@ void CAliM1543C::ide_command_write(int index, u64 address, u64 data)
 
 	      break;
 	    case 0x20: // read sector
-	      lba =      *((int*)(&(state.ide_command[index][3]))) & 0x0fffffff;
+	      lba =      endian_32(*((u32*)(&(state.ide_command[index][3])))) & 0x0fffffff;
 	      TRC_DEV5("%%IDE-I-READSECT: Read  %3d sectors @ IDE %d.%d LBA %8d\n",state.ide_command[index][2]?state.ide_command[index][2]:256,index,state.ide_selected[index],lba);
 #ifdef DEBUG_IDE
 	      printf("%%IDE-I-READSECT: Read  %3d sectors @ IDE %d.%d LBA %8d\n",state.ide_command[index][2]?state.ide_command[index][2]:256,index,state.ide_selected[index],lba);
@@ -1054,7 +1058,7 @@ void CAliM1543C::ide_command_write(int index, u64 address, u64 data)
 	      }
 	      else
 	      {
-	        lba =      *((int*)(&(state.ide_command[index][3]))) & 0x0fffffff;
+	        lba =      endian_32(*((u32*)(&(state.ide_command[index][3])))) & 0x0fffffff;
 	        TRC_DEV5("%%IDE-I-WRITSECT: Write %3d sectors @ IDE %d.%d @ LBA %8d\n",state.ide_command[index][2]?state.ide_command[index][2]:256,index,state.ide_selected[index],lba);
 #ifdef DEBUG_IDE
 	        printf("%%IDE-I-WRITSECT: Write %3d sectors @ IDE %d.%d @ LBA %8d\n",state.ide_command[index][2]?state.ide_command[index][2]:256,index,state.ide_selected[index],lba);
