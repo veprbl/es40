@@ -27,6 +27,9 @@
  * \file 
  * Contains the code for the emulated Typhoon Chipset devices.
  *
+ * X-1.28       Camiel Vanderhoeven                             18-APR-2007
+ *      Faster lockstep mechanism (send info 50 cpu cycles at a time)
+ *
  * X-1.27       Camiel Vanderhoeven                             16-APR-2007
  *      Remove old address range if a new one is registered (same device/
  *      same index)
@@ -151,6 +154,11 @@
 #include <ctype.h>
 #include <stdlib.h>
 
+#if defined(LS_MASTER) || defined(LS_SLAVE)
+char debug_string[10000] = "";
+char * dbg_strptr = debug_string;
+#endif
+ 
 /**
  * Constructor.
  **/
@@ -346,10 +354,10 @@ int CSystem::SingleStep()
   int i;
   int result;
 
-#if defined(LS_MASTER) || defined(LS_SLAVE)
-  lockstep_sync_m2s("sync1");
-  lockstep_sync_s2m("sync2");
-#endif
+//#if defined(LS_MASTER) || defined(LS_SLAVE)
+//  lockstep_sync_m2s("sync1");
+//  lockstep_sync_s2m("sync2");
+//#endif
 
   for(i=0;i<iNumFastClocks;i++)
   {
@@ -360,7 +368,18 @@ int CSystem::SingleStep()
 
   iSingleStep++;
 
+#if defined(LS_MASTER) || defined(LS_SLAVE)
+  if (!(iSingleStep % 50))
+  {
+     lockstep_sync_m2s("sync1");
+     *dbg_strptr='\0';
+     lockstep_compare(debug_string);
+     dbg_strptr = debug_string;
+     *dbg_strptr='\0';
+  }
+#endif
   if (iSingleStep >= 10000)
+//  if (iSingleStep >= 100)
   {
      iSingleStep = 0;
      for(i=0;i<iNumSlowClocks;i++)
@@ -371,7 +390,9 @@ int CSystem::SingleStep()
      }
 #ifdef IDB
      iSSCycles++;
+#if !defined(LS_SLAVE)
      if (bHashing)
+#endif
        printf("%d0000 | %016" LL "x\r",iSSCycles,acCPUs[0]->get_pc());
 #endif
   }

@@ -27,6 +27,9 @@
  * \file 
  * Contains the definitions for the emulated Typhoon Chipset devices.
  *
+ * X-1.14       Camiel Vanderhoeven                             18-APR-2007
+ *      Faster lockstep mechanism (send info 50 cpu cycles at a time)
+ *
  * X-1.13       Camiel Vanderhoeven                             11-APR-2007
  *      Moved all data that should be saved to a state file to a structure
  *      "state".
@@ -83,6 +86,10 @@
 #define INCLUDED_SYSTEM_H
 
 #define MAX_COMPONENTS 100
+
+#if defined(LS_MASTER) || defined(LS_SLAVE)
+extern char * dbg_strptr;
+#endif
 
  /**
  * Structure used for mapping memory ranges to devices.

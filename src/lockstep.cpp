@@ -27,6 +27,9 @@
  * \file
  * Contains the code for the lockstep debugging mechanism.
  *
+ * X-1.4        Camiel Vanderhoeven                             18-APR-2007
+ *      Faster lockstep mechanism (send info 50 cpu cycles at a time)
+ *
  * X-1.3        Camiel Vanderhoeven                             31-MAR-2007
  *      Added old changelog comments.
  *
@@ -175,6 +178,8 @@ void lockstep_sync_s2m(char *s)
 
 }
 
+char cmpbuffer[10000];
+
 void lockstep_compare(char *s)
 {
 
@@ -185,27 +190,43 @@ void lockstep_compare(char *s)
 #else
 
   fd_set readset;
-  unsigned char buffer[1000];
   ssize_t size;
   struct timeval tv;
+  char * b1;
+  char * b2;
+  char * n1;
+  char * n2;
 
   FD_ZERO(&readset);
   FD_SET(ls_Socket,&readset);
   tv.tv_sec=30;
   tv.tv_usec=0;
   while (select(ls_Socket+1,&readset,NULL,NULL,&tv) <= 0) ;
-  size = recv(ls_Socket,(char*)buffer,999, 0);
-  buffer[size+1]=0; // force null termination.
+  size = recv(ls_Socket,cmpbuffer,99999, 0);
+  cmpbuffer[size+1]=0; // force null termination.
   
 //  printf("Comparing <%s> AND <%s>\n",s,buffer);
+  b1 = s;
+  b2 = cmpbuffer;
 
-  if (strcmp((char*)buffer,s))
+  while (b1 && b2)
   {
-    printf("*************** LOCKSTEP: DIFFERENCE ENCOUNTERED ***************\n");
-    printf(" local system: %s\n",s);
-    printf("remote system: %s\n",buffer);
-    printf("***************     PRESS ENTER TO CONTINUE      ***************\n");
-    getc(stdin);
+    n1 = strchr(b1,'\n');
+    n2 = strchr(b2,'\n');
+    if (n1)
+      *n1++ = '\0';
+    if (n2)
+      *n2++ = '\0';
+    if (strcmp(b1,b2))
+    {
+      printf("*************** LOCKSTEP: DIFFERENCE ENCOUNTERED ***************\n");
+      printf(" local system: %s\n",b1);
+      printf("remote system: %s\n",b2);
+      printf("***************     PRESS ENTER TO CONTINUE      ***************\n");
+      getc(stdin);
+    }
+    b1 = n1;
+    b2 = n2;
   }
 
 #endif

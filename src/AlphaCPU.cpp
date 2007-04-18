@@ -27,6 +27,9 @@
  * \file 
  * Contains the code for the emulated DecChip 21264CB EV68 Alpha processor.
  *
+ * X-1.37       Camiel Vanderhoeven                             18-APR-2007
+ *      Faster lockstep mechanism (send info 50 cpu cycles at a time)
+ *
  * X-1.36       Camiel Vanderhoeven                             11-APR-2007
  *      Moved all data that should be saved to a state file to a structure
  *      "state".
@@ -448,14 +451,14 @@ CAlphaCPU::~CAlphaCPU()
 
 void handle_debug_string(char * s)
 {
-  if (*s)
-  {
 #if defined(LS_SLAVE) || defined(LS_MASTER)
-    lockstep_compare(s);
+//    lockstep_compare(s);
+    *dbg_strptr++ = '\n';
+    *dbg_strptr='\0';
 #else
+  if (*s)
     printf("%s\n",s);
 #endif
-  }	
 }
 
 #endif
@@ -497,7 +500,9 @@ int CAlphaCPU::DoClock()
 #if defined(IDB)
   char * funcname = 0;
   char dbg_string[1000] = "";
+#if !defined(LS_MASTER) && !defined(LS_SLAVE)
   char * dbg_strptr = dbg_string;
+#endif
 #endif
 
    state.current_pc = state.pc;
