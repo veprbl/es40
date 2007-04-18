@@ -27,6 +27,10 @@
  * \file 
  * Contains the code for the emulated Typhoon Chipset devices.
  *
+ * X-1.29       Camiel Vanderhoeven                             18-APR-2007
+ *      Decompressed ROM image is now identical between big- and small-
+ *      endian platforms (put endian_64 around PALbase and PC).
+ *
  * X-1.28       Camiel Vanderhoeven                             18-APR-2007
  *      Faster lockstep mechanism (send info 50 cpu cycles at a time)
  *
@@ -888,9 +892,9 @@ int CSystem::LoadROM()
     else
     {
       printf("%%SYS-I-ROMWRT: Writing decompressed rom to %s.\n", GetConfig("rom.decompressed","decompressed.rom"));
-      temp = acCPUs[0]->get_pc();
+      temp = endian_64(acCPUs[0]->get_pc());
       fwrite(&temp,1,sizeof(u64),f);
-      temp = acCPUs[0]->get_pal_base();
+      temp = endian_64(acCPUs[0]->get_pal_base());
       fwrite(&temp,1,sizeof(u64),f);
       buffer = PtrToMem(0);
       fwrite(buffer,1,0x200000,f);
@@ -901,9 +905,9 @@ int CSystem::LoadROM()
   {
     printf("%%SYS-I-READROM: Reading decompressed ROM image from %s.\n", GetConfig("rom.decompressed","decompressed.rom"));
     fread(&temp,1,sizeof(u64),f);
-    acCPUs[0]->set_pc(temp);
+    acCPUs[0]->set_pc(endian_64(temp));
     fread(&temp,1,sizeof(u64),f);
-    acCPUs[0]->set_PAL_BASE(temp);
+    acCPUs[0]->set_PAL_BASE(endian_64(temp));
     buffer = PtrToMem(0);
     fread(buffer,1,0x200000,f);
     fclose(f);
