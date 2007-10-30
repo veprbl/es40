@@ -28,7 +28,8 @@
  * Contains code macros for the processor PALmode instructions.
  * Based on HRM.
  *
- * \bug What is IPR 0x2d???
+ * X-1.7        Camiel Vanderhoeven                             30-OCT-2007
+ *      IPR 0x2d identified as M_FIX (Mbox fixed behaviour)
  *
  * X-1.6        Camiel Vanderhoeven                             11-APR-2007
  *      Moved all data that should be saved to a state file to a structure
@@ -219,6 +220,7 @@
         case 0x27: /* MM_STAT */						\
         case 0x2b: /* C_DATA  */						\
         case 0x2c: /* C_SHIFT */						\
+	  case 0x2d: /* M_FIX */						\
 	    break;								\
         case 0x16: /* I_STAT */							\
  	    state.i_stat &= ~state.r[REG_2]; /* W1C */					\
@@ -247,8 +249,6 @@
 	    break;								\
         case 0x2a: /* DC_STAT */						\
  	    state.dc_stat &= ~state.r[REG_2];						\
-	    break;								\
-	case 0x2d: /* NEED TO FIND OUT WHAT THIS IS!!!!!! */			\
 	    break;								\
         case 0xa0: /* DTB_TAG1 */						\
  	    dtb->write_tag(1,state.r[REG_2]);						\
