@@ -27,6 +27,9 @@
  * \file 
  * Contains debugging macros used by AlphaCPU.cpp
  *
+ * X-1.14       Camiel Vanderhoeven                             30-OCT-2007
+ *      IPR 0x2d identified as M_FIX (Mbox fixed behaviour)
+ *
  * X-1.13       Camiel Vanderhoeven                             11-APR-2007
  *      Moved all data that should be saved to a state file to a structure
  *      "state".
@@ -110,7 +113,7 @@ char * IPR_NAME[] = {
   "PAL_BASE",	"I_CTL",	"IC_FLUSH_ASM",	"IC_FLUSH",	"PCTR_CTL",	"CLR_MAP",	"I_STAT",	"SLEEP",
   "?0001.1000?","?0001.1001?",	"?0001.1010?",	"?0001.1011?",	"?0001.1100?",	"?0001.1101?",	"?0001.1110?",	"?0001.1111?",
   "DTB_TAG0",	"DTB_PTE0",	"?0010.0010?",	"?0010.0011?",	"DTB_IS0",	"DTB_ASN0",	"DTB_ALTMODE",	"MM_STAT",
-  "M_CTL",	"DC_CTL",	"DC_STAT",	"C_DATA",	"C_SHFT",	"?0010.1101?",	"?0010.1110?",	"?0010.1111?",
+  "M_CTL",	"DC_CTL",	"DC_STAT",	"C_DATA",	"C_SHFT",	"M_FIX",	"?0010.1110?",	"?0010.1111?",
   "?0011.0000?","?0011.0001?",	"?0011.0010?",	"?0011.0011?",	"?0011.0100?",	"?0010.0101?",	"?0010.0110?",	"?0010.0111?",
   "?0011.1000?","?0011.1001?",	"?0011.1010?",	"?0011.1011?",	"?0011.1100?",	"?0010.1101?",	"?0010.1110?",	"?0010.1111?",
   "PCTX.00000",	"PCTX.00001",	"PCTX.00010",	"PCTX.00011",	"PCTX.00100",	"PCTX.00101",	"PCTX.00110",	"PCTX.00111",
