@@ -26,6 +26,10 @@
 /**
  * \file 
  * Contains the code for the emulated DecChip 21264CB EV68 Alpha processor.
+ *		  
+ * X-1.38       Eduardo Marcelo Ferrat                          31-OCT-2007
+ *      EXC_SUM contained the wrong register (3 in stead of 1) on a DTBM
+ *      exception. Added instructions for CVTDG, CVTGD, MULG, CVTGF.
  *
  * X-1.37       Camiel Vanderhoeven                             18-APR-2007
  *      Faster lockstep mechanism (send info 50 cpu cycles at a time)
@@ -370,14 +374,14 @@ CAlphaCPU::~CAlphaCPU()
       switch (dp_result) {						\
       case E_NOT_FOUND:							\
         if (vpte) {							\
-	  state.exc_sum = REG_3<<8;						\
-	  GO_PAL(DTBM_DOUBLE_3);					\
-	} else {							\
+	      state.exc_sum = REG_1<<8;						\
+	      GO_PAL(DTBM_DOUBLE_3);					\
+	    } else {							\
           state.mm_stat = (((opcode==0x1b || opcode==0x1f)?opcode-0x18:opcode)<<4) |	\
 		    (access);						\
-	  state.exc_sum = REG_3<<8;						\
-	  GO_PAL(DTBM_SINGLE);						\
-	}								\
+		  state.exc_sum = REG_1<<8;					\
+	      GO_PAL(DTBM_SINGLE);						\
+	    }								\
 	break;								\
       case E_ACCESS:							\
         if (!vpte)							\
@@ -597,6 +601,10 @@ int CAlphaCPU::DoClock()
         case 0x20: OP(ADDQ,R12_R3);
         case 0x22: OP(S4ADDQ,R12_R3);
         case 0x29: OP(SUBQ,R12_R3);
+		case 0x40: OP(ADDL,R12_R3); // ADDL/V
+		case 0x49: OP(SUBL,R12_R3); // SUBL/V
+		case 0x60: OP(ADDQ,R12_R3); // ADDQ/V
+		case 0x69: OP(SUBQ,R12_R3); // SUBQ/V
         case 0x2b: OP(S4SUBQ,R12_R3);
         case 0x2d: OP(CMPEQ,R12_R3);
         case 0x32: OP(S8ADDQ,R12_R3);
@@ -670,6 +678,7 @@ int CAlphaCPU::DoClock()
 	case 0x00: OP(MULL,R12_R3);
 	case 0x20: OP(MULQ,R12_R3);
 	case 0x30: OP(UMULH,R12_R3);
+	case 0x60: OP(MULQ,R12_R3); //MULQ/V
 	default:   UNKNOWN2;
       }
 
@@ -685,13 +694,18 @@ int CAlphaCPU::DoClock()
       function = (ins>>5) & 0x7ff;
       switch(function)
       {
-      case 0xa0: OP(ADDG,F12_F3);
-      case 0xa3: OP(DIVG,F12_F3);
-      case 0xa5: OP(CMPGEQ,F12_F3);
-      case 0xa6: OP(CMPGLT,F12_F3);
-      case 0xa7: OP(CMPGLE,F12_F3);
-      case 0xaf: OP(CVTGQ,F2_F3);
-      case 0xbe: OP(CVTQG,F2_F3);
+	  case 0x09e: OP(CVTDG,F2_F3);
+      case 0x0a0: OP(ADDG,F12_F3);
+	  case 0x0a2: OP(MULG,F12_F3);
+      case 0x0a3: OP(DIVG,F12_F3);
+      case 0x0a5: OP(CMPGEQ,F12_F3);
+      case 0x0a6: OP(CMPGLT,F12_F3);
+      case 0x0a7: OP(CMPGLE,F12_F3);
+	  case 0x0ac: OP(CVTGF,F12_F3);
+	  case 0x0ad: OP(CVTGD,F2_F3);
+      case 0x0af: OP(CVTGQ,F2_F3);
+      case 0x0be: OP(CVTQG,F2_F3);
+	  case 0x11e: OP(CVTGD,F2_F3); // CVTDG/UC
       default:   UNKNOWN2;
       }
     case 0x16:
@@ -723,6 +737,7 @@ int CAlphaCPU::DoClock()
       case 0x2d: OP(FCMOVGE,F12_F3);
       case 0x2e: OP(FCMOVLE,F12_F3);
       case 0x2f: OP(FCMOVGT,F12_F3);
+	  case 0x30: OP(CVTQL,F12_F3);
       default:   UNKNOWN2;
       }
 
