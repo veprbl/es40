@@ -27,6 +27,9 @@
  * \file 
  * Contains the code for the emulated Ali M1543C chipset devices.
  *
+ * X-1.28       Eduardo Marcelo Serrat                          31-OCT-2007
+ *      Corrected IDE interface revision level.
+ *
  * X-1.27       Camiel Vanderhoeven                             18-APR-2007
  *      On a big-endian system, the LBA address for a read or write action
  *      was byte-swapped. Fixed this.
@@ -1340,7 +1343,7 @@ void CAliM1543C::ResetPCI()
   state.ide_config_data[0x03] = 0x52;
   state.ide_config_data[0x06] = 0x80;	// status
   state.ide_config_data[0x07] = 0x02;	
-  state.ide_config_data[0x08] = 0x1c;	// revision
+  state.ide_config_data[0x08] = 0xC1;	// revision
   state.ide_config_data[0x09] = 0xFA;	// class code	
   state.ide_config_data[0x0a] = 0x01;	
   state.ide_config_data[0x0b] = 0x01;
