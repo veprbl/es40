@@ -28,6 +28,9 @@
  * \file
  * Contains the definitions for the emulated DecChip 21264CB EV68 Alpha processor.
  *
+ * X-1.23       Eduardo Marcelo Ferrat                          31-OCT-2007
+ *      Disable SRM replacement routines.
+ *
  * X-1.22       Camiel Vanderhoeven                             17-APR-2007
  *      Give ASM bit a value (true) for PALmode Icache entries.
  *
@@ -108,7 +111,8 @@
 #include "SystemComponent.h"
 #include "System.h"
 #include "TranslationBuffer.h"
-
+#define SRM_NO_SRL 1
+#define SRM_NO_IDE 1
 /**
  * Instruction cache entry.
  * An instruction cache entry contains the address and address space number
