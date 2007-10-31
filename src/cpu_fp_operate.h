@@ -28,6 +28,9 @@
  * Contains code macros for the processor floating-point operate instructions.
  * Based on ARM chapter 4.10.
  *
+ * X-1.5        Marcelo Eduardo Serrat                          31-OCT-2007
+ *      Added CVTDG, CVTGD, CVTGF, MULG instructions.
+ *
  * X-1.4        Camiel Vanderhoeven                             11-APR-2007
  *      Moved all data that should be saved to a state file to a structure
  *      "state".
@@ -86,6 +89,9 @@
 
 #define DO_CVTTQ state.f[FREG_3] = (u64)((s64)i2f(state.f[FREG_2]));
 #define DO_CVTQT state.f[FREG_3] = f2i((double)((s64)state.f[FREG_2]));
+#define DO_CVTGD state.f[FREG_3] = g2d(state.f[FREG_2]);
+#define DO_CVTDG state.f[FREG_3] = d2g(state.f[FREG_2]);
+#define DO_CVTGF state.f[FREG_3] = g2f(state.f[FREG_2]);
 
 #define DO_FTOIS								\
  	    temp_64 = state.f[FREG_1];						\
@@ -96,6 +102,7 @@
 #define DO_FTOIT state.r[REG_3] = state.f[FREG_1];
 #define DO_ITOFT state.f[FREG_3] = state.r[REG_1];
 
+#define DO_MULG state.f[FREG_3] = f2v(v2f(state.f[FREG_1]) * v2f(state.f[FREG_2]));
 
 #define DO_DIVG state.f[FREG_3] = f2v(v2f(state.f[FREG_1])/v2f(state.f[FREG_2]));
 #define DO_DIVT state.f[FREG_3] = f2i(i2f(state.f[FREG_1])/i2f(state.f[FREG_2]));
