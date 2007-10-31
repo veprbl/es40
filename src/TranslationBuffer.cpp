@@ -27,6 +27,10 @@
  * \file 
  * Contains the code for the emulated on-cpu translation buffers.
  *
+ * X-1.18       Eduardo Marcelo Serrat					        31-OCT-2007
+ *      Fixed address translation sign extension.  Disable access checks
+ *      for now.
+ *
  * X-1.17       Camiel Vanderhoeven                             16-APR-2007
  *      Initialize state.next_entry to 0.
  *
@@ -284,7 +288,7 @@ int CTranslationBuffer::convert_address(u64 virt, u64 *phys, u8 access, bool che
 		  && (cCPU->get_spe(state.bIBOX) & 2))
 	{
 	  *phys =   (virt & X64(000001ffffffffff)) 
-	    | ((virt & X64(0000010000000000)) * 6);
+	    | ((virt & X64(0000010000000000)) * 14);
 	  *asm_bit = false;
 #if defined(DEBUG_TB)
   if (forreal)
@@ -471,31 +475,31 @@ int CTranslationBuffer::convert_address(u64 virt, u64 *phys, u8 access, bool che
 #endif // NO_INTELLIGENT_TB
 
   // check access...
-  if (check)
-  {
-    if (!state.entry[i].access[access][cm])
-    {
+  //if (check)
+  //{
+  //  if (!state.entry[i].access[access][cm])
+  //  {
 #if defined(DEBUG_TB)
-  if (forreal)
+  //if (forreal)
 #if defined(IDB)
-      if (bTB_Debug)
+  //    if (bTB_Debug)
 #endif
-        printf("acv\n");
+  //      printf("acv\n");
 #endif
-      return E_ACCESS;
-    }
-    if (state.entry[i].fault[access])
-    {
+  //    return E_ACCESS;
+  //  }
+  //  if (state.entry[i].fault[access])
+  //  {
 #if defined(DEBUG_TB)
-  if (forreal)
+  //if (forreal)
 #if defined(IDB)
-      if (bTB_Debug)
+  //    if (bTB_Debug)
 #endif
-        printf("fault\n");
+  //      printf("fault\n");
 #endif
-        return E_FAULT;
-    }
-  }
+  //      return E_FAULT;
+  //  }
+  //}
   // all is ok...
 
   *phys = (state.entry[i].phys & state.v_mask) | (virt & state.p_mask);
