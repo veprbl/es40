@@ -28,6 +28,9 @@
  * Contains code macros for the processor floating-point load/store instructions.
  * Based on ARM chapter 4.8.
  *
+ * X-1.5        Eduardo Marcelo Serrat                          31-OCT-2007
+ *      Fixed conversion routines.
+ *
  * X-1.4        Camiel Vanderhoeven                             11-APR-2007
  *      Moved all data that should be saved to a state file to a structure
  *      "state".
@@ -47,12 +50,12 @@
 #define DO_LDF									\
 	if (FREG_1 != 31) {							\
 	  DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_READ, true, false, false);	\
-	  state.f[FREG_1] = f2g(swap_f((u32)READ_PHYS(32))); }
+	  state.f[FREG_1] = f2g(load_f((u32)READ_PHYS(32))); }
 
 #define DO_LDG									\
 	if (FREG_1 != 31) {							\
 	  DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_READ, true, false, false);	\
-	  state.f[FREG_1] = swap_g(READ_PHYS(64)); }
+	  state.f[FREG_1] = load_g(READ_PHYS(64)); }
 
 #define DO_LDS									\
 	if (FREG_1 != 31) {							\
@@ -66,11 +69,10 @@
 
 #define DO_STF									\
 	  DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_WRITE, true, false, false);	\
-	  WRITE_PHYS(swap_f(g2f(state.f[FREG_1])),32);
-
+	  WRITE_PHYS(store_f(state.f[FREG_1]),32);
 #define DO_STG									\
 	  DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_WRITE, true, false, false);	\
-	  WRITE_PHYS(swap_g(state.f[FREG_1]),64);
+	  WRITE_PHYS(store_g(state.f[FREG_1]),64);
 
 #define DO_STS									\
 	  DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_WRITE, true, false, false);	\
