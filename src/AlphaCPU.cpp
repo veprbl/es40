@@ -26,7 +26,12 @@
 /**
  * \file 
  * Contains the code for the emulated DecChip 21264CB EV68 Alpha processor.
- *		  
+ *
+ * \bug Rounding and trap modes are not used for floating point ops.
+ *
+ * X-1.39       Camiel Vanderhoeven                             02-NOV-2007
+ *      Added missing floating point instructions.
+ *
  * X-1.38       Eduardo Marcelo Ferrat                          31-OCT-2007
  *      EXC_SUM contained the wrong register (3 in stead of 1) on a DTBM
  *      exception. Added instructions for CVTDG, CVTGD, MULG, CVTGF.
@@ -601,10 +606,10 @@ int CAlphaCPU::DoClock()
         case 0x20: OP(ADDQ,R12_R3);
         case 0x22: OP(S4ADDQ,R12_R3);
         case 0x29: OP(SUBQ,R12_R3);
-		case 0x40: OP(ADDL,R12_R3); // ADDL/V
-		case 0x49: OP(SUBL,R12_R3); // SUBL/V
-		case 0x60: OP(ADDQ,R12_R3); // ADDQ/V
-		case 0x69: OP(SUBQ,R12_R3); // SUBQ/V
+	case 0x40: OP(ADDL,R12_R3); // ADDL/V
+	case 0x49: OP(SUBL,R12_R3); // SUBL/V
+	case 0x60: OP(ADDQ,R12_R3); // ADDQ/V
+	case 0x69: OP(SUBQ,R12_R3); // SUBQ/V
         case 0x2b: OP(S4SUBQ,R12_R3);
         case 0x2d: OP(CMPEQ,R12_R3);
         case 0x32: OP(S8ADDQ,R12_R3);
@@ -692,40 +697,63 @@ int CAlphaCPU::DoClock()
 
     case 0x15:
       function = (ins>>5) & 0x7ff;
-      switch(function)
+      switch(function & 0x3f)
       {
-	  case 0x09e: OP(CVTDG,F2_F3);
-      case 0x0a0: OP(ADDG,F12_F3);
-	  case 0x0a2: OP(MULG,F12_F3);
-      case 0x0a3: OP(DIVG,F12_F3);
-      case 0x0a5: OP(CMPGEQ,F12_F3);
-      case 0x0a6: OP(CMPGLT,F12_F3);
-      case 0x0a7: OP(CMPGLE,F12_F3);
-	  case 0x0ac: OP(CVTGF,F12_F3);
-	  case 0x0ad: OP(CVTGD,F2_F3);
-      case 0x0af: OP(CVTGQ,F2_F3);
-      case 0x0be: OP(CVTQG,F2_F3);
-	  case 0x11e: OP(CVTGD,F2_F3); // CVTDG/UC
-      default:   UNKNOWN2;
+        case 0x00: OP(ADDF,F12_F3);
+        case 0x01: OP(SUBF,F12_F3);
+        case 0x02: OP(MULF,F12_F3);
+        case 0x03: OP(DIVF,F12_F3);
+        case 0x0a: OP(SQRTF,F2_F3);
+	case 0x1e: OP(CVTDG,F2_F3);
+        case 0x20: OP(ADDG,F12_F3);
+        case 0x21: OP(SUBG,F12_F3);
+	case 0x22: OP(MULG,F12_F3);
+        case 0x23: OP(DIVG,F12_F3);
+        case 0x25: OP(CMPGEQ,F12_F3);
+        case 0x26: OP(CMPGLT,F12_F3);
+        case 0x27: OP(CMPGLE,F12_F3);
+        case 0x2a: OP(SQRTG,F2_F3);
+	case 0x2c: OP(CVTGF,F12_F3);
+	case 0x2d: OP(CVTGD,F2_F3);
+        case 0x2f: OP(CVTGQ,F2_F3);
+        case 0x3c: OP(CVTQF,F2_F3);
+        case 0x3e: OP(CVTQG,F2_F3);
+	default:   UNKNOWN2;
       }
     case 0x16:
       function = (ins>>5) & 0x7ff;
-      switch(function)
+      switch(function & 0x3f)
       {
-      case 0xa0: OP(ADDT,F12_F3);
-      case 0xa3: OP(DIVT,F12_F3);
-      case 0xa4: OP(CMPTUN,F12_F3);
-      case 0xa5: OP(CMPTEQ,F12_F3);
-      case 0xa6: OP(CMPTLT,F12_F3);
-      case 0xa7: OP(CMPTLE,F12_F3);
-      case 0xaf: OP(CVTTQ,F2_F3);
-      case 0xbe: OP(CVTQT,F2_F3);
+      case 0x00: OP(ADDS,F12_F3);
+      case 0x01: OP(SUBS,F12_F3);
+      case 0x02: OP(MULS,F12_F3);
+      case 0x03: OP(DIVS,F12_F3);
+      case 0x0b: OP(SQRTS,F2_F3);
+      case 0x20: OP(ADDT,F12_F3);
+      case 0x21: OP(SUBT,F12_F3);
+      case 0x22: OP(MULT,F12_F3);
+      case 0x23: OP(DIVT,F12_F3);
+      case 0x24: OP(CMPTUN,F12_F3);
+      case 0x25: OP(CMPTEQ,F12_F3);
+      case 0x26: OP(CMPTLT,F12_F3);
+      case 0x27: OP(CMPTLE,F12_F3);
+      case 0x2b: OP(SQRTT,F2_F3);
+      case 0x2c: if (function==0x2ac || function==0x6ac) {
+                   OP(CVTST,F2_F3);
+                 } else {
+                   OP(CVTTS,F2_F3);
+                 }
+                 break;
+      case 0x2f: OP(CVTTQ,F2_F3);
+      case 0x3c: OP(CVTQS,F2_F3);
+      case 0x3e: OP(CVTQT,F2_F3);
       default:   UNKNOWN2;
       }
     case 0x17:
       function = (ins>>5) & 0x7ff;
       switch (function)
       {
+      case 0x10: OP(CVTLQ,F2_F3);
       case 0x20: OP(CPYS,F12_F3);
       case 0x21: OP(CPYSN,F12_F3);
       case 0x22: OP(CPYSE,F12_F3);
@@ -737,7 +765,9 @@ int CAlphaCPU::DoClock()
       case 0x2d: OP(FCMOVGE,F12_F3);
       case 0x2e: OP(FCMOVLE,F12_F3);
       case 0x2f: OP(FCMOVGT,F12_F3);
-	  case 0x30: OP(CVTQL,F12_F3);
+      case 0x30:
+      case 0x130:
+      case 0x530: OP(CVTQL,F12_F3);
       default:   UNKNOWN2;
       }
 
