@@ -27,6 +27,9 @@
  * \file
  * Defines the entry point for the application.
  *
+ * X-1.23       Camiel Vanderhoeven                             02-NOV-2007
+ *      Version updated to 0.14.
+ *
  * X-1.22       Camiel Vanderhoeven                             10-APR-2007
  *      Replaced LoadROM(...) and SelectROM() calls with a single LoadROM()
  *      call. (See System.cpp, X-1.23).
@@ -204,7 +207,7 @@ int main(int argc, char* argv[])
   printf("   **======================================================================**\n");
   printf("   ||                                                                      ||\n");
   printf("   ||                             ES40  emulator                           ||\n");
-  printf("   ||                              Version 0.06                            ||\n");
+  printf("   ||                              Version 0.14                            ||\n");
   printf("   ||                                                                      ||\n");
   printf("   ||  Copyright (C) 2007 by Camiel Vanderhoeven                           ||\n");
   printf("   ||  Website: www.camicom.com                                            ||\n");
