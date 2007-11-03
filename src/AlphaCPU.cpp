@@ -28,6 +28,10 @@
  * Contains the code for the emulated DecChip 21264CB EV68 Alpha processor.
  *
  * \bug Rounding and trap modes are not used for floating point ops.
+ * \bug /V is ignored for integer ops.
+ *
+ * X-1.40       Camiel Vanderhoeven                             02-NOV-2007
+ *      Added integer /V instructions.
  *
  * X-1.39       Camiel Vanderhoeven                             02-NOV-2007
  *      Added missing floating point instructions.
@@ -593,12 +597,13 @@ int CAlphaCPU::DoClock()
 
     case 0x10: // op
       function = (ins>>5) & 0x7f;
-      switch (function)
+      switch (function & 0x3f) // ignore /V for now
       {
         case 0x00: OP(ADDL,R12_R3);
         case 0x02: OP(S4ADDL,R12_R3);
         case 0x09: OP(SUBL,R12_R3);
         case 0x0b: OP(S4SUBL,R12_R3);
+        case 0x0d: OP(CMPLT,R12_R3); //0x4d
         case 0x0f: OP(CMPBGE,R12_R3);
         case 0x12: OP(S8ADDL,R12_R3);
         case 0x1b: OP(S8SUBL,R12_R3);
@@ -606,17 +611,16 @@ int CAlphaCPU::DoClock()
         case 0x20: OP(ADDQ,R12_R3);
         case 0x22: OP(S4ADDQ,R12_R3);
         case 0x29: OP(SUBQ,R12_R3);
-	case 0x40: OP(ADDL,R12_R3); // ADDL/V
-	case 0x49: OP(SUBL,R12_R3); // SUBL/V
-	case 0x60: OP(ADDQ,R12_R3); // ADDQ/V
-	case 0x69: OP(SUBQ,R12_R3); // SUBQ/V
         case 0x2b: OP(S4SUBQ,R12_R3);
-        case 0x2d: OP(CMPEQ,R12_R3);
+        case 0x2d: if (function == 0x2d) {
+                     OP(CMPEQ,R12_R3);
+                   } else { //0x6d
+                     OP(CMPLE,R12_R3);
+                   }
+                   break;
         case 0x32: OP(S8ADDQ,R12_R3);
         case 0x3b: OP(S8SUBQ,R12_R3);
         case 0x3d: OP(CMPULE,R12_R3);
-        case 0x4d: OP(CMPLT,R12_R3);
-        case 0x6d: OP(CMPLE,R12_R3);
         default:   UNKNOWN2;
       }
 
@@ -678,12 +682,11 @@ int CAlphaCPU::DoClock()
 
     case 0x13:
       function = (ins>>5) & 0x7f;
-      switch (function)
+      switch (function & 0x3f) // ignore /V for now
       {
 	case 0x00: OP(MULL,R12_R3);
 	case 0x20: OP(MULQ,R12_R3);
 	case 0x30: OP(UMULH,R12_R3);
-	case 0x60: OP(MULQ,R12_R3); //MULQ/V
 	default:   UNKNOWN2;
       }
 
