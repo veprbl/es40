@@ -27,6 +27,9 @@
  * \file 
  * Contains the definitions for the emulated on-cpu translation buffers.
  *
+ * X-1.15       Camiel Vanderhoeven                             02-NOV-2007
+ *      Remember the last found TB entry result for speed.
+ *
  * X-1.14       Camiel Vanderhoeven                             11-APR-2007
  *      Moved all data that should be saved to a state file to a structure
  *      "state".
@@ -151,6 +154,7 @@ class CTranslationBuffer
     struct STBEntry entry[TB_ENTRIES];
     int    next_entry;
     u64	   temp_tag[2];
+    int last_found;
   } state;
   class CAlphaCPU * cCPU;
 };
