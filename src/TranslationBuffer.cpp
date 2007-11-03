@@ -27,7 +27,10 @@
  * \file 
  * Contains the code for the emulated on-cpu translation buffers.
  *
- * X-1.18       Eduardo Marcelo Serrat					        31-OCT-2007
+ * X-1.19       Camiel Vanderhoeven                             02-NOV-2007
+ *      Remember the last found TB entry result for speed.
+ *
+ * X-1.18       Eduardo Marcelo Serrat				31-OCT-2007
  *      Fixed address translation sign extension.  Disable access checks
  *      for now.
  *
@@ -209,10 +212,14 @@ void CTranslationBuffer::write_pte(int number, u64 value)
 
 int CTranslationBuffer::FindEntry(u64 virt)
 {
-  int i;
+  int i = state.last_found;
+  int j;
 
-  for (i=0;i<TB_ENTRIES;i++)
+  for (j=0;j<TB_ENTRIES;j++)
     {
+      i++;
+      if (i==TB_ENTRIES) 
+        i = 0;
       switch (state.entry[i].gh)
 	{
 	case 0:
@@ -239,7 +246,10 @@ int CTranslationBuffer::FindEntry(u64 virt)
 			 || (state.entry[i].asn == cCPU->get_asn(state.bIBOX))
 			 )
 	       )
+      {
+        state.last_found = i;
 	return i;
+      }
     }
   return -1;
 }
