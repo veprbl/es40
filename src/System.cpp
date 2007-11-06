@@ -27,6 +27,10 @@
  * \file 
  * Contains the code for the emulated Typhoon Chipset devices.
  *
+ * X-1.30       Camiel Vanderhoeven                             05-NOV-2007
+ *      Put slow-to-fast clock ratio into #define CLOCK_RATIO. Increased 
+ *      this to 100,000.
+ *
  * X-1.29       Camiel Vanderhoeven                             18-APR-2007
  *      Decompressed ROM image is now identical between big- and small-
  *      endian platforms (put endian_64 around PALbase and PC).
@@ -157,6 +161,8 @@
 
 #include <ctype.h>
 #include <stdlib.h>
+
+#define CLOCK_RATIO 10000
 
 #if defined(LS_MASTER) || defined(LS_SLAVE)
 char debug_string[10000] = "";
@@ -333,7 +339,7 @@ int CSystem::Run()
 
   for(k=0;;k++)
   {
-    for(j=0;j<10000;j++)
+    for(j=0;j<CLOCK_RATIO;j++)
     {
       for(i=0;i<iNumFastClocks;i++)
       {
@@ -349,7 +355,7 @@ int CSystem::Run()
       if (result)
 	return result;
     }
-    printf("%d0000 | %016" LL "x\r",k,acCPUs[0]->get_pc());
+    printf("%d | %016" LL "x\r",k,acCPUs[0]->get_pc());
   }
 }
 
@@ -382,8 +388,7 @@ int CSystem::SingleStep()
      *dbg_strptr='\0';
   }
 #endif
-  if (iSingleStep >= 10000)
-//  if (iSingleStep >= 100)
+  if (iSingleStep >= CLOCK_RATIO)
   {
      iSingleStep = 0;
      for(i=0;i<iNumSlowClocks;i++)
@@ -397,7 +402,7 @@ int CSystem::SingleStep()
 #if !defined(LS_SLAVE)
      if (bHashing)
 #endif
-       printf("%d0000 | %016" LL "x\r",iSSCycles,acCPUs[0]->get_pc());
+       printf("%d | %016" LL "x\r",iSSCycles,acCPUs[0]->get_pc());
 #endif
   }
   return 0;
