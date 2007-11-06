@@ -27,6 +27,9 @@
  * \file 
  * Contains the code for the emulated on-cpu translation buffers.
  *
+ * X-1.20       Camiel Vanderhoeven                             06-NOV-2007
+ *      Initialize last_entry_found.
+ *
  * X-1.19       Camiel Vanderhoeven                             02-NOV-2007
  *      Remember the last found TB entry result for speed.
  *
@@ -116,6 +119,7 @@ CTranslationBuffer::CTranslationBuffer(class CAlphaCPU * c, bool ibox)
   state.temp_tag[0] = 0;
   state.temp_tag[1] = 0;
   state.next_entry = 0;
+  state.last_found = 0;
 
   InvalidateAll();
 }
