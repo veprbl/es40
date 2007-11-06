@@ -28,6 +28,13 @@
  * \file
  * Contains the definitions for the emulated DecChip 21264CB EV68 Alpha processor.
  *
+ * X-1.24       Camiel Vanderhoeven                             06-NOV-2007
+ *      Performance improvements to ICACHE: last result is kept; cache
+ *      lines are larger (512 DWORDS in stead of 16 DWORDS), cache size is
+ *      configurable (both number of cache lines and size of each cache 
+ *      line), memcpy is used to move memory into the ICACHE.
+ *      CAVEAT: ICACHE can only be filled from memory (not from I/O).
+ *
  * X-1.23       Eduardo Marcelo Ferrat                          31-OCT-2007
  *      Disable SRM replacement routines.
  *
@@ -113,6 +120,13 @@
 #include "TranslationBuffer.h"
 #define SRM_NO_SRL 1
 #define SRM_NO_IDE 1
+
+#define ICACHE_ENTRIES          1024
+#define ICACHE_LINE_SIZE        512 // in dwords
+#define ICACHE_MATCH_MASK       (u64)(X64(1)-(ICACHE_LINE_SIZE*4))
+#define ICACHE_INDEX_MASK       (u64)(ICACHE_LINE_SIZE-X64(1))
+#define ICACHE_BYTE_MASK        (u64)(ICACHE_INDEX_MASK<<2)
+
 /**
  * Instruction cache entry.
  * An instruction cache entry contains the address and address space number
@@ -121,7 +135,7 @@
  
 struct SICache {
   int asn;		/**< Address Space Number */
-  u32 data[16];		/**< Actual cached instructions  */
+  u32 data[ICACHE_LINE_SIZE];		/**< Actual cached instructions  */
   u64 address;		/**< Address of first instruction */
   u64 p_address;	/**< Physical address of first instruction */
   bool asm_bit;		/**< Address Space Match bit */
@@ -142,7 +156,7 @@ struct SICache {
 class CAlphaCPU : public CSystemComponent  
 {
  public:
-	 void flush_icache_asm();
+  void flush_icache_asm();
   virtual void SaveState(FILE * f);
   virtual void RestoreState(FILE * f);
   void irq_h(int number, bool assert);
@@ -233,6 +247,7 @@ class CAlphaCPU : public CSystemComponent
     u64 current_pc;			/**< Virtual address of current instruction */
     struct SICache icache[1024];		/**< Instruction cache entries [HRM p 2-11] */
     int next_icache;			/**< Number of next cache entry to use */
+    int last_found_icache;              /**< Number of last cache entry found */
     bool lock_flag;
     u64 f[64];			/**< Floating point registers (0-31 normal, 32-63 shadow) */
     int iProcNum;			/**< number of the current processor (0 in a 1-processor system) */
@@ -255,7 +270,7 @@ class CAlphaCPU : public CSystemComponent
 inline void CAlphaCPU::flush_icache()
 {
   int i;
-  for(i=0;i<1024;i++) 
+  for(i=0;i<ICACHE_ENTRIES;i++) 
     state.icache[i].valid = false;
   state.next_icache = 0;
 }
@@ -267,7 +282,7 @@ inline void CAlphaCPU::flush_icache()
 inline void CAlphaCPU::flush_icache_asm()
 {
   int i;
-  for(i=0;i<1024;i++) 
+  for(i=0;i<ICACHE_ENTRIES;i++) 
     if (!state.icache[i].asm_bit)
       state.icache[i].valid = false;
 }
@@ -287,59 +302,71 @@ inline void CAlphaCPU::set_PAL_BASE(u64 pb)
 
 inline int CAlphaCPU::get_icache(u64 address, u32 * data)
 {
-  int i;
+  int i = state.last_found_icache;
   u64 v_a;
   u64 p_a;
   int result;
   bool asm_bit;
 
-  for (i=0;i<1024;i++)
+  if (	state.icache[i].valid
+	&& (state.icache[i].asn == state.asn || state.icache[i].asm_bit)
+	&& state.icache[i].address == (address & ICACHE_MATCH_MASK))
+  {
+    *data = state.icache[i].data[(address>>2)&ICACHE_INDEX_MASK];
+#ifdef IDB
+    current_pc_physical = state.icache[i].p_address + (address & ICACHE_BYTE_MASK);
+#endif
+    return 0;
+  }
+
+  for (i=0;i<ICACHE_ENTRIES;i++)
     {
       if (	state.icache[i].valid
 		&& (state.icache[i].asn == state.asn || state.icache[i].asm_bit)
-		&& state.icache[i].address == (address & X64(ffffffffffffffc1)))
+		&& state.icache[i].address == (address & ICACHE_MATCH_MASK))
 	{
-	  *data = state.icache[i].data[(address>>2)&X64(0f)];
+          state.last_found_icache = i;
+	  *data = state.icache[i].data[(address>>2)&ICACHE_INDEX_MASK];
 
 #ifdef IDB
-	  current_pc_physical = state.icache[i].p_address + (address & X64(3c));
+	  current_pc_physical = state.icache[i].p_address + (address & ICACHE_BYTE_MASK);
 #endif
 
 	  return 0;
 	}
     }
 
-  for(i=0;i<16;i++)
-    {
-      v_a = (address & X64(ffffffffffffffc0)) | (u64)i << 2;
-      if (address & 1)
-      {
-	p_a = v_a & X64(00000fffffffffff);
-        asm_bit = true;
-      }
-      else
-      {     
-	  result = itb->convert_address(v_a, &p_a, ACCESS_READ, true, state.cm, &asm_bit, false, true);
-	  if (result)
-	    return result;
-	}
-      state.icache[state.next_icache].data[i] = (u32)(cSystem->ReadMem(p_a,32));
-    }
+  v_a = address & ICACHE_MATCH_MASK;
 
+  if (address & 1)
+  {
+    p_a = v_a & ~X64(1);
+    asm_bit = true;
+  }
+  else
+  {
+    result = itb->convert_address(v_a, &p_a, ACCESS_READ, true, state.cm, &asm_bit, false, true);
+    if (result)
+      return result;
+  }
+  
+  memcpy(state.icache[state.next_icache].data, cSystem->PtrToMem(p_a), ICACHE_LINE_SIZE * 4);
+  
   state.icache[state.next_icache].valid = true;
   state.icache[state.next_icache].asn = state.asn;
   state.icache[state.next_icache].asm_bit = asm_bit;
-  state.icache[state.next_icache].address = address & X64(ffffffffffffffc1);
-  state.icache[state.next_icache].p_address = p_a & X64(ffffffffffffffc0);
+  state.icache[state.next_icache].address = address & ICACHE_MATCH_MASK;
+  state.icache[state.next_icache].p_address = p_a;
 	
-  *data = state.icache[state.next_icache].data[(address>>2)&X64(0f)];
+  *data = state.icache[state.next_icache].data[(address>>2)&ICACHE_INDEX_MASK];
 
 #ifdef IDB
-  current_pc_physical = state.icache[state.next_icache].p_address + (address & X64(3c));
+  current_pc_physical = state.icache[state.next_icache].p_address + (address & ICACHE_BYTE_MASK);
 #endif
 
+  state.last_found_icache = state.next_icache;
   state.next_icache++;
-  if (state.next_icache==1024)
+  if (state.next_icache==ICACHE_ENTRIES)
     state.next_icache = 0;
   return 0;
 }
