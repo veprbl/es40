@@ -30,6 +30,13 @@
  * \bug Rounding and trap modes are not used for floating point ops.
  * \bug /V is ignored for integer ops.
  *
+ * X-1.41       Camiel Vanderhoeven                             06-NOV-2007
+ *      Performance improvements to ICACHE: last result is kept; cache
+ *      lines are larger (512 DWORDS in stead of 16 DWORDS), cache size is
+ *      configurable (both number of cache lines and size of each cache 
+ *      line), memcpy is used to move memory into the ICACHE.
+ *      CAVEAT: ICACHE can only be filled from memory (not from I/O).
+ *
  * X-1.40       Camiel Vanderhoeven                             02-NOV-2007
  *      Added integer /V instructions.
  *
@@ -281,6 +288,7 @@ CAlphaCPU::CAlphaCPU(CSystem * system) : CSystemComponent (system)
   cSystem->RegisterClock(this, false);
 
   state.pc = 0;
+  state.last_found_icache = 0;
   state.bIntrFlag = false;
 
   for(i=0;i<64;i++) 
