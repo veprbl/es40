@@ -30,6 +30,9 @@
  * point registers, and to convert them to/from the host's native floating point 
  * format when required.
  *
+ * X-1.7		Camiel Vanderhoeven								07-NOV-2007
+ *		Disabled some printf statements.
+ *
  * X-1.6	    Eduardo Marcelo Serrat                          31-OCT-2007
  *      Fixed conversion routines.
  *
@@ -101,7 +104,7 @@ inline double i2f(u64 val)
       res = (s?-1.0:1.0) * ldexp (1.0 + ((double)f / (double)((s64)X64(10000000000000))), e-1023);
   }
 
-  printf("i2f: %016" LL "x ==> %g\n", val, res);
+  //printf("i2f: %016" LL "x ==> %g\n", val, res);
 
   return res;
 }
@@ -179,7 +182,7 @@ inline u64 f2i(double val)
 	  (((u64)e << 52) & X64(7ff0000000000000)) |
 	  (f              & X64(000fffffffffffff));
 
-  printf("f2i: %016" LL "x <== %g\n", f, val);
+  //printf("f2i: %016" LL "x <== %g\n", f, val);
   return f;
 }
 
@@ -222,7 +225,7 @@ inline u32 store_f(u64 val)
 	u32 retval = (val & X64(00001fffe0000000)) >> 13;
 	retval |= (val & X64(c000000000000000)) >> 48;
 	retval |= (val & X64(07ffe00000000000)) >> 46;
-	printf("swap _f called\n");
+	//printf("swap _f called\n");
 	return retval;
 }
 
@@ -321,7 +324,7 @@ inline u64 s2t(u32 val)
 
 inline u64 g2f(u64 val)
 {
-	printf("G to Floating........................................\n");
+	//printf("G to Floating........................................\n");
   //return ((u32)(val>>32) & 0xc0000000) |
   //	 ((u32)(val>>29) & 0x3fffffff);
 	return (val & X64(ffffffffe0000000));
