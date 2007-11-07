@@ -30,6 +30,9 @@
  * point registers, and to convert them to/from the host's native floating point 
  * format when required.
  *
+ * X-1.8		Camiel Vanderhoeven								07-NOV-2007
+ *		Fixed f2v to avoid endless loop.
+ *
  * X-1.7		Camiel Vanderhoeven								07-NOV-2007
  *		Disabled some printf statements.
  *
@@ -136,17 +139,24 @@ inline u64 f2v(double val)
   if (s) v *= -1.0;
   int e = (int)(log((double)v) / log((double)2.0));
   
+  if (val==0.0)
+	return 0;
+
   while (exp_correction)
   {
 	  fr = v / pow((double)2.0,e);
-	  if ((fr >= 0.5) && (fr < 1.0))
+	  if (((fr >= 0.5) && (fr < 1.0)) || e==1023 || e==-1024)
 		  exp_correction=false;
 	  else
 	  {
-		if (fr >= 1.0)
+		if ((fr >= 1.0 && e<1023) || e<-1024)
+		{
 		  e++;
-		if (fr < 0.5)
+		}
+		if ((fr < 0.5 && e>-1024) || e>1023)
+		{
 		  e--;
+		}
 	  }
   }
   e += 1024;
