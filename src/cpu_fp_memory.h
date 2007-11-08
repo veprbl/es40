@@ -28,6 +28,9 @@
  * Contains code macros for the processor floating-point load/store instructions.
  * Based on ARM chapter 4.8.
  *
+ * X-1.6        Camiel Vanderhoeven                             08-NOV-2007
+ *      Restructured conversion routines.
+ *
  * X-1.5        Eduardo Marcelo Serrat                          31-OCT-2007
  *      Fixed conversion routines.
  *
@@ -50,7 +53,7 @@
 #define DO_LDF									\
 	if (FREG_1 != 31) {							\
 	  DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_READ, true, false, false);	\
-	  state.f[FREG_1] = f2g(load_f((u32)READ_PHYS(32))); }
+	  state.f[FREG_1] = load_f((u32)READ_PHYS(32)); }
 
 #define DO_LDG									\
 	if (FREG_1 != 31) {							\
@@ -60,7 +63,7 @@
 #define DO_LDS									\
 	if (FREG_1 != 31) {							\
 	  DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_READ, true, false, false);	\
-	  state.f[FREG_1] = s2t((u32)READ_PHYS(32)); }
+	  state.f[FREG_1] = load_s((u32)READ_PHYS(32)); }
 
 #define DO_LDT									\
 	if (FREG_1 != 31) {							\
@@ -76,7 +79,7 @@
 
 #define DO_STS									\
 	  DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_WRITE, true, false, false);	\
-	  WRITE_PHYS(t2s(state.f[FREG_1]),32);
+	  WRITE_PHYS(store_s(state.f[FREG_1]),32);
 
 #define DO_STT									\
 	  DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_WRITE, true, false, false);	\
