@@ -30,6 +30,9 @@
  * point registers, and to convert them to/from the host's native floating point 
  * format when required.
  *
+ * X-1.10       Camiel Vanderhoeven                             08-NOV-2007
+ *      Added itof_f for ITOFF instruction (load_f without VAX-swapping).
+ *
  * X-1.9        Camiel Vanderhoeven                             08-NOV-2007
  *      Restructured conversion routines. There now is a real difference
  *      between 32-bit and 64-bit floating point operations.
@@ -447,6 +450,25 @@ inline u64 load_f(u32 val)
 
 #if defined(DEBUG_FP_LOADSTORE)
   printf("mem->f: %08x -> %016" LL "x   \n",val,retval);
+#endif
+
+  return retval;
+}
+
+/**
+ * Perform the SEF mapping necessary to load 
+ * 32-bit VAX (F) floating point values from an integer register.
+ **/
+
+inline u64 itof_f(u64 val)
+{
+  u64 retval = (val & X64(3fffffff)) << 29; /* frac + exp.lo  :  0..29 --> 29..58 */
+  retval    |= (val & X64(c0000000)) << 32; /* exp.hi + sign : 30..31 --> 62..63 */
+  if (((val & X64(40000000)) == 0) && ((val & X64(3f800000)) != 0))
+    retval  |= X64(3800000000000000);    /* exp.mid */
+
+#if defined(DEBUG_FP_LOADSTORE)
+  printf("reg->f: %08x -> %016" LL "x   \n",val,retval);
 #endif
 
   return retval;
