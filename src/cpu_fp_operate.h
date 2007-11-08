@@ -28,6 +28,9 @@
  * Contains code macros for the processor floating-point operate instructions.
  * Based on ARM chapter 4.10.
  *
+ * X-1.8        Camiel Vanderhoeven                             08-NOV-2007
+ *      Added ITOFS, ITOFF.
+ *
  * X-1.7        Camiel Vanderhoeven                             08-NOV-2007
  *      Restructured conversion routines.
  *
@@ -116,6 +119,8 @@
 
 #define DO_FTOIT state.r[REG_3] = state.f[FREG_1];
 #define DO_ITOFT state.f[FREG_3] = state.r[REG_1];
+#define DO_ITOFS state.f[FREG_3] = load_s(state.r[REG_1]);
+#define DO_ITOFF state.f[FREG_3] = itof_f(state.r[REG_1]);
 
 #define DO_MULG state.f[FREG_3] = host2g(g2host(state.f[FREG_1]) * g2host(state.f[FREG_2]));
 #define DO_MULF state.f[FREG_3] = host2f(f2host(state.f[FREG_1]) * f2host(state.f[FREG_2]));
