@@ -27,6 +27,9 @@
  * \file
  * Defines the entry point for the application.
  *
+ * X-1.24       Camiel Vanderhoeven                             08-NOV-2007
+ *      Version updated to 0.15.
+ *
  * X-1.23       Camiel Vanderhoeven                             02-NOV-2007
  *      Version updated to 0.14.
  *
@@ -207,7 +210,7 @@ int main(int argc, char* argv[])
   printf("   **======================================================================**\n");
   printf("   ||                                                                      ||\n");
   printf("   ||                             ES40  emulator                           ||\n");
-  printf("   ||                              Version 0.14                            ||\n");
+  printf("   ||                              Version 0.15                            ||\n");
   printf("   ||                                                                      ||\n");
   printf("   ||  Copyright (C) 2007 by Camiel Vanderhoeven                           ||\n");
   printf("   ||  Website: www.camicom.com                                            ||\n");
