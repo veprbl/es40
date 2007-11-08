@@ -30,6 +30,9 @@
  * \bug Rounding and trap modes are not used for floating point ops.
  * \bug /V is ignored for integer ops.
  *
+ * X-1.42       Camiel Vanderhoeven                             08-NOV-2007
+ *      Instruction set complete now.
+ *
  * X-1.41       Camiel Vanderhoeven                             06-NOV-2007
  *      Performance improvements to ICACHE: last result is kept; cache
  *      lines are larger (512 DWORDS in stead of 16 DWORDS), cache size is
@@ -605,30 +608,30 @@ int CAlphaCPU::DoClock()
 
     case 0x10: // op
       function = (ins>>5) & 0x7f;
-      switch (function & 0x3f) // ignore /V for now
+      switch (function) // ignore /V for now
       {
-        case 0x00: OP(ADDL,R12_R3);
+        case 0x00:
+        case 0x40: OP(ADDL,R12_R3);
         case 0x02: OP(S4ADDL,R12_R3);
-        case 0x09: OP(SUBL,R12_R3);
+        case 0x09:
+        case 0x49: OP(SUBL,R12_R3);
         case 0x0b: OP(S4SUBL,R12_R3);
-        case 0x0d: OP(CMPLT,R12_R3); //0x4d
         case 0x0f: OP(CMPBGE,R12_R3);
         case 0x12: OP(S8ADDL,R12_R3);
         case 0x1b: OP(S8SUBL,R12_R3);
         case 0x1d: OP(CMPULT,R12_R3);
-        case 0x20: OP(ADDQ,R12_R3);
+        case 0x20: 
+        case 0x60: OP(ADDQ,R12_R3);
         case 0x22: OP(S4ADDQ,R12_R3);
-        case 0x29: OP(SUBQ,R12_R3);
+        case 0x29:
+        case 0x69: OP(SUBQ,R12_R3);
         case 0x2b: OP(S4SUBQ,R12_R3);
-        case 0x2d: if (function == 0x2d) {
-                     OP(CMPEQ,R12_R3);
-                   } else { //0x6d
-                     OP(CMPLE,R12_R3);
-                   }
-                   break;
+        case 0x2d: OP(CMPEQ,R12_R3);
         case 0x32: OP(S8ADDQ,R12_R3);
         case 0x3b: OP(S8SUBQ,R12_R3);
         case 0x3d: OP(CMPULE,R12_R3);
+        case 0x4d: OP(CMPLT,R12_R3);
+        case 0x6d: OP(CMPLE,R12_R3);
         default:   UNKNOWN2;
       }
 
@@ -668,13 +671,13 @@ int CAlphaCPU::DoClock()
         case 0x22: OP(MSKLL,R12_R3);
         case 0x26: OP(EXTLL,R12_R3);
         case 0x2b: OP(INSLL,R12_R3);
-        case 0x32: OP(MSKQL,R12_R3);
-        case 0x36: OP(EXTQL,R12_R3);
-        case 0x3b: OP(INSQL,R12_R3);
         case 0x30: OP(ZAP,R12_R3);
         case 0x31: OP(ZAPNOT,R12_R3);
+        case 0x32: OP(MSKQL,R12_R3);
         case 0x34: OP(SRL,R12_R3);
+        case 0x36: OP(EXTQL,R12_R3);
         case 0x39: OP(SLL,R12_R3);
+        case 0x3b: OP(INSQL,R12_R3);
         case 0x3c: OP(SRA,R12_R3);
         case 0x52: OP(MSKWH,R12_R3);
         case 0x57: OP(INSWH,R12_R3);
@@ -690,10 +693,12 @@ int CAlphaCPU::DoClock()
 
     case 0x13:
       function = (ins>>5) & 0x7f;
-      switch (function & 0x3f) // ignore /V for now
+      switch (function) // ignore /V for now
       {
-	case 0x00: OP(MULL,R12_R3);
-	case 0x20: OP(MULQ,R12_R3);
+	case 0x00: 
+        case 0x40: OP(MULL,R12_R3);
+	case 0x20: 
+        case 0x60: OP(MULQ,R12_R3);
 	case 0x30: OP(UMULH,R12_R3);
 	default:   UNKNOWN2;
       }
@@ -702,81 +707,151 @@ int CAlphaCPU::DoClock()
       function = (ins>>5) & 0x7ff;
       switch(function)
       {
-      case 0x24: OP(ITOFT,R1_F3);
-      default:   UNKNOWN2;
+      case 0x004: OP(ITOFS,R1_F3);
+      case 0x00a: 
+      case 0x08a: 
+      case 0x10a: 
+      case 0x18a: 
+      case 0x40a: 
+      case 0x48a: 
+      case 0x50a: 
+      case 0x58a: OP(SQRTF,F2_F3);
+      case 0x00b:
+      case 0x04b: 
+      case 0x08b: 
+      case 0x0cb: 
+      case 0x10b: 
+      case 0x14b: 
+      case 0x18b: 
+      case 0x1cb: 
+      case 0x50b: 
+      case 0x54b: 
+      case 0x58b: 
+      case 0x5cb: 
+      case 0x70b: 
+      case 0x74b: 
+      case 0x78b: 
+      case 0x7cb: OP(SQRTS,F2_F3);
+      case 0x014: OP(ITOFF,R1_F3);
+      case 0x024: OP(ITOFT,R1_F3);
+      case 0x02a: 
+      case 0x0aa: 
+      case 0x12a: 
+      case 0x1aa: 
+      case 0x42a: 
+      case 0x4aa: 
+      case 0x52a: 
+      case 0x5aa: OP(SQRTG,F2_F3);
+      case 0x02b: 
+      case 0x06b: 
+      case 0x0ab: 
+      case 0x0eb: 
+      case 0x12b: 
+      case 0x16b: 
+      case 0x1ab: 
+      case 0x1eb: 
+      case 0x52b: 
+      case 0x56b: 
+      case 0x5ab: 
+      case 0x5eb: 
+      case 0x72b: 
+      case 0x76b: 
+      case 0x7ab: 
+      case 0x7eb: OP(SQRTT,F2_F3);
+      default:    UNKNOWN2;
       }
 
     case 0x15:
       function = (ins>>5) & 0x7ff;
-      switch(function & 0x3f)
+      switch(function)
       {
-        case 0x00: OP(ADDF,F12_F3);
-        case 0x01: OP(SUBF,F12_F3);
-        case 0x02: OP(MULF,F12_F3);
-        case 0x03: OP(DIVF,F12_F3);
-        case 0x0a: OP(SQRTF,F2_F3);
-	case 0x1e: OP(CVTDG,F2_F3);
-        case 0x20: OP(ADDG,F12_F3);
-        case 0x21: OP(SUBG,F12_F3);
-	case 0x22: OP(MULG,F12_F3);
-        case 0x23: OP(DIVG,F12_F3);
-        case 0x25: OP(CMPGEQ,F12_F3);
-        case 0x26: OP(CMPGLT,F12_F3);
-        case 0x27: OP(CMPGLE,F12_F3);
-        case 0x2a: OP(SQRTG,F2_F3);
-	case 0x2c: OP(CVTGF,F12_F3);
-	case 0x2d: OP(CVTGD,F2_F3);
-        case 0x2f: OP(CVTGQ,F2_F3);
-        case 0x3c: OP(CVTQF,F2_F3);
-        case 0x3e: OP(CVTQG,F2_F3);
-	default:   UNKNOWN2;
+        case 0x0a5:
+        case 0x4a5: OP(CMPGEQ,F12_F3);
+        case 0x0a6:
+        case 0x4a6: OP(CMPGLT,F12_F3);
+        case 0x0a7:
+        case 0x4a7: OP(CMPGLE,F12_F3);
+        case 0x03c:
+        case 0x0bc: OP(CVTQF,F2_F3);
+        case 0x03e: 
+        case 0x0be: OP(CVTQG,F2_F3);
+        default: if (function & 0x200) {
+                   UNKNOWN2;
+                 }
+                 switch(function & 0x7f)
+                 {
+                 case 0x000: OP(ADDF,F12_F3);
+                 case 0x001: OP(SUBF,F12_F3);
+                 case 0x002: OP(MULF,F12_F3);
+                 case 0x003: OP(DIVF,F12_F3);
+                 case 0x01e: OP(CVTDG,F2_F3);
+                 case 0x020: OP(ADDG,F12_F3);
+                 case 0x021: OP(SUBG,F12_F3);
+	         case 0x022: OP(MULG,F12_F3);
+                 case 0x023: OP(DIVG,F12_F3);
+	         case 0x02c: OP(CVTGF,F12_F3);
+	         case 0x02d: OP(CVTGD,F2_F3);
+                 case 0x02f: OP(CVTGQ,F2_F3);
+                 default:   UNKNOWN2;
+                 }
       }
     case 0x16:
       function = (ins>>5) & 0x7ff;
-      switch(function & 0x3f)
+      switch(function)
       {
-      case 0x00: OP(ADDS,F12_F3);
-      case 0x01: OP(SUBS,F12_F3);
-      case 0x02: OP(MULS,F12_F3);
-      case 0x03: OP(DIVS,F12_F3);
-      case 0x0b: OP(SQRTS,F2_F3);
-      case 0x20: OP(ADDT,F12_F3);
-      case 0x21: OP(SUBT,F12_F3);
-      case 0x22: OP(MULT,F12_F3);
-      case 0x23: OP(DIVT,F12_F3);
-      case 0x24: OP(CMPTUN,F12_F3);
-      case 0x25: OP(CMPTEQ,F12_F3);
-      case 0x26: OP(CMPTLT,F12_F3);
-      case 0x27: OP(CMPTLE,F12_F3);
-      case 0x2b: OP(SQRTT,F2_F3);
-      case 0x2c: if (function==0x2ac || function==0x6ac) {
-                   OP(CVTST,F2_F3);
-                 } else {
-                   OP(CVTTS,F2_F3);
-                 }
-                 break;
-      case 0x2f: OP(CVTTQ,F2_F3);
-      case 0x3c: OP(CVTQS,F2_F3);
-      case 0x3e: OP(CVTQT,F2_F3);
-      default:   UNKNOWN2;
+      case 0x0a4:
+      case 0x5a4: OP(CMPTUN,F12_F3);
+      case 0x0a5: 
+      case 0x5a5: OP(CMPTEQ,F12_F3);
+      case 0x0a6: 
+      case 0x5a6: OP(CMPTLT,F12_F3);
+      case 0x0a7: 
+      case 0x5a7: OP(CMPTLE,F12_F3);
+      case 0x2ac:
+      case 0x6ac: OP(CVTST,F2_F3);
+      default: if (((function & 0x600) == 0x200) || ((function & 0x500) == 0x400)) {
+                 UNKNOWN2;
+               }
+               switch (function & 0x3f)
+               {
+               case 0x00: OP(ADDS,F12_F3);
+               case 0x01: OP(SUBS,F12_F3);
+               case 0x02: OP(MULS,F12_F3);
+               case 0x03: OP(DIVS,F12_F3);
+               case 0x20: OP(ADDT,F12_F3);
+               case 0x21: OP(SUBT,F12_F3);
+               case 0x22: OP(MULT,F12_F3);
+               case 0x23: OP(DIVT,F12_F3);
+               case 0x2c: OP(CVTTS,F2_F3);
+               case 0x2f: OP(CVTTQ,F2_F3);
+               case 0x3c: if ((function &0x300) == 0x100) {
+                            UNKNOWN2;
+                          }
+                          OP(CVTQS,F2_F3);
+               case 0x3e: if ((function &0x300) == 0x100) {
+                            UNKNOWN2;
+                          }
+                          OP(CVTQT,F2_F3);
+               default:   UNKNOWN2;
+               }
       }
     case 0x17:
       function = (ins>>5) & 0x7ff;
       switch (function)
       {
-      case 0x10: OP(CVTLQ,F2_F3);
-      case 0x20: OP(CPYS,F12_F3);
-      case 0x21: OP(CPYSN,F12_F3);
-      case 0x22: OP(CPYSE,F12_F3);
-      case 0x24: OP(MT_FPCR,X_F1);
-      case 0x25: OP(MF_FPCR,X_F1);
-      case 0x2a: OP(FCMOVEQ,F12_F3);
-      case 0x2b: OP(FCMOVNE,F12_F3);
-      case 0x2c: OP(FCMOVLT,F12_F3);
-      case 0x2d: OP(FCMOVGE,F12_F3);
-      case 0x2e: OP(FCMOVLE,F12_F3);
-      case 0x2f: OP(FCMOVGT,F12_F3);
-      case 0x30:
+      case 0x010: OP(CVTLQ,F2_F3);
+      case 0x020: OP(CPYS,F12_F3);
+      case 0x021: OP(CPYSN,F12_F3);
+      case 0x022: OP(CPYSE,F12_F3);
+      case 0x024: OP(MT_FPCR,X_F1);
+      case 0x025: OP(MF_FPCR,X_F1);
+      case 0x02a: OP(FCMOVEQ,F12_F3);
+      case 0x02b: OP(FCMOVNE,F12_F3);
+      case 0x02c: OP(FCMOVLT,F12_F3);
+      case 0x02d: OP(FCMOVGE,F12_F3);
+      case 0x02e: OP(FCMOVLE,F12_F3);
+      case 0x02f: OP(FCMOVGT,F12_F3);
+      case 0x030:
       case 0x130:
       case 0x530: OP(CVTQL,F12_F3);
       default:   UNKNOWN2;
@@ -792,12 +867,12 @@ int CAlphaCPU::DoClock()
 	case 0x4400: OP(WMB,NOP);
 	case 0x8000: OP(FETCH,NOP);
 	case 0xA000: OP(FETCH_M,NOP);
-	case 0xE800: OP(ECB,NOP);
-	case 0xF800: OP(WH64,NOP);
-	case 0xFC00: OP(WH64EN,NOP);
 	case 0xC000: OP(RPCC,X_R1);
 	case 0xE000: OP(RC,X_R1);
+	case 0xE800: OP(ECB,NOP);
 	case 0xF000: OP(RS,X_R1);
+	case 0xF800: OP(WH64,NOP);
+	case 0xFC00: OP(WH64EN,NOP);
 	default:     UNKNOWN2;
 	}
 
@@ -889,13 +964,6 @@ int CAlphaCPU::DoClock()
     case 0x3e: OP(BGE,COND);
     case 0x3f: OP(BGT,COND);
 
-    case 0x01:
-    case 0x02:
-    case 0x03:
-    case 0x04:
-    case 0x05:
-    case 0x06:
-    case 0x07:
     default:
       UNKNOWN1;
     }
