@@ -27,6 +27,11 @@
  * \file
  * Contains the code for the emulated Serial Port devices.
  *
+ * X-1.26		Camiel Vanderhoeven								09-NOV-2007
+ *		Drop LF when received; OpenVMS expects to receive a CR only on its
+ *      console. This allows entering the password during the OpenVMS 8.3 
+ *      installation procedure.
+ *
  * X-1.25       Camiel Vanderhoeven                             17-APR-2007
  *      Allow a telnet client program to be in a directory containing 
  *      spaces on Windows ("c:\program files\putty\putty.exe")
@@ -44,63 +49,63 @@
  * X-1.21       Camiel Vanderhoeven                             31-MAR-2007
  *      Added old changelog comments.
  *
- * X-1.20	Camiel Vanderhoeven				26-MAR-2007
- *	Unintentional CVS commit / version number increase.
+ * X-1.20	    Camiel Vanderhoeven				                26-MAR-2007
+ *	    Unintentional CVS commit / version number increase.
  *
- * X-1.19	Camiel Vanderhoeven				27-FEB-2007
- *   a)	Moved tons of defines to telnet.h
+ * X-1.19	    Camiel Vanderhoeven				                27-FEB-2007
+ *   a) Moved tons of defines to telnet.h
  *   b) When this emulator is the lockstep-master, connect to the slave's
- *	serial port.
+ *	    serial port.
  *
- * X-1.18	Camiel Vanderhoeven				27-FEB-2007
- *	Define socklen_t as unsigned int on OpenVMS.
+ * X-1.18	    Camiel Vanderhoeven				                27-FEB-2007
+ *	    Define socklen_t as unsigned int on OpenVMS.
  *
- * X-1.17	Camiel Vanderhoeven				27-FEB-2007
- *	Add support for OpenVMS.
+ * X-1.17	    Camiel Vanderhoeven				                27-FEB-2007
+ *	    Add support for OpenVMS.
  *
- * X-1.16	Camiel Vanderhoeven				20-FEB-2007
- *	Use small menu to determine what to do when a <BREAK> is received.
+ * X-1.16	    Camiel Vanderhoeven				                20-FEB-2007
+ *	    Use small menu to determine what to do when a <BREAK> is received.
  *
- * X-1.15	Camiel Vanderhoeven				16-FEB-2007
- *	Directly use thw winsock functions, don't use the CTelnet class
- *	any more. windows and Linux code are more alike now.
+ * X-1.15	    Camiel Vanderhoeven				                16-FEB-2007
+ *	    Directly use the winsock functions, don't use the CTelnet class
+ *	    any more. windows and Linux code are more alike now.
  *
- * X-1.14	Brian Wheeler					13-FEB-2007
- *	Formatting.
+ * X-1.14	    Brian Wheeler					                13-FEB-2007
+ *	    Formatting.
  *
- * X-1.13	Camiel Vanderhoeven				12-FEB-2007
- *	Added comments.
+ * X-1.13	    Camiel Vanderhoeven				                12-FEB-2007
+ *	    Added comments.
  *
  * X-1.12       Camiel Vanderhoeven                             9-FEB-2007
  *      Added comments.
  *
- * X-1.11	Camiel Vanderhoeven				9-FEB-2007
- *	Enable eating of first characters (needed for now for WINDOWS).
+ * X-1.11	    Camiel Vanderhoeven				                9-FEB-2007
+ *	    Enable eating of first characters (needed for now for WINDOWS).
  *
- * X-1.10	Brian Wheeler					7-FEB-2007
- *	Disable eating of first characters. Treat Telnet commands properly
- *	for Linux.
+ * X-1.10	    Brian Wheeler					                7-FEB-2007
+ *	    Disable eating of first characters. Treat Telnet commands properly
+ *	    for Linux.
  *
- * X-1.9	Camiel Vanderhoeven				7-FEB-2007
- * 	Calls to trace_dev now use the TRC_DEVx macro's.
+ * X-1.9	    Camiel Vanderhoeven				                7-FEB-2007
+ * 	    Calls to trace_dev now use the TRC_DEVx macro's.
  *
- * X-1.8	Camiel Vanderhoeven				3-FEB-2007
+ * X-1.8	    Camiel Vanderhoeven				                3-FEB-2007
  *   a)	Restructure Linux/Windows code mixing to make more sense.
  *   b)	Eat first incoming characters (so we don't burden the SRM with 
- *	weird incoming characters.
+ *	    weird incoming characters.
  *
- * X-1.7	Camiel Vanderhoeven				3-FEB-2007
- * 	No longer start PuTTy. We might just want to do something wild like
- *	connecting from a different machine!
+ * X-1.7	    Camiel Vanderhoeven				                3-FEB-2007
+ * 	    No longer start PuTTy. We might just want to do something wild like
+ *	    connecting from a different machine!
  *
  * X-1.6        Brian Wheeler                                   3-FEB-2007
  *      Formatting.
  *
- * X-1.5	Brian Wheeler					3-FEB-2007
- *	Get the Telnet port number from the configuration file.
+ * X-1.5	    Brian Wheeler					                3-FEB-2007
+ *	    Get the Telnet port number from the configuration file.
  *
- * X-1.4	Brian Wheeler					3-FEB-2007
- *	Add support for Linux.
+ * X-1.4	    Brian Wheeler					                3-FEB-2007
+ *	    Add support for Linux.
  *
  * X-1.3        Brian Wheeler                                   3-FEB-2007
  *      64-bit literals made compatible with Linux/GCC/glibc.
@@ -136,6 +141,8 @@ extern CAliM1543C * ali;
 int  iCounter  = 0;
 
 #define FIFO_SIZE 1024
+
+#define DEBUG_SERIAL 1
 
 /**
  * Constructor.
@@ -316,10 +323,16 @@ u64 CSerial::ReadMem(int index, u64 address, int dsize)
 	      if (rcvR == FIFO_SIZE)
 		    rcvR = 0;
 		  TRC_DEV4("Read character %02x (%c) on serial port %d\n",bRDR,printable(bRDR),iNumber);
+#if defined(DEBUG_SERIAL)
+		  printf("Read character %02x (%c) on serial port %d\n",bRDR,printable(bRDR),iNumber);
+#endif
 	    }
 	  else
             {
 	      TRC_DEV2("Read past FIFO on serial port %d\n",iNumber);
+#if defined(DEBUG_SERIAL)
+		  printf("Read past FIFO on serial port %d\n",iNumber);
+#endif
             }
 	  return bRDR;
         }
@@ -371,6 +384,9 @@ void CSerial::WriteMem(int index, u64 address, int dsize, u64 data)
 	  sprintf(s,"%c",d);
 	  write(s);
 	  TRC_DEV4("Write character %02x (%c) on serial port %d\n",d,printable(d),iNumber);
+#if defined(DEBUG_SERIAL)
+		  printf("Write character %02x (%c) on serial port %d\n",d,printable(d),iNumber);
+#endif
 	  if (bIER & 0x2)
             {
 	      bIIR = (bIIR>0x02)?bIIR:0x02;
@@ -458,6 +474,11 @@ int CSerial::DoClock() {
       b=buffer;
       c=cbuffer;
       while((ssize_t)(b - buffer) < size) {
+		if (*b == 0x0a)
+		{
+		  b++;	// skip LF
+		  continue;
+		}
 	if(*b == IAC) {
 	  if(*(b+1) == IAC) { // escaped IAC.
 	    b++;
