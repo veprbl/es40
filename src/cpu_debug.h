@@ -27,6 +27,9 @@
  * \file 
  * Contains debugging macros used by AlphaCPU.cpp
  *
+ * X-1.15       Camiel Vanderhoeven                             10-NOV-2007
+ *      f12_f3 operations show fxx as registers instead of rxx.
+ *
  * X-1.14       Camiel Vanderhoeven                             30-OCT-2007
  *      IPR 0x2d identified as M_FIX (Mbox fixed behaviour)
  *
@@ -500,7 +503,7 @@ char * IPR_NAME[] = {
   if (bDisassemble)							\
     {									\
       DEBUG_XX;								\
-      sprintf(dbg_strptr,#mnemonic " r%d, r%d, r%d", FREG_1, FREG_2, FREG_3);	\
+      sprintf(dbg_strptr,#mnemonic " f%d, f%d, f%d", FREG_1, FREG_2, FREG_3);	\
       dbg_strptr += strlen(dbg_strptr);					\
       if (!bListing) {							\
         sprintf(dbg_strptr,": (%" LL "x,%" LL "x)",state.f[FREG_1],state.f[FREG_2]);	\
