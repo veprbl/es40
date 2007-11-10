@@ -27,8 +27,11 @@
  * \file
  * Contains the code for the emulated Serial Port devices.
  *
+ * X-1.27		Camiel Vanderhoeven								10-NOV-2007
+ *	    Add possibility to save system state when not in debug mode.
+ *
  * X-1.26		Camiel Vanderhoeven								09-NOV-2007
- *		Drop LF when received; OpenVMS expects to receive a CR only on its
+ *	    Drop LF when received; OpenVMS expects to receive a CR only on its
  *      console. This allows entering the password during the OpenVMS 8.3 
  *      installation procedure.
  *
@@ -50,7 +53,7 @@
  *      Added old changelog comments.
  *
  * X-1.20	    Camiel Vanderhoeven				                26-MAR-2007
- *	    Unintentional CVS commit / version number increase.
+ *	Unintentional CVS commit / version number increase.
  *
  * X-1.19	    Camiel Vanderhoeven				                27-FEB-2007
  *   a) Moved tons of defines to telnet.h
@@ -142,7 +145,7 @@ int  iCounter  = 0;
 
 #define FIFO_SIZE 1024
 
-#define DEBUG_SERIAL 1
+//#define DEBUG_SERIAL 1
 
 /**
  * Constructor.
@@ -499,6 +502,7 @@ int CSerial::DoClock() {
 #else
 	    write("     1. Exit emulator gracefully\r\n");
 	    write("     2. Abort emulator (no changes saved)\r\n");
+        write("     3. Save state to autosave.axp and continue\r\n");
 #endif
 	    for (;;)
 	    {
@@ -527,6 +531,11 @@ int CSerial::DoClock() {
 	      case '2':
 	        write("%SRL-I-ABORT: aborting emulation.\r\n");
 	        return -1;
+          case '3':
+            write("%SRL-I-SAVESTATE: Saving state to autosave.axp.\r\n");
+            cSystem->SaveState("autosave.axp");
+	        write("%SRL-I-CONTINUE: continuing emulation.\r\n");
+	        return 0;
 	      }
 	      write("%SRL-W-INVALID: Not a valid answer.\r\n");
 	    }
