@@ -30,6 +30,10 @@
  * point registers, and to convert them to/from the host's native floating point 
  * format when required.
  *
+ * X-1.11       Camiel Vanderhoeven                             10-NOV-2007
+ *      Corrected IEEE conversion problem; made really sure no endless 
+ *      loops can occur in any of the host2xxx conversions.
+ *
  * X-1.10       Camiel Vanderhoeven                             08-NOV-2007
  *      Added itof_f for ITOFF instruction (load_f without VAX-swapping).
  *
@@ -37,19 +41,19 @@
  *      Restructured conversion routines. There now is a real difference
  *      between 32-bit and 64-bit floating point operations.
  *
- * X-1.8	Camiel Vanderhoeven			        07-NOV-2007
+ * X-1.8	    Camiel Vanderhoeven			                    07-NOV-2007
  *	Fixed f2v to avoid endless loop.
  *
- * X-1.7	Camiel Vanderhoeven	                        07-NOV-2007
+ * X-1.7	    Camiel Vanderhoeven	                            07-NOV-2007
  *	Disabled some printf statements.
  *
- * X-1.6	    Eduardo Marcelo Serrat                      31-OCT-2007
+ * X-1.6	    Eduardo Marcelo Serrat                          31-OCT-2007
  *      Fixed conversion routines.
  *
  * X-1.5        Camiel Vanderhoeven                             11-APR-2007
  *      Explicitly convert integers to double for calls to log/pow.
  *
- * X-1.4	Brian Wheeler					30-MAR-2007
+ * X-1.4	    Brian Wheeler					                30-MAR-2007
  *	Added a couple of typecasts to avoid compiler warnings 
  *
  * X-1.3        Camiel Vanderhoeven                             30-MAR-2007
@@ -144,7 +148,7 @@ inline double s2host(u64 val)
     else
       res = (s?-1.0:1.0) * 0.0;
   } else {
-      res = (s?-1.0:1.0) * ldexp (1.0 + ((double)f / (double)((s64)X64(10000000000000))), e-1023);
+      res = (s?-1.0:1.0) * ldexp (1.0 + ((double)f / (double)((s64)X64(0010000000000000))), e-1023);
   }
 
 #if defined(DEBUG_FP_CONVERSION)
@@ -180,20 +184,26 @@ inline u64 host2f(double val)
   int s = (v<0.0)?1:0;
   if (s) v *= -1.0;
   int e = (int)(log((double)v) / log((double)2.0));
+  bool exp_down = true;
   
   if (val==0.0)
 	return 0;
 
-  for(;;)
+  fr = v / pow((double)2.0,e);
+
+  while ((fr >= 1.0 && e<127) || e<-127)
   {
+    e++;
+    exp_down = false;
     fr = v / pow((double)2.0,e);
-    if (((fr >= 0.5) && (fr < 1.0) && (e<=127) && (2>=-127)) || e==127 || e==-127)
-      break;
-    else if ((fr >= 1.0 && e<127) || e<-127)
-      e++;
-    else if ((fr < 0.5 && e>-127) || e>127)
-      e--;
   }
+
+  while (((fr < 0.5 && e>-127) || e>127) && exp_down)
+  {
+    e--;
+    fr = v / pow((double)2.0,e);
+  }
+
   e += 1024;
 
   u64 f = (u64)(fr * (double)X64(0020000000000000)+0.5);
@@ -221,20 +231,26 @@ inline u64 host2g(double val)
   int s = (v<0.0)?1:0;
   if (s) v *= -1.0;
   int e = (int)(log((double)v) / log((double)2.0));
+  bool exp_down = true;
   
   if (val==0.0)
 	return 0;
 
-  for(;;)
+  fr = v / pow((double)2.0,e);
+
+  while ((fr >= 1.0 && e<1023) || e<-1023)
   {
+    e++;
+    exp_down = false;
     fr = v / pow((double)2.0,e);
-    if (((fr >= 0.5) && (fr < 1.0) && (e<=1023) && (2>=-1023)) || e==1023 || e==-1023)
-      break;
-    else if ((fr >= 1.0 && e<1023) || e<-1023)
-      e++;
-    else if ((fr < 0.5 && e>-1023) || e>1023)
-      e--;
   }
+
+  while (((fr < 0.5 && e>-1023) || e>1023) && exp_down)
+  {
+    e--;
+    fr = v / pow((double)2.0,e);
+  }
+  
   e += 1024;
 
   u64 f = (u64)(fr * (double)X64(0020000000000000)+0.5);
@@ -262,20 +278,26 @@ inline u64 host2d(double val)
   int s = (v<0.0)?1:0;
   if (s) v *= -1.0;
   int e = (int)(log((double)v) / log((double)2.0));
+  bool exp_down = true;
   
   if (val==0.0)
 	return 0;
 
-  for(;;)
+  fr = v / pow((double)2.0,e);
+
+  while ((fr >= 1.0 && e<127) || e<-127)
   {
+    e++;
+    exp_down = false;
     fr = v / pow((double)2.0,e);
-    if (((fr >= 0.5) && (fr < 1.0) && (e<=127) && (2>=-127)) || e==127 || e==-127)
-      break;
-    else if ((fr >= 1.0 && e<127) || e<-127) 
-      e++;
-    else if ((fr < 0.5 && e>-127) || e>127) 
-      e--;
   }
+
+  while (((fr < 0.5 && e>-127) || e>127) && exp_down)
+  {
+    e--;
+    fr = v / pow((double)2.0,e);
+  }
+
   e += 128;
 
   u64 f = (u64)(fr * (double)X64(0100000000000000)+0.5);
@@ -320,20 +342,26 @@ inline u64 host2s(double val)
   if (s) v *= -1.0;
   int e = (int)(log((double)v) / log((double)2.0));
   double fr;
+  bool exp_down = true;
 
   if (val==0.0)
 	return 0;
 
-  for(;;)
-  {
     fr = v / pow((double)2.0,e);
-    if (((fr >= 1.0) && (fr < 2.0) && (e<=127) && (2>=-127)) || e==127 || e==-127)
-      break;
-    else if ((fr >= 1.0 && e<127) || e<-127)
-      e++;
-    else if ((fr < 0.5 && e>-127) || e>127)
-      e--;
+
+  while ((fr >= 2.0 && e<127) || e<-127)
+  {
+    e++;
+    exp_down = false;
+    fr = v / pow((double)2.0,e);
   }
+
+  while (((fr < 1.0 && e>-127) || e>127) && exp_down)
+  {
+    e--;
+    fr = v / pow((double)2.0,e);
+  }
+
   e += 255;
   
   if (e==0)
@@ -366,20 +394,26 @@ inline u64 host2t(double val)
   if (s) v *= -1.0;
   int e = (int)(log((double)v) / log((double)2.0));
   double fr;
+  bool exp_down = true;
 
   if (val==0.0)
 	return 0;
 
-  for(;;)
+  fr = v / pow((double)2.0,e);
+
+  while ((fr >= 2.0 && e<1023) || e<-1023)
   {
+    e++;
+    exp_down = false;
     fr = v / pow((double)2.0,e);
-    if (((fr >= 1.0) && (fr < 2.0) && (e<=1023) && (2>=-1023)) || e==1023 || e==-1023)
-      break;
-    else if ((fr >= 1.0 && e<1023) || e<-1023)
-      e++;
-    else if ((fr < 0.5 && e>-1023) || e>1023)
-      e--;
   }
+
+  while (((fr < 1.0 && e>-1023) || e>1023) && exp_down)
+  {
+    e--;
+    fr = v / pow((double)2.0,e);
+  }
+
   e += 1023;
 
   if (e==0)
