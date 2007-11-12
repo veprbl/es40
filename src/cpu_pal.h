@@ -28,6 +28,9 @@
  * Contains code macros for the processor PALmode instructions.
  * Based on HRM.
  *
+ * X-1.8        Camiel Vanderhoeven                             12-NOV-2007
+ *      Fix Software Interrupt behaviour.
+ *
  * X-1.7        Camiel Vanderhoeven                             30-OCT-2007
  *      IPR 0x2d identified as M_FIX (Mbox fixed behaviour)
  *
@@ -83,19 +86,19 @@
 	      | (((u64)state.slen) << 32)				\
 	      | (((u64)state.cren) << 31)				\
 	      | (((u64)state.pcen) << 29)				\
-	      | (((u64)state.sien) << 14)				\
+	      | (((u64)state.sien) << 13)				\
 	      | (((u64)state.asten) << 13)				\
 	      | (((u64)state.cm) << 3);				\
 	    break;						\
         case 0x0c: /* SIRR */					\
- 	    state.r[REG_1] = ((u64)state.sir) << 14;			\
+ 	    state.r[REG_1] = ((u64)state.sir) << 13;			\
 	    break;						\
         case 0x0d: /* ISUM */					\
  	    state.r[REG_1] = (((u64)(state.eir & state.eien)) << 33)		\
 	      | (((u64)(state.slr & state.slen)) << 32)			\
 	      | (((u64)(state.crr & state.cren)) << 31)			\
 	      | (((u64)(state.pcr & state.pcen)) << 29)			\
-	      | (((u64)(state.sir & state.sien)) << 14)			\
+	      | (((u64)(state.sir & state.sien)) << 13)			\
 	      | (((u64)( ((X64(1)<<(state.cm+1))-1) & state.aster & state.astrr & (state.asten * 0x3))) << 3)	\
 	      | (((u64)( ((X64(1)<<(state.cm+1))-1) & state.aster & state.astrr & (state.asten * 0xc))) << 7);	\
 	    break;						\
@@ -181,14 +184,14 @@
  	    state.cm = (int)(state.r[REG_2]>>3) & 3;					\
         case 0x0a: /* IER */							\
  	    state.asten = (int)(state.r[REG_2]>>13) & 1;					\
-	    state.sien  = (int)(state.r[REG_2]>>14) & 0x3fff;				\
+	    state.sien  = (int)(state.r[REG_2]>>13) & 0xfffe;				\
 	    state.pcen  = (int)(state.r[REG_2]>>29) & 3;					\
 	    state.cren  = (int)(state.r[REG_2]>>31) & 1;					\
 	    state.slen  = (int)(state.r[REG_2]>>32) & 1;					\
 	    state.eien  = (int)(state.r[REG_2]>>33) & 0x3f;					\
 	    break;								\
         case 0x0c: /* SIRR */							\
- 	    state.sir = (int)(state.r[REG_2]>>14) & 0x3fff;					\
+ 	    state.sir = (int)(state.r[REG_2]>>13) & 0xfffe;					\
 	    break;								\
         case 0x0e: /* HW_INT_CLR */						\
 	    state.pcr &= ~((state.r[REG_2]>>29)&X64(3));					\
