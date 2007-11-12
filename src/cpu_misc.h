@@ -28,6 +28,9 @@
  * Contains code macros for miscellaneous processor instructions.
  * Based on ARM chapter 4.11.
  *
+ * X-1.4        Camiel Vanderhoeven                             12-NOV-2007
+ *      Made a start with implementing PALcode routines in C++.
+ *
  * X-1.3        Camiel Vanderhoeven                             11-APR-2007
  *      Moved all data that should be saved to a state file to a structure
  *      "state".
@@ -43,27 +46,99 @@
 
 #define DO_AMASK state.r[REG_3] = V_2 & ~CPU_AMASK; 
 
-#define DO_CALL_PAL				\
-      if (   (   (function < 0x40)		\
-		 && ((state.cm != 0)			\
-		 ))				\
-	     || (   (function > 0x3f)		\
-    		    && (function < 0x80))	\
-	     || (function > 0xbf))		\
-	{					\
-	  UNKNOWN2				\
-	}					\
-      else					\
-      {						\
-	  if (function == 0x92)	/* REI */	\
-		  state.lock_flag = false;		\
-	  state.r[32+23] = state.pc;			\
-	  state.pc = state.pal_base				\
-	    | (X64(1)<<13 )			\
-	    | (((u64)(function & 0x80)) <<5 )	\
-	    | (((u64)(function & 0x3f)) << 6 )	\
-	    | X64(1);				\
-	  TRC(true,false)			\
+#define DO_CALL_PAL				                \
+      if (   (   (function < 0x40)		        \
+		 && ((state.cm != 0)			        \
+		 ))				                        \
+	     || (   (function > 0x3f)		        \
+    		    && (function < 0x80))	        \
+	     || (function > 0xbf))		            \
+	  {					                        \
+	  UNKNOWN2				                    \
+	  } else {						            \
+        switch (function) {                             \
+        case 0x01: /* CFLUSH */                         \
+          break;                                        \
+        case 0x02: /* DRAINA */                         \
+          break;                                        \
+        case 0x03: /* LDQP */                           \
+          phys_address = state.r[16];                   \
+          state.r[0] = READ_PHYS_NT(64);                \
+          break;                                        \
+        case 0x04: /* STQP */                           \
+          phys_address = state.r[16];                   \
+          WRITE_PHYS_NT(state.r[17],64);                \
+          break;                                        \
+        case 0x06: /* MFPR_ASN */                       \
+          state.r[0] = state.asn;                       \
+          break;                                        \
+        case 0x07: /* MTPR_ASTEN */                     \
+          state.r[0] = state.aster;                     \
+          state.aster = ((state.aster & state.r[16]) |  \
+                         (state.r[16] >>4)) & 0xf;      \
+          break;                                        \
+        case 0x08: /* MTPR_ASTSR */                     \
+          state.r[0] = state.astrr;                     \
+          state.astrr = ((state.astrr & state.r[16]) |  \
+                         (state.r[16] >>4)) & 0xf;      \
+          break;                                        \
+        case 0x0b: /* MFPR_FEN */                       \
+          state.r[0] = state.fpen?1:0;                  \
+          break;                                        \
+        case 0x0e: /* MFPR_IPL */                       \
+          state.r[0] = (state.r[32+22] >> 8) & 0x1f;    \
+          break;                                        \
+        case 0x10: /* MFPR_MCES */                      \
+          state.r[0] = (state.r[32+22] >> 16) & 0xff;   \
+          break;                                        \
+        case 0x11: /* MTPR_MCES */                                        \
+          state.r[32+22] = (state.r[32+22] & X64(ffffffffff00ffff))       \
+                         | (state.r[32+22] & X64(0000000000070000)        \
+                             & ~(state.r[16] << 16))                      \
+                         | ((state.r[16] <<16) & X64(0000000000180000));  \
+          break;                                                          \
+        case 0x12: /* MFPR_PCBB */                      \
+          phys_address = state.r[32+21]+0x10;           \
+          state.r[0] = READ_PHYS_NT(64);                \
+          break;                                        \
+        case 0x13: /* MFPR_PRBR */                      \
+          phys_address = state.r[32+21]+0xa8;           \
+          state.r[0] = READ_PHYS_NT(64);                \
+          break;                                        \
+        case 0x14: /* MTPR_PRBR */                      \
+          phys_address = state.r[32+21]+0xa8;           \
+          WRITE_PHYS_NT(state.r[16],64);                \
+          break;                                        \
+        case 0x15: /* MFPR_PTBR */                      \
+          phys_address = state.r[32+21]+0x8;            \
+          state.r[0] = READ_PHYS_NT(64)>>0xd;           \
+          break;                                        \
+        case 0x16: /* MFPR_SCBB */                      \
+          phys_address = state.r[32+21]+0x170;          \
+          state.r[0] = READ_PHYS_NT(64)>>0xd;           \
+          break;                                        \
+        case 0x17: /* MTPR_SCBB */                                    \
+          phys_address = state.r[32+21]+0x170;                        \
+          WRITE_PHYS_NT((state.r[16]&X64(00000000ffffffff))<<0xd,64); \
+          break;                                                      \
+        case 0x18: /* MTPR_SIRR */              \
+          if (state.r[16]>0 && state.r[16]<16)  \
+            state.sir |= 1 << state.r[16];      \
+          break;                                \
+        case 0x19: /* MFPR_SISR */              \
+          state.r[0] = state.sir;               \
+          break;                                \
+        case 0x92:                              \
+	      state.lock_flag = false;		        \
+        default:                                \
+	      state.r[32+23] = state.pc;			\
+	      state.pc = state.pal_base				\
+	        | (X64(1)<<13 )			            \
+	        | (((u64)(function & 0x80)) <<5 )	\
+	        | (((u64)(function & 0x3f)) << 6 )	\
+	        | X64(1);				            \
+	      TRC(true,false)			            \
+        }                                       \
       }
 
 #define DO_IMPLVER state.r[REG_3] = CPU_IMPLVER;
