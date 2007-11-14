@@ -27,6 +27,9 @@
  * \file
  * Defines the entry point for the application.
  *
+ * X-1.25       Camiel Vanderhoeven                             14-NOV-2007
+ *      Added network.
+ *
  * X-1.24       Camiel Vanderhoeven                             08-NOV-2007
  *      Version updated to 0.15.
  *
@@ -122,6 +125,7 @@
 #include "FloppyController.h"
 #include "Flash.h"
 #include "AliM1543C.h"
+#include "DEC21143.h"
 #include "DPR.h"
 #include "TraceEngine.h"
 #include "lockstep.h"
@@ -133,6 +137,7 @@ CPort80 * port80;
 CFloppyController * fc[2];
 CFlash * srom;
 CAliM1543C * ali = 0;
+CDEC21143 * nic = 0;
 CDPR * dpr = 0;
 
 // "standard" locations for a configuration file.  This
@@ -201,6 +206,8 @@ int main(int argc, char* argv[])
 
   srom = new CFlash(systm);
   dpr = new CDPR(systm);
+
+  nic = new CDEC21143(systm);
 
   systm->LoadROM();
 
