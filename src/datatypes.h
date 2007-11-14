@@ -27,6 +27,9 @@
  * \file
  * Contains the datatype definitions for use with Microsoft Visual C++ and Linux.
  *
+ * X-1.10       Camiel Vanderhoeven                             34-NOV-2007
+ *      Added BSD-style definitions.
+ *
  * X-1.9        Camiel Vanderhoeven                             30-MAR-2007
  *      Added old changelog comments.
  *
@@ -107,6 +110,21 @@ typedef int64_t s64;
 #define LL "ll"
 
 #endif // defined(_WIN32)
+
+#define u_int8_t u8
+#define u_int16_t u16
+#define u_int32_t u32
+#define u_int64_t u64
+
+#define uint8_t u8
+#define uint16_t u16
+#define uint32_t u32
+#define uint64_t u64
+
+#define int8_t s8
+#define int16_t s16
+#define int32_t s32
+#define int64_t s64
 
 #define X32(a) 0x##a
 #define X16(a) 0x##a
