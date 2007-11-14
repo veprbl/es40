@@ -32,6 +32,9 @@ CFG=es40 - Win32 Debug
 
 !MESSAGE DSP file to build ES40 with Visual Studio 6.0.
 !MESSAGE
+!MESSAGE X-1.2		Camiel Vanderhoeven				14-NOV-2007
+!MESSAGE   	Added files for network support.
+!MESSAGE
 !MESSAGE X-1.1		Camiel Vanderhoeven				11-APR-2007
 !MESSAGE   	File created.
 !MESSAGE
@@ -254,6 +257,18 @@ SOURCE=.\src\TraceEngine.cpp
 
 SOURCE=.\src\TranslationBuffer.cpp
 # End Source File
+# Begin Source File
+
+SOURCE=.\src\DEC21143.cpp
+# End Source File
+# Begin Source File
+
+SOURCE=.\src\Network.cpp
+# End Source File
+# Begin Source File
+
+SOURCE=.\src\es40_debug.cpp
+# End Source File
 # End Group
 # Begin Group "Header Files"
 
@@ -381,6 +396,26 @@ SOURCE=.\src\TraceEngine.h
 # Begin Source File
 
 SOURCE=.\src\TranslationBuffer.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\src\DEC21143.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\src\DEC21143_mii.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\src\DEC21143_tulipreg.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\src\Network.h
+# End Source File
+# Begin Source File
+
+SOURCE=.\src\es40_debug.h
 # End Source File
 # End Group
 # Begin Group "Resource Files"
