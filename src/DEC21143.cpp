@@ -32,6 +32,9 @@
  * \file 
  * Contains the code for the emulated DEC 21143 NIC device.
  *
+ * X-1.2        Camiel Vanderhoeven                             14-NOV-2007
+ *      Removed some debug messages.
+ *
  * X-1.1        Camiel Vanderhoeven                             14-NOV-2007
  *      Initial version for ES40 emulator.
  *
@@ -142,9 +145,7 @@ u64 CDEC21143::nic_read(u64 address, int dsize)
 {
   u64 data;
 
-    printf("nic_read %" LL "x\n",address);
-
-	uint32_t oldreg = 0;
+    uint32_t oldreg = 0;
 	int regnr = (int)(address >> 3);
 
 	if ((address & 7) == 0 && regnr < 32) {
@@ -203,8 +204,6 @@ void CDEC21143::nic_write(u64 address, int dsize, u64 data)
 {
 	uint32_t oldreg = 0;
 
-    printf("nic_write %" LL "x, %" LL "x\n",address,data);
-    
     int regnr = (int)(address >> 3);
 
 	if ((address & 7) == 0 && regnr < 32) {
@@ -923,9 +922,6 @@ void CDEC21143::config_write(u64 address, int dsize, u64 data)
 {
   void * x;
   void * y;
-
-  printf("cfg_write %" LL "x, %" LL "x\n",address,data);
-
 
   x = &(state.config_data[address]);
   y = &(state.config_mask[address]);
