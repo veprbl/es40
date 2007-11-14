@@ -27,6 +27,9 @@
  * \file
  * Contains telnet declarations used by the serial port emulator and lock-step code.
  *
+ * X-1.3        Camiel Vanderhoeven                             14-NOV-2007
+ *      Added inet_aton.
+ *
  * X-1.2        Camiel Vanderhoeven                             30-MAR-2007
  *      Added old changelog comments.
  *
@@ -93,5 +96,25 @@
 #define INVALID_SOCKET 1
 
 #endif // defined (_WIN32) || defined(__VMS)
+
+  /* inet_aton -- Emulate BSD inet_aton via inet_addr.
+   *
+   * Useful on systems that don't have inet_aton, such as Solaris,
+   * to let your code use the better inet_aton interface and use autoconf
+   * and AC_REPLACE_FUNCS([inet_aton]).
+   *
+   * Copyright (C) 2003 Matthias Andree <matthias.andree@gmx.de>
+   */
+  
+  #ifndef HAVE_INET_ATON
+    
+  inline int inet_aton (const char *name, struct in_addr *addr)
+  {
+    unsigned long a = inet_addr (name);
+    addr->s_addr = a;
+    return a != -1;
+  }
+  
+  #endif
 
 #endif // !defined(INCLUDED_TELNET_H)
