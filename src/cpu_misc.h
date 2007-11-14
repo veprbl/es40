@@ -28,6 +28,9 @@
  * Contains code macros for miscellaneous processor instructions.
  * Based on ARM chapter 4.11.
  *
+ * X-1.5        Camiel Vanderhoeven                             14-NOV-2007
+ *      Implemented most simple PALcode routines in C++.
+ *
  * X-1.4        Camiel Vanderhoeven                             12-NOV-2007
  *      Made a start with implementing PALcode routines in C++.
  *
@@ -127,6 +130,111 @@
           break;                                \
         case 0x19: /* MFPR_SISR */              \
           state.r[0] = state.sir;               \
+          break;                                \
+        case 0x1a: /* MFPR_TBCHK */             \
+          state.r[0] = X64(8000000000000000);   \
+          break;                                \
+        case 0x1b: /* MTPR_TBIA */              \
+          itb->InvalidateAll();                 \
+          dtb->InvalidateAll();                 \
+          flush_icache();                       \
+          break;                                \
+        case 0x1c: /* MTPR_TBIAP */             \
+          itb->InvalidateAllProcess();          \
+          dtb->InvalidateAllProcess();          \
+          flush_icache_asm();                   \
+          break;                                \
+        case 0x1d: /* MTPR_TBIS */              \
+          itb->InvalidateSingle(state.r[16]);   \
+          dtb->InvalidateSingle(state.r[16]);   \
+          break;                                \
+        case 0x1e: /* MFPR_ESP */               \
+          phys_address = state.r[32+21]+0x10;   \
+          phys_address = READ_PHYS_NT(64)+0x08; \
+          state.r[0] = READ_PHYS_NT(64);        \
+          break;                                \
+        case 0x1f: /* MTPR_ESP */               \
+          phys_address = state.r[32+21]+0x10;   \
+          phys_address = READ_PHYS_NT(64)+0x08; \
+          WRITE_PHYS_NT(state.r[16],64);        \
+          break;                                \
+        case 0x20: /* MFPR_SSP */               \
+          phys_address = state.r[32+21]+0x10;   \
+          phys_address = READ_PHYS_NT(64)+0x10; \
+          state.r[0] = READ_PHYS_NT(64);        \
+          break;                                \
+        case 0x21: /* MTPR_SSP */               \
+          phys_address = state.r[32+21]+0x10;   \
+          phys_address = READ_PHYS_NT(64)+0x10; \
+          WRITE_PHYS_NT(state.r[16],64);        \
+          break;                                \
+        case 0x22: /* MFPR_USP */               \
+          phys_address = state.r[32+21]+0x10;   \
+          phys_address = READ_PHYS_NT(64)+0x18; \
+          state.r[0] = READ_PHYS_NT(64);        \
+          break;                                \
+        case 0x23: /* MTPR_USP */               \
+          phys_address = state.r[32+21]+0x10;   \
+          phys_address = READ_PHYS_NT(64)+0x18; \
+          WRITE_PHYS_NT(state.r[16],64);        \
+          break;                                \
+        case 0x24: /* MTPR_TBISD */             \
+          dtb->InvalidateSingle(state.r[16]);   \
+          break;                                \
+        case 0x25: /* MTPR_TBISI */             \
+          itb->InvalidateSingle(state.r[16]);   \
+          break;                                \
+        case 0x26: /* MFPR_ASTEN */             \
+          state.r[0] = state.aster;             \
+          break;                                \
+        case 0x27: /* MFPR_ASTSR */             \
+          state.r[0] = state.astrr;             \
+          break;                                \
+        case 0x29: /* MFPR_VPTB */              \
+          phys_address = state.r[32+21];        \
+          state.r[0] = READ_PHYS_NT(64);        \
+          break;                                \
+        case 0x2e: /* MTPR_DATFX */             \
+          phys_address = state.r[32+21] + 0x10; \
+          phys_address = READ_PHYS_NT(64);      \
+          WRITE_PHYS_NT((READ_PHYS_NT(64) | (X64(1)<<0x3f)) &~(state.r[16]<<0x3f),64);   \
+          break;                                \
+        case 0x3f: /* MFPR_WHAMI */             \
+          phys_address = state.r[32+21] + 0x98; \
+          state.r[0] = READ_PHYS_NT(64);        \
+          break;                                \
+        case 0x91: /* RD_PS */                  \
+          state.r[0] = state.r[32+22] & X64(ffff); \
+          break;                                \
+        case 0x9b: /* SWASTEN */                                            \
+          state.r[0] = (state.aster & (1<<((state.r[32+22]>>3)&3)))?1:0;    \
+          if (state.r[16]&1)                                                \
+            state.aster |= (1<<((state.r[32+22]>>3)&3));                    \
+          else                                                              \
+            state.aster &= ~(1<<((state.r[32+22]>>3)&3));                   \
+          break;                                                            \
+        case 0x9c: /* WR_PS_SW */                               \
+          state.r[32+22] &= ~X64(3);                            \
+          state.r[32+33] |= state.r[16] & X64(3);               \
+          break;                                                \
+        case 0x9d: /* RSCC */                                   \
+          phys_address = state.r[32+21] + 0xa0;                 \
+          state.r[0] = READ_PHYS_NT(64);                        \
+          if (state.cc>(state.r[0] & X64(00000000ffffffff)))    \
+            state.r[0] += X64(0000000100000000);                \
+          state.r[0] &= X64(ffffffff00000000);                  \
+          state.r[0] |= state.cc;                               \
+          WRITE_PHYS_NT(state.r[0],64);                         \
+          break;                                                \
+        case 0x9e: /* READ_UNQ */               \
+          phys_address = state.r[32+21]+0x10;   \
+          phys_address = READ_PHYS_NT(64)+0x48; \
+          state.r[0] = READ_PHYS_NT(64);        \
+          break;                                \
+        case 0x9f: /* WRITE_UNQ */              \
+          phys_address = state.r[32+21]+0x10;   \
+          phys_address = READ_PHYS_NT(64)+0x48; \
+          WRITE_PHYS_NT(state.r[16],64);        \
           break;                                \
         case 0x92:                              \
 	      state.lock_flag = false;		        \
