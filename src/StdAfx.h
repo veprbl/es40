@@ -30,6 +30,9 @@
  * or project specific include files that are used frequently, but
  * are changed infrequently.
  *
+ * X-1.15       Camiel Vanderhoeven                             14-NOV-2007
+ *      Added es40_debug.h
+ *
  * X-1.14       Camiel Vanderhoeven                             30-MAR-2007
  *      Added old changelog comments.
  *
@@ -148,5 +151,7 @@ inline char printable(char c)
 	  return c;
   return '.';
 }
+
+#include "es40_debug.h"
 
 #endif // !defined(INCLUDED_STDAFX_H)
