@@ -27,6 +27,9 @@
 # 
 # Makefile for GNU Linux. (And possibly many UNIX'es).
 #
+# X-1.9		Camiel Vanderhoeven				14-NOV-2007
+#	Added files for network support.
+#
 # X-1.8		Camiel Vanderhoeven				14-APR-2007
 #	Added forgotten es40_lss and es40_lsm to make clean.
 #
@@ -71,20 +74,23 @@ LD = g++
 
 DEPEND = makedepend $(CFLAGS)
 
-OBJS = AliM1543C.o \
+OBJS =  AliM1543C.o \
         AlphaCPU.o \
         AlphaSim.o \
         DPR.o \
         Flash.o \
         FloppyController.o \
         Port80.o \
-	Serial.o \
+	  Serial.o \
         StdAfx.o \
         SystemComponent.o \
         System.o \
         TraceEngine.o \
         TranslationBuffer.o \
-	lockstep.o
+	  lockstep.o \
+        Network.o \
+        DEC21143.o \
+        es40_debug.o
 
 IDB_OBJS = $(subst .o,.do,$(OBJS))
 LSM_OBJS = $(subst .o,.mao,$(OBJS))
