@@ -28,6 +28,9 @@
  * Contains code macros for miscellaneous processor instructions.
  * Based on ARM chapter 4.11.
  *
+ * X-1.6        Camiel Vanderhoeven                             14-NOV-2007
+ *      Bug-fix in CALL_PAL RSCC.
+ *
  * X-1.5        Camiel Vanderhoeven                             14-NOV-2007
  *      Implemented most simple PALcode routines in C++.
  *
@@ -213,15 +216,15 @@
           else                                                              \
             state.aster &= ~(1<<((state.r[32+22]>>3)&3));                   \
           break;                                                            \
-        case 0x9c: /* WR_PS_SW */                               \
+        case 0xf9c: /* WR_PS_SW */                               \
           state.r[32+22] &= ~X64(3);                            \
           state.r[32+33] |= state.r[16] & X64(3);               \
           break;                                                \
         case 0x9d: /* RSCC */                                   \
           phys_address = state.r[32+21] + 0xa0;                 \
           state.r[0] = READ_PHYS_NT(64);                        \
-          if (state.cc>(state.r[0] & X64(00000000ffffffff)))    \
-            state.r[0] += X64(0000000100000000);                \
+          if (state.cc<(state.r[0] & X64(00000000ffffffff)))    \
+            state.r[0] += X64(1)<<0x20;                         \
           state.r[0] &= X64(ffffffff00000000);                  \
           state.r[0] |= state.cc;                               \
           WRITE_PHYS_NT(state.r[0],64);                         \
