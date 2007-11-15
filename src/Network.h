@@ -32,6 +32,9 @@
  * \file 
  * Contains the definitions for the emulated Network.
  *
+ * X-1.2        Camiel Vanderhoeven                             15-NOV-2007
+ *      Added newline at end to avoid warnings.
+ *
  * X-1.1        Camiel Vanderhoeven                             14-NOV-2007
  *      Initial version for ES40 emulator.
  *

@@ -38,6 +38,19 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
+/**
+ * \file 
+ * Contains the definitions for the registers of the tulip NICs.
+ *
+ * X-1.2        Camiel Vanderhoeven                             15-NOV-2007
+ *      Added newline at end to avoid warnings.
+ *
+ * X-1.1        Camiel Vanderhoeven                             14-NOV-2007
+ *      Initial version for ES40 emulator.
+ *
+ * \author Camiel Vanderhoeven (camiel@camicom.com / http://www.camicom.com)
+ **/
+
 #ifndef __volatile
 #define __volatile
 #endif
@@ -1572,6 +1585,3 @@ struct tulip_desc {
 #define AX_FILTIDX_MAR1		0x00000003
 
 #endif /* _DEV_IC_TULIPREG_H_ */
-
-
- 

@@ -28,16 +28,20 @@
  *  SUCH DAMAGE.
  */
 
-
 /** 
  * \file
  * Contains macro's and prototypes for debugging.
+ *
+ * X-1.2        Camiel Vanderhoeven                             15-NOV-2007
+ *      Included stdarg.h for Linux.
  *
  * X-1.1        Camiel Vanderhoeven                             14-NOV-2007
  *      Initial creation.
  *
  * \author Camiel Vanderhoeven (camiel@camicom.com / http://www.camicom.com)
  **/
+
+#include <stdarg.h>
 
 #if !defined(INCLUDED_DEBUG_H)
 #define INCLUDED_DEBUG_H

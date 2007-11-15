@@ -25,7 +25,11 @@
 
 /** 
  * \file
- * Contains telnet declarations used by the serial port emulator and lock-step code.
+ * Contains TCP/IP declarations used by the serial port emulator, network
+ * emulation, and lock-step code.
+ *
+ * X-1.4        Camiel Vanderhoeven                             15-NOV-2007
+ *      Added some includes for Linux.
  *
  * X-1.3        Camiel Vanderhoeven                             14-NOV-2007
  *      Added inet_aton.
@@ -93,6 +97,9 @@
 #include <sys/select.h>
 #include <sys/time.h>
 #include <unistd.h>
+#include <errno.h>
+#include <fcntl.h>
+#include <signal.h>
 #define INVALID_SOCKET 1
 
 #endif // defined (_WIN32) || defined(__VMS)
