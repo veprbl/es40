@@ -98,7 +98,7 @@
 #define WINVER 0x0501
 #endif
 #include <afx.h>
-#include <winsock.h>
+//#include <winsock.h>
 #define strcasecmp(a,b) _stricmp(a,b)
 #define strncasecmp(a,b,c) _strnicmp (a,b,c)
 
