@@ -32,6 +32,9 @@
  * \file 
  * Contains the definitions for the emulated DEC 21143 NIC device.
  *
+ * X-1.2        Camiel Vanderhoeven                             15-NOV-2007
+ *      Use pcap for network access.
+ *
  * X-1.1        Camiel Vanderhoeven                             14-NOV-2007
  *      Initial version for ES40 emulator.
  *
@@ -44,8 +47,9 @@
 #include "SystemComponent.h"
 #include "DEC21143_mii.h"
 #include "DEC21143_tulipreg.h"
-#include "Network.h"
-
+//#include "Network.h"
+#define HAVE_REMOTE
+#include <pcap.h>
 /**
  * Emulated DEC 21143 NIC device.
  **/
@@ -64,6 +68,7 @@ class CDEC21143 : public CSystemComponent
   CDEC21143(class CSystem * c);
   virtual ~CDEC21143();
   virtual void ResetPCI();
+  void ResetNIC();
  private:
   u64 config_read(u64 address, int dsize);
   void config_write(u64 address, int dsize, u64 data);
@@ -75,7 +80,9 @@ class CDEC21143 : public CSystemComponent
   int dec21143_rx();
   int dec21143_tx();
 
-  CNetwork * net;
+  //CNetwork * net;
+  pcap_t *fp;
+
   // The state structure contains all elements that need to be saved to the statefile.
   struct SDEC21143State {
     
@@ -83,7 +90,7 @@ class CDEC21143 : public CSystemComponent
     u8 config_data[256];
     u8 config_mask[256];
 
-    int		irq_was_asserted;
+    bool		irq_was_asserted;
 
     /*  Ethernet address, and a network which we are connected to:  */
 	u8		mac[6];
