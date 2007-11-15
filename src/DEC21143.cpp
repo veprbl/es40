@@ -32,6 +32,9 @@
  * \file 
  * Contains the code for the emulated DEC 21143 NIC device.
  *
+ * X-1.3        Camiel Vanderhoeven                             15-NOV-2007
+ *      Use pcap for network access.
+ *
  * X-1.2        Camiel Vanderhoeven                             14-NOV-2007
  *      Removed some debug messages.
  *
@@ -54,12 +57,63 @@
 #define	MII_STATE_D				        5
 #define	MII_STATE_IDLE				    6
 
+u8 mac_broadcast[6] = {0xff,0xff,0xff,0xff,0xff,0xff};
+
 /**
  * Constructor.
  **/
 
 CDEC21143::CDEC21143(CSystem * c): CSystemComponent(c)
 {
+  pcap_if_t *alldevs, *d;
+  u_int inum, i=0;
+  char errbuf[PCAP_ERRBUF_SIZE];// connect to pcap...
+
+  printf("\nChoose a network adapter to connect to:\n");
+  if (pcap_findalldevs_ex(PCAP_SRC_IF_STRING, NULL, &alldevs, errbuf) == -1)
+  {
+    FAILURE("Error in pcap_findalldevs_ex:");
+    FAILURE(errbuf);
+  }
+
+  /* Print the list */
+  for(d=alldevs; d; d=d->next)
+  {
+    printf("%d. %s\n    ", ++i, d->name);
+
+    if (d->description)
+      printf(" (%s)\n", d->description);
+    else
+      printf(" (No description available)\n");
+  }
+        
+  if (i==0)
+    FAILURE("No interfaces found! Exiting.\n");
+   
+  if (i==1)
+    inum = 1;
+  else
+  {
+    inum = 0;
+    while (inum < 1 || inum > i)
+    {
+      printf("Enter the interface number (1-%d):",i);
+      scanf("%d", &inum);
+    }
+  }
+        
+  /* Jump to the selected adapter */
+  for (d=alldevs, i=0; i< inum-1 ;d=d->next, i++);
+        
+  /* Open the device */
+  if ( (fp= pcap_open(d->name,
+                      65536 /*snaplen: capture entire packets*/,
+                      PCAP_OPENFLAG_PROMISCUOUS /*flags*/,
+                      1 /*read timeout: 10ms.*/,
+                      NULL /* remote authentication */,
+                      errbuf)) == NULL)
+    FAILURE("\nError opening adapter\n");
+
   state.mac[0] = 0x12;
   state.mac[1] = 0x12;
   state.mac[2] = 0x12;
@@ -67,7 +121,7 @@ CDEC21143::CDEC21143(CSystem * c): CSystemComponent(c)
   state.mac[4] = 0x12;
   state.mac[5] = 0x12;
 
-  this->net = new CNetwork(NET_INIT_FLAG_GATEWAY,"10.0.0.0",8);
+ // this->net = new CNetwork(NET_INIT_FLAG_GATEWAY,"10.0.0.0",8);
 
   c->RegisterClock(this, true);
 
@@ -112,31 +166,27 @@ void CDEC21143::WriteMem(int index, u64 address, int dsize, u64 data)
 
 int CDEC21143::DoClock()
 {
-    int asserted;
+  bool asserted;
 
-	if (state.reg[CSR_OPMODE / 8] & OPMODE_ST)
-		while (dec21143_tx());
+  if (state.reg[CSR_OPMODE / 8] & OPMODE_ST)
+	while (dec21143_tx());
 
-	if (state.reg[CSR_OPMODE / 8] & OPMODE_SR)
-		while (dec21143_rx());
+  if (state.reg[CSR_OPMODE / 8] & OPMODE_SR)
+	while (dec21143_rx());
 
-	/*  Normal and Abnormal interrupt summary:  */
-	state.reg[CSR_STATUS / 8] &= ~(STATUS_NIS | STATUS_AIS);
-	if (state.reg[CSR_STATUS / 8] & 0x00004845)
-		state.reg[CSR_STATUS / 8] |= STATUS_NIS;
-	if (state.reg[CSR_STATUS / 8] & 0x0c0037ba)
-		state.reg[CSR_STATUS / 8] |= STATUS_AIS;
+  /*  Normal and Abnormal interrupt summary:  */
+  state.reg[CSR_STATUS / 8] &= ~(STATUS_NIS | STATUS_AIS);
+  if (state.reg[CSR_STATUS / 8] & 0x00004845)
+	state.reg[CSR_STATUS / 8] |= STATUS_NIS;
+  if (state.reg[CSR_STATUS / 8] & 0x0c0037ba)
+	state.reg[CSR_STATUS / 8] |= STATUS_AIS;
 
-	asserted = state.reg[CSR_STATUS / 8] & state.reg[CSR_INTEN / 8] & 0x0c01ffff;
+  asserted = (state.reg[CSR_STATUS / 8] & state.reg[CSR_INTEN / 8] & 0x0c01ffff);
 
-	if (asserted)
-        cSystem->interrupt(state.config_data[0x3c], true);
-	if (!asserted && state.irq_was_asserted)
-		cSystem->interrupt(state.config_data[0x3c], false);
-
-	/*  Remember assertion flag:  */
+  if ((asserted != state.irq_was_asserted) && state.config_data[0x3c]!=0xff) {
+    cSystem->interrupt(state.config_data[0x3c], asserted);
 	state.irq_was_asserted = asserted;
-
+  }
 
   return 0;
 }
@@ -224,7 +274,7 @@ void CDEC21143::nic_write(u64 address, int dsize, u64 data)
 
 	case CSR_BUSMODE:	/*  csr0  */
 		if (data & BUSMODE_SWR) {
-			ResetPCI();
+			ResetNIC();
 		    data &= ~BUSMODE_SWR;
 		}
 		break;
@@ -261,6 +311,7 @@ void CDEC21143::nic_write(u64 address, int dsize, u64 data)
 		break;
 
 	case CSR_OPMODE:	/*  csr6:  */
+		fatal("[ dec21143:               OPMODE     : 0x%08x ]\n", (int)data);
 		if (data & 0x02000000) {
 			/*  A must-be-one bit.  */
 			data &= ~0x02000000;
@@ -578,21 +629,31 @@ int CDEC21143::dec21143_rx()
 	uint64_t addr = state.cur_rx_addr, bufaddr;
 	unsigned char descr[16];
 	uint32_t rdes0, rdes1, rdes2, rdes3;
-	int bufsize, buf1_size, buf2_size, i, writeback_len = 4, to_xfer;
+	int bufsize, buf1_size, buf2_size, writeback_len = 4, to_xfer;
+    struct pcap_pkthdr * packet_header;
+    const u_char * packet_data = NULL;
 
 	/*  No current packet? Then check for new ones.  */
 	if (state.cur_rx_buf == NULL) {
 		/*  Nothing available? Then abort.  */
-		if (!net->net_ethernet_rx_avail())
-			return 0;
+		//if (!net->net_ethernet_rx_avail())
+        while (packet_data == NULL || (memcmp(state.mac, packet_data, 6) && memcmp(mac_broadcast, packet_data, 6)))
+        {
+          if (!pcap_next_ex( fp, &packet_header, &packet_data))
+		  	return 0;
+        }
+
+        printf("pcap recv: %d bytes (%d captured)   \n",packet_header->len, packet_header->caplen);
 
 		/*  Get the next packet into our buffer:  */
-		net->net_ethernet_rx(&state.cur_rx_buf, &state.cur_rx_buf_len);
+		//net->net_ethernet_rx(&state.cur_rx_buf, &state.cur_rx_buf_len);
+        state.cur_rx_buf_len = packet_header->caplen;
 
 		/*  Append a 4 byte CRC:  */
 		state.cur_rx_buf_len += 4;
-		CHECK_ALLOCATION(state.cur_rx_buf = (u8 *) realloc(state.cur_rx_buf,
-		    state.cur_rx_buf_len));
+		CHECK_ALLOCATION(state.cur_rx_buf = (u8 *) realloc(state.cur_rx_buf, state.cur_rx_buf_len));
+
+        memcpy(state.cur_rx_buf, packet_data, state.cur_rx_buf_len);
 
 		/*  Well... the CRC is just zeros, for now.  */
 		memset(state.cur_rx_buf + state.cur_rx_buf_len - 4, 0, 4);
@@ -600,17 +661,14 @@ int CDEC21143::dec21143_rx()
 		state.cur_rx_offset = 0;
 	}
 
-	/*  fatal("{ dec21143_rx: base = 0x%08x }\n", (int)addr);  */
 	addr &= 0x7fffffff;
 
-    memcpy(descr,cSystem->PtrToMem(addr),sizeof(u32));
-//	if (!cpu->memory_rw(cpu, cpu->mem, addr, descr, sizeof(uint32_t),
-//	    MEM_READ, PHYSICAL | NO_EXCEPTIONS)) {
-//		fatal("[ dec21143_rx: memory_rw failed! ]\n");
-//		return 0;
-//	}
+    memcpy(descr,cSystem->PtrToMem(addr),sizeof(u32)*4);
 
 	rdes0 = descr[0] + (descr[1]<<8) + (descr[2]<<16) + (descr[3]<<24);
+	rdes1 = descr[4] + (descr[5]<<8) + (descr[6]<<16) + (descr[7]<<24);
+	rdes2 = descr[8] + (descr[9]<<8) + (descr[10]<<16) + (descr[11]<<24);
+	rdes3 = descr[12] + (descr[13]<<8) + (descr[14]<<16) + (descr[15]<<24);
 
 	/*  Only use descriptors owned by the 21143:  */
 	if (!(rdes0 & TDSTAT_OWN)) {
@@ -618,19 +676,7 @@ int CDEC21143::dec21143_rx()
 		return 0;
 	}
 
-    memcpy(descr+sizeof(u32),cSystem->PtrToMem(addr+sizeof(u32)),sizeof(u32)*3);
-//    if (!cpu->memory_rw(cpu, cpu->mem, addr + sizeof(uint32_t), descr +
-//	    sizeof(uint32_t), sizeof(uint32_t) * 3, MEM_READ, PHYSICAL |
-//	    NO_EXCEPTIONS)) {
-//		fatal("[ dec21143_rx: memory_rw failed! ]\n");
-//		return 0;
-//	}
-
-	rdes1 = descr[4] + (descr[5]<<8) + (descr[6]<<16) + (descr[7]<<24);
-	rdes2 = descr[8] + (descr[9]<<8) + (descr[10]<<16) + (descr[11]<<24);
-	rdes3 = descr[12] + (descr[13]<<8) + (descr[14]<<16) + (descr[15]<<24);
-
-	buf1_size = rdes1 & TDCTL_SIZE1;
+    buf1_size = rdes1 & TDCTL_SIZE1;
 	buf2_size = (rdes1 & TDCTL_SIZE2) >> TDCTL_SIZE2_SHIFT;
 	bufaddr = buf1_size? rdes2 : rdes3;
 	bufsize = buf1_size? buf1_size : buf2_size;
@@ -643,9 +689,10 @@ int CDEC21143::dec21143_rx()
 		if (rdes1 & TDCTL_CH)
 			state.cur_rx_addr = rdes3;
 		else
-			state.cur_rx_addr += 4 * sizeof(uint32_t);
+			state.cur_rx_addr += 16;
 	}
 
+	fatal("{ dec21143_rx: base = 0x%08x }\n", (int)addr);
 	debug("{ RX (%llx): 0x%08x 0x%08x 0x%x 0x%x: buf %i bytes at 0x%x }\n",
 	    (long long)addr, rdes0, rdes1, rdes2, rdes3, bufsize, (int)bufaddr);
 	bufaddr &= 0x7fffffff;
@@ -655,16 +702,13 @@ int CDEC21143::dec21143_rx()
 
 	to_xfer = state.cur_rx_buf_len - state.cur_rx_offset;
 	if (to_xfer > bufsize)
+    {
+        debug("I'd like to xfer %d bytes, but my buffer is only %d bytes.\n",to_xfer,bufsize);
 		to_xfer = bufsize;
+    }
 
 	/*  DMA bytes from the packet into emulated physical memory:  */
-	for (i=0; i<to_xfer; i++) {
-        memcpy(cSystem->PtrToMem(bufaddr+i), state.cur_rx_buf + state.cur_rx_offset + i, 1);
-//		cpu->memory_rw(cpu, cpu->mem, bufaddr + i,
-//		    state.cur_rx_buf + state.cur_rx_offset + i, 1, MEM_WRITE,
-//		    PHYSICAL | NO_EXCEPTIONS);
-		/*  fatal(" %02x", state.cur_rx_buf[state.cur_rx_offset + i]);  */
-	}
+    memcpy(cSystem->PtrToMem(bufaddr), state.cur_rx_buf + state.cur_rx_offset, to_xfer);
 
 	/*  Was this the first buffer in a frame? Then mark it as such.  */
 	if (state.cur_rx_offset == 0)
@@ -674,6 +718,7 @@ int CDEC21143::dec21143_rx()
 
 	/*  Frame completed?  */
 	if (state.cur_rx_offset >= state.cur_rx_buf_len) {
+        debug("frame complete.\n");
 		rdes0 |= TDSTAT_Rx_LS;
 
 		/*  Set the frame length:  */
@@ -729,14 +774,12 @@ int CDEC21143::dec21143_tx()
 
 	addr &= 0x7fffffff;
 
-    memcpy(descr, cSystem->PtrToMem(addr), sizeof(u32));
-//	if (!cpu->memory_rw(cpu, cpu->mem, addr, descr, sizeof(uint32_t),
-//	    MEM_READ, PHYSICAL | NO_EXCEPTIONS)) {
-//		fatal("[ dec21143_tx: memory_rw failed! ]\n");
-//		return 0;
-//	}
+    memcpy(descr, cSystem->PtrToMem(addr), 16);
 
 	tdes0 = descr[0] + (descr[1]<<8) + (descr[2]<<16) + (descr[3]<<24);
+	tdes1 = descr[4] + (descr[5]<<8) + (descr[6]<<16) + (descr[7]<<24);
+	tdes2 = descr[8] + (descr[9]<<8) + (descr[10]<<16) + (descr[11]<<24);
+	tdes3 = descr[12] + (descr[13]<<8) + (descr[14]<<16) + (descr[15]<<24);
 
 	/*  fatal("{ dec21143_tx: base=0x%08x, tdes0=0x%08x }\n",
 	    (int)addr, (int)tdes0);  */
@@ -750,18 +793,6 @@ int CDEC21143::dec21143_tx()
 			state.tx_idling ++;
 		return 0;
 	}
-
-    memcpy(descr + sizeof(u32), cSystem->PtrToMem(addr + sizeof(u32)), sizeof(u32)*3);
-//	if (!cpu->memory_rw(cpu, cpu->mem, addr + sizeof(uint32_t), descr +
-//	    sizeof(uint32_t), sizeof(uint32_t) * 3, MEM_READ, PHYSICAL |
-//	    NO_EXCEPTIONS)) {
-//		fatal("[ dec21143_tx: memory_rw failed! ]\n");
-//		return 0;
-//	}
-
-	tdes1 = descr[4] + (descr[5]<<8) + (descr[6]<<16) + (descr[7]<<24);
-	tdes2 = descr[8] + (descr[9]<<8) + (descr[10]<<16) + (descr[11]<<24);
-	tdes3 = descr[12] + (descr[13]<<8) + (descr[14]<<16) + (descr[15]<<24);
 
 	buf1_size = tdes1 & TDCTL_SIZE1;
 	buf2_size = (tdes1 & TDCTL_SIZE2) >> TDCTL_SIZE2_SHIFT;
@@ -786,8 +817,7 @@ int CDEC21143::dec21143_tx()
 	bufaddr &= 0x7fffffff;
 
 	/*  Assume no error:  */
-	tdes0 &= ~ (TDSTAT_Tx_UF | TDSTAT_Tx_EC | TDSTAT_Tx_LC
-	    | TDSTAT_Tx_NC | TDSTAT_Tx_LO | TDSTAT_Tx_TO | TDSTAT_ES);
+	tdes0 &= ~ (TDSTAT_Tx_UF | TDSTAT_Tx_EC | TDSTAT_Tx_LC | TDSTAT_Tx_NC | TDSTAT_Tx_LO | TDSTAT_Tx_TO | TDSTAT_ES);
 
 	if (tdes1 & TDCTL_Tx_SET) {
 		/*
@@ -797,8 +827,7 @@ int CDEC21143::dec21143_tx()
 		 */
 		/*  fatal("{ TX: setup packet }\n");  */
 		if (bufsize != 192)
-			fatal("[ dec21143: setup packet len = %i, should be"
-			    " 192! ]\n", (int)bufsize);
+			fatal("[ dec21143: setup packet len = %i, should be 192! ]\n", (int)bufsize);
 		if (tdes1 & TDCTL_Tx_IC)
 			state.reg[CSR_STATUS/8] |= STATUS_TI;
 		/*  New descriptor values, according to the docs:  */
@@ -816,33 +845,28 @@ int CDEC21143::dec21143_tx()
 			CHECK_ALLOCATION(state.cur_tx_buf = (u8 *)malloc(bufsize));
 			state.cur_tx_buf_len = 0;
 		} else {
-			/*  Not first segment. Increase the length of
-			    the current buffer:  */
+			/*  Not first segment. Increase the length of the current buffer:  */
 			/*  fatal("continuing last frame }\n");  */
 
 			if (state.cur_tx_buf == NULL)
 				fatal("[ dec21143: WARNING! tx: middle segment, but no first segment?! ]\n");
 
-			CHECK_ALLOCATION(state.cur_tx_buf = (u8 *) realloc(state.cur_tx_buf,
-			    state.cur_tx_buf_len + bufsize));
+			CHECK_ALLOCATION(state.cur_tx_buf = (u8 *) realloc(state.cur_tx_buf, state.cur_tx_buf_len + bufsize));
 		}
 
 		/*  "DMA" data from emulated physical memory into the buf:  */
-		for (i=0; i<bufsize; i++) {
-            memcpy(state.cur_tx_buf + state.cur_tx_buf_len + i, cSystem->PtrToMem(bufaddr + i), 1);
-//			cpu->memory_rw(cpu, cpu->mem, bufaddr + i,
-//			    state.cur_tx_buf + state.cur_tx_buf_len + i, 1, MEM_READ,
-//			    PHYSICAL | NO_EXCEPTIONS);
-			/*  fatal(" %02x", state.cur_tx_buf[
-			    state.cur_tx_buf_len + i]);  */
-		}
+        memcpy(state.cur_tx_buf + state.cur_tx_buf_len, cSystem->PtrToMem(bufaddr), bufsize);
 
 		state.cur_tx_buf_len += bufsize;
 
 		/*  Last segment? Then actually transmit it:  */
 		if (tdes1 & TDCTL_Tx_LS) {
 			/*  fatal("{ TX: data frame complete. }\n");  */
-			net->net_ethernet_tx(state.cur_tx_buf, state.cur_tx_buf_len);
+			//net->net_ethernet_tx(state.cur_tx_buf, state.cur_tx_buf_len);
+            if (pcap_sendpacket(fp, state.cur_tx_buf, state.cur_tx_buf_len))
+              fatal("Error sending the packet: %s\n",pcap_geterr);
+
+            printf("pcap send: %d bytes   \n",state.cur_tx_buf_len);
 
 			free(state.cur_tx_buf);
 			state.cur_tx_buf = NULL;
@@ -874,11 +898,6 @@ int CDEC21143::dec21143_tx()
 
 
     memcpy(cSystem->PtrToMem(addr),descr,sizeof(u32)*4);
-//	if (!cpu->memory_rw(cpu, cpu->mem, addr, descr, sizeof(uint32_t)
-//	    * 4, MEM_WRITE, PHYSICAL | NO_EXCEPTIONS)) {
-//		fatal("[ dec21143_tx: memory_rw failed! ]\n");
-//		return 0;
-//	}
 
 	return 1;
 }
@@ -950,12 +969,12 @@ void CDEC21143::config_write(u64 address, int dsize, u64 data)
       case 0x10:
   	  cSystem->RegisterMemory(this,2, X64(00000801fc000000) + (endian_32(data)&0x00fffffe), 256);
       printf("cbio @ %016" LL "x\n",X64(00000801fc000000) + (endian_32(data)&0x00fffffe));
-	  return;
+	  break;
       // CBMA
       case 0x14:
 	  cSystem->RegisterMemory(this,3, X64(0000080000000000) + (endian_32(data)&0xfffffffe), 256);
       printf("cbma @ %016" LL "x\n",X64(0000080000000000) + (endian_32(data)&0xfffffffe));
-	  return;
+	  break;
       }
 }
 
@@ -995,6 +1014,11 @@ void CDEC21143::ResetPCI()
   state.config_data[0x3e] = 0x14;
   state.config_data[0x3f] = 0x28;
 
+  ResetNIC();
+}
+
+void CDEC21143::ResetNIC()
+{
   int leaf;
 
 	if (state.cur_rx_buf != NULL)
@@ -1052,8 +1076,6 @@ void CDEC21143::ResetPCI()
 
 	/*  PHY #0:  */
 	state.mii_phy_reg[MII_BMSR] = BMSR_100TXFDX | BMSR_10TFDX | BMSR_ACOMP | BMSR_ANEG | BMSR_LINK;
-
-
 }
 
 /**
