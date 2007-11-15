@@ -27,6 +27,9 @@
  * \file 
  * Contains the definitions for the emulated on-cpu translation buffers.
  *
+ * X-1.4        Eduardo Marcelo Serrat                          15-NOV-2007
+ *      Made processor faster again by reducing TB size to 16 entries.
+ *
  * X-1.15       Camiel Vanderhoeven                             02-NOV-2007
  *      Remember the last found TB entry result for speed.
  *
@@ -87,7 +90,7 @@
 #include "datatypes.h"
 #include "System.h"
 
-#define TB_ENTRIES	128
+#define TB_ENTRIES	16
 
 #define CM_KERNEL	0
 #define CM_EXECUTIVE	1
