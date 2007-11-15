@@ -27,7 +27,10 @@
  * \file
  * Contains the datatype definitions for use with Microsoft Visual C++ and Linux.
  *
- * X-1.10       Camiel Vanderhoeven                             34-NOV-2007
+ * X-1.11       Camiel Vanderhoeven                             15-NOV-2007
+ *      Use typedefs in stead of #define's
+ *
+ * X-1.10       Camiel Vanderhoeven                             14-NOV-2007
  *      Added BSD-style definitions.
  *
  * X-1.9        Camiel Vanderhoeven                             30-MAR-2007
@@ -65,15 +68,15 @@
 
 #if defined(_WIN32)
 
-#define u8 unsigned char
-#define u16 unsigned short
-#define u32 unsigned long
-#define u64 unsigned __int64
+typedef unsigned char     u8;
+typedef unsigned short    u16;
+typedef unsigned long     u32;
+typedef unsigned __int64  u64;
 
-#define s8 signed char
-#define s16 signed short
-#define s32 signed long
-#define s64 signed __int64
+typedef signed char       s8;
+typedef signed short      s16;
+typedef signed long       s32;
+typedef signed __int64    s64;
 
 #define X64(a) 0x##a##ui64
 #define LL "I64"
@@ -96,35 +99,35 @@ typedef int16_t s16;
 typedef int32_t s32;
 typedef int64_t s64;
 
-#undef uint8_t
-#undef uint16_t
-#undef uint32_t
-#undef uint64_t
-
-#undef int8_t
-#undef int16_t
-#undef int32_t
-#undef int64_t
-
 #define X64(a) 0x##a##ll
 #define LL "ll"
 
 #endif // defined(_WIN32)
 
-#define u_int8_t u8
-#define u_int16_t u16
-#define u_int32_t u32
-#define u_int64_t u64
+typedef u8 u_int8_t;
+typedef u16 u_int16_t;
+typedef u32 u_int32_t;
+typedef u64 u_int64_t;
 
-#define uint8_t u8
-#define uint16_t u16
-#define uint32_t u32
-#define uint64_t u64
+typedef u8 uint8_t;
+typedef u16 uint16_t;
+typedef u32 uint32_t;
+typedef u64 uint64_t;
 
-#define int8_t s8
-#define int16_t s16
-#define int32_t s32
-#define int64_t s64
+typedef s8 int8_t;
+typedef s16 int16_t;
+typedef s32 int32_t;
+typedef s64 int64_t;
+
+#define HAVE_U_INT8_T 1
+#define HAVE_INT8_T 1
+#define HAVE_U_INT16_T 1
+#define HAVE_INT16_T 1
+#define HAVE_U_INT32_T 1
+#define HAVE_INT32_T 1
+#define HAVE_U_INT64_T 1
+#define HAVE_INT64_T 1
+
 
 #define X32(a) 0x##a
 #define X16(a) 0x##a
