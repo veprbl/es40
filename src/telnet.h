@@ -28,6 +28,9 @@
  * Contains TCP/IP declarations used by the serial port emulator, network
  * emulation, and lock-step code.
  *
+ * X-1.5        Camiel Vanderhoeven                             15-NOV-2007
+ *      Replace winsock.h by winsock2.h.
+ *
  * X-1.4        Camiel Vanderhoeven                             15-NOV-2007
  *      Added some includes for Linux.
  *
@@ -47,9 +50,9 @@
 #define INCLUDED_TELNET_H
 
 #if defined(_WIN32)
-#include <winsock.h>
-#define ssize_t size_t
-#define socklen_t int
+#include <winsock2.h>
+typedef size_t ssize_t;
+typedef int socklen_t;
 #endif
 
 #if defined(__VMS)
@@ -57,7 +60,7 @@
 #include <in.h>
 #include <inet.h>
 #define INVALID_SOCKET -1
-#define socklen_t unsigned int
+typedef unsigned int socklen_t;
 #endif
 
 #if defined(_WIN32) || defined(__VMS)
