@@ -32,6 +32,9 @@
  * \file 
  * Contains the definitions for the emulated DEC 21143 NIC device.
  *
+ * X-1.3        Camiel Vanderhoeven                             16-NOV-2007
+ *      BPF filter used for perfect filtering.
+ *
  * X-1.2        Camiel Vanderhoeven                             15-NOV-2007
  *      Use pcap for network access.
  *
@@ -69,6 +72,7 @@ class CDEC21143 : public CSystemComponent
   virtual ~CDEC21143();
   virtual void ResetPCI();
   void ResetNIC();
+  void SetupFilter();
  private:
   u64 config_read(u64 address, int dsize);
   void config_write(u64 address, int dsize, u64 data);
@@ -82,7 +86,7 @@ class CDEC21143 : public CSystemComponent
 
   //CNetwork * net;
   pcap_t *fp;
-
+  struct bpf_program fcode;
   // The state structure contains all elements that need to be saved to the statefile.
   struct SDEC21143State {
     
@@ -94,6 +98,7 @@ class CDEC21143 : public CSystemComponent
 
     /*  Ethernet address, and a network which we are connected to:  */
 	u8		mac[6];
+    u8      setup_filter[192];
 
 	/*  SROM emulation:  */
 	u8		srom[1 << (7)];
@@ -119,6 +124,7 @@ class CDEC21143 : public CSystemComponent
 	int		cur_tx_buf_len;
 	int		tx_idling;
 	int		tx_idling_threshold;
+    bool tx_suspend;
 
 	/*  Internal RX state:  */
 	u64	    cur_rx_addr;
