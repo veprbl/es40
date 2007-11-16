@@ -32,6 +32,9 @@
  * \file 
  * Contains the code for the emulated DEC 21143 NIC device.
  *
+ * X-1.6        Camiel Vanderhoeven                             16-NOV-2007
+ *      Change the packet filter less often (only when required).
+ *
  * X-1.5        Camiel Vanderhoeven                             16-NOV-2007
  *      Removed some debug messages, and corrected readout of CSR 12.
  *
@@ -121,7 +124,7 @@ CDEC21143::CDEC21143(CSystem * c): CSystemComponent(c)
                       errbuf)) == NULL)
     FAILURE("Error opening adapter\n");
 
-  state.mac[0] = 0x12;
+  state.mac[0] = 0x10;
   state.mac[1] = 0x12;
   state.mac[2] = 0x12;
   state.mac[3] = 0x12;
@@ -230,7 +233,9 @@ u64 CDEC21143::nic_read(u64 address, int dsize)
 	case CSR_OPMODE:	/*  csr6:  */
 	case CSR_MISSED:	/*  csr8  */
 	case CSR_MIIROM:	/*  csr9  */
-		break;
+	  break;
+    case CSR_GPT:
+      break;
 
 	case CSR_SIASTAT:	/*  csr12  */
 		/*  Auto-negotiation status = Good.  */
@@ -353,7 +358,6 @@ void CDEC21143::nic_write(u64 address, int dsize, u64 data)
 		if (data != 0) {
 			fatal("[ dec21143: UNIMPLEMENTED OPMODE bits: 0x%08x ]\n", (int)data);
 		}
-        SetupFilter();
 		DoClock();
 		break;
 
@@ -377,6 +381,10 @@ void CDEC21143::nic_write(u64 address, int dsize, u64 data)
           state.reg[CSR_SIATXRX / 8] &= ~(SIATXRX_TH | SIATXRX_THX | SIATXRX_T4);
           state.reg[CSR_SIATXRX / 8] |= SIATXRX_TXF;
           DoClock();
+        }
+        else
+        {
+          state.reg[CSR_SIASTAT / 8] = oldreg;
         }
         break;
 	case CSR_SIATXRX:	/*  csr14  */
@@ -872,8 +880,11 @@ int CDEC21143::dec21143_tx()
   //      else
   //        for (i=0;i<192;i+=12)
   //            printf("%02" LL "x:%02" LL "x:%02" LL "x:%02" LL "x:%02" LL "x:%02" LL "x \n",cSystem->ReadMem(bufaddr+i,8),cSystem->ReadMem(bufaddr+i+1,8),cSystem->ReadMem(bufaddr+i+4,8),cSystem->ReadMem(bufaddr+i+5,8),cSystem->ReadMem(bufaddr+i+8,8),cSystem->ReadMem(bufaddr+i+9,8));
-        memcpy(state.setup_filter, cSystem->PtrToMem(bufaddr),192);
-        SetupFilter();
+        if (memcmp(state.setup_filter, cSystem->PtrToMem(bufaddr),192))
+        {
+          memcpy(state.setup_filter, cSystem->PtrToMem(bufaddr),192);
+          SetupFilter();
+        }
 		if (tdes1 & TDCTL_Tx_IC)
 			state.reg[CSR_STATUS/8] |= STATUS_TI;
 		/*  New descriptor values, according to the docs:  */
@@ -1023,8 +1034,8 @@ void CDEC21143::config_write(u64 address, int dsize, u64 data)
 }
 void CDEC21143::SetupFilter()
 {
-  u8 mac[16][6];
-  char mac_txt[16][20];
+  u8 mac[17][6];
+  char mac_txt[17][20];
   char filter[1000];
   int i,j;
   int numUnique;
@@ -1060,7 +1071,15 @@ void CDEC21143::SetupFilter()
       printf("perfect ");
     printf("filtering.\n");
   }
-  numUnique = 0;
+  numUnique = 1;
+  mac[16][0] = state.mac[0];
+  mac[16][1] = state.mac[1];
+  mac[16][2] = state.mac[2];
+  mac[16][3] = state.mac[3];
+  mac[16][4] = state.mac[4];
+  mac[16][5] = state.mac[5];
+  sprintf(mac_txt[16],"%02x:%02x:%02x:%02x:%02x:%02x",mac[16][0],mac[16][1],mac[16][2],mac[16][3],mac[16][4],mac[16][5]);
+  unique[0] = 16;
   for (i=0;i<16;i++)
   {
     u = true;
@@ -1201,7 +1220,7 @@ void CDEC21143::ResetNIC()
 
     state.tx_suspend = false;
 
-    SetupFilter();
+//    SetupFilter();
 }
 
 /**
