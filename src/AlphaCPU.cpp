@@ -30,6 +30,9 @@
  * \bug Rounding and trap modes are not used for floating point ops.
  * \bug /V is ignored for integer ops.
  *
+ * X-1.43       Camiel Vanderhoeven                             16-NOV-2007
+ *      Avoid compiler warning about default without any cases.
+ *
  * X-1.42       Camiel Vanderhoeven                             08-NOV-2007
  *      Instruction set complete now.
  *
@@ -586,6 +589,8 @@ int CAlphaCPU::DoClock()
       function = ins&0x1fffffff;
       switch (function)
       {
+      case 0x01234ff: UNKNOWN2;
+
 #if !defined(SRM_NO_SRL)
       case 0x0123400: OP(SRM_WRITE_SERIAL, NOP);
 #endif
