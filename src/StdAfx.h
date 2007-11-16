@@ -30,6 +30,9 @@
  * or project specific include files that are used frequently, but
  * are changed infrequently.
  *
+ * X-1.16       Camiel Vanderhoeven                             16-NOV-2007
+ *      Removed winsock.
+ *
  * X-1.15       Camiel Vanderhoeven                             14-NOV-2007
  *      Added es40_debug.h
  *
@@ -98,7 +101,6 @@
 #define WINVER 0x0501
 #endif
 #include <afx.h>
-//#include <winsock.h>
 #define strcasecmp(a,b) _stricmp(a,b)
 #define strncasecmp(a,b,c) _strnicmp (a,b,c)
 
