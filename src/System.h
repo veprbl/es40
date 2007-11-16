@@ -27,6 +27,9 @@
  * \file 
  * Contains the definitions for the emulated Typhoon Chipset devices.
  *
+ * X-1.15       Camiel Vanderhoeven                             16-NOV-2007
+ *      Replaced PCI_ReadMem and PCI_WriteMem with PCI_Phys.
+ *
  * X-1.14       Camiel Vanderhoeven                             18-APR-2007
  *      Faster lockstep mechanism (send info 50 cpu cycles at a time)
  *
@@ -125,8 +128,7 @@ class CSystem
   unsigned int get_memory_bits();
   void RestoreState(char * fn);
   void SaveState(char * fn);
-  u64 PCI_ReadMem(int pcibus, u32 address, int dsize);
-  void PCI_WriteMem(int pcibus, u32 address, int dsize, u64 data);
+  u64 PCI_Phys(int pcibus, u64 address);
   void interrupt(int number, bool assert);
   int LoadROM();
   u64 ReadMem(u64 address, int dsize);
