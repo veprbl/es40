@@ -32,6 +32,9 @@
  * \file 
  * Contains the code for the emulated DEC 21143 NIC device.
  *
+ * X-1.5        Camiel Vanderhoeven                             16-NOV-2007
+ *      Removed some debug messages, and corrected readout of CSR 12.
+ *
  * X-1.4        Camiel Vanderhoeven                             16-NOV-2007
  *      BPF filter used for perfect filtering; more correct behaviour of 
  *      registers.
@@ -73,10 +76,10 @@ CDEC21143::CDEC21143(CSystem * c): CSystemComponent(c)
   u_int inum, i=0;
   char errbuf[PCAP_ERRBUF_SIZE];// connect to pcap...
 
-  printf("\nChoose a network adapter to connect to:\n");
+  printf("\n%%NIC-Q-CHNIC: Choose a network adapter to connect to:\n");
   if (pcap_findalldevs_ex(PCAP_SRC_IF_STRING, NULL, &alldevs, errbuf) == -1)
   {
-    FAILURE("Error in pcap_findalldevs_ex:");
+    FAILURE("%%NIC-F-PCAPFAD: Error in pcap_findalldevs_ex:");
     FAILURE(errbuf);
   }
 
@@ -92,7 +95,7 @@ CDEC21143::CDEC21143(CSystem * c): CSystemComponent(c)
   }
         
   if (i==0)
-    FAILURE("No interfaces found! Exiting.\n");
+    FAILURE("%%NIC-F-NONIC: No interfaces found! Exiting.\n");
    
   if (i==1)
     inum = 1;
@@ -101,7 +104,7 @@ CDEC21143::CDEC21143(CSystem * c): CSystemComponent(c)
     inum = 0;
     while (inum < 1 || inum > i)
     {
-      printf("Enter the interface number (1-%d):",i);
+      printf("%%NIC-Q-NICNO: Enter the interface number (1-%d):",i);
       scanf("%d", &inum);
     }
   }
@@ -116,7 +119,7 @@ CDEC21143::CDEC21143(CSystem * c): CSystemComponent(c)
                       1 /*read timeout: 10ms.*/,
                       NULL /* remote authentication */,
                       errbuf)) == NULL)
-    FAILURE("\nError opening adapter\n");
+    FAILURE("Error opening adapter\n");
 
   state.mac[0] = 0x12;
   state.mac[1] = 0x12;
@@ -231,12 +234,12 @@ u64 CDEC21143::nic_read(u64 address, int dsize)
 
 	case CSR_SIASTAT:	/*  csr12  */
 		/*  Auto-negotiation status = Good.  */
-		data = SIASTAT_ANS_FLPGOOD;
+//		data = SIASTAT_ANS_FLPGOOD;
 		break;
 
 	case CSR_SIATXRX:	/*  csr14  */
 		/*  Auto-negotiation Enabled  */
-		data = SIATXRX_ANE;
+//		data = SIATXRX_ANE;
 		break;
 
 	case CSR_SIACONN:	/*  csr13  */
@@ -247,8 +250,8 @@ u64 CDEC21143::nic_read(u64 address, int dsize)
         fatal("[ dec21143: read from unimplemented 0x%02x ]\n", (int)address);
 	}
 
-  if (regnr != CSR_MIIROM / 8)
-    printf("[ dec21143: READ  %08" LL "x from CSR %d  \n" ,data, regnr);
+//  if (regnr != CSR_MIIROM / 8)
+//    printf("[ dec21143: READ  %08" LL "x from CSR %d  \n" ,data, regnr);
 
   //if (regnr == CSR_STATUS / 8) getchar();
 
@@ -279,8 +282,8 @@ void CDEC21143::nic_write(u64 address, int dsize, u64 data)
 	} else
 		fatal("[ dec21143: WARNING! unaligned access (0x%x) ]\n", (int)address);
 
-    if (regnr != CSR_MIIROM / 8)
-      printf("[ dec21143: WRITE %08" LL "x to CSR %d  \n" ,data, regnr);
+//    if (regnr != CSR_MIIROM / 8)
+//      printf("[ dec21143: WRITE %08" LL "x to CSR %d  \n" ,data, regnr);
 
 	switch (address) {
 
@@ -509,9 +512,7 @@ void CDEC21143::mii_access(uint32_t oldreg, uint32_t idata)
 			ibit = 0;
 			state.mii_state = MII_STATE_D;
 			break;
-		default:debug("[ mii_access(): UNIMPLEMENTED MII opcode "
-			    "%i (probably just a bug in GXemul's "
-			    "MII data stream handling) ]\n", state.mii_opcode);
+		default:debug("[ mii_access(): UNIMPLEMENTED MII opcode %i (probably just a bug in GXemul's MII data stream handling) ]\n", state.mii_opcode);
 			state.mii_state = MII_STATE_RESET;
 		}
 		state.mii_bit ++;
@@ -527,9 +528,7 @@ void CDEC21143::mii_access(uint32_t oldreg, uint32_t idata)
 			    state.mii_regaddr] | obit;
 			if (state.mii_bit >= 29) {
 				state.mii_state = MII_STATE_IDLE;
-				debug("[ mii_access(): WRITE to phyaddr=0x%x "
-				    "regaddr=0x%x: 0x%04x ]\n", state.mii_phyaddr,
-				    state.mii_regaddr, tmp);
+//				debug("[ mii_access(): WRITE to phyaddr=0x%x regaddr=0x%x: 0x%04x ]\n", state.mii_phyaddr, state.mii_regaddr, tmp);
 			}
 			break;
 		case MII_COMMAND_READ:
@@ -537,10 +536,8 @@ void CDEC21143::mii_access(uint32_t oldreg, uint32_t idata)
 				break;
 			tmp = state.mii_phy_reg[(state.mii_phyaddr << 5) +
 			    state.mii_regaddr];
-			if (state.mii_bit == 13)
-				debug("[ mii_access(): READ phyaddr=0x%x "
-				    "regaddr=0x%x: 0x%04x ]\n", state.mii_phyaddr,
-				    state.mii_regaddr, tmp);
+//			if (state.mii_bit == 13)
+//				debug("[ mii_access(): READ phyaddr=0x%x regaddr=0x%x: 0x%04x ]\n", state.mii_phyaddr, state.mii_regaddr, tmp);
 			ibit = tmp & (0x8000 >> (state.mii_bit - 13));
 			if (state.mii_bit >= 28)
 				state.mii_state = MII_STATE_IDLE;
@@ -627,11 +624,9 @@ void CDEC21143::srom_access(uint32_t oldreg, uint32_t idata)
 			} else {
 				uint16_t romword = state.srom[state.srom_addr*2]
 				    + (state.srom[state.srom_addr*2+1] << 8);
-				if (state.srom_curbit == 6 + 3)
-					debug("[ dec21143: ROM read from offset 0x%03x: 0x%04x ]\n",
-					    state.srom_addr, romword);
-				obit = romword & (0x8000 >>
-				    (state.srom_curbit - 6 - 3))? 1 : 0;
+//				if (state.srom_curbit == 6 + 3)
+//					debug("[ dec21143: ROM read from offset 0x%03x: 0x%04x ]\n", state.srom_addr, romword);
+				obit = romword & (0x8000 >> (state.srom_curbit - 6 - 3))? 1 : 0;
 			}
 			break;
 		default:
@@ -732,11 +727,11 @@ int CDEC21143::dec21143_rx()
 			state.cur_rx_addr += 16;
 	}
 
-    fatal("{ dec21143_rx: base = 0x%08x }\n", (int)addr);
+  //  fatal("{ dec21143_rx: base = 0x%08x }\n", (int)addr);
 
 
-	debug("{ RX (%llx): 0x%08x 0x%08x 0x%x 0x%x: buf %i bytes at 0x%x }\n",
-	    (long long)addr, rdes0, rdes1, rdes2, rdes3, bufsize, (int)bufaddr);
+//	debug("{ RX (%llx): 0x%08x 0x%08x 0x%x 0x%x: buf %i bytes at 0x%x }\n",
+//	    (long long)addr, rdes0, rdes1, rdes2, rdes3, bufsize, (int)bufaddr);
 
     bufaddr = cSystem->PCI_Phys(0,bufaddr&0xffffffff);
 
@@ -761,7 +756,7 @@ int CDEC21143::dec21143_rx()
 
 	/*  Frame completed?  */
 	if (state.cur_rx_offset >= state.cur_rx_buf_len) {
-        debug("frame complete.\n");
+//        debug("frame complete.\n");
 		rdes0 |= TDSTAT_Rx_LS;
 
 		/*  Set the frame length:  */
@@ -813,7 +808,7 @@ int CDEC21143::dec21143_tx()
 	uint64_t addr = state.cur_tx_addr, bufaddr;
 	unsigned char descr[16];
 	uint32_t tdes0, tdes1, tdes2, tdes3;
-	int bufsize, buf1_size, buf2_size, i;
+	int bufsize, buf1_size, buf2_size;
 
     if (state.tx_suspend)
         return 0;
@@ -871,12 +866,12 @@ int CDEC21143::dec21143_tx()
 		 *
 		 *  TODO. For now, just ignore it, and pretend it worked.
 		 */
-		fatal("{ TX: setup packet }\n");
+//		fatal("{ TX: setup packet }\n");
         if (bufsize != 192)
 			fatal("[ dec21143: setup packet len = %i, should be 192! ]\n", (int)bufsize);
-        else
-          for (i=0;i<192;i+=12)
-              printf("%02" LL "x:%02" LL "x:%02" LL "x:%02" LL "x:%02" LL "x:%02" LL "x \n",cSystem->ReadMem(bufaddr+i,8),cSystem->ReadMem(bufaddr+i+1,8),cSystem->ReadMem(bufaddr+i+4,8),cSystem->ReadMem(bufaddr+i+5,8),cSystem->ReadMem(bufaddr+i+8,8),cSystem->ReadMem(bufaddr+i+9,8));
+  //      else
+  //        for (i=0;i<192;i+=12)
+  //            printf("%02" LL "x:%02" LL "x:%02" LL "x:%02" LL "x:%02" LL "x:%02" LL "x \n",cSystem->ReadMem(bufaddr+i,8),cSystem->ReadMem(bufaddr+i+1,8),cSystem->ReadMem(bufaddr+i+4,8),cSystem->ReadMem(bufaddr+i+5,8),cSystem->ReadMem(bufaddr+i+8,8),cSystem->ReadMem(bufaddr+i+9,8));
         memcpy(state.setup_filter, cSystem->PtrToMem(bufaddr),192);
         SetupFilter();
 		if (tdes1 & TDCTL_Tx_IC)
@@ -888,7 +883,7 @@ int CDEC21143::dec21143_tx()
 		/*
 		 *  Data Packet.
 		 */
-		fatal("{ TX: data packet: ");
+//		fatal("{ TX: data packet: ");
 		if (tdes1 & TDCTL_Tx_FS) {
 			/*  First segment. Let's allocate a new buffer:  */
 			/*  fatal("new frame }\n");  */
@@ -1017,12 +1012,12 @@ void CDEC21143::config_write(u64 address, int dsize, u64 data)
       // CBIO
       case 0x10:
   	  cSystem->RegisterMemory(this,2, X64(00000801fc000000) + (endian_32(data)&0x00fffffe), 256);
-      printf("cbio @ %016" LL "x\n",X64(00000801fc000000) + (endian_32(data)&0x00fffffe));
+//      printf("cbio @ %016" LL "x\n",X64(00000801fc000000) + (endian_32(data)&0x00fffffe));
 	  break;
       // CBMA
       case 0x14:
 	  cSystem->RegisterMemory(this,3, X64(0000080000000000) + (endian_32(data)&0xfffffffe), 256);
-      printf("cbma @ %016" LL "x\n",X64(0000080000000000) + (endian_32(data)&0xfffffffe));
+//      printf("cbma @ %016" LL "x\n",X64(0000080000000000) + (endian_32(data)&0xfffffffe));
 	  break;
       }
 }
@@ -1035,7 +1030,7 @@ void CDEC21143::SetupFilter()
   int numUnique;
   int unique[16];
   bool u;
-  printf("Building a filter...\n");
+  //printf("Building a filter...\n");
   for (i=0;i<16;i++)
   {
     mac[i][0] = state.setup_filter[i*12];
@@ -1045,7 +1040,7 @@ void CDEC21143::SetupFilter()
     mac[i][4] = state.setup_filter[i*12+8];
     mac[i][5] = state.setup_filter[i*12+9];
     sprintf(mac_txt[i],"%02x:%02x:%02x:%02x:%02x:%02x",mac[i][0],mac[i][1],mac[i][2],mac[i][3],mac[i][4],mac[i][5]);
-    printf("MAC[%d] = %s. \n",i,mac_txt[i]);
+  //  printf("MAC[%d] = %s. \n",i,mac_txt[i]);
   }
 
   printf("Filter mode: ");
@@ -1085,7 +1080,7 @@ void CDEC21143::SetupFilter()
   }
   for (i=0;i<numUnique;i++)
   {
-    printf("UNQ[%d] = %s. \n",i,mac_txt[unique[i]]);
+    printf("Unique MAC[%d] = %s. \n",i,mac_txt[unique[i]]);
   }
   filter[0] = '\0';
   strcat(filter,"ether broadcast");
@@ -1205,6 +1200,8 @@ void CDEC21143::ResetNIC()
 	state.mii_phy_reg[MII_BMSR] = BMSR_100TXFDX | BMSR_10TFDX | BMSR_ACOMP | BMSR_ANEG | BMSR_LINK;
 
     state.tx_suspend = false;
+
+    SetupFilter();
 }
 
 /**
