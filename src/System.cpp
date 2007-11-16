@@ -27,6 +27,9 @@
  * \file 
  * Contains the code for the emulated Typhoon Chipset devices.
  *
+ * X-1.31       Camiel Vanderhoeven                             16-NOV-2007
+ *      Replaced PCI_ReadMem and PCI_WriteMem with PCI_Phys.
+ *
  * X-1.30       Camiel Vanderhoeven                             05-NOV-2007
  *      Put slow-to-fast clock ratio into #define CLOCK_RATIO. Increased 
  *      this to 100,000.
@@ -218,7 +221,7 @@ CSystem::CSystem(const char *filename)
   state.p_WSBA[0][2] = 0;
   state.p_WSM [0][2] = 0;
   state.p_TBA [0][3] = 0;
-  state.p_WSBA[0][3] = 0;
+  state.p_WSBA[0][3] = 2;
   state.p_WSM [0][3] = 0;
   state.p_TBA [1][0] = 0;
   state.p_WSBA[1][0] = 0;
@@ -230,7 +233,7 @@ CSystem::CSystem(const char *filename)
   state.p_WSBA[1][2] = 0;
   state.p_WSM [1][2] = 0;
   state.p_TBA [1][3] = 0;
-  state.p_WSBA[1][3] = 0;
+  state.p_WSBA[1][3] = 2;
   state.p_WSM [1][3] = 0;
 
   state.tig_FwWrite = 0;
@@ -483,7 +486,7 @@ void CSystem::WriteMem(u64 address, int dsize, u64 data)
 	  state.p_WSBA[0][2] = data & X64(00000000fff00003);
 	  return;
         case X64(00000801800000c0):
-	  state.p_WSBA[0][3] = data & X64(00000080fff00003);
+	  state.p_WSBA[0][3] = data & X64(00000080fff00001) | 2;
 	  return;
         case X64(0000080380000000):
 	  state.p_WSBA[1][0] = data & X64(00000000fff00003);
@@ -495,7 +498,7 @@ void CSystem::WriteMem(u64 address, int dsize, u64 data)
 	  state.p_WSBA[1][2] = data & X64(00000000fff00003);
 	  return;
         case X64(00000803800000c0):
-	  state.p_WSBA[1][3] = data & X64(00000080fff00003);
+	  state.p_WSBA[1][3] = data & X64(00000080fff00001) | 2;
 	  return;
         case X64(0000080180000100):
 	  state.p_WSM[0][0] = data & X64(00000000fff00000);
@@ -983,71 +986,34 @@ void CSystem::interrupt(int number, bool assert)
 
 }
 
-void CSystem::PCI_WriteMem(int pcibus, u32 address, int dsize, u64 data)
+u64 CSystem::PCI_Phys(int pcibus, u64 address)
 {
   u64 a;
   int j;
 
-  //    printf("-------------- PCI MEMORY ACCESS FOR PCI HOSE %d --------------\n", pcibus);
-  //Step through windows
-  //	for(j=0;j<4;j++)
-  //	{
-  //      printf("WSBA%d: %08x%08x WSM%d: %08x%08x TBA%d: %08x%08x\n",
-  //        j,(u32)(state.p_WSBA[pcibus][j]>>32),(u32)(state.p_WSBA[pcibus][j]),
-  //      j,(u32)(state.p_WSM[pcibus][j]>>32),(u32)(state.p_WSM[pcibus][j]),
-  //    j,(u32)(state.p_TBA[pcibus][j]>>32),(u32)(state.p_TBA[pcibus][j]));
-  //    }
-  //  printf("--------------------------------------------------------------\n");
+//      printf("-------------- PCI MEMORY ACCESS FOR PCI HOSE %d --------------\n", pcibus);
+//  //Step through windows
+//  	for(j=0;j<4;j++)
+//  	{
+//        printf("WSBA%d: %016" LL "x WSM: %016" LL "x TBA: %016" LL "x\n",
+//          j,state.p_WSBA[pcibus][j], state.p_WSM[pcibus][j], state.p_TBA[pcibus][j]);
+//      }
+//    printf("--------------------------------------------------------------\n");
     
   //Step through windows
   for(j=0;j<4;j++)
-    {
-      if (      (state.p_WSBA[pcibus][j] & 1)									// window enabled...
-		&& ! ((address ^ state.p_WSBA[pcibus][j]) & 0xfff00000 & ~state.p_WSM[pcibus][j]))	// address in range...
+  {
+    if (      (state.p_WSBA[pcibus][j] & 1)									// window enabled...
+      && ! ((address ^ state.p_WSBA[pcibus][j]) & 0xfff00000 & ~state.p_WSM[pcibus][j]))	// address in range...
 	{
+      if (state.p_WSBA[pcibus][j] & 2)
+        FAILURE("Don't know how to handle scatter-gather yet!!\n");
 	  a = (address & ((state.p_WSM[pcibus][j] & X64(fff00000)) | 0xfffff)) + (state.p_TBA[pcibus][j] & X64(3fffc0000));
-	  //		  printf("PCI memory address %08x translated to %08x%08x\n",address, (u32)(a>>32),(u32)a);
-	  WriteMem(a, dsize, data);
-          return;
+//	  printf("PCI memory address %08x translated to %016"LL "x\n",address, a);
+      return a;
 	}
-    }
-
-  WriteMem(X64(80000000000) | (pcibus * X64(200000000)) | (u64)address, dsize, data);
-    
-
-}
-
-u64 CSystem::PCI_ReadMem(int pcibus, u32 address, int dsize)
-{
-  u64 a;
-  int j;
-
-  //    printf("-------------- PCI MEMORY ACCESS FOR PCI HOSE %d --------------\n", pcibus);
-  //Step through windows
-  //	for(j=0;j<4;j++)
-  //	{
-  //      printf("WSBA%d: %08x%08x WSM%d: %08x%08x TBA%d: %08x%08x\n",
-  //        j,(u32)(state.p_WSBA[pcibus][j]>>32),(u32)(state.p_WSBA[pcibus][j]),
-  //      j,(u32)(state.p_WSM[pcibus][j]>>32),(u32)(state.p_WSM[pcibus][j]),
-  //    j,(u32)(state.p_TBA[pcibus][j]>>32),(u32)(state.p_TBA[pcibus][j]));
-  //    }
-  //  printf("--------------------------------------------------------------\n");
-
-  //Step through windows
-  for(j=0;j<4;j++)
-    {
-      
-      if (      (state.p_WSBA[pcibus][j] & 1)									// window enabled...
-		&& ! ((address ^ state.p_WSBA[pcibus][j]) & 0xfff00000 & ~state.p_WSM[pcibus][j]))	// address in range...
-	{
-	  a = (address & ((state.p_WSM[pcibus][j] & X64(fff00000)) | 0xfffff)) + (state.p_TBA[pcibus][j] & X64(3fffc0000));
-	  //		  printf("PCI memory address %08x translated to %08x%08x\n",address, (u32)(a>>32),(u32)a);
-	  return ReadMem(a, dsize);
-	}
-    }
-
-  return ReadMem(X64(80000000000) | (pcibus * X64(200000000)) | (u64)address, dsize);
-
+  }
+  return X64(80000000000) | (pcibus * X64(200000000)) | (u64)address;
 }
 
 void CSystem::SaveState(char *fn)
