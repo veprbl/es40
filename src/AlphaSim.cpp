@@ -27,6 +27,9 @@
  * \file
  * Defines the entry point for the application.
  *
+ * X-1.27       Camiel Vanderhoeven                             17-NOV-2007
+ *      Use FAILURE.
+ *
  * X-1.26       Camiel Vanderhoeven                             17-NOV-2007
  *      Version updated to 0.16. Made it possible to disable the network
  *      by defining NO_NETWORK.
@@ -191,10 +194,8 @@ int main(int argc, char* argv[])
 	break;
       }
     }
-    if(filename==NULL) {
-      printf("%%SYS-E-CONFIG:  Configuration file not found.\n");
-      exit(1);
-    }
+    if(filename==NULL)
+      FAILURE("%%SYS-E-CONFIG:  Configuration file not found.\n");
     systm = new CSystem(filename);
   }
 
