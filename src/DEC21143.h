@@ -32,6 +32,10 @@
  * \file 
  * Contains the definitions for the emulated DEC 21143 NIC device.
  *
+ * X-1.5        Camiel Vanderhoeven                             17-NOV-2007
+ *      Don't define REMOTE before including pcap.h; we want to be 
+ *      compatible.
+ *
  * X-1.4        Camiel Vanderhoeven                             17-NOV-2007
  *      Cleanup.
  *
@@ -53,7 +57,6 @@
 #include "SystemComponent.h"
 #include "DEC21143_mii.h"
 #include "DEC21143_tulipreg.h"
-#define HAVE_REMOTE
 #include <pcap.h>
 
 /**
