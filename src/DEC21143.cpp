@@ -32,6 +32,9 @@
  * \file 
  * Contains the code for the emulated DEC 21143 NIC device.
  *
+ * X-1.7        Camiel Vanderhoeven                             17-NOV-2007
+ *      Changed the MAC address into the DigitalE-range.
+ *
  * X-1.6        Camiel Vanderhoeven                             16-NOV-2007
  *      Change the packet filter less often (only when required).
  *
@@ -124,12 +127,12 @@ CDEC21143::CDEC21143(CSystem * c): CSystemComponent(c)
                       errbuf)) == NULL)
     FAILURE("Error opening adapter\n");
 
-  state.mac[0] = 0x10;
-  state.mac[1] = 0x12;
-  state.mac[2] = 0x12;
-  state.mac[3] = 0x12;
-  state.mac[4] = 0x12;
-  state.mac[5] = 0x12;
+  state.mac[0] = 0xaa;
+  state.mac[1] = 0x00;
+  state.mac[2] = 0x04;
+  state.mac[3] = 0x00;
+  state.mac[4] = 0x01;
+  state.mac[5] = 0x04;
 
  // this->net = new CNetwork(NET_INIT_FLAG_GATEWAY,"10.0.0.0",8);
 
