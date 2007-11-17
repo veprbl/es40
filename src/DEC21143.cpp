@@ -32,6 +32,9 @@
  * \file 
  * Contains the code for the emulated DEC 21143 NIC device.
  *
+ * X-1.9        Camiel Vanderhoeven                             17-NOV-2007
+ *      Corrected a small "oops" error in getting the DECnet address.
+ *
  * X-1.8        Camiel Vanderhoeven                             17-NOV-2007
  *      Get the adapter and DECnet address to use from the configuration
  *      file.
@@ -150,7 +153,7 @@ CDEC21143::CDEC21143(CSystem * c): CSystemComponent(c)
 
   cfg = cSystem->GetConfig("nic0.decnet","1.1");
   decnet_major = atoi(cfg);
-  cfg = strchr(cfg,'.');
+  cfg = strchr(cfg,'.')+1;
   decnet_minor = atoi(cfg);
 
   state.mac[0] = 0xaa;
