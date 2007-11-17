@@ -28,6 +28,9 @@
  * Contains code macros for miscellaneous processor instructions.
  * Based on ARM chapter 4.11.
  *
+ * X-1.7        Camiel Vanderhoeven                             16-NOV-2007
+ *      Avoid more compiler warnings.
+ *
  * X-1.6        Camiel Vanderhoeven                             14-NOV-2007
  *      Bug-fix in CALL_PAL RSCC.
  *
@@ -80,13 +83,13 @@
           break;                                        \
         case 0x07: /* MTPR_ASTEN */                     \
           state.r[0] = state.aster;                     \
-          state.aster = ((state.aster & state.r[16]) |  \
-                         (state.r[16] >>4)) & 0xf;      \
+          state.aster = ((state.aster & (int)state.r[16]) |  \
+                         (int)(state.r[16] >>4)) & 0xf;      \
           break;                                        \
         case 0x08: /* MTPR_ASTSR */                     \
           state.r[0] = state.astrr;                     \
-          state.astrr = ((state.astrr & state.r[16]) |  \
-                         (state.r[16] >>4)) & 0xf;      \
+          state.astrr = ((state.astrr & (int)state.r[16]) |  \
+                         (int)(state.r[16] >>4)) & 0xf;      \
           break;                                        \
         case 0x0b: /* MFPR_FEN */                       \
           state.r[0] = state.fpen?1:0;                  \
