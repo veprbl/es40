@@ -32,6 +32,9 @@
  * \file 
  * Contains the code for the emulated DEC 21143 NIC device.
  *
+ * X-1.11       Camiel Vanderhoeven                             17-NOV-2007
+ *      File should end in a newline.
+ *
  * X-1.10       Camiel Vanderhoeven                             17-NOV-2007
  *      Use the standard pcap functions (not the extended windows ones), we
  *      want to be compatible.
