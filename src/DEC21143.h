@@ -32,6 +32,9 @@
  * \file 
  * Contains the definitions for the emulated DEC 21143 NIC device.
  *
+ * X-1.4        Camiel Vanderhoeven                             17-NOV-2007
+ *      Cleanup.
+ *
  * X-1.3        Camiel Vanderhoeven                             16-NOV-2007
  *      BPF filter used for perfect filtering.
  *
@@ -50,9 +53,9 @@
 #include "SystemComponent.h"
 #include "DEC21143_mii.h"
 #include "DEC21143_tulipreg.h"
-//#include "Network.h"
 #define HAVE_REMOTE
 #include <pcap.h>
+
 /**
  * Emulated DEC 21143 NIC device.
  **/
@@ -84,7 +87,6 @@ class CDEC21143 : public CSystemComponent
   int dec21143_rx();
   int dec21143_tx();
 
-  //CNetwork * net;
   pcap_t *fp;
   struct bpf_program fcode;
   // The state structure contains all elements that need to be saved to the statefile.

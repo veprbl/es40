@@ -27,6 +27,10 @@
  * \file
  * Defines the entry point for the application.
  *
+ * X-1.26       Camiel Vanderhoeven                             17-NOV-2007
+ *      Version updated to 0.16. Made it possible to disable the network
+ *      by defining NO_NETWORK.
+ *
  * X-1.25       Camiel Vanderhoeven                             14-NOV-2007
  *      Added network.
  *
@@ -125,7 +129,9 @@
 #include "FloppyController.h"
 #include "Flash.h"
 #include "AliM1543C.h"
+#if !defined(NO_NETWORK)
 #include "DEC21143.h"
+#endif
 #include "DPR.h"
 #include "TraceEngine.h"
 #include "lockstep.h"
@@ -137,7 +143,9 @@ CPort80 * port80;
 CFloppyController * fc[2];
 CFlash * srom;
 CAliM1543C * ali = 0;
+#if !defined(NO_NETWORK)
 CDEC21143 * nic = 0;
+#endif
 CDPR * dpr = 0;
 
 // "standard" locations for a configuration file.  This
@@ -207,7 +215,9 @@ int main(int argc, char* argv[])
   srom = new CFlash(systm);
   dpr = new CDPR(systm);
 
+#if !defined(NO_NETWORK)
   nic = new CDEC21143(systm);
+#endif
 
   systm->LoadROM();
 
@@ -217,7 +227,7 @@ int main(int argc, char* argv[])
   printf("   **======================================================================**\n");
   printf("   ||                                                                      ||\n");
   printf("   ||                             ES40  emulator                           ||\n");
-  printf("   ||                              Version 0.15                            ||\n");
+  printf("   ||                              Version 0.16                            ||\n");
   printf("   ||                                                                      ||\n");
   printf("   ||  Copyright (C) 2007 by Camiel Vanderhoeven                           ||\n");
   printf("   ||  Website: www.camicom.com                                            ||\n");

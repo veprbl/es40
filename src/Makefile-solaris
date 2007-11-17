@@ -27,6 +27,9 @@
 # 
 # Makefile for Solaris/SPARC (Sun Studio 11).
 #
+# X-1.4		Camiel Vanderhoeven				17-NOV-2007
+#	Removed files no longer needed.
+#
 # X-1.3		Camiel Vanderhoeven				1-NOV-2007
 #	Added files for network support.
 #
@@ -73,7 +76,6 @@ OBJS_es40 =  \
 	$(TMP_es40)/System.o \
 	$(TMP_es40)/SystemComponent.o \
 	$(TMP_es40)/TranslationBuffer.o \
-	$(TMP_es40)/Network.o \
 	$(TMP_es40)/DEC21143.o \
 	$(TMP_es40)/es40_debug.o
 SYSLIBS_es40 = -lsocket -lnsl 
@@ -120,9 +122,6 @@ $(TMP_es40)/SystemComponent.o: $(TMP_es40) SystemComponent.cpp
 $(TMP_es40)/TranslationBuffer.o: $(TMP_es40) TranslationBuffer.cpp
 	$(COMPILE.cc) $(CCFLAGS_es40) $(CPPFLAGS_es40) -o $@ TranslationBuffer.cpp
 
-$(TMP_es40)/Network.o: $(TMP_es40) Network.cpp
-	$(COMPILE.cc) $(CCFLAGS_es40) $(CPPFLAGS_es40) -o $@ Network.cpp
-
 $(TMP_es40)/DEC21143.o: $(TMP_es40) DEC21143.cpp
 	$(COMPILE.cc) $(CCFLAGS_es40) $(CPPFLAGS_es40) -o $@ DEC21143.cpp
 
@@ -145,7 +144,6 @@ OBJS_es40_idb =  \
 	$(TMP_es40_idb)/SystemComponent.o \
 	$(TMP_es40_idb)/TraceEngine.o \
 	$(TMP_es40_idb)/TranslationBuffer.o \
-	$(TMP_es40_idb)/Network.o \
 	$(TMP_es40_idb)/DEC21143.o \
 	$(TMP_es40_idb)/es40_debug.o
 SYSLIBS_es40_idb = -lsocket -lnsl 
@@ -194,9 +192,6 @@ $(TMP_es40_idb)/TraceEngine.o: $(TMP_es40_idb) TraceEngine.cpp
 $(TMP_es40_idb)/TranslationBuffer.o: $(TMP_es40_idb) TranslationBuffer.cpp
 	$(COMPILE.cc) $(CCFLAGS_es40_idb) $(CPPFLAGS_es40_idb) -o $@ TranslationBuffer.cpp
 
-$(TMP_es40_idb)/Network.o: $(TMP_es40_idb) Network.cpp
-	$(COMPILE.cc) $(CCFLAGS_es40_idb) $(CPPFLAGS_es40_idb) -o $@ Network.cpp
-
 $(TMP_es40_idb)/DEC21143.o: $(TMP_es40_idb) DEC21143.cpp
 	$(COMPILE.cc) $(CCFLAGS_es40_idb) $(CPPFLAGS_es40_idb) -o $@ DEC21143.cpp
 
@@ -220,7 +215,6 @@ OBJS_es40_lss =  \
 	$(TMP_es40_lss)/TraceEngine.o \
 	$(TMP_es40_lss)/TranslationBuffer.o \
 	$(TMP_es40_lss)/lockstep.o \
-	$(TMP_es40_lss)/Network.o \
 	$(TMP_es40_lss)/DEC21143.o \
 	$(TMP_es40_lss)/es40_debug.o
 SYSLIBS_es40_lss = -lsocket -lnsl 
@@ -272,9 +266,6 @@ $(TMP_es40_lss)/TranslationBuffer.o: $(TMP_es40_lss) TranslationBuffer.cpp
 $(TMP_es40_lss)/lockstep.o: $(TMP_es40_lss) lockstep.cpp
 	$(COMPILE.cc) $(CCFLAGS_es40_lss) $(CPPFLAGS_es40_lss) -o $@ lockstep.cpp
 
-$(TMP_es40_lss)/Network.o: $(TMP_es40_lss) Network.cpp
-	$(COMPILE.cc) $(CCFLAGS_es40_lss) $(CPPFLAGS_es40_lss) -o $@ Network.cpp
-
 $(TMP_es40_lss)/DEC21143.o: $(TMP_es40_lss) DEC21143.cpp
 	$(COMPILE.cc) $(CCFLAGS_es40_lss) $(CPPFLAGS_es40_lss) -o $@ DEC21143.cpp
 
@@ -298,7 +289,6 @@ OBJS_es40_lsm =  \
 	$(TMP_es40_lsm)/TraceEngine.o \
 	$(TMP_es40_lsm)/TranslationBuffer.o \
 	$(TMP_es40_lsm)/lockstep.o \
-	$(TMP_es40_lsm)/Network.o \
 	$(TMP_es40_lsm)/DEC21143.o \
 	$(TMP_es40_lsm)/es40_debug.o
 SYSLIBS_es40_lsm = -lsocket -lnsl 
@@ -350,9 +340,6 @@ $(TMP_es40_lsm)/TranslationBuffer.o: $(TMP_es40_lsm) TranslationBuffer.cpp
 $(TMP_es40_lsm)/lockstep.o: $(TMP_es40_lsm) lockstep.cpp
 	$(COMPILE.cc) $(CCFLAGS_es40_lsm) $(CPPFLAGS_es40_lsm) -o $@ lockstep.cpp
 
-$(TMP_es40_lsm)/Network.o: $(TMP_es40_lsm) Network.cpp
-	$(COMPILE.cc) $(CCFLAGS_es40_lsm) $(CPPFLAGS_es40_lsm) -o $@ Network.cpp
-
 $(TMP_es40_lsm)/DEC21143.o: $(TMP_es40_lsm) DEC21143.cpp
 	$(COMPILE.cc) $(CCFLAGS_es40_lsm) $(CPPFLAGS_es40_lsm) -o $@ DEC21143.cpp
 
@@ -374,7 +361,6 @@ clean:
 		$(TMP_es40)/System.o \
 		$(TMP_es40)/SystemComponent.o \
 		$(TMP_es40)/TranslationBuffer.o \
-		$(TMP_es40)/Network.o \
 		$(TMP_es40)/DEC21143.o \
 		$(TMP_es40)/es40_debug.o \
 		es40_idb \
@@ -390,7 +376,6 @@ clean:
 		$(TMP_es40_idb)/SystemComponent.o \
 		$(TMP_es40_idb)/TraceEngine.o \
 		$(TMP_es40_idb)/TranslationBuffer.o \
-		$(TMP_es40_idb)/Network.o \
 		$(TMP_es40_idb)/DEC21143.o \
 		$(TMP_es40_idb)/es40_debug.o \
 		es40_lss \
@@ -407,7 +392,6 @@ clean:
 		$(TMP_es40_lss)/TraceEngine.o \
 		$(TMP_es40_lss)/TranslationBuffer.o \
 		$(TMP_es40_lss)/lockstep.o \
-		$(TMP_es40_lss)/Network.o \
 		$(TMP_es40_lss)/DEC21143.o \
 		$(TMP_es40_lss)/es40_debug.o \
 		es40_lsm \
@@ -424,7 +408,6 @@ clean:
 		$(TMP_es40_lsm)/TraceEngine.o \
 		$(TMP_es40_lsm)/TranslationBuffer.o \
 		$(TMP_es40_lsm)/lockstep.o \
-		$(TMP_es40_lsm)/Network.o \
 		$(TMP_es40_lsm)/DEC21143.o \
 		$(TMP_es40_lsm)/es40_debug.o
 	$(CCADMIN)

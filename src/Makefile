@@ -27,6 +27,9 @@
 # 
 # Makefile for GNU Linux. (And possibly many UNIX'es).
 #
+# X-1.10		Camiel Vanderhoeven				17-NOV-2007
+#	Removed Network.o (no longer needed).
+#
 # X-1.9		Camiel Vanderhoeven				14-NOV-2007
 #	Added files for network support.
 #
@@ -88,7 +91,6 @@ OBJS =  AliM1543C.o \
         TraceEngine.o \
         TranslationBuffer.o \
 	  lockstep.o \
-        Network.o \
         DEC21143.o \
         es40_debug.o
 

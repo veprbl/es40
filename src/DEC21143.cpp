@@ -32,6 +32,10 @@
  * \file 
  * Contains the code for the emulated DEC 21143 NIC device.
  *
+ * X-1.8        Camiel Vanderhoeven                             17-NOV-2007
+ *      Get the adapter and DECnet address to use from the configuration
+ *      file.
+ *
  * X-1.7        Camiel Vanderhoeven                             17-NOV-2007
  *      Changed the MAC address into the DigitalE-range.
  *
@@ -57,6 +61,8 @@
  * \author Camiel Vanderhoeven (camiel@camicom.com / http://www.camicom.com)
  **/
 
+#if !defined(NO_NETWORK)
+
 #include "StdAfx.h"
 #include "DEC21143.h"
 #include "System.h"
@@ -70,8 +76,6 @@
 #define	MII_STATE_D				        5
 #define	MII_STATE_IDLE				    6
 
-u8 mac_broadcast[6] = {0xff,0xff,0xff,0xff,0xff,0xff};
-
 /**
  * Constructor.
  **/
@@ -81,60 +85,80 @@ CDEC21143::CDEC21143(CSystem * c): CSystemComponent(c)
   pcap_if_t *alldevs, *d;
   u_int inum, i=0;
   char errbuf[PCAP_ERRBUF_SIZE];// connect to pcap...
+  char * cfg;
+  int decnet_major;
+  int decnet_minor;
 
-  printf("\n%%NIC-Q-CHNIC: Choose a network adapter to connect to:\n");
-  if (pcap_findalldevs_ex(PCAP_SRC_IF_STRING, NULL, &alldevs, errbuf) == -1)
+  cfg = cSystem->GetConfig("nic0.adapter",NULL);
+
+  if (cfg)
   {
-    FAILURE("%%NIC-F-PCAPFAD: Error in pcap_findalldevs_ex:");
-    FAILURE(errbuf);
+    if ( (fp= pcap_open(cfg,
+                        65536 /*snaplen: capture entire packets*/,
+                        PCAP_OPENFLAG_PROMISCUOUS /*flags*/,
+                        1 /*read timeout: 10ms.*/,
+                        NULL /* remote authentication */,
+                        errbuf)) == NULL)
+      FAILURE("Error opening adapter\n");
   }
-
-  /* Print the list */
-  for(d=alldevs; d; d=d->next)
-  {
-    printf("%d. %s\n    ", ++i, d->name);
-
-    if (d->description)
-      printf(" (%s)\n", d->description);
-    else
-      printf(" (No description available)\n");
-  }
-        
-  if (i==0)
-    FAILURE("%%NIC-F-NONIC: No interfaces found! Exiting.\n");
-   
-  if (i==1)
-    inum = 1;
   else
   {
-    inum = 0;
-    while (inum < 1 || inum > i)
+    printf("\n%%NIC-Q-CHNIC: Choose a network adapter to connect to:\n");
+    if (pcap_findalldevs_ex(PCAP_SRC_IF_STRING, NULL, &alldevs, errbuf) == -1)
     {
-      printf("%%NIC-Q-NICNO: Enter the interface number (1-%d):",i);
-      scanf("%d", &inum);
+      FAILURE("%%NIC-F-PCAPFAD: Error in pcap_findalldevs_ex:");
+      FAILURE(errbuf);
     }
+
+    /* Print the list */
+    for(d=alldevs; d; d=d->next)
+    {
+      printf("%d. %s\n    ", ++i, d->name);
+      if (d->description)
+        printf(" (%s)\n", d->description);
+      else
+        printf(" (No description available)\n");
+    }
+        
+    if (i==0)
+      FAILURE("%%NIC-F-NONIC: No interfaces found! Exiting.\n");
+   
+    if (i==1)
+      inum = 1;
+    else
+    {
+      inum = 0;
+      while (inum < 1 || inum > i)
+      {
+        printf("%%NIC-Q-NICNO: Enter the interface number (1-%d):",i);
+        scanf("%d", &inum);
+      }
+    }
+        
+    /* Jump to the selected adapter */
+    for (d=alldevs, i=0; i< inum-1 ;d=d->next, i++);
+        
+    /* Open the device */
+    if ( (fp= pcap_open(d->name,
+                        65536 /*snaplen: capture entire packets*/,
+                        PCAP_OPENFLAG_PROMISCUOUS /*flags*/,
+                        1 /*read timeout: 10ms.*/,
+                        NULL /* remote authentication */,
+                        errbuf)) == NULL)
+      FAILURE("Error opening adapter\n");
   }
-        
-  /* Jump to the selected adapter */
-  for (d=alldevs, i=0; i< inum-1 ;d=d->next, i++);
-        
-  /* Open the device */
-  if ( (fp= pcap_open(d->name,
-                      65536 /*snaplen: capture entire packets*/,
-                      PCAP_OPENFLAG_PROMISCUOUS /*flags*/,
-                      1 /*read timeout: 10ms.*/,
-                      NULL /* remote authentication */,
-                      errbuf)) == NULL)
-    FAILURE("Error opening adapter\n");
+
+  cfg = cSystem->GetConfig("nic0.decnet","1.1");
+  decnet_major = atoi(cfg);
+  cfg = strchr(cfg,'.');
+  decnet_minor = atoi(cfg);
 
   state.mac[0] = 0xaa;
   state.mac[1] = 0x00;
   state.mac[2] = 0x04;
   state.mac[3] = 0x00;
-  state.mac[4] = 0x01;
-  state.mac[5] = 0x04;
-
- // this->net = new CNetwork(NET_INIT_FLAG_GATEWAY,"10.0.0.0",8);
+  state.mac[4] = decnet_minor & 0xff;
+  state.mac[5] = ((decnet_minor >> 8) & 0x03) | ((decnet_major << 2) & 0xfc);
 
   c->RegisterClock(this, true);
 
@@ -204,6 +228,10 @@ int CDEC21143::DoClock()
   return 0;
 }
 
+/**
+ * Read from the NIC registers.
+ **/
+
 u64 CDEC21143::nic_read(u64 address, int dsize)
 {
   u64 data;
@@ -216,58 +244,11 @@ u64 CDEC21143::nic_read(u64 address, int dsize)
 	} else
 		fatal("[ dec21143: WARNING! unaligned access (0x%x) ]\n", (int)address);
 
-	switch (address) {
-
-	case CSR_BUSMODE:	/*  csr0  */
-		break;
-
-	case CSR_TXPOLL:	/*  csr1  */
-		fatal("[ dec21143: UNIMPLEMENTED READ from txpoll ]\n");
-		break;
-
-	case CSR_RXPOLL:	/*  csr2  */
-		fatal("[ dec21143: UNIMPLEMENTED READ from rxpoll ]\n");
-		break;
-
-	case CSR_RXLIST:	/*  csr3  */
-	case CSR_TXLIST:	/*  csr4  */
-	case CSR_STATUS:	/*  csr5  */
-	case CSR_INTEN:		/*  csr7  */
-	case CSR_OPMODE:	/*  csr6:  */
-	case CSR_MISSED:	/*  csr8  */
-	case CSR_MIIROM:	/*  csr9  */
-	  break;
-    case CSR_GPT:
-      break;
-
-	case CSR_SIASTAT:	/*  csr12  */
-		/*  Auto-negotiation status = Good.  */
-//		data = SIASTAT_ANS_FLPGOOD;
-		break;
-
-	case CSR_SIATXRX:	/*  csr14  */
-		/*  Auto-negotiation Enabled  */
-//		data = SIATXRX_ANE;
-		break;
-
-	case CSR_SIACONN:	/*  csr13  */
-	case CSR_SIAGEN:	/*  csr15  */
-		break;
-
-	default:
-        fatal("[ dec21143: read from unimplemented 0x%02x ]\n", (int)address);
-	}
-
-//  if (regnr != CSR_MIIROM / 8)
-//    printf("[ dec21143: READ  %08" LL "x from CSR %d  \n" ,data, regnr);
-
-  //if (regnr == CSR_STATUS / 8) getchar();
-
   return data;
 }
 
 /**
- * Write to the PCI configuration space.
+ * Write to the NIC registers.
  **/
 
 void CDEC21143::nic_write(u64 address, int dsize, u64 data)
@@ -289,9 +270,6 @@ void CDEC21143::nic_write(u64 address, int dsize, u64 data)
 		}
 	} else
 		fatal("[ dec21143: WARNING! unaligned access (0x%x) ]\n", (int)address);
-
-//    if (regnr != CSR_MIIROM / 8)
-//      printf("[ dec21143: WRITE %08" LL "x to CSR %d  \n" ,data, regnr);
 
 	switch (address) {
 
@@ -377,7 +355,7 @@ void CDEC21143::nic_write(u64 address, int dsize, u64 data)
 	case CSR_SIASTAT:	/*  csr12  */
         if (((data & SIASTAT_ANS) == SIASTAT_ANS_START) && (state.reg[CSR_SIATXRX/8] & SIATXRX_ANE))
         {
-            // SIA started with autonegotiation... completes immediately in our emulated environment.
+            // autonegotiation restart... completes immediately in our emulated environment.
           state.reg[CSR_SIASTAT / 8] &= ~SIASTAT_ANS;
           state.reg[CSR_SIASTAT / 8] |= (SIASTAT_ANS_FLPGOOD | SIASTAT_LPN | SIASTAT_LPC);
           state.reg[CSR_STATUS / 8] |= STATUS_LNPANC;
@@ -401,9 +379,6 @@ void CDEC21143::nic_write(u64 address, int dsize, u64 data)
           state.reg[CSR_STATUS / 8] |= STATUS_LNPANC;
           state.reg[CSR_SIATXRX / 8] &= ~(SIATXRX_TH | SIATXRX_THX | SIATXRX_T4);
           state.reg[CSR_SIATXRX / 8] |= SIATXRX_TXF;
-//          state.reg[CSR_SIASTAT / 8] &= ~SIASTAT_ANS;
-//          state.reg[CSR_SIASTAT / 8] |= SIASTAT_ANS_FLPGOOD;
-//          state.reg[CSR_STATUS / 8] |= STATUS_LNPANC;
           DoClock();
         }
         break;
@@ -681,25 +656,20 @@ int CDEC21143::dec21143_rx()
 
 	/*  No current packet? Then check for new ones.  */
 	if (state.cur_rx_buf == NULL) {
-		/*  Nothing available? Then abort.  */
-		//if (!net->net_ethernet_rx_avail())
-        //while (packet_data == NULL)// || (memcmp(state.mac, packet_data, 6)/* && memcmp(mac_broadcast, packet_data, 6) */))
-        //{
-          if (!pcap_next_ex( fp, &packet_header, &packet_data))
-		  	return 0;
-        //}
+  	  /*  Nothing available? Then abort.  */
+      if (!pcap_next_ex( fp, &packet_header, &packet_data))
+	 	return 0;
 
-        printf("pcap recv: %d bytes (%d captured) for %02x:%02x:%02x:%02x:%02x:%02x  \n",packet_header->len, packet_header->caplen,packet_data[0],packet_data[1],packet_data[2],packet_data[3],packet_data[4],packet_data[5]);
+//        printf("pcap recv: %d bytes (%d captured) for %02x:%02x:%02x:%02x:%02x:%02x  \n",packet_header->len, packet_header->caplen,packet_data[0],packet_data[1],packet_data[2],packet_data[3],packet_data[4],packet_data[5]);
 
-		/*  Get the next packet into our buffer:  */
-		//net->net_ethernet_rx(&state.cur_rx_buf, &state.cur_rx_buf_len);
-        state.cur_rx_buf_len = packet_header->caplen;
+	    state.cur_rx_buf_len = packet_header->caplen;
 
 		/*  Append a 4 byte CRC:  */
 		state.cur_rx_buf_len += 4;
 		CHECK_ALLOCATION(state.cur_rx_buf = (u8 *) realloc(state.cur_rx_buf, state.cur_rx_buf_len));
 
-        memcpy(state.cur_rx_buf, packet_data, state.cur_rx_buf_len);
+	    /*  Get the next packet into our buffer:  */
+	    memcpy(state.cur_rx_buf, packet_data, state.cur_rx_buf_len);
 
 		/*  Well... the CRC is just zeros, for now.  */
 		memset(state.cur_rx_buf + state.cur_rx_buf_len - 4, 0, 4);
@@ -751,10 +721,7 @@ int CDEC21143::dec21143_rx()
 
 	to_xfer = state.cur_rx_buf_len - state.cur_rx_offset;
 	if (to_xfer > bufsize)
-    {
-        debug("I'd like to xfer %d bytes, but my buffer is only %d bytes.\n",to_xfer,bufsize);
 		to_xfer = bufsize;
-    }
 
 	/*  DMA bytes from the packet into emulated physical memory:  */
     memcpy(cSystem->PtrToMem(bufaddr), state.cur_rx_buf + state.cur_rx_offset, to_xfer);
@@ -798,11 +765,6 @@ int CDEC21143::dec21143_rx()
 	}
 
     memcpy(cSystem->PtrToMem(addr), descr, sizeof(u32));
-//	if (!cpu->memory_rw(cpu, cpu->mem, addr, descr, sizeof(uint32_t)
-//	    * writeback_len, MEM_WRITE, PHYSICAL | NO_EXCEPTIONS)) {
-//		fatal("[ dec21143_rx: memory_rw failed! ]\n");
-//		return 0;
-//	}
 
 	return 1;
 }
@@ -922,11 +884,10 @@ int CDEC21143::dec21143_tx()
 		/*  Last segment? Then actually transmit it:  */
 		if (tdes1 & TDCTL_Tx_LS) {
 			/*  fatal("{ TX: data frame complete. }\n");  */
-			//net->net_ethernet_tx(state.cur_tx_buf, state.cur_tx_buf_len);
             if (pcap_sendpacket(fp, state.cur_tx_buf, state.cur_tx_buf_len))
               fatal("Error sending the packet: %s\n",pcap_geterr);
 
-            printf("pcap send: %d bytes   \n",state.cur_tx_buf_len);
+//            printf("pcap send: %d bytes   \n",state.cur_tx_buf_len);
 
 			free(state.cur_tx_buf);
 			state.cur_tx_buf = NULL;
@@ -1037,8 +998,8 @@ void CDEC21143::config_write(u64 address, int dsize, u64 data)
 }
 void CDEC21143::SetupFilter()
 {
-  u8 mac[17][6];
-  char mac_txt[17][20];
+  u8 mac[16][6];
+  char mac_txt[16][20];
   char filter[1000];
   int i,j;
   int numUnique;
@@ -1057,6 +1018,7 @@ void CDEC21143::SetupFilter()
   //  printf("MAC[%d] = %s. \n",i,mac_txt[i]);
   }
 
+  /*
   printf("Filter mode: ");
   if (state.reg[CSR_OPMODE/8] & OPMODE_PR)
     printf("promiscuous.\n");
@@ -1074,15 +1036,8 @@ void CDEC21143::SetupFilter()
       printf("perfect ");
     printf("filtering.\n");
   }
-  numUnique = 1;
-  mac[16][0] = state.mac[0];
-  mac[16][1] = state.mac[1];
-  mac[16][2] = state.mac[2];
-  mac[16][3] = state.mac[3];
-  mac[16][4] = state.mac[4];
-  mac[16][5] = state.mac[5];
-  sprintf(mac_txt[16],"%02x:%02x:%02x:%02x:%02x:%02x",mac[16][0],mac[16][1],mac[16][2],mac[16][3],mac[16][4],mac[16][5]);
-  unique[0] = 16;
+  */
+  numUnique = 0;
   for (i=0;i<16;i++)
   {
     u = true;
@@ -1100,10 +1055,10 @@ void CDEC21143::SetupFilter()
       numUnique++;
     }
   }
+  /*
   for (i=0;i<numUnique;i++)
-  {
     printf("Unique MAC[%d] = %s. \n",i,mac_txt[unique[i]]);
-  }
+  */
   filter[0] = '\0';
   strcat(filter,"ether broadcast");
   for (i=0;i<numUnique;i++)
@@ -1111,7 +1066,7 @@ void CDEC21143::SetupFilter()
     strcat(filter," or ether dst ");
     strcat(filter,mac_txt[unique[i]]);
   }
-  printf("FILTER = %s.   \n",filter);
+  //printf("FILTER = %s.   \n",filter);
 
   if (pcap_compile(fp,&fcode,filter,1,0xffffffff)<0)
     FAILURE("Unable to compile the packet filter. Check the syntax.\n");
@@ -1247,3 +1202,5 @@ void CDEC21143::RestoreState(FILE *f)
   config_write(0x10,32,(*((u32*)(&state.config_data[0x10])))&~1);
   config_write(0x14,32,(*((u32*)(&state.config_data[0x14])))&~1);
 }
+
+#endif //!defined(NO_NETWORK)
