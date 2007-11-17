@@ -27,6 +27,9 @@
  * \file 
  * Contains the code for the emulated Typhoon Chipset devices.
  *
+ * X-1.32       Camiel Vanderhoeven                             17-NOV-2007
+ *      Use CHECK_ALLOCATION.
+ *
  * X-1.31       Camiel Vanderhoeven                             16-NOV-2007
  *      Replaced PCI_ReadMem and PCI_WriteMem with PCI_Phys.
  *
@@ -240,7 +243,7 @@ CSystem::CSystem(const char *filename)
   state.tig_HaltA   = 0;
   state.tig_HaltB   = 0;
 
-  memory = calloc(1<<iNumMemoryBits,1);
+  CHECK_ALLOCATION(memory = calloc(1<<iNumMemoryBits,1));
 
   printf("%%TYP-I-INIT: 21272 Typhoon chipset emulator initialized.\n");
   printf("%%TYP-I-CONF: 21272 Typhoon config: 1 Cchip, 8 DChip, 2 PChip.\n");
@@ -260,7 +263,7 @@ CSystem::~CSystem()
 void CSystem::ResetMem(unsigned int membits) {
   free(memory);
   iNumMemoryBits=membits;
-  memory = calloc(1<<iNumMemoryBits,1);
+  CHECK_ALLOCATION(memory = calloc(1<<iNumMemoryBits,1));
 }
 
 int CSystem::RegisterComponent(CSystemComponent *component)
@@ -318,21 +321,15 @@ int CSystem::RegisterMemory(CSystemComponent *component, int index, u64 base, u6
     }
   }
 
-  m = (struct SMemoryUser*) malloc(sizeof(struct SMemoryUser));
-  if (m)
-    {
-      m->component = component;
-      m->base = base;
-      m->length = length;
-      m->index = index;
+  CHECK_ALLOCATION(m = (struct SMemoryUser*) malloc(sizeof(struct SMemoryUser)));
+  m->component = component;
+  m->base = base;
+  m->length = length;
+  m->index = index;
 
-      asMemories[iNumMemories] = m;
-      iNumMemories++;
-      return 0;
-    }
-  else
-    return -1;
-
+  asMemories[iNumMemories] = m;
+  iNumMemories++;
+  return 0;
 }
 
 int CSystem::Run()
@@ -1200,10 +1197,10 @@ void CSystem::LoadConfig(const char *filename) {
 
       // keyp and valp now point to valid strings for the variable
       // name and value name, respectively
-      conf = (struct SConfig*)malloc(sizeof(struct SConfig));
+      CHECK_ALLOCATION(conf = (struct SConfig*)malloc(sizeof(struct SConfig)));
       
-      val = (char *)malloc(strlen(valp)+1);
-      key = (char *)malloc(strlen(keyp)+1);
+      CHECK_ALLOCATION(val = (char *)malloc(strlen(valp)+1));
+      CHECK_ALLOCATION(key = (char *)malloc(strlen(keyp)+1));
       strcpy(val,valp);
       strcpy(key,keyp);
 
@@ -1211,8 +1208,6 @@ void CSystem::LoadConfig(const char *filename) {
       conf->key=key;
       
       asConfig[iNumConfig++]=conf;
-    } else {
-      //printf("Ignored Config Line:  %s\n",linebuf);
     }
   }
   fclose(f);
