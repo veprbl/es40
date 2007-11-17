@@ -32,6 +32,10 @@
  * \file 
  * Contains the code for the emulated DEC 21143 NIC device.
  *
+ * X-1.10       Camiel Vanderhoeven                             17-NOV-2007
+ *      Use the standard pcap functions (not the extended windows ones), we
+ *      want to be compatible.
+ *
  * X-1.9        Camiel Vanderhoeven                             17-NOV-2007
  *      Corrected a small "oops" error in getting the DECnet address.
  *
@@ -96,18 +100,17 @@ CDEC21143::CDEC21143(CSystem * c): CSystemComponent(c)
 
   if (cfg)
   {
-    if ( (fp= pcap_open(cfg,
-                        65536 /*snaplen: capture entire packets*/,
-                        PCAP_OPENFLAG_PROMISCUOUS /*flags*/,
-                        1 /*read timeout: 10ms.*/,
-                        NULL /* remote authentication */,
-                        errbuf)) == NULL)
+    if ( (fp= pcap_open_live(cfg,
+                             65536 /*snaplen: capture entire packets*/,
+                             1 /*promiscuous*/,
+                             1 /*read timeout: 1ms.*/,
+                             errbuf)) == NULL)
       FAILURE("Error opening adapter\n");
   }
   else
   {
     printf("\n%%NIC-Q-CHNIC: Choose a network adapter to connect to:\n");
-    if (pcap_findalldevs_ex(PCAP_SRC_IF_STRING, NULL, &alldevs, errbuf) == -1)
+    if (pcap_findalldevs(&alldevs, errbuf) == -1)
     {
       FAILURE("%%NIC-F-PCAPFAD: Error in pcap_findalldevs_ex:");
       FAILURE(errbuf);
@@ -142,12 +145,11 @@ CDEC21143::CDEC21143(CSystem * c): CSystemComponent(c)
     for (d=alldevs, i=0; i< inum-1 ;d=d->next, i++);
         
     /* Open the device */
-    if ( (fp= pcap_open(d->name,
-                        65536 /*snaplen: capture entire packets*/,
-                        PCAP_OPENFLAG_PROMISCUOUS /*flags*/,
-                        1 /*read timeout: 10ms.*/,
-                        NULL /* remote authentication */,
-                        errbuf)) == NULL)
+    if ( (fp= pcap_open_live(d->name,
+                             65536 /*snaplen: capture entire packets*/,
+                             1 /*flags*/,
+                             1 /*read timeout: 10ms.*/,
+                             errbuf)) == NULL)
       FAILURE("Error opening adapter\n");
   }
 
