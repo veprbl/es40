@@ -27,6 +27,9 @@
  * \file 
  * Contains the code for the emulated Ali M1543C chipset devices.
  *
+ * X-1.29       Camiel Vanderhoeven                             17-NOV-2007
+ *      Use CHECK_ALLOCATION.
+ *
  * X-1.28       Eduardo Marcelo Serrat                          31-OCT-2007
  *      Corrected IDE interface revision level.
  *
@@ -163,7 +166,8 @@ CAliM1543C::CAliM1543C(CSystem * c): CSystemComponent(c)
   int i;
   char buffer[64];
   char * filename;
-
+  char *p;
+  
   for(i=0;i<4;i++) {
     int C = i/2;
     int D = i%2;
@@ -186,7 +190,7 @@ CAliM1543C::CAliM1543C(CSystem * c): CSystemComponent(c)
 
       if(ide_info[C][D].handle != NULL) {
         printf("%%IDE-I-MOUNT: Device '%s' mounted on IDE %d\n",filename,i);
-        char *p=(char *)malloc(strlen(filename)+1);
+        CHECK_ALLOCATION(p=(char *)malloc(strlen(filename)+1));
         strcpy(p,filename);
         ide_info[C][D].filename=p;
 
