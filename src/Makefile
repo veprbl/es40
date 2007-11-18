@@ -27,6 +27,9 @@
 # 
 # Makefile for GNU Linux. (And possibly many UNIX'es).
 #
+# X-1.11		Camiel Vanderhoeven				18-NOV-2007
+#	Added linker option to include libpcap.
+#
 # X-1.10		Camiel Vanderhoeven				17-NOV-2007
 #	Removed Network.o (no longer needed).
 #
@@ -67,9 +70,10 @@ LDFLAGS =
 
 #to use Intel's ICC
 # CC = /opt/intel/cc/9.1.046/bin/icc
-#LDFLAGS = -L/opt/intel/cc/9.1.046/lib -lirc
+#LDFLAGS = -L/opt/intel/cc/9.1.046/lib -lirc -lpcap
 
 CFLAGS = -O2 -g -I.
+LDFLAGS = -lpcap
 IDB_CFLAGS = -DIDB 
 LSM_CFLAGS = -DIDB -DLS_MASTER
 LSS_CFLAGS = -DIDB -DLS_SLAVE
