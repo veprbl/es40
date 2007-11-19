@@ -27,6 +27,9 @@
  * \file 
  * Contains the code for the emulated on-cpu translation buffers.
  *
+ * X-1.21       Camiel Vanderhoeven                             19-NOV-2007
+ *      Speed up DTB by correctly handling 1-on-1 translations.
+ *
  * X-1.20       Camiel Vanderhoeven                             06-NOV-2007
  *      Initialize last_entry_found.
  *
@@ -264,6 +267,7 @@ int CTranslationBuffer::convert_address(u64 virt, u64 *phys, u8 access, bool che
   u64 phys_pte;
   u64 pte;
   u64 va_form;
+  u32 tmp;
   bool b;
 
 #if defined IDB
@@ -283,7 +287,7 @@ int CTranslationBuffer::convert_address(u64 virt, u64 *phys, u8 access, bool che
 #endif
 
   if (cCPU->get_spe(state.bIBOX) && !cm)
-    {
+  {
       if (   (((virt>>46)&3) == 2)
 	     && (cCPU->get_spe(state.bIBOX)&4))
 	{
@@ -327,7 +331,61 @@ int CTranslationBuffer::convert_address(u64 virt, u64 *phys, u8 access, bool che
 #endif
 	  return 0;
 	}
+  }
+
+  if ((!state.bIBOX) && (cCPU->get_r(32+22,false) & (X64(1)<<63)))
+  {
+#if defined(DEBUG_TB)
+    if (forreal)
+#if defined(IDB)
+      if (bTB_Debug)
+#endif
+      printf("1ON1 ");
+#endif
+    if (virt & (X64(1)<<43))
+    {
+      *phys = (virt + (cCPU->get_pal_base() & X64(ffffffffffe00000))) & X64(00000fffffffffff);
+#if defined(DEBUG_TB)
+    if (forreal)
+#if defined(IDB)
+      if (bTB_Debug)
+#endif
+      printf("PALbase\n");
+#endif
+    return 0;
     }
+    *phys = virt & X64(00000807ffffffff);
+    tmp = (u32) (*phys >> 13);
+    /*
+    if (check)
+    {
+      if (    (tmp >= 0x400a0000 && tmp<= 0x400bffff)
+           || (tmp >= 0x400c8000 && tmp<= 0x400cffff)
+           || (tmp >= 0x400e0000 && tmp<= 0x400fbfff)
+           || (tmp >= 0x400ff800 && tmp<= 0x400fffff)
+           || (tmp >= 0x40180000 && tmp<= 0x401bffff)
+           || (tmp >= 0x401c8000 && tmp<= 0x401fbfff)
+           || (tmp >= 0x401fb000 && tmp<= 0x401fffff)
+           || (tmp >= 0x40200000 && tmp<= 0x403fffff) )
+#if defined(DEBUG_TB)
+    if (forreal)
+#if defined(IDB)
+      if (bTB_Debug)
+#endif
+           printf("access\n");
+#endif
+      return E_ACCESS;
+    }
+    */
+#if defined(DEBUG_TB)
+    if (forreal)
+#if defined(IDB)
+      if (bTB_Debug)
+#endif
+    printf("simple\n");
+#endif
+    return 0;
+  }
 
   i = FindEntry(virt);
   if (i<0)
