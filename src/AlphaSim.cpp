@@ -27,6 +27,9 @@
  * \file
  * Defines the entry point for the application.
  *
+ * X-1.28       Brian Wheeler                                   22-NOV-2007
+ *      Added nic0.disabled configuration option.
+ *
  * X-1.27       Camiel Vanderhoeven                             17-NOV-2007
  *      Use FAILURE.
  *
@@ -217,7 +220,8 @@ int main(int argc, char* argv[])
   dpr = new CDPR(systm);
 
 #if !defined(NO_NETWORK)
-  nic = new CDEC21143(systm);
+  if(!atoi(systm->GetConfig("nic0.disabled","0")))
+    nic = new CDEC21143(systm);
 #endif
 
   systm->LoadROM();
