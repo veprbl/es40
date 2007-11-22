@@ -28,7 +28,10 @@
  * Contains the code for the CPU tracing engine.
  * This will become the debugging engine (interactive debugger) soon.
  *
- * X-1.25	Camiel Vanderhoeven				7-APR-2007
+ * X-1.26	    Brian Wheeler    				                22-NOV-2007
+ *	Added LOADREG and LOADFPREG debugger commands.
+ *
+ * X-1.25	    Camiel Vanderhoeven				                7-APR-2007
  *	Added PCB to job context recognition.
  *
  * X-1.24       Camiel Vanderhoeven                             30-MAR-2007
@@ -706,6 +709,8 @@ int CTraceEngine::parse(char command[100][100])
       printf("  JUMP <hex address>                                                 \n");
       printf("  PAL [ ON | OFF ]                                                   \n"); 
       printf("  DUMPREGS                                                           \n");
+      printf("  LOADREG <register> <value>                                         \n");
+      printf("  LOADFPREG <register> <value>                                       \n");
       printf("  @<script-file>                                                     \n");
       printf("  # | // | ; | ! <comment>                                           \n");
       printf("                                                                     \n");
@@ -1083,6 +1088,38 @@ int CTraceEngine::parse(char command[100][100])
 	srom->SaveStateF(command[2]);
 	return 0;
       }
+    }
+    if (!strncasecmp(command[0],"LOADREG",strlen(command[0]))) {
+      int reg;
+      u64 value;     
+      result = sscanf(command[1],"%d",&reg);
+      if(result != 1 || reg > 31) {
+	  printf("%%IDB-F-INVREG: Invalid register number.\n");
+	  return 0;
+      }
+      result = sscanf(command[2],"%" LL "x",&value);
+      if(result != 1) {
+	  printf("%%IDB-F-INVVAL: Invalid hexadecimal value.\n");
+	  return 0;
+      }
+      cpu[0]->set_r(reg,value);
+      return 0;
+    }
+    if (!strncasecmp(command[0],"LOADFPREG",strlen(command[0]))) {
+      int reg;
+      u64 value;     
+      result = sscanf(command[1],"%d",&reg);
+      if(result != 1 || reg > 31) {
+	  printf("%%IDB-F-INVREG: Invalid register number.\n");
+	  return 0;
+      }
+      result = sscanf(command[2],"%" LL "x",&value);
+      if(result != 1) {
+	  printf("%%IDB-F-INVVAL: Invalid hexadecimal value.\n");
+	  return 0;
+      }
+      cpu[0]->set_f(reg,value);
+      return 0;
     }
     break;
   case 4:
