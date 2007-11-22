@@ -28,6 +28,9 @@
  * \file
  * Contains the definitions for the emulated DecChip 21264CB EV68 Alpha processor.
  *
+ * X-1.25	    Brian Wheeler    				                22-NOV-2007
+ *	Added set_r and set_f for LOADREG and LOADFPREG debugger commands.
+ *
  * X-1.24       Camiel Vanderhoeven                             06-NOV-2007
  *      Performance improvements to ICACHE: last result is kept; cache
  *      lines are larger (512 DWORDS in stead of 16 DWORDS), cache size is
@@ -169,6 +172,8 @@ class CAlphaCPU : public CSystemComponent
   virtual ~CAlphaCPU();
   u64 get_r(int i, bool translate);
   u64 get_f(int i);
+  void set_r(int reg, u64 val);
+  void set_f(int reg, u64 val);
   u64 get_prbr(void);
   u64 get_hwpcb(void);
   u64 get_pc();
@@ -486,6 +491,22 @@ inline u64 CAlphaCPU::get_r(int i, bool translate)
 inline u64 CAlphaCPU::get_f(int i)
 {
   return state.f[i];
+}
+
+/** 
+ * Set a register value
+ **/
+inline void CAlphaCPU::set_r(int reg, u64 value)
+{
+  state.r[reg]=value;
+}
+
+/** 
+ * Set a fp register value
+ **/
+inline void CAlphaCPU::set_f(int reg, u64 value)
+{
+  state.f[reg]=value;
 }
 
 inline u64 CAlphaCPU::get_pal_base()
