@@ -27,6 +27,9 @@
  * \file 
  * Contains the definitions for the emulated Typhoon Chipset devices.
  *
+ * X-1.33       Brian Wheeler                                   1-DEC-2007
+ *      Added panic.
+ *
  * X-1.15       Camiel Vanderhoeven                             16-NOV-2007
  *      Replaced PCI_ReadMem and PCI_WriteMem with PCI_Phys.
  *
@@ -152,6 +155,12 @@ class CSystem
   char *GetConfig(const char *key);
   char *GetConfig(const char *key, char *defval);
 
+  void panic(char *message, int flags);
+
+#define PANIC_NOSHUTDOWN 0
+#define PANIC_SHUTDOWN 1
+#define PANIC_ASKSHUTDOWN 2
+#define PANIC_LISTING 4
 
  private:
   int iNumCPUs;

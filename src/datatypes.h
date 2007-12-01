@@ -27,6 +27,10 @@
  * \file
  * Contains the datatype definitions for use with Microsoft Visual C++ and Linux.
  *
+ * X-1.12       Camiel Vanderhoeven                             1-DEC-2007
+ *      Use __int8, __int16 and __int32 on windows, instead of char, short, 
+ *      long. This makes us compatible with SDL.
+ *
  * X-1.11       Camiel Vanderhoeven                             15-NOV-2007
  *      Use typedefs in stead of #define's
  *
@@ -68,14 +72,14 @@
 
 #if defined(_WIN32)
 
-typedef unsigned char     u8;
-typedef unsigned short    u16;
-typedef unsigned long     u32;
+typedef unsigned __int8     u8;
+typedef unsigned __int16    u16;
+typedef unsigned __int32     u32;
 typedef unsigned __int64  u64;
 
-typedef signed char       s8;
-typedef signed short      s16;
-typedef signed long       s32;
+typedef signed __int8       s8;
+typedef signed __int16      s16;
+typedef signed __int32       s32;
 typedef signed __int64    s64;
 
 #define X64(a) 0x##a##ui64

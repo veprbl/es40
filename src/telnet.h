@@ -28,6 +28,9 @@
  * Contains TCP/IP declarations used by the serial port emulator, network
  * emulation, and lock-step code.
  *
+ * X-1.6        Brian Wheeler                                   1-DEC-2007
+ *      Corrected an unsigned/signed issue in inet_aton.
+ *
  * X-1.5        Camiel Vanderhoeven                             15-NOV-2007
  *      Replace winsock.h by winsock2.h.
  *
@@ -122,7 +125,7 @@ typedef unsigned int socklen_t;
   {
     unsigned long a = inet_addr (name);
     addr->s_addr = a;
-    return a != -1;
+    return a != (unsigned int) -1;
   }
   
   #endif

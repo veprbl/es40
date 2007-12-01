@@ -30,6 +30,10 @@
  * \bug Rounding and trap modes are not used for floating point ops.
  * \bug /V is ignored for integer ops.
  *
+ * X-1.45       Brian Wheeler                                   1-DEC-2007
+ *      Added support for instruction counting, underlined lines in
+ *      listings, corrected some unsigned/signed issues.
+ *
  * X-1.44       Camiel Vanderhoeven                             16-NOV-2007
  *      Avoid more compiler warnings.
  *
@@ -537,6 +541,11 @@ int CAlphaCPU::DoClock()
 
    state.current_pc = state.pc;
 
+#ifdef IDB
+   state.instruction_count++;
+#endif
+
+
    if (DO_ACTION)
     {
       // check for interrupts
@@ -982,7 +991,13 @@ int CAlphaCPU::DoClock()
 }
 
 #if defined(IDB)
+
 void CAlphaCPU::listing(u64 from, u64 to)
+{
+  listing(from,to,0);
+}
+
+void CAlphaCPU::listing(u64 from, u64 to, u64 mark)
 {
   printf("%%CPU-I-LISTNG: Listing from %016" LL "x to %016" LL "x\n",from,to);
   u64 iSavedPC;
@@ -991,7 +1006,11 @@ void CAlphaCPU::listing(u64 from, u64 to)
   bSavedDebug = bDisassemble;
   bDisassemble = true;
   bListing = true;
-  for(state.pc=from;state.pc<=to;DoClock());
+  for(state.pc=from;state.pc<=to;) {
+    DoClock();
+    if(state.pc == mark) 
+      printf("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n");
+  }
   bListing = false;
   state.pc = iSavedPC;
   bDisassemble = bSavedDebug;
@@ -1022,3 +1041,10 @@ void CAlphaCPU::RestoreState(FILE *f)
   dtb->RestoreState(f);
 }
 
+
+#ifdef IDB
+u64 CAlphaCPU::get_instruction_count()
+{
+  return state.instruction_count;
+}
+#endif

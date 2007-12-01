@@ -28,6 +28,10 @@
  * \file
  * Contains the definitions for the emulated DecChip 21264CB EV68 Alpha processor.
  *
+ * X-1.26       Brian Wheeler                                   1-DEC-2007
+ *      Added support for instruction counting, underlined lines in
+ *      listings, corrected some unsigned/signed issues.
+ *
  * X-1.25	    Brian Wheeler    				                22-NOV-2007
  *	Added set_r and set_f for LOADREG and LOADFPREG debugger commands.
  *
@@ -181,6 +185,7 @@ class CAlphaCPU : public CSystemComponent
 
 #ifdef IDB
   u64 get_current_pc_physical();
+  u64 get_instruction_count();
 #endif
   
   u64 get_clean_pc();
@@ -194,6 +199,7 @@ class CAlphaCPU : public CSystemComponent
 
 #if defined(IDB)
   void listing(u64 from, u64 to);
+  void listing(u64 from, u64 to, u64 mark);
 #endif
 
  private:
@@ -256,6 +262,9 @@ class CAlphaCPU : public CSystemComponent
     bool lock_flag;
     u64 f[64];			/**< Floating point registers (0-31 normal, 32-63 shadow) */
     int iProcNum;			/**< number of the current processor (0 in a 1-processor system) */
+
+    u64 instruction_count;      /**< Number of times doclock has been called */
+
   } state;
 
 #ifdef IDB
@@ -524,7 +533,7 @@ inline u64 CAlphaCPU::get_prbr(void)
   u64 p_prbr;	// physical
   bool b;
 
-  if (state.r[21+32] && (   (state.r[21+32]+0xaf) < (X64(1)<<cSystem->get_memory_bits())))
+  if (state.r[21+32] && (   (u64)(state.r[21+32]+0xaf) < (u64)((X64(1)<<cSystem->get_memory_bits()))))
     v_prbr = cSystem->ReadMem(state.r[21+32] + 0xa8,64);
   else
     v_prbr = cSystem->ReadMem(0x70a8 + (0x200 * get_cpuid()),64);
@@ -532,7 +541,7 @@ inline u64 CAlphaCPU::get_prbr(void)
   if (dtb->convert_address(v_prbr, &p_prbr, 0, false, 0, &b, false, false))
     p_prbr = v_prbr;
 
-  if (p_prbr > (X64(1)<<cSystem->get_memory_bits()))
+  if ((u64)p_prbr > (u64)(X64(1)<<cSystem->get_memory_bits()))
     p_prbr = 0;
 
   return p_prbr;
@@ -544,7 +553,7 @@ inline u64 CAlphaCPU::get_hwpcb(void)
   u64 p_pcb;	// physical
   bool b;
 
-  if (state.r[21+32] && (   (state.r[21+32]+0x17) < (X64(1)<<cSystem->get_memory_bits())))
+  if (state.r[21+32] && (   (u64)(state.r[21+32]+0x17) < (u64)((X64(1)<<cSystem->get_memory_bits()))))
     v_pcb = cSystem->ReadMem(state.r[21+32] + 0x10,64);
   else
     v_pcb = cSystem->ReadMem(0x7010 + (0x200 * get_cpuid()),64);
@@ -552,7 +561,7 @@ inline u64 CAlphaCPU::get_hwpcb(void)
   if (dtb->convert_address(v_pcb, &p_pcb, 0, false, 0, &b, false, false))
     p_pcb = v_pcb;
 
-  if (p_pcb > (X64(1)<<cSystem->get_memory_bits()))
+  if (p_pcb > (u64)(X64(1)<<cSystem->get_memory_bits()))
     p_pcb = 0;
 
   return p_pcb;

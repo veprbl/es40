@@ -32,6 +32,10 @@
  * \file 
  * Contains the definitions for the emulated DEC 21143 NIC device.
  *
+ * X-1.6        Camiel Vanderhoeven                             1-DEC-2007
+ *      Moved inclusion of StdAfx.h outside conditional block; necessary
+ *      for using precompiled headers in Visual C++.
+ *
  * X-1.5        Camiel Vanderhoeven                             17-NOV-2007
  *      Don't define REMOTE before including pcap.h; we want to be 
  *      compatible.

@@ -27,7 +27,11 @@
  * \file 
  * Contains the code for the emulated Ali M1543C chipset devices.
  *
- * X-1.30       Camiel Vanderhoeven                             01-DEC-2007
+ * X-1.31       Brian Wheeler                                   1-DEC-2007
+ *      Added console support (using SDL library), corrected timer
+ *      behavior for Linux/BSD as a guest OS.
+ *
+ * X-1.30       Camiel Vanderhoeven                             1-DEC-2007
  *      Use correct interrupt for secondary IDE controller.
  *
  * X-1.29       Camiel Vanderhoeven                             17-NOV-2007
@@ -156,6 +160,16 @@
 #include "AliM1543C.h"
 #include "System.h"
 
+#if defined(USE_CONSOLE)
+#if defined(_WIN32)
+#include <SDL.h>
+#else
+#include <SDL/SDL.h>
+#endif
+#include "sdl_scancodes.h"
+#endif
+
+
 #ifdef DEBUG_PIC
 bool pic_messages = false;
 #endif
@@ -209,10 +223,24 @@ CAliM1543C::CAliM1543C(CSystem * c): CSystemComponent(c)
   
   c->RegisterMemory(this, 1, X64(00000801fc000060),8);
   state.kb_intState = 0;
-  state.kb_Status = 0;
+  state.kb_Status = 0x14;
   state.kb_Output = 0;
   state.kb_Command = 0;
   state.kb_Input = 0;
+  state.kb_dataPending=0xff;
+  state.kb_mode = true;
+  state.kb_head=0;
+  state.kb_tail=0;
+
+#ifdef USE_CONSOLE
+
+#ifndef _WIN32
+  
+#endif
+#endif
+
+
+
   state.reg_61 = 0;
 
   c->RegisterMemory(this, 2, X64(00000801fc000070), 4);
@@ -369,6 +397,47 @@ void CAliM1543C::WriteMem(int index, u64 address, int dsize, u64 data)
     }
 }
 
+
+void CAliM1543C::kb_enqueue(u8 data, int type) {
+  if(state.kb_tail - state.kb_head > 31) {
+    // buffer is full.
+    printf("%%KEYB-E-QFULL: keyboard queue is full.\n");
+  } else {
+    state.kb_buffer[state.kb_tail % 32] = data;
+    state.kb_tail++;
+    state.kb_Status |= 1;  // output buffer is ready.
+    if(type==1)
+      state.kb_Status |= 0x20;  // it is mouse data.
+    if(state.kb_Command & 1  && type == 0) {
+      /* keyboard enabled and interrupt on keystroke */
+      //      printf("Interrupt posted.\n");
+      pic_interrupt(0,1);
+    }
+    if(state.kb_Command & 2 && type == 1) {
+      /* mouse enabled and interrupt on mouse */
+      //printf("Mouse Interrupt Posted.\n");
+      pic_interrupt(1,4);
+    }
+  }
+}
+
+u8 CAliM1543C::kb_dequeue() {
+  u8 data = state.kb_buffer[state.kb_head % 32];
+  state.kb_head++;
+  if(state.kb_tail - state.kb_head == 0)
+    state.kb_Status &= ~0x21; // buffer not ready, and not mouse.
+  return data;
+}
+
+bool CAliM1543C::kb_ready() {
+  if(state.kb_Status & 1) 
+    return true;
+  else
+    return false;
+}
+
+
+
 u8 CAliM1543C::kb_read(u64 address)
 {
   u8 data;
@@ -376,9 +445,14 @@ u8 CAliM1543C::kb_read(u64 address)
   switch (address)
     {
     case 0:
-      state.kb_Status &= ~1;
-      data = state.kb_Output;
+      if(!kb_ready()) 
+	data = state.kb_Output;
+      else 
+	data = state.kb_Output = kb_dequeue();
       break;
+    case 1:
+      printf("%%ALI-W-P61: Read\n");
+      data = 0;
     case 4:
       data = state.kb_Status;
       break;
@@ -387,42 +461,156 @@ u8 CAliM1543C::kb_read(u64 address)
       break;
     }
   
-  TRC_DEV3("%%ALI-I-KBDREAD: %02" LL"x read from Keyboard port %02x\n",data,address+0x60);
+  //if(address != 4 || data & 1)
+  //printf("%%ALI-I-KBDREAD: %02" LL"x read from Keyboard port %02x\n",data,address+0x60);
   return data;
 }
 
 void CAliM1543C::kb_write(u64 address, u8 data)
 {
-  TRC_DEV3("%%ALI-I-KBDWRITE: %02" LL "x written to Keyboard port %02x\n",data,address+0x60);
+  //printf("%%ALI-I-KBDWRITE: %02" LL "x written to Keyboard port %02x\n",data,address+0x60);
   switch (address)
     {
-      //    case 0:
-      //        state.kb_Status &= ~8;
-      //        state.kb_Input = (u8) data;
-      //        return;
-    case 4:
-      state.kb_Status |= 8;
-      state.kb_Command = (u8) data;
-      switch (state.kb_Command)
-        {
-        case 0xAA:
-	  state.kb_Output = 0x55;
-	  state.kb_Status  |= 0x05; // data ready; initialized
+    case 0:
+      // port 60: keyboard command
+      state.kb_Status &= ~8;
+      state.kb_Input = (u8) data;
+
+      if(state.kb_mode) {  // talking to keyboard.
+	//printf("Keyboard message.\n");
+	switch (data) {
+	case 0xEE: // echo
+	  kb_enqueue(0xEE,0);
+	  break;
+	case 0xF0: // set scan code set
+	  state.kb_dataPending=0xf0;
+	  kb_enqueue(0xFA,0);
+	  break;
+	case 0xF4: // enable scanning
+	  kb_enqueue(0xFA,0);
+	  break;
+	case 0xF6: // set defaults
+	  kb_enqueue(0xFA,0);
+	  break;
+	case 0xFC: // set make/break
+	  state.kb_dataPending=0xfc;
+	  kb_enqueue(0xFA,0);
+	break;
+	case 0xFF: // reset
+	  while(kb_ready()) kb_dequeue(); // drain the queue.
+	  kb_enqueue(0xFA,0); // ack
+	  kb_enqueue(0xAA,0); // done with reset.
+
+	  break;
+	default: // data?
+	  switch(state.kb_dataPending) {
+	  case 0:
+	    //printf("-ALI-I-CMDWRI: Command Byte written with %02x\n",data);
+	    state.kb_Command=data;
+	    state.kb_dataPending=0xff;
+	    break;
+	  case 0xf0:
+	    //printf("-ALI-I-CMDWRI: Scan code set to %02x\n",data);
+	    state.kb_dataPending=0xff;
+	    kb_enqueue(0xFA,0); // ack.
+	    break;
+	  case 0xfc:
+	    //printf("-ALI-I-CMDWRI: set make/break\n");
+	    state.kb_dataPending=0xff;
+	    kb_enqueue(0xFA,0);
+	    break;
+	  case 0xff:
+	    //printf("-ALI-W-CMDUNEX: Unexpected data %02x to port 60.\n",data);
+	    break;
+	  default:
+	    printf("-ALI-W-CMDWRI: data %02x for unknown slot %02x!\n",data,state.kb_dataPending);
+	  }
 	  return;
-        case 0xAB:
-	  state.kb_Output = 0x01;
-	  state.kb_Status |= 0x01;
+	}
+      } else {
+	// talking to mouse!
+	//printf("Mouse message.\n");
+	switch (data)
+	  {
+	  case 0xf4: // start scanning?
+	    kb_enqueue(0xFA,1); // ack
+	    break;
+	  default:
+	    printf("%%ALI-W-MOUSEMSG: Unknown message to mouse: %02x\n",data);
+	    break;
+	  }
+	state.kb_mode=true;
+      }
+      return;
+    case 1:
+      printf("%%ALI-W-P61: Write:  %02x\n",data);
+      return;
+    case 4:
+      // port 64: keyboard controller command
+      state.kb_Status |= 8; // last data was command 
+      //state.kb_Command = (u8) data;
+      switch (data)
+        {
+	case 0xA7: // disable mouse interface
+	  state.kb_Command &= 0x20;
+	  return;
+	case 0xA8: // enable mouse port
+	  state.kb_Command &= ~0x20;
+	  return;
+        case 0xAA: // self-test
+	  while(kb_ready()) kb_dequeue(); // drain the queue.
+	  kb_enqueue(0x55,0);
+	  state.kb_Status |= 0x04; // initialized
+	  return;
+        case 0xAB: // interface test
+#if defined(USE_CONSOLE)
+	  kb_enqueue(0x00,0); // keyboard is ok.
+#else
+	  kb_enqueue(0x01,0); // keyboard line stuck low. 
+#endif
+	  return;
+	case 0xAE: // Enable Keyboard
+	  // clear bit 4 of command byte.
+	  state.kb_Command &= ~0x10;
+	  //cSystem->panic("Keyboard controller was sent AE command",PANIC_NOSHUTDOWN);
+	  //	  kb_enqueue(0x00,0);
+	  return;
+	case 0xD4: // write to mouse
+	  state.kb_mode=false;
+	  return;
+	case 0x20: // read keyboard controller command byte
+	  kb_enqueue(state.kb_Command,0);
+	  return;
+	case 0x60: // write keyboard controller command byte
+	  state.kb_dataPending=0;
 	  return;
         default:
-	      TRC_DEV2("%%ALI-W-UNKCMD: Unknown keyboard command: %02x\n", state.kb_Command);
+	      printf("%%ALI-W-UNKCMD: Unknown keyboard controller command: %02x\n", data);
 	  return;
         }
     }
 
 }
 
+/* BDW:
+  This may need some expansion to help with timer delays.  It looks like
+  the 8254 flips bits on occasion, and the linux kernel (at least) uses
+    do {
+        count++;
+    } while ((inb(0x61) & 0x20) == 0 && count < TIMEOUT_COUNT);
+  to calibrate the cpu clock.
+
+
+  for now I'll flip the bit on every other read so it looks like its doing
+  something.  I did the same thing for port 71 register 0x0a.
+ */
 u8 CAliM1543C::reg_61_read()
 {
+  if(!(state.reg_61 & 0x20)) {
+    state.reg_61 |= 0x20;
+  } else {
+    state.reg_61 &= ~0x20;
+  }
   return state.reg_61;
 }
 
@@ -433,7 +621,7 @@ void CAliM1543C::reg_61_write(u8 data)
 
 u8 CAliM1543C::toy_read(u64 address)
 {
-  TRC_DEV3("%%ALI-I-READTOY: read port %02x: 0x%02x\n", (u32)(0x70 + address), state.toy_access_ports[address]);
+  //printf("%%ALI-I-READTOY: read port %02x: 0x%02x\n", (u32)(0x70 + address), state.toy_access_ports[address]);
 
   return (u8)state.toy_access_ports[address];
 }
@@ -443,7 +631,7 @@ void CAliM1543C::toy_write(u64 address, u8 data)
   time_t ltime;
   struct tm stime;
 
-  TRC_DEV3("%%ALI-I-WRITETOY: write port %02x: 0x%02x\n", (u32)(0x70 + address), data);
+  //printf("%%ALI-I-WRITETOY: write port %02x: 0x%02x\n", (u32)(0x70 + address), data);
 
   state.toy_access_ports[address] = (u8)data;
 
@@ -475,7 +663,76 @@ void CAliM1543C::toy_write(u64 address, u8 data)
 	      state.toy_stored_data[8] = (u8)(stime.tm_mon + 1);
 	      state.toy_stored_data[9] = (u8)(stime.tm_year % 100);
 
-            }
+            
+
+	      // Debian Linux wants something out of 0x0a.  It gets initialized
+	      // with 0x26, by the SRM (I assume) but I don't know what this
+	      // byte is supposed to mean...
+	      // Ah, here's something from the linux kernel:
+	      
+	      //# /********************************************************
+	      //# * register details
+	      //# ********************************************************/
+	      //# #define RTC_FREQ_SELECT RTC_REG_A
+	      //#
+	      //# /* update-in-progress - set to "1" 244 microsecs before RTC goes off the bus,
+	      //# * reset after update (may take 1.984ms @ 32768Hz RefClock) is complete,
+	      //# * totalling to a max high interval of 2.228 ms.
+	      //# */
+	      //# # define RTC_UIP 0x80
+	      //# # define RTC_DIV_CTL 0x70
+	      //# /* divider control: refclock values 4.194 / 1.049 MHz / 32.768 kHz */
+	      //# # define RTC_REF_CLCK_4MHZ 0x00
+	      //# # define RTC_REF_CLCK_1MHZ 0x10
+	      //# # define RTC_REF_CLCK_32KHZ 0x20
+	      //# /* 2 values for divider stage reset, others for "testing purposes only" */
+	      //# # define RTC_DIV_RESET1 0x60
+	      //# # define RTC_DIV_RESET2 0x70
+	      //# /* Periodic intr. / Square wave rate select. 0=none, 1=32.8kHz,... 15=2Hz */
+	      //# # define RTC_RATE_SELECT 0x0F
+	      //#
+	      
+	      // Soooooo, the kernel seems to be waiting for the RTC to issue an
+	      // update in progress and then clear it.  This _very_ fast
+	      // clock (or very slow cpu) gets a UIP every other read...
+	      if(state.toy_stored_data[0x0a] & 0x80) {
+		state.toy_stored_data[0x0a] &= ~0x80;
+	      } else {
+		state.toy_stored_data[0x0a] |= 0x80;  
+	      }
+	      
+
+	      //# /****************************************************/
+	      //# #define RTC_CONTROL RTC_REG_B
+	      //# # define RTC_SET 0x80 /* disable updates for clock setting */
+	      //# # define RTC_PIE 0x40 /* periodic interrupt enable */
+	      //# # define RTC_AIE 0x20 /* alarm interrupt enable */
+	      //# # define RTC_UIE 0x10 /* update-finished interrupt enable */
+	      //# # define RTC_SQWE 0x08 /* enable square-wave output */
+	      //# # define RTC_DM_BINARY 0x04 /* all time/date values are BCD if clear */
+	      //# # define RTC_24H 0x02 /* 24 hour mode - else hours bit 7 means pm */
+	      //# # define RTC_DST_EN 0x01 /* auto switch DST - works f. USA only */
+	      //#
+	      // this is set (by the srm?) to 0x0e = SQWE | DM_BINARY | 24H
+	      // sets the PIE bit.
+	      
+
+
+
+	      //# /***********************************************************/
+	      //# #define RTC_INTR_FLAGS RTC_REG_C
+	      //# /* caution - cleared by read */
+	      //# # define RTC_IRQF 0x80 /* any of the following 3 is active */
+	      //# # define RTC_PF 0x40
+	      //# # define RTC_AF 0x20
+	      //# # define RTC_UF 0x10
+	      //#
+	      
+	      
+
+
+	    }
+
 	  else
             {
 	      // BCD
@@ -497,6 +754,12 @@ void CAliM1543C::toy_write(u64 address, u8 data)
 	      state.toy_stored_data[9] = (u8)((((stime.tm_year%100)/10)<<4) | ((stime.tm_year%100)%10));
             }
 	}
+
+      /* linux reads from 0x1a twice and gets zeros.  Then it halts.  I
+	 wonder what it is expecting.... */
+
+
+
       /* bdw:  I'm getting a 0x17 as data, which should copy some data 
 	 to port 0x71.  However, there's nothing there.  Problem? */
       state.toy_access_ports[1] = state.toy_stored_data[data & 0x7f];
@@ -588,6 +851,51 @@ void CAliM1543C::pit_write(u64 address, u8 data)
 int CAliM1543C::DoClock()
 {
   cSystem->interrupt(-1, true);
+
+#ifdef USE_CONSOLE
+  // We catch any console events which may have happened and
+  // push them into the keyboard buffer.  
+  // If we get different types of events (mouse & keyboard) we
+  // only process one type before yielding.  This way the status
+  // flags in the keyboard's status register will be correct and
+  // the software will not get confused.
+  SDL_Event event;
+  int last_event = -1;
+
+  while(SDL_PollEvent(&event)) {
+    
+    switch(event.type) {
+    case SDL_KEYDOWN:
+      kb_enqueue(key2scan(event.key.keysym.sym),0);
+      last_event=1;
+      break;
+    case SDL_KEYUP:
+      kb_enqueue(0xf0,0);
+      kb_enqueue(key2scan(event.key.keysym.sym),0);
+      last_event=1;
+      break;
+    case SDL_MOUSEMOTION:
+      last_event=2;
+      break;
+    case SDL_MOUSEBUTTONDOWN:
+      last_event=2;
+      break;
+    case SDL_MOUSEBUTTONUP:
+      last_event=2;
+      break;
+    case SDL_QUIT:  // window close.
+      return 1;
+    default:
+      //ignored event.
+      break;
+    }
+
+    
+
+
+  }
+#endif
+
   return 0;
 }
 
@@ -1474,3 +1782,24 @@ void CAliM1543C::RestoreState(FILE *f)
   ide_config_write(0x1c,32,(*((u32*)(&state.ide_config_data[0x1c])))&~1);
   ide_config_write(0x20,32,(*((u32*)(&state.ide_config_data[0x20])))&~1);
 }
+
+
+#ifdef USE_CONSOLE
+u8 CAliM1543C::key2scan(int key) {
+  if(key < 128) {
+    // use ASCII table.
+    return map_ascii[key];
+  } else if(key >= SDLK_KP0 && key-SDLK_KP0 < MAP_KEYPAD_LEN) {
+    return map_keypad[key-SDLK_KP0];
+  } else if(key >= SDLK_UP && key-SDLK_UP < MAP_MIDPAD_LEN) {
+    return map_midpad[key-SDLK_UP];
+  } else if(key >= SDLK_F1 && key-SDLK_F1 < MAP_FKEYS_LEN) {
+    return map_fkeys[key-SDLK_F1];
+  } else if(key >= SDLK_NUMLOCK && key-SDLK_NUMLOCK < MAP_MODKEYS_LEN) {
+    return map_modkeys[key-SDLK_NUMLOCK];
+  } else {
+    printf("%%CON-W-UNKEY: Unknown key code %02x\n",key);
+    return 0;
+  }
+}
+#endif

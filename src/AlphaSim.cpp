@@ -27,6 +27,9 @@
  * \file
  * Defines the entry point for the application.
  *
+ * X-1.29       Brian Wheeler                                   1-DEC-2007
+ *      Added console support if USE_CONSOLE is defined.
+ *
  * X-1.28       Brian Wheeler                                   22-NOV-2007
  *      Added nic0.disabled configuration option.
  *
@@ -138,6 +141,11 @@
 #if !defined(NO_NETWORK)
 #include "DEC21143.h"
 #endif
+
+#if defined(USE_CONSOLE)
+#include "S3Trio64.h"
+#endif
+
 #include "DPR.h"
 #include "TraceEngine.h"
 #include "lockstep.h"
@@ -153,6 +161,10 @@ CAliM1543C * ali = 0;
 CDEC21143 * nic = 0;
 #endif
 CDPR * dpr = 0;
+
+#if defined(USE_CONSOLE)
+CS3Trio64 * vga = 0;
+#endif
 
 // "standard" locations for a configuration file.  This
 // will be port specific.
@@ -208,6 +220,17 @@ int main(int argc, char* argv[])
 
   cpu[0] = new CAlphaCPU(systm);
 
+#if defined(USE_CONSOLE)
+  // Initialize Any external libraries for the console.  We do this early since
+  // devices might need things set up before they're init'd
+  if(SDL_Init(SDL_INIT_AUDIO|SDL_INIT_VIDEO) < 0) {
+    printf("%%SIM-F-INIT: Cannot initialize SDL library.\n");
+    exit(1);
+  }
+  atexit(SDL_Quit);
+#endif // USE_CONSOLE
+
+
   ali = new CAliM1543C(systm);
 
   srl[0] = new CSerial(systm, 0);
@@ -222,6 +245,10 @@ int main(int argc, char* argv[])
 #if !defined(NO_NETWORK)
   if(!atoi(systm->GetConfig("nic0.disabled","0")))
     nic = new CDEC21143(systm);
+#endif
+
+#if defined(USE_CONSOLE)
+  vga = new CS3Trio64(systm);
 #endif
 
   systm->LoadROM();

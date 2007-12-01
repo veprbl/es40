@@ -27,6 +27,16 @@
  * \file 
  * Contains the code for the emulated Typhoon Chipset devices.
  *
+ * X-1.33       Brian Wheeler                                   1-DEC-2007
+ *   1. Ignore address bits 35- 42 in the physical address; this is
+ *      correct according to the Tsunami/Typhoon HRM; which states that
+ *       "  The system address space is divided into two parts: system 
+ *        memory and PIO. This division is indicated by physical memory bit
+ *        <43> = 1 for PIO accesses from the CPU [...] In general, bits 
+ *        <42:35> are don’t cares if bit <43> is asserted. [...] The 
+ *        Typhoon Cchip supports 32GB of system memory (35 bits total).  "
+ *   2. Added support for Ctrl+C and panic.
+ *
  * X-1.32       Camiel Vanderhoeven                             17-NOV-2007
  *      Use CHECK_ALLOCATION.
  *
@@ -167,6 +177,8 @@
 
 #include <ctype.h>
 #include <stdlib.h>
+#include <signal.h>
+
 
 #define CLOCK_RATIO 10000
 
@@ -332,12 +344,22 @@ int CSystem::RegisterMemory(CSystemComponent *component, int index, u64 base, u6
   return 0;
 }
 
+int got_sigint = 0;
+void sigint_handler (int signum) 
+{
+  got_sigint=1;
+}
+
+
 int CSystem::Run()
 {
   int i,j,k;
   int result;
 
-  for(k=0;;k++)
+  /* catch CTRL-C and shutdown gracefully */
+  signal(SIGINT,&sigint_handler);
+
+  for(k=0;!got_sigint;k++)
   {
     for(j=0;j<CLOCK_RATIO;j++)
     {
@@ -355,8 +377,13 @@ int CSystem::Run()
       if (result)
 	return result;
     }
+#ifndef HIDE_COUNTER
     printf("%d | %016" LL "x\r",k,acCPUs[0]->get_pc());
+#endif
   }
+
+  printf("%%SYS-W-SHUTDOWN: CTRL-C or Device Failed\n");
+  return 1;
 }
 
 int CSystem::SingleStep()
@@ -419,7 +446,7 @@ void CSystem::WriteMem(u64 address, int dsize, u64 data)
   u16 t16;
 #endif
 
-  a = address & X64(00000fffffffffff);
+  a = address & X64(00000807ffffffff);
 
   if (a>>iNumMemoryBits)
     {
@@ -593,7 +620,7 @@ void CSystem::WriteMem(u64 address, int dsize, u64 data)
 	  return;
 	default:
 #ifdef DEBUG_UNKMEM
-	printf("%%MEM-I-WRUNKNWN: Attempt to write %d bytes (%016" LL "x) from unknown addres %011" LL "x\n",dsize/8,data,a);
+	printf("%%MEM-I-WRUNKNWN: Attempt to write %d bytes (%016" LL "x) from unknown address %011" LL "x\n",dsize/8,data,a);
 #endif
 	  return;
 	}
@@ -660,7 +687,7 @@ u64 CSystem::ReadMem(u64 address, int dsize)
   int i;
   u8 * p;
 
-  a = address & X64(00000fffffffffff);
+  a = address & X64(00000807ffffffff);
   if (a>>iNumMemoryBits)
     {
       // Non memory
@@ -787,7 +814,7 @@ u64 CSystem::ReadMem(u64 address, int dsize)
 
 	default:
 #ifdef DEBUG_UNKMEM
-	printf("%%MEM-I-RDUNKNWN: Attempt to read %d bytes from unknown addres %011" LL "x\n",dsize/8,a);
+	printf("%%MEM-I-RDUNKNWN: Attempt to read %d bytes from unknown address %011" LL "x\n",dsize/8,a);
 #endif
 	  return 0;
 	  //			return 0x77; // 7f
@@ -1230,4 +1257,81 @@ char *CSystem::GetConfig(const char *key, char *defval) {
     }
   }
   return defval;
+}
+
+/**
+ *  Dump system state to stdout for debugging purposes.
+ **/
+void CSystem::panic(char *message, int flags) {
+  int cpunum,i;
+  CAlphaCPU *cpu;
+  printf("\n******** SYSTEM PANIC *********\n");
+  printf("* %s\n",message);
+  printf("*******************************\n");
+  for(cpunum=0;cpunum<iNumCPUs;cpunum++) {
+    cpu = acCPUs[cpunum];
+    printf("\n==================== STATE OF CPU %d ====================\n",cpunum);
+
+    printf("PC: %016" LL "x\n", cpu->get_pc());
+#ifdef IDB
+    printf("Physical PC: %016" LL "x\n", cpu->get_current_pc_physical());
+    printf("Instruction Count: %" LL "d\n", cpu->get_instruction_count());
+#endif
+    printf("\n");
+
+
+    for(i=0;i<32;i++)
+      {
+	if (i<10) printf("R");
+	printf("%d:%016" LL "x", i, cpu->get_r(i,false));
+	if (i%4==3) printf("\n"); else printf(" ");
+      }
+    printf("\n");
+    for(i=4;i<8;i++)
+      {
+	if (i<10) printf("S");
+	printf("%d:%016" LL "x", i, cpu->get_r(i+32,false));
+	if (i%4==3) printf("\n"); else printf(" ");
+      }
+    for(i=20;i<24;i++)
+      {
+	if (i<10) printf("S");
+	printf("%d:%016" LL "x", i, cpu->get_r(i+32,false));
+	if (i%4==3) printf("\n"); else printf(" ");
+      }
+    printf("\n");
+    for(i=0;i<32;i++)
+      {
+	if (i<10) printf("F");
+        printf("%d:%016" LL "x", i, cpu->get_f(i));
+        if (i%4==3) printf("\n"); else printf(" ");
+      }
+  }
+  printf("\n");
+
+#ifdef IDB
+  if(flags & PANIC_LISTING) {
+    u64 start,end,xpc;
+    start = cpu->get_pc() - 64;
+    end = start + 128;
+    cpu->listing(start,end,cpu->get_pc());
+  }
+#endif
+
+
+
+  if(flags & PANIC_ASKSHUTDOWN) {
+    printf("Stop Emulation? ");
+    int c = getc(stdin);
+    if(c == 'y' || c=='Y')
+      flags |= PANIC_SHUTDOWN;
+  }
+
+
+
+  if(flags & PANIC_SHUTDOWN) {
+    exit(0);
+  }
+
+  return;
 }

@@ -27,6 +27,10 @@
  * \file 
  * Contains the definitions for the emulated Ali M1543C chipset devices.
  *
+ * X-1.15       Brian Wheeler                                   1-DEC-2007
+ *      Added console support (using SDL library), corrected timer
+ *      behavior for Linux/BSD as a guest OS.
+ *
  * X-1.14       Camiel Vanderhoeven                             16-APR-2007
  *      Added ResetPCI()
  *
@@ -119,6 +123,12 @@ class CAliM1543C : public CSystemComponent
   void pic_interrupt(int index, int intno);
   FILE * get_ide_disk(int controller, int drive);
   virtual void ResetPCI();
+
+  void kb_enqueue(u8 data, int type);
+  u8 kb_dequeue();
+  bool kb_ready();
+
+
  private:
 
   // REGISTERS 60 & 64: KEYBOARD
@@ -164,14 +174,23 @@ class CAliM1543C : public CSystemComponent
   u8 dma_read(int channel, u64 address);
   void dma_write(int channel, u64 address, u8 data);
 
+#ifdef USE_CONSOLE
+  u8 key2scan(int key);
+#endif
+
+
   // The state structure contains all elements that need to be saved to the statefile.
   struct SAliM1543CState {
-    // REGISTERS 60 & 64: KEYBOARD
+    // REGISTERS 60 & 64: KEYBOARD / MOUSE
     u8 kb_Input;
     u8 kb_Output;   	
     u8 kb_Status;   	
     u8 kb_Command;
     u8 kb_intState;
+    u8 kb_buffer[32];
+    u64 kb_head, kb_tail;
+    u8 kb_dataPending;
+    bool kb_mode;
 
     // REGISTER 61 (NMI)
     u8 reg_61;

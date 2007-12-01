@@ -71,9 +71,10 @@
  * \author Camiel Vanderhoeven (camiel@camicom.com / http://www.camicom.com)
  **/
 
+#include "StdAfx.h"
+
 #if !defined(NO_NETWORK)
 
-#include "StdAfx.h"
 #include "DEC21143.h"
 #include "System.h"
 

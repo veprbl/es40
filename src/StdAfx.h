@@ -30,6 +30,10 @@
  * or project specific include files that are used frequently, but
  * are changed infrequently.
  *
+ * X-1.17       Camiel Vanderhoeven                             1-DEC-2007
+ *      Include stdlib.h by default. We don't do MFC, so replace afx.h 
+ *      with windows.h 
+ *
  * X-1.16       Camiel Vanderhoeven                             16-NOV-2007
  *      Removed winsock.
  *
@@ -100,7 +104,7 @@
 #else
 #define WINVER 0x0501
 #endif
-#include <afx.h>
+#include <windows.h>
 #define strcasecmp(a,b) _stricmp(a,b)
 #define strncasecmp(a,b,c) _strnicmp (a,b,c)
 
@@ -123,6 +127,7 @@ inline void sleep_ms(int ms)
 
 #endif
 
+#include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include <malloc.h>

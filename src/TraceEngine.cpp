@@ -28,6 +28,10 @@
  * Contains the code for the CPU tracing engine.
  * This will become the debugging engine (interactive debugger) soon.
  *
+ * X-1.27       Camiel Vanderhoeven                             1-DEC-2007
+ *      Moved inclusion of StdAfx.h outside conditional block; necessary
+ *      for using precompiled headers in Visual C++.
+ *
  * X-1.26	    Brian Wheeler    				                22-NOV-2007
  *	Added LOADREG and LOADFPREG debugger commands.
  *
@@ -122,9 +126,11 @@
  **/
 
 
-#if defined(IDB)
 
 #include "StdAfx.h"
+
+#if defined(IDB)
+
 #include "TraceEngine.h"
 #include "AlphaCPU.h"
 #include "System.h"
