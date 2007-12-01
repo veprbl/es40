@@ -27,6 +27,9 @@
  * \file 
  * Contains the code for the emulated Ali M1543C chipset devices.
  *
+ * X-1.30       Camiel Vanderhoeven                             01-DEC-2007
+ *      Use correct interrupt for secondary IDE controller.
+ *
  * X-1.29       Camiel Vanderhoeven                             17-NOV-2007
  *      Use CHECK_ALLOCATION.
  *
@@ -886,7 +889,7 @@ u64 CAliM1543C::ide_command_read(int index, u64 address)
 	      fread(&(state.ide_data[index][0]),1,512,ide_info[index][state.ide_selected[index]].handle);
 	      state.ide_sectors[index]--;
 	      if (!(state.ide_command[index][6]&2))
-		pic_interrupt(1,6);
+		pic_interrupt(1,6+index);
 	    }
 	  else
 	    {
@@ -951,7 +954,7 @@ void CAliM1543C::ide_command_write(int index, u64 address, u64 data)
 	  state.ide_sectors[index]--;
 	  state.ide_data_ptr[index] = 0;
 	  if (!(state.ide_command[index][6]&2))
-            pic_interrupt(1,6);
+            pic_interrupt(1,6+index);
 	}
 	if (state.ide_sectors[index])
 	  state.ide_status[index] = 0x48;
@@ -1038,7 +1041,7 @@ void CAliM1543C::ide_command_write(int index, u64 address, u64 data)
 	      state.ide_status[index] = 0x48;	// RDY+DRQ
 
 	      if (!(state.ide_command[index][6]&2))
-		pic_interrupt(1,6);
+		pic_interrupt(1,6+index);
 
 	      break;
 	    case 0x20: // read sector
@@ -1054,7 +1057,7 @@ void CAliM1543C::ide_command_write(int index, u64 address, u64 data)
 	      state.ide_sectors[index] = state.ide_command[index][2]-1;
 	      if (state.ide_sectors[index]) state.ide_reading[index] = true;
 	      if (!(state.ide_command[index][6]&2))
-		pic_interrupt(1,6);
+		pic_interrupt(1,6+index);
 	      break;
 	    case 0x30:
 	      if (!ide_info[index][state.ide_selected[index]].mode)
@@ -1083,7 +1086,7 @@ void CAliM1543C::ide_command_write(int index, u64 address, u64 data)
 #endif
 	      state.ide_status[index] = 0x40;
 	      if (!(state.ide_command[index][6]&2))
-		pic_interrupt(1,6);
+		pic_interrupt(1,6+index);
 	      break;
         default:
 	      state.ide_status[index] = 0x41;	// ERROR
@@ -1095,7 +1098,7 @@ void CAliM1543C::ide_command_write(int index, u64 address, u64 data)
 	      printf("\n");
 #endif
 	      if (!(state.ide_command[index][6]&2))
-		pic_interrupt(1,6);
+		pic_interrupt(1,6+index);
 	  }
 	}
   }
