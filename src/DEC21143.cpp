@@ -32,6 +32,13 @@
  * \file 
  * Contains the code for the emulated DEC 21143 NIC device.
  *
+ * X-1.13       Camiel Vanderhoeven                             2-DEC-2007
+ *      Receive network data in a separate thread.
+ *
+ * X-1.12       Camiel Vanderhoeven                             1-DEC-2007
+ *      Moved inclusion of StdAfx.h outside conditional block; necessary
+ *      for using precompiled headers in Visual C++.
+ *
  * X-1.11       Camiel Vanderhoeven                             17-NOV-2007
  *      File should end in a newline.
  *
@@ -86,6 +93,19 @@
 #define	MII_STATE_A				        4
 #define	MII_STATE_D				        5
 #define	MII_STATE_IDLE				    6
+
+CDEC21143 * pDEC21143;
+
+#if defined(_WIN32)
+DWORD WINAPI recv_proc(LPVOID lpParam)
+#else
+static void * recv_proc(void * lpParam)
+#endif
+{
+  pDEC21143 = (CDEC21143 *) lpParam;
+  pDEC21143->receive_process();
+  return 0;
+}
 
 /**
  * Constructor.
@@ -152,7 +172,7 @@ CDEC21143::CDEC21143(CSystem * c): CSystemComponent(c)
     if ( (fp= pcap_open_live(d->name,
                              65536 /*snaplen: capture entire packets*/,
                              1 /*flags*/,
-                             1 /*read timeout: 10ms.*/,
+                             1 /*read timeout: 1ms.*/,
                              errbuf)) == NULL)
       FAILURE("Error opening adapter\n");
   }
@@ -171,7 +191,16 @@ CDEC21143::CDEC21143(CSystem * c): CSystemComponent(c)
 
   c->RegisterClock(this, true);
 
+  state.cur_rx_buf = NULL;
+  state.cur_tx_buf = NULL;
+
   ResetPCI();
+
+#if defined(_WIN32)
+  receive_process_handle = CreateThread(NULL, 0, recv_proc, this, 0, NULL);
+#else
+  pthread_create(&receive_process_handle, NULL, recv_proc, this);
+#endif
 
   printf("%%NIC-I-INIT: DEC 21143 network interface card emulator initialized.\n");
 }
@@ -217,8 +246,8 @@ int CDEC21143::DoClock()
   if ((state.reg[CSR_OPMODE / 8] & OPMODE_ST))
 	while (dec21143_tx());
 
-  if (state.reg[CSR_OPMODE / 8] & OPMODE_SR)
-	while (dec21143_rx());
+//  if (state.reg[CSR_OPMODE / 8] & OPMODE_SR)
+//	while (dec21143_rx());
 
   /*  Normal and Abnormal interrupt summary:  */
   state.reg[CSR_STATUS / 8] &= ~(STATUS_NIS | STATUS_AIS);
@@ -240,6 +269,16 @@ int CDEC21143::DoClock()
 /**
  * Read from the NIC registers.
  **/
+
+void CDEC21143::receive_process()
+{
+  while (true)
+  {
+    if (state.reg[CSR_OPMODE / 8] & OPMODE_SR)
+      while(dec21143_rx());
+    sleep_ms(10);
+  }
+}
 
 u64 CDEC21143::nic_read(u64 address, int dsize)
 {
