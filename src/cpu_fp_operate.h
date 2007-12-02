@@ -28,6 +28,9 @@
  * Contains code macros for the processor floating-point operate instructions.
  * Based on ARM chapter 4.10.
  *
+ * X-1.10       Camiel Vanderhoeven                             2-DEC-2007
+ *      Use sext_64 inline. 
+ *
  * X-1.9        Camiel Vanderhoeven                             16-NOV-2007
  *      Avoid more compiler warnings.
  *
@@ -71,7 +74,7 @@
 #define DO_CVTQL state.f[FREG_3] = ((state.f[FREG_2] & X64(00000000c0000000)) << 32)	\
 	                   | ((state.f[FREG_2] & X64(000000003fffffff)) << 29);
 
-#define DO_CVTLQ state.f[FREG_3] = SEXT(  ((state.f[FREG_2] >> 32) & X64(00000000c0000000))	\
+#define DO_CVTLQ state.f[FREG_3] = sext_64(  ((state.f[FREG_2] >> 32) & X64(00000000c0000000))	\
 	                          | ((state.f[FREG_2] >> 29) & X64(000000003fffffff)), 32);
 
 #define DO_FCMOVEQ  if (state.f[FREG_1] == X64(0000000000000000) || state.f[FREG_1] == X64(8000000000000000))	state.f[FREG_3] = state.f[FREG_2];

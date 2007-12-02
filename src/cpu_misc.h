@@ -28,6 +28,9 @@
  * Contains code macros for miscellaneous processor instructions.
  * Based on ARM chapter 4.11.
  *
+ * X-1.8        Camiel Vanderhoeven                             2-DEC-2007
+ *      Use vmspal_call functions.
+ *
  * X-1.7        Camiel Vanderhoeven                             16-NOV-2007
  *      Avoid more compiler warnings.
  *
@@ -65,194 +68,176 @@
 	  {					                        \
 	  UNKNOWN2				                    \
 	  } else {						            \
-        switch (function) {                             \
-        case 0x01: /* CFLUSH */                         \
-          break;                                        \
-        case 0x02: /* DRAINA */                         \
-          break;                                        \
-        case 0x03: /* LDQP */                           \
-          phys_address = state.r[16];                   \
-          state.r[0] = READ_PHYS_NT(64);                \
-          break;                                        \
-        case 0x04: /* STQP */                           \
-          phys_address = state.r[16];                   \
-          WRITE_PHYS_NT(state.r[17],64);                \
-          break;                                        \
-        case 0x06: /* MFPR_ASN */                       \
-          state.r[0] = state.asn;                       \
-          break;                                        \
-        case 0x07: /* MTPR_ASTEN */                     \
-          state.r[0] = state.aster;                     \
-          state.aster = ((state.aster & (int)state.r[16]) |  \
-                         (int)(state.r[16] >>4)) & 0xf;      \
-          break;                                        \
-        case 0x08: /* MTPR_ASTSR */                     \
-          state.r[0] = state.astrr;                     \
-          state.astrr = ((state.astrr & (int)state.r[16]) |  \
-                         (int)(state.r[16] >>4)) & 0xf;      \
-          break;                                        \
-        case 0x0b: /* MFPR_FEN */                       \
-          state.r[0] = state.fpen?1:0;                  \
-          break;                                        \
-        case 0x0e: /* MFPR_IPL */                       \
-          state.r[0] = (state.r[32+22] >> 8) & 0x1f;    \
-          break;                                        \
-        case 0x10: /* MFPR_MCES */                      \
-          state.r[0] = (state.r[32+22] >> 16) & 0xff;   \
-          break;                                        \
-        case 0x11: /* MTPR_MCES */                                        \
-          state.r[32+22] = (state.r[32+22] & X64(ffffffffff00ffff))       \
-                         | (state.r[32+22] & X64(0000000000070000)        \
-                             & ~(state.r[16] << 16))                      \
-                         | ((state.r[16] <<16) & X64(0000000000180000));  \
-          break;                                                          \
-        case 0x12: /* MFPR_PCBB */                      \
-          phys_address = state.r[32+21]+0x10;           \
-          state.r[0] = READ_PHYS_NT(64);                \
-          break;                                        \
-        case 0x13: /* MFPR_PRBR */                      \
-          phys_address = state.r[32+21]+0xa8;           \
-          state.r[0] = READ_PHYS_NT(64);                \
-          break;                                        \
-        case 0x14: /* MTPR_PRBR */                      \
-          phys_address = state.r[32+21]+0xa8;           \
-          WRITE_PHYS_NT(state.r[16],64);                \
-          break;                                        \
-        case 0x15: /* MFPR_PTBR */                      \
-          phys_address = state.r[32+21]+0x8;            \
-          state.r[0] = READ_PHYS_NT(64)>>0xd;           \
-          break;                                        \
-        case 0x16: /* MFPR_SCBB */                      \
-          phys_address = state.r[32+21]+0x170;          \
-          state.r[0] = READ_PHYS_NT(64)>>0xd;           \
-          break;                                        \
-        case 0x17: /* MTPR_SCBB */                                    \
-          phys_address = state.r[32+21]+0x170;                        \
-          WRITE_PHYS_NT((state.r[16]&X64(00000000ffffffff))<<0xd,64); \
-          break;                                                      \
-        case 0x18: /* MTPR_SIRR */              \
-          if (state.r[16]>0 && state.r[16]<16)  \
-            state.sir |= 1 << state.r[16];      \
-          break;                                \
-        case 0x19: /* MFPR_SISR */              \
-          state.r[0] = state.sir;               \
-          break;                                \
-        case 0x1a: /* MFPR_TBCHK */             \
-          state.r[0] = X64(8000000000000000);   \
-          break;                                \
-        case 0x1b: /* MTPR_TBIA */              \
-          itb->InvalidateAll();                 \
-          dtb->InvalidateAll();                 \
-          flush_icache();                       \
-          break;                                \
-        case 0x1c: /* MTPR_TBIAP */             \
-          itb->InvalidateAllProcess();          \
-          dtb->InvalidateAllProcess();          \
-          flush_icache_asm();                   \
-          break;                                \
-        case 0x1d: /* MTPR_TBIS */              \
-          itb->InvalidateSingle(state.r[16]);   \
-          dtb->InvalidateSingle(state.r[16]);   \
-          break;                                \
-        case 0x1e: /* MFPR_ESP */               \
-          phys_address = state.r[32+21]+0x10;   \
-          phys_address = READ_PHYS_NT(64)+0x08; \
-          state.r[0] = READ_PHYS_NT(64);        \
-          break;                                \
-        case 0x1f: /* MTPR_ESP */               \
-          phys_address = state.r[32+21]+0x10;   \
-          phys_address = READ_PHYS_NT(64)+0x08; \
-          WRITE_PHYS_NT(state.r[16],64);        \
-          break;                                \
-        case 0x20: /* MFPR_SSP */               \
-          phys_address = state.r[32+21]+0x10;   \
-          phys_address = READ_PHYS_NT(64)+0x10; \
-          state.r[0] = READ_PHYS_NT(64);        \
-          break;                                \
-        case 0x21: /* MTPR_SSP */               \
-          phys_address = state.r[32+21]+0x10;   \
-          phys_address = READ_PHYS_NT(64)+0x10; \
-          WRITE_PHYS_NT(state.r[16],64);        \
-          break;                                \
-        case 0x22: /* MFPR_USP */               \
-          phys_address = state.r[32+21]+0x10;   \
-          phys_address = READ_PHYS_NT(64)+0x18; \
-          state.r[0] = READ_PHYS_NT(64);        \
-          break;                                \
-        case 0x23: /* MTPR_USP */               \
-          phys_address = state.r[32+21]+0x10;   \
-          phys_address = READ_PHYS_NT(64)+0x18; \
-          WRITE_PHYS_NT(state.r[16],64);        \
-          break;                                \
-        case 0x24: /* MTPR_TBISD */             \
-          dtb->InvalidateSingle(state.r[16]);   \
-          break;                                \
-        case 0x25: /* MTPR_TBISI */             \
-          itb->InvalidateSingle(state.r[16]);   \
-          break;                                \
-        case 0x26: /* MFPR_ASTEN */             \
-          state.r[0] = state.aster;             \
-          break;                                \
-        case 0x27: /* MFPR_ASTSR */             \
-          state.r[0] = state.astrr;             \
-          break;                                \
-        case 0x29: /* MFPR_VPTB */              \
-          phys_address = state.r[32+21];        \
-          state.r[0] = READ_PHYS_NT(64);        \
-          break;                                \
-        case 0x2e: /* MTPR_DATFX */             \
-          phys_address = state.r[32+21] + 0x10; \
-          phys_address = READ_PHYS_NT(64);      \
-          WRITE_PHYS_NT((READ_PHYS_NT(64) | (X64(1)<<0x3f)) &~(state.r[16]<<0x3f),64);   \
-          break;                                \
-        case 0x3f: /* MFPR_WHAMI */             \
-          phys_address = state.r[32+21] + 0x98; \
-          state.r[0] = READ_PHYS_NT(64);        \
-          break;                                \
-        case 0x91: /* RD_PS */                  \
-          state.r[0] = state.r[32+22] & X64(ffff); \
-          break;                                \
-        case 0x9b: /* SWASTEN */                                            \
-          state.r[0] = (state.aster & (1<<((state.r[32+22]>>3)&3)))?1:0;    \
-          if (state.r[16]&1)                                                \
-            state.aster |= (1<<((state.r[32+22]>>3)&3));                    \
-          else                                                              \
-            state.aster &= ~(1<<((state.r[32+22]>>3)&3));                   \
-          break;                                                            \
-        case 0xf9c: /* WR_PS_SW */                               \
-          state.r[32+22] &= ~X64(3);                            \
-          state.r[32+33] |= state.r[16] & X64(3);               \
-          break;                                                \
-        case 0x9d: /* RSCC */                                   \
-          phys_address = state.r[32+21] + 0xa0;                 \
-          state.r[0] = READ_PHYS_NT(64);                        \
-          if (state.cc<(state.r[0] & X64(00000000ffffffff)))    \
-            state.r[0] += X64(1)<<0x20;                         \
-          state.r[0] &= X64(ffffffff00000000);                  \
-          state.r[0] |= state.cc;                               \
-          WRITE_PHYS_NT(state.r[0],64);                         \
-          break;                                                \
-        case 0x9e: /* READ_UNQ */               \
-          phys_address = state.r[32+21]+0x10;   \
-          phys_address = READ_PHYS_NT(64)+0x48; \
-          state.r[0] = READ_PHYS_NT(64);        \
-          break;                                \
-        case 0x9f: /* WRITE_UNQ */              \
-          phys_address = state.r[32+21]+0x10;   \
-          phys_address = READ_PHYS_NT(64)+0x48; \
-          WRITE_PHYS_NT(state.r[16],64);        \
-          break;                                \
-        case 0x92:                              \
-	      state.lock_flag = false;		        \
-        default:                                \
-	      state.r[32+23] = state.pc;			\
-	      state.pc = state.pal_base				\
-	        | (X64(1)<<13 )			            \
-	        | (((u64)(function & 0x80)) <<5 )	\
-	        | (((u64)(function & 0x3f)) << 6 )	\
-	        | X64(1);				            \
-	      TRC(true,false)			            \
-        }                                       \
+        if (state.pal_vms) {                    \
+          switch (function) {                             \
+          case 0x01: /* CFLUSH */                         \
+            vmspal_call_cflush();                \
+            break;                                        \
+          case 0x02: /* DRAINA */                         \
+            vmspal_call_draina();                \
+            break;                                        \
+          case 0x03: /* LDQP */                           \
+            vmspal_call_ldqp();                \
+            break;                                        \
+          case 0x04: /* STQP */                           \
+            vmspal_call_stqp();                \
+            break;                                        \
+          case 0x05: /* SWPCTX */                           \
+            vmspal_call_swpctx();                \
+            break;                                        \
+          case 0x06: /* MFPR_ASN */                       \
+            vmspal_call_mfpr_asn();                       \
+            break;                                        \
+          case 0x07: /* MTPR_ASTEN */                     \
+            vmspal_call_mtpr_asten();                             \
+            break;                                        \
+          case 0x08: /* MTPR_ASTSR */                     \
+            vmspal_call_mtpr_astsr();                            \
+            break;                                        \
+          case 0x09: /* CSERVE */                     \
+            vmspal_call_cserve();                            \
+            break;                                        \
+          case 0x0b: /* MFPR_FEN */                       \
+            vmspal_call_mfpr_fen();                  \
+            break;                                        \
+          case 0x0c: /* MTPR_FEN */                       \
+            vmspal_call_mtpr_fen();                  \
+            break;                                        \
+          case 0x0e: /* MFPR_IPL */                       \
+            vmspal_call_mfpr_ipl();    \
+            break;                                        \
+          case 0x0f: /* MTPR_IPL */                       \
+            vmspal_call_mtpr_ipl();    \
+            break;                                        \
+          case 0x10: /* MFPR_MCES */                      \
+            vmspal_call_mfpr_mces();   \
+            break;                                        \
+          case 0x11: /* MTPR_MCES */                                        \
+            vmspal_call_mtpr_mces();  \
+            break;                                                          \
+          case 0x12: /* MFPR_PCBB */                      \
+            vmspal_call_mfpr_pcbb();                \
+            break;                                        \
+          case 0x13: /* MFPR_PRBR */                      \
+            vmspal_call_mfpr_prbr();                \
+            break;                                        \
+          case 0x14: /* MTPR_PRBR */                      \
+            vmspal_call_mtpr_prbr();                \
+            break;                                        \
+          case 0x15: /* MFPR_PTBR */                      \
+            vmspal_call_mfpr_ptbr();           \
+            break;                                        \
+          case 0x16: /* MFPR_SCBB */                      \
+            vmspal_call_mfpr_scbb();           \
+            break;                                        \
+          case 0x17: /* MTPR_SCBB */                                    \
+            vmspal_call_mtpr_scbb(); \
+            break;                                                      \
+          case 0x18: /* MTPR_SIRR */              \
+            vmspal_call_mtpr_sirr();             \
+            break;                                \
+          case 0x19: /* MFPR_SISR */              \
+            vmspal_call_mfpr_sisr();               \
+            break;                                \
+          case 0x1a: /* MFPR_TBCHK */             \
+            vmspal_call_mfpr_tbchk();   \
+            break;                                \
+          case 0x1b: /* MTPR_TBIA */              \
+            vmspal_call_mtpr_tbia();                       \
+            break;                                \
+          case 0x1c: /* MTPR_TBIAP */             \
+            vmspal_call_mtpr_tbiap();                   \
+            break;                                \
+          case 0x1d: /* MTPR_TBIS */              \
+            vmspal_call_mtpr_tbis();   \
+            break;                                \
+          case 0x1e: /* MFPR_ESP */               \
+            vmspal_call_mfpr_esp();        \
+            break;                                \
+          case 0x1f: /* MTPR_ESP */               \
+            vmspal_call_mtpr_esp();        \
+            break;                                \
+          case 0x20: /* MFPR_SSP */               \
+            vmspal_call_mfpr_ssp();        \
+            break;                                \
+          case 0x21: /* MTPR_SSP */               \
+            vmspal_call_mtpr_ssp();        \
+            break;                                \
+          case 0x22: /* MFPR_USP */               \
+            vmspal_call_mfpr_usp();        \
+            break;                                \
+          case 0x23: /* MTPR_USP */               \
+            vmspal_call_mtpr_usp();        \
+            break;                                \
+          case 0x24: /* MTPR_TBISD */             \
+            vmspal_call_mtpr_tbisd();   \
+            break;                                \
+          case 0x25: /* MTPR_TBISI */             \
+            vmspal_call_mtpr_tbisi();   \
+            break;                                \
+          case 0x26: /* MFPR_ASTEN */             \
+            vmspal_call_mfpr_asten();             \
+            break;                                \
+          case 0x27: /* MFPR_ASTSR */             \
+            vmspal_call_mfpr_astsr();             \
+            break;                                \
+          case 0x29: /* MFPR_VPTB */              \
+            vmspal_call_mfpr_vptb();        \
+            break;                                \
+          case 0x2e: /* MTPR_DATFX */             \
+            vmspal_call_mtpr_datfx();   \
+            break;                                \
+          case 0x3f: /* MFPR_WHAMI */             \
+            vmspal_call_mfpr_whami();        \
+            break;                                \
+          case 0x86: /* IMB */                  \
+            vmspal_call_imb(); \
+            break;                                \
+          case 0x8f: /* PROBER */                  \
+            vmspal_call_prober(); \
+            break;                                \
+          case 0x90: /* PROBEW */                  \
+            vmspal_call_probew(); \
+            break;                                \
+          case 0x91: /* RD_PS */                  \
+            vmspal_call_rd_ps(); \
+            break;                                \
+          case 0x92: /* REI */                  \
+            vmspal_call_rei(); \
+            break;                                \
+          case 0x9b: /* SWASTEN */                                            \
+            vmspal_call_swasten();                   \
+            break;                                                            \
+          case 0x9c: /* WR_PS_SW */                               \
+            vmspal_call_wr_ps_sw();               \
+            break;                                                \
+          case 0x9d: /* RSCC */                                   \
+            vmspal_call_rscc();                         \
+            break;                                                \
+          case 0x9e: /* READ_UNQ */               \
+            vmspal_call_read_unq();        \
+            break;                                \
+          case 0x9f: /* WRITE_UNQ */              \
+            vmspal_call_write_unq();        \
+            break;                                \
+          default:                                \
+	        state.r[32+23] = state.pc;			\
+	        state.pc = state.pal_base				\
+	          | (X64(1)<<13 )			            \
+	          | (((u64)(function & 0x80)) <<5 )	\
+	          | (((u64)(function & 0x3f)) << 6 )	\
+	          | X64(1);				            \
+	        TRC(true,false)			            \
+          }                                       \
+        } else {                                  \
+          state.r[32+23] = state.pc;			\
+          state.pc = state.pal_base				\
+            | (X64(1)<<13 )			            \
+            | (((u64)(function & 0x80)) <<5 )	\
+            | (((u64)(function & 0x3f)) << 6 )	\
+            | X64(1);				            \
+          TRC(true,false)			            \
+        }                                         \
       }
 
 #define DO_IMPLVER state.r[REG_3] = CPU_IMPLVER;
@@ -269,5 +254,3 @@
 #define DO_ECB ;
 #define DO_WH64 ;
 #define DO_WH64EN ;
-
-

@@ -28,6 +28,9 @@
  * Contains code macros for the processor floating-point load/store instructions.
  * Based on ARM chapter 4.8.
  *
+ * X-1.7        Camiel Vanderhoeven                             2-DEC-2007
+ *      Changed the way translation buffers work. 
+ *
  * X-1.6        Camiel Vanderhoeven                             08-NOV-2007
  *      Restructured conversion routines.
  *
@@ -52,35 +55,35 @@
 
 #define DO_LDF									\
 	if (FREG_1 != 31) {							\
-	  DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_READ, true, false, false);	\
+	  DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_READ);	\
 	  state.f[FREG_1] = load_f((u32)READ_PHYS(32)); }
 
 #define DO_LDG									\
 	if (FREG_1 != 31) {							\
-	  DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_READ, true, false, false);	\
+	  DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_READ);	\
 	  state.f[FREG_1] = load_g(READ_PHYS(64)); }
 
 #define DO_LDS									\
 	if (FREG_1 != 31) {							\
-	  DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_READ, true, false, false);	\
+	  DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_READ);	\
 	  state.f[FREG_1] = load_s((u32)READ_PHYS(32)); }
 
 #define DO_LDT									\
 	if (FREG_1 != 31) {							\
-	  DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_READ, true, false, false);	\
+	  DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_READ);	\
 	  state.f[FREG_1] = READ_PHYS(64); }
 
 #define DO_STF									\
-	  DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_WRITE, true, false, false);	\
+	  DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_WRITE);	\
 	  WRITE_PHYS(store_f(state.f[FREG_1]),32);
 #define DO_STG									\
-	  DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_WRITE, true, false, false);	\
+	  DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_WRITE);	\
 	  WRITE_PHYS(store_g(state.f[FREG_1]),64);
 
 #define DO_STS									\
-	  DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_WRITE, true, false, false);	\
+	  DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_WRITE);	\
 	  WRITE_PHYS(store_s(state.f[FREG_1]),32);
 
 #define DO_STT									\
-	  DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_WRITE, true, false, false);	\
+	  DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_WRITE);	\
 	  WRITE_PHYS(state.f[FREG_1],64);

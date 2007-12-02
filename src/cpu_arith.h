@@ -28,6 +28,9 @@
  * Contains code macros for the processor integer arithmetic instructions.
  * Based on ARM chapter 4.4.
  *
+ * X-1.5        Camiel Vanderhoeven                             2-DEC-2007
+ *      Use sext_64 inline.
+ *
  * X-1.4        Camiel Vanderhoeven                             11-APR-2007
  *      Moved all data that should be saved to a state file to a structure
  *      "state".
@@ -53,9 +56,9 @@
 #define DO_CMPLT state.r[REG_3] = ((s64)state.r[REG_1]<(s64)V_2)?1:0;
 #define DO_CMPLE state.r[REG_3] = ((s64)state.r[REG_1]<=(s64)V_2)?1:0;
 
-#define DO_ADDL state.r[REG_3] = SEXT(state.r[REG_1] + V_2,32);
-#define DO_S4ADDL state.r[REG_3] = SEXT((state.r[REG_1]*4) + V_2,32);
-#define DO_S8ADDL state.r[REG_3] = SEXT((state.r[REG_1]*8) + V_2,32);
+#define DO_ADDL state.r[REG_3] = sext_64(state.r[REG_1] + V_2,32);
+#define DO_S4ADDL state.r[REG_3] = sext_64((state.r[REG_1]*4) + V_2,32);
+#define DO_S8ADDL state.r[REG_3] = sext_64((state.r[REG_1]*8) + V_2,32);
 
 #define DO_CTLZ									\
  	    temp_64 = 0;							\
@@ -88,7 +91,7 @@
 #define DO_CMPULT state.r[REG_3] = ((u64)state.r[REG_1]<(u64)V_2)?1:0;
 #define DO_CMPULE state.r[REG_3] = ((u64)state.r[REG_1]<=(u64)V_2)?1:0;
 
-#define DO_MULL state.r[REG_3] = SEXT((u32)state.r[REG_1]*(u32)V_2,32);
+#define DO_MULL state.r[REG_3] = sext_64((u32)state.r[REG_1]*(u32)V_2,32);
 #define DO_MULQ state.r[REG_3] = state.r[REG_1]*V_2;
 
 	 /*
@@ -117,7 +120,7 @@
 #define DO_S4SUBQ state.r[REG_3] = (state.r[REG_1]*4) - V_2;
 #define DO_S8SUBQ state.r[REG_3] = (state.r[REG_1]*8) - V_2;
 
-#define DO_SUBL state.r[REG_3] = SEXT(state.r[REG_1] - V_2,32);
-#define DO_S4SUBL state.r[REG_3] = SEXT((state.r[REG_1]*4) - V_2,32);
-#define DO_S8SUBL state.r[REG_3] = SEXT((state.r[REG_1]*8) - V_2,32);
+#define DO_SUBL state.r[REG_3] = sext_64(state.r[REG_1] - V_2,32);
+#define DO_S4SUBL state.r[REG_3] = sext_64((state.r[REG_1]*4) - V_2,32);
+#define DO_S8SUBL state.r[REG_3] = sext_64((state.r[REG_1]*8) - V_2,32);
 

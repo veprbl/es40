@@ -28,6 +28,10 @@
  * \file
  * Contains the definitions for the emulated DecChip 21264CB EV68 Alpha processor.
  *
+ * X-1.27       Camiel Vanderhoeven                             2-DEC-2007
+ *      Changed the way translation buffers work, the way interrupts work,
+ *      added vmspal routines. 
+ *
  * X-1.26       Brian Wheeler                                   1-DEC-2007
  *      Added support for instruction counting, underlined lines in
  *      listings, corrected some unsigned/signed issues.
@@ -124,9 +128,6 @@
 
 #include "SystemComponent.h"
 #include "System.h"
-#include "TranslationBuffer.h"
-#define SRM_NO_SRL 1
-#define SRM_NO_IDE 1
 
 #define ICACHE_ENTRIES          1024
 #define ICACHE_LINE_SIZE        512 // in dwords
@@ -148,6 +149,38 @@ struct SICache {
   bool asm_bit;		/**< Address Space Match bit */
   bool valid;		/**< Valid cache entry */
 };
+
+#define TB_ENTRIES              16
+
+/**
+ * Translation Buffer Entry.
+ * A translation buffer entry provides the mapping from a page of virtual memory to a page of physical memory.
+ **/
+
+struct STBEntry2 {
+  u64 virt;		        /**< Virtual address of page*/
+  u64 phys;		        /**< Physical address of page*/
+  u64 match_mask;       /**< The virtual address has to match for these bits to be a hit*/
+  u64 keep_mask;        /**< This part of the virtual address is OR-ed with the phys address*/
+  int asn;		        /**< Address Space Number*/
+//  u8 gh;		        /**< Granularity Hint*/
+  int asm_bit;		    /**< Address Space Match bit*/
+  int access[2][4];	/**< Access permitted [read/write][current mode]*/
+  int fault[3];        /**< Fault on access [read/write/execute]*/
+  bool valid;		    /**< Valid entry*/
+};
+
+#define ACCESS_READ  0
+#define ACCESS_WRITE 1
+#define ACCESS_EXEC  2
+#define ACCESS_MODE  3
+#define NO_CHECK     4
+#define VPTE         8
+#define FAKE        16
+#define ALT         32
+#define RECUR      128
+#define PROBE      256
+#define PROBEW     512
 
 /**
  * Emulated CPU.
@@ -192,7 +225,7 @@ class CAlphaCPU : public CSystemComponent
   void next_pc();
   void set_pc(u64 p_pc);
 
-  CTranslationBuffer * get_tb(bool bIBOX);
+//  CTranslationBuffer * get_tb(bool bIBOX);
   int get_asn(bool bIBOX);
   int get_spe(bool bIBOX);
   u64 va_form(u64 address, bool bIBOX);
@@ -202,10 +235,85 @@ class CAlphaCPU : public CSystemComponent
   void listing(u64 from, u64 to, u64 mark);
 #endif
 
+  int virt2phys(u64 virt, u64 * phys, int flags, bool * asm_bit,u32 instruction);
+
  private:
   int get_icache(u64 address, u32 * data);
+  int FindTBEntry(u64 virt, int flags);
+  void add_tb(u64 virt, u64 pte, int flags);
+  void add_tb_i(u64 virt, u64 pte);
+  void add_tb_d(u64 virt, u64 pte);
+  void tbia(int flags);
+  void tbiap(int flags);
+  void tbis(u64 virt, int flags);
   void go_pal(u32 pal_offset);
 
+  /* VMS PALcode call: */
+  void vmspal_call_cflush();
+  void vmspal_call_draina();
+  void vmspal_call_ldqp();
+  void vmspal_call_stqp();
+  void vmspal_call_swpctx();
+  void vmspal_call_mfpr_asn();
+  void vmspal_call_mtpr_asten();
+  void vmspal_call_mtpr_astsr();
+  void vmspal_call_cserve();
+  void vmspal_call_mfpr_fen();
+  void vmspal_call_mtpr_fen();
+  void vmspal_call_mfpr_ipl();
+  void vmspal_call_mtpr_ipl();
+  void vmspal_call_mfpr_mces();
+  void vmspal_call_mtpr_mces();
+  void vmspal_call_mfpr_pcbb();
+  void vmspal_call_mfpr_prbr();
+  void vmspal_call_mtpr_prbr();
+  void vmspal_call_mfpr_ptbr();
+  void vmspal_call_mfpr_scbb();
+  void vmspal_call_mtpr_scbb();
+  void vmspal_call_mtpr_sirr();
+  void vmspal_call_mfpr_sisr();
+  void vmspal_call_mfpr_tbchk();
+  void vmspal_call_mtpr_tbia();
+  void vmspal_call_mtpr_tbiap();
+  void vmspal_call_mtpr_tbis();
+  void vmspal_call_mfpr_esp();
+  void vmspal_call_mtpr_esp();
+  void vmspal_call_mfpr_ssp();
+  void vmspal_call_mtpr_ssp();
+  void vmspal_call_mfpr_usp();
+  void vmspal_call_mtpr_usp();
+  void vmspal_call_mtpr_tbisd();
+  void vmspal_call_mtpr_tbisi();
+  void vmspal_call_mfpr_asten();
+  void vmspal_call_mfpr_astsr();
+  void vmspal_call_mfpr_vptb();
+  void vmspal_call_mtpr_datfx();
+  void vmspal_call_mfpr_whami();
+  void vmspal_call_imb();
+  void vmspal_call_prober();
+  void vmspal_call_probew();
+  void vmspal_call_rd_ps();
+  int  vmspal_call_rei();
+  void vmspal_call_swasten();
+  void vmspal_call_wr_ps_sw();
+  void vmspal_call_rscc();
+  void vmspal_call_read_unq();
+  void vmspal_call_write_unq();
+
+  /* VMS PALcode entry: */
+  int vmspal_ent_dtbm_double_3(int flags);
+  int vmspal_ent_dtbm_single(int flags);
+  int vmspal_ent_itbm(int flags);
+  int vmspal_ent_iacv(int flags);
+  int vmspal_ent_dfault(int flags);
+  int vmspal_ent_ext_int(int ei);
+  int vmspal_ent_sw_int(int si);
+  int vmspal_ent_ast_int(int ast);
+
+  /* VMS PALcode internal: */
+  int vmspal_int_initiate_exception();
+  int vmspal_int_initiate_interrupt();
+  int vmspal_int_read_ide();
          
   struct SAlphaCPUState {
     u64 pal_base;			/**< IPR PAL_BASE [HRM: p 5-15] */
@@ -256,23 +364,26 @@ class CAlphaCPU : public CSystemComponent
     u64 fpcr;				/**< Floating-Point Control Register [HRM p 2-36] */
     bool bIntrFlag;			
     u64 current_pc;			/**< Virtual address of current instruction */
-    struct SICache icache[1024];		/**< Instruction cache entries [HRM p 2-11] */
+    struct SICache icache[ICACHE_ENTRIES];		/**< Instruction cache entries [HRM p 2-11] */
     int next_icache;			/**< Number of next cache entry to use */
     int last_found_icache;              /**< Number of last cache entry found */
+    struct STBEntry2 tb[2][TB_ENTRIES];
+    int next_tb[2];
+    int last_found_tb[2];
     bool lock_flag;
     u64 f[64];			/**< Floating point registers (0-31 normal, 32-63 shadow) */
     int iProcNum;			/**< number of the current processor (0 in a 1-processor system) */
 
     u64 instruction_count;      /**< Number of times doclock has been called */
 
+    u64 last_tb_virt;
+    bool pal_vms;
+    bool check_int;
   } state;
 
 #ifdef IDB
   u64 current_pc_physical;		/**< Physical address of current instruction */
 #endif
-
-  CTranslationBuffer * itb;	/**< Instruction-Stream Translation Buffer [HRM p 2-5] */
-  CTranslationBuffer * dtb;	/**< Data-Stream Translation Buffer [HRM p 2-13] */
 };
 
 #define RREG(a) (((a) & 0x1f) + (((state.pc&1) && (((a)&0xc)==0x4) && state.sde)?32:0))
@@ -287,6 +398,7 @@ inline void CAlphaCPU::flush_icache()
   for(i=0;i<ICACHE_ENTRIES;i++) 
     state.icache[i].valid = false;
   state.next_icache = 0;
+  state.last_found_icache = 0;
 }
 
 /**
@@ -307,6 +419,7 @@ inline void CAlphaCPU::flush_icache_asm()
 inline void CAlphaCPU::set_PAL_BASE(u64 pb)
 {
   state.pal_base = pb;
+  state.pal_vms = (pb==X64(8000));
 }
 
 /**
@@ -359,7 +472,7 @@ inline int CAlphaCPU::get_icache(u64 address, u32 * data)
   }
   else
   {
-    result = itb->convert_address(v_a, &p_a, ACCESS_READ, true, state.cm, &asm_bit, false, true);
+    result = virt2phys(v_a, &p_a, ACCESS_EXEC, &asm_bit,0);
     if (result)
       return result;
   }
@@ -425,16 +538,11 @@ inline void CAlphaCPU::irq_h(int number, bool assert)
 {
   if (assert)
     {
-      //        if (number<2 && !(eir & (X64(1)<<number)))
-      //            printf("Interrupt %d asserted on CPU %d\n",number,iProcNum);
       state.eir |= (X64(1)<<number);
+      state.check_int = true;
     }
   else
-    {
-      //        if (number<2 && (eir & (X64(1)<<number)))
-      //            printf("Interrupt %d de-asserted on CPU %d\n",number,iProcNum);
       state.eir &= ~(X64(1)<<number);
-    }
 }
 
 /**
@@ -538,7 +646,7 @@ inline u64 CAlphaCPU::get_prbr(void)
   else
     v_prbr = cSystem->ReadMem(0x70a8 + (0x200 * get_cpuid()),64);
 
-  if (dtb->convert_address(v_prbr, &p_prbr, 0, false, 0, &b, false, false))
+  if (virt2phys(v_prbr, &p_prbr, ACCESS_READ | FAKE | NO_CHECK, &b,0))
     p_prbr = v_prbr;
 
   if ((u64)p_prbr > (u64)(X64(1)<<cSystem->get_memory_bits()))
@@ -558,7 +666,7 @@ inline u64 CAlphaCPU::get_hwpcb(void)
   else
     v_pcb = cSystem->ReadMem(0x7010 + (0x200 * get_cpuid()),64);
 
-  if (dtb->convert_address(v_pcb, &p_pcb, 0, false, 0, &b, false, false))
+  if (virt2phys(v_pcb, &p_pcb, ACCESS_READ | NO_CHECK | FAKE, &b,0))
     p_pcb = v_pcb;
 
   if (p_pcb > (u64)(X64(1)<<cSystem->get_memory_bits()))
@@ -566,14 +674,6 @@ inline u64 CAlphaCPU::get_hwpcb(void)
 
   return p_pcb;
 }
-
-inline CTranslationBuffer * CAlphaCPU::get_tb(bool bIBOX)
-{
-  if (bIBOX)
-    return itb;
-  else
-    return dtb;
-};
 
 inline int CAlphaCPU::get_asn(bool bIBOX)
 {
@@ -594,4 +694,7 @@ inline int CAlphaCPU::get_spe(bool bIBOX)
   else
     return state.m_ctl_spe;
 }
+
+extern bool bTB_Debug;
+
 #endif // !defined(INCLUDED_ALPHACPU_H)

@@ -27,6 +27,9 @@
  * \file
  * Defines the entry point for the application.
  *
+ * X-1.30       Camiel Vanderhoeven                             2-DEC-2007
+ *      Added support for code profiling.
+ *
  * X-1.29       Brian Wheeler                                   1-DEC-2007
  *      Added console support if USE_CONSOLE is defined.
  *
@@ -286,6 +289,16 @@ int main(int argc, char* argv[])
   srom->RestoreStateF(systm->GetConfig("rom.flash","flash.rom"));
   dpr->RestoreStateF(systm->GetConfig("rom.dpr","dpr.rom"));
 
+#if defined(PROFILE)
+  {
+    u64 p_i;
+    for (p_i = PROFILE_FROM; p_i < PROFILE_TO; p_i+=(4*PROFILE_BUCKSIZE))
+      PROFILE_BUCKET(p_i) = 0;
+    profiled_insts = 0;
+  }
+#endif
+
+
 #if defined(IDB)
   if (argc>1 && argc<4 && argv[argc-1][0]=='@')
     trc->run_script(argv[argc-1] + 1);
@@ -298,6 +311,41 @@ int main(int argc, char* argv[])
     // save flash and dpr rom only if not terminated with a fatal error
     srom->SaveStateF(systm->GetConfig("rom.flash","flash.rom"));
     dpr->SaveStateF(systm->GetConfig("rom.dpr","dpr.rom"));
+  }
+#endif
+
+#if defined(PROFILE)
+  {
+    FILE * p_fp;
+    u64 p_max = 0;
+    u64 p_i;
+    int p_j;
+
+    printf("Writing profile to profile.txt");
+
+    p_fp = fopen("profile.txt","w");
+    for (p_i = PROFILE_FROM; p_i < PROFILE_TO; p_i+=(4*PROFILE_BUCKSIZE))
+    {
+      if (PROFILE_BUCKET(p_i)>p_max)
+        p_max = PROFILE_BUCKET(p_i);
+    }
+    fprintf(p_fp,"p_max = %10" LL "d; %10" LL "d profiled instructions.\n\n",p_max,profiled_insts);
+    for (p_i = PROFILE_FROM; p_i < PROFILE_TO; p_i+=(4*PROFILE_BUCKSIZE))
+    {
+      if (PROFILE_BUCKET(p_i))
+      {
+        fprintf(p_fp,"%016" LL "x: %10" LL "d ",p_i,PROFILE_BUCKET(p_i));
+//        printf("%016" LL " x: %10 " LL " d ",p_i,PROFILE_BUCKET(p_i));
+        for(p_j=0;p_j<(((float)PROFILE_BUCKET(p_i)/(float)p_max)*100);p_j++)
+        {
+          fprintf(p_fp,"*");
+//          printf("*");
+        }
+        fprintf(p_fp,"\n");
+//        printf("\n");
+      }
+    }
+    fclose(p_fp);
   }
 #endif
 

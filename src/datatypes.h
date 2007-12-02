@@ -27,6 +27,9 @@
  * \file
  * Contains the datatype definitions for use with Microsoft Visual C++ and Linux.
  *
+ * X-1.13       Camiel Vanderhoeven                             2-DEC-2007
+ *      Added various bitmask operations as inline functions.
+ *
  * X-1.12       Camiel Vanderhoeven                             1-DEC-2007
  *      Use __int8, __int16 and __int32 on windows, instead of char, short, 
  *      long. This makes us compatible with SDL.
@@ -137,5 +140,107 @@ typedef s64 int64_t;
 #define X16(a) 0x##a
 #define X8(a) 0x##a
 
+inline u64 keep_bits_64(u64 x, int hibit, int lobit)
+{
+    u64 r = x;
+    if (hibit<63)
+      r &=  ((X64(1)<<(hibit+1))-X64(1));
+    r   &= ~((X64(1)<<(lobit))-X64(1));
+    return r;
+}
+
+inline u64 make_mask_64(int hibit, int lobit)
+{
+    u64 r = X64(ffffffffffffffff);
+    if (hibit<63)
+      r &=  ((X64(1)<<(hibit+1))-X64(1));
+    r   &= ~((X64(1)<<(lobit))-X64(1));
+    return r;
+}
+
+inline u64 move_bits_64(u64 x, int hibit, int lobit, int destlobit)
+{
+    u64 r = x;
+    if (hibit<63)
+      r &=  ((X64(1)<<(hibit+1))-X64(1));
+    r   &= ~((X64(1)<<(lobit))-X64(1));
+    r = (lobit<destlobit)?r<<(destlobit-lobit):r>>(lobit-destlobit);
+    return r;
+}
+
+inline u64 extend_bit_64(u64 x, int hibit, int lobit, int srcbit)
+{
+   if (x & (X64(1)<<srcbit))
+   {
+     u64 r = X64(ffffffffffffffff);
+     if (hibit<63)
+        r &=  ((X64(1)<<(hibit+1))-X64(1));
+      r   &= ~((X64(1)<<(lobit))-X64(1));
+    return r;
+   }
+   return 0;
+}
+
+inline u64 sext_64(u64 x, int bit)
+{
+   if (x & (X64(1)<<(bit-1)))
+   {
+     u64 r = X64(ffffffffffffffff);
+      r   &= ~((X64(1)<<(bit))-X64(1));
+    return x|r;
+   }
+   return x & ((X64(1)<<(bit))-X64(1));;
+}
+
+inline bool test_bit_64(u64 x, int bit)
+{
+  return (x & (X64(1)<<bit))?true:false;
+}
+
+inline u32 keep_bits_32(u32 x, int hibit, int lobit)
+{
+    u32 r = x;
+    if (hibit<31)
+      r &=  ((1<<(hibit+1))-1);
+    r   &= ~((1<<(lobit))-1);
+    return r;
+}
+
+inline u32 make_mask_32(int hibit, int lobit)
+{
+    u32 r = 0xffffffff;
+    if (hibit<31)
+      r &=  ((1<<(hibit+1))-1);
+    r   &= ~((1<<(lobit))-1);
+    return r;
+}
+
+inline u32 move_bits_32(u32 x, int hibit, int lobit, int destlobit)
+{
+    u32 r = x;
+    if (hibit<31)
+      r &=  ((1<<(hibit+1))-1);
+    r   &= ~((1<<(lobit))-1);
+    r = (lobit<destlobit)?r<<(destlobit-lobit):r>>(lobit-destlobit);
+    return r;
+}
+
+inline u32 extend_bit_32(u32 x, int hibit, int lobit, int srcbit)
+{
+   if (x & (1<<srcbit))
+   {
+     u32 r = 0xffffffff;
+     if (hibit<31)
+        r &=  ((1<<(hibit+1))-1);
+      r   &= ~((1<<(lobit))-1);
+    return r;
+   }
+   return 0;
+}
+
+inline bool test_bit_32(u32 x, int bit)
+{
+  return (x & (1<<bit))?true:false;
+}
 
 #endif //INCLUDED_DATATYPES_H

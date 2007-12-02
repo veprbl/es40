@@ -30,6 +30,9 @@
  * \bug Rounding and trap modes are not used for floating point ops.
  * \bug /V is ignored for integer ops.
  *
+ * X-1.46       Camiel Vanderhoeven                             2-DEC-2007
+ *      Changed the way translation buffers work, the way interrupts work. 
+ *
  * X-1.45       Brian Wheeler                                   1-DEC-2007
  *      Added support for instruction counting, underlined lines in
  *      listings, corrected some unsigned/signed issues.
@@ -228,7 +231,6 @@
 #include "cpu_vax.h"
 #include "cpu_mvi.h"
 #include "cpu_pal.h"
-#include "cpu_srm.h"
 #include "cpu_debug.h"
 
 #include "Serial.h"
@@ -248,10 +250,23 @@ extern CAliM1543C * ali;
         handle_debug_string(dbg_string);					\
 	return 0;
 
+#define OP_FNC(mnemonic, format)							\
+        PRE_##format(mnemonic);							\
+	if (!bListing) {							\
+	  mnemonic();							\
+	}									\
+	POST_##format;								\
+        handle_debug_string(dbg_string);					\
+	return 0;
+
 #else //defined(IDB)
 
 #define OP(mnemonic, format)							\
 	DO_##mnemonic;								\
+	return 0;
+
+#define OP_FNC(mnemonic, format)							\
+    mnemonic();								\
 	return 0;
 
 #endif //defined(IDB)
@@ -301,7 +316,6 @@ CAlphaCPU::CAlphaCPU(CSystem * system) : CSystemComponent (system)
   cSystem->RegisterClock(this, false);
 
   state.pc = 0;
-  state.last_found_icache = 0;
   state.bIntrFlag = false;
 
   for(i=0;i<64;i++) 
@@ -311,6 +325,9 @@ CAlphaCPU::CAlphaCPU(CSystem * system) : CSystemComponent (system)
     }
 
   flush_icache();
+
+  tbia(ACCESS_READ);
+  tbia(ACCESS_EXEC);
 
   state.alt_cm = 0;
   state.asn = 0;
@@ -359,14 +376,13 @@ CAlphaCPU::CAlphaCPU(CSystem * system) : CSystemComponent (system)
   state.i_ctl_spe = 0;
   state.va_ctl_va_mode = 0;
   state.va_ctl_vptb = 0;
-
-  itb = new CTranslationBuffer (this, true);
-  dtb = new CTranslationBuffer (this, false);
+  state.pal_vms = false;
+  state.check_int = false;
 
   // SROM imitation...
-
-  dtb->write_tag(0,0);
-  dtb->write_pte(0,X64(ff61));
+  add_tb(0, X64(ff61),ACCESS_READ);
+//  add_tb(0, X64(ff61),ACCESS_EXEC);
+//  state.r[32+22] = X64(1) << 0x3f;
 
 #if defined(IDB)
   bListing = false;
@@ -381,53 +397,16 @@ CAlphaCPU::CAlphaCPU(CSystem * system) : CSystemComponent (system)
 
 CAlphaCPU::~CAlphaCPU()
 {
-
 }
 
-/**
- * Sign-extend \a bits - bit value \a x to a 64-bit signed value.
- **/
+#define DISP_12 (sext_64(ins,12))
+#define DISP_13 (sext_64(ins,13))
+#define DISP_16 (sext_64(ins,16))
+#define DISP_21 (sext_64(ins,21))
 
-#define SEXT(x,bits) (((x)&((X64(1)<<(bits))-1)) | \
-	( (((x)>>((bits)-1))&1) ? (X64_QUAD-((X64(1)<<(bits))-1)) : 0 ) )
-
-#define DISP_12 (SEXT(ins,12))
-#define DISP_13 (SEXT(ins,13))
-#define DISP_16 (SEXT(ins,16))
-#define DISP_21 (SEXT(ins,21))
-
-#define DATA_PHYS(addr,access,check,alt,vpte) {				\
-    int dp_result;							\
-    dp_result = dtb->convert_address(addr, &phys_address, access, check, alt?state.alt_cm:state.cm, &temp_bool, false, true); \
-    if (dp_result) {							\
-      state.fault_va = addr;							\
-      switch (dp_result) {						\
-      case E_NOT_FOUND:							\
-        if (vpte) {							\
-	      state.exc_sum = REG_1<<8;						\
-	      GO_PAL(DTBM_DOUBLE_3);					\
-	    } else {							\
-          state.mm_stat = (((opcode==0x1b || opcode==0x1f)?opcode-0x18:opcode)<<4) |	\
-		    (access);						\
-		  state.exc_sum = REG_1<<8;					\
-	      GO_PAL(DTBM_SINGLE);						\
-	    }								\
-	break;								\
-      case E_ACCESS:							\
-        if (!vpte)							\
-	  state.mm_stat = (((opcode==0x1b || opcode==0x1f)?opcode-0x18:opcode)<<4) |	\
-		    (access) | 2;					\
-	state.exc_sum = REG_3<<8;						\
-	GO_PAL(DFAULT);							\
-	break;								\
-      case E_FAULT:							\
-       if (!vpte)							\
-	  state.mm_stat = (((opcode==0x1b || opcode==0x1f)?opcode-0x18:opcode)<<4) |	\
-	  (access?9:4);							\
-	state.exc_sum = REG_3<<8;						\
-	GO_PAL(DFAULT);							\
-	break; }							\
-      return 0;	} }
+#define DATA_PHYS(addr,flags) 				\
+    if (virt2phys(addr, &phys_address, flags, NULL, ins)) \
+      return 0
 
 #define ALIGN_PHYS(a) (phys_address & ~((u64)((a)-1)))
 
@@ -509,7 +488,6 @@ int CAlphaCPU::DoClock()
 {
   u32 ins;
   int i;
-  int result;
   u64 phys_address;
   u64 temp_64;
   u64 temp_64_1;
@@ -522,14 +500,9 @@ int CAlphaCPU::DoClock()
   u64 temp_64_d;
   u64 temp_64_hi;
   u64 temp_64_lo;
-  u32 temp_32;
-  u32 temp_32_1;
-  char temp_char2[2];
-  bool temp_bool;
 
   int opcode;
   int function;
-
 
 #if defined(IDB)
   char * funcname = 0;
@@ -539,45 +512,61 @@ int CAlphaCPU::DoClock()
 #endif
 #endif
 
-   state.current_pc = state.pc;
+  state.current_pc = state.pc;
 
 #ifdef IDB
-   state.instruction_count++;
+  state.instruction_count++;
 #endif
 
-
-   if (DO_ACTION)
+  if (DO_ACTION)
+  {
+    if (state.check_int && !(state.pc&1))
     {
-      // check for interrupts
-      if ((!(state.pc&X64(1))) && ((state.eien & state.eir) || 
-                                   (state.sien & state.sir) || 
-                                   (state.asten && (state.aster & state.astrr & ((1<<(state.cm+1))-1) ))))
-	{
-	  GO_PAL(INTERRUPT);
-	  return 0;
-	}
+      if (state.pal_vms)
+      {
+        if (state.eir & state.eien & 6)
+          if (vmspal_ent_ext_int(state.eir&state.eien & 6))
+            return 0;
 
-      // get next instruction
-      result = get_icache(state.pc,&ins);
-      if (result)
-	{
-	  switch (result)
-	    {
-	    case E_NOT_FOUND:
-	      GO_PAL(ITB_MISS);
-	      break;
-	    case E_ACCESS:
-	      GO_PAL(IACV);
-	      break;
+        if (state.sir & state.sien & 0xfffc)
+          if (vmspal_ent_sw_int(state.sir&state.sien))
+            return 0;
+
+        if (state.asten && (state.aster & state.astrr & ((1<<(state.cm+1))-1) ))
+          if (vmspal_ent_ast_int(state.aster & state.astrr & ((1<<(state.cm+1))-1) ))
+            return 0;
+
+        if (state.sir & state.sien)
+          if (vmspal_ent_sw_int(state.sir&state.sien))
+            return 0;
+      }
+      else
+      {
+        if ((state.eien & state.eir) || 
+            (state.sien & state.sir) || 
+            (state.asten && (state.aster & state.astrr & ((1<<(state.cm+1))-1) )))
+        {
+          GO_PAL(INTERRUPT);
+          return 0;
 	    }
-	  return 0;
-	}
+      }
+      state.check_int = false;
     }
+
+    // profile
+#if defined(PROFILE)
+    PROFILE_DO(state.pc);
+#endif
+
+    // get next instruction
+    if (get_icache(state.pc,&ins))
+  	  return 0;
+  }
   else
-    {
-      ins = (u32)(cSystem->ReadMem(state.pc,32));
-    }
-    state.pc += 4;
+  {
+    ins = (u32)(cSystem->ReadMem(state.pc,32));
+  }
+  state.pc += 4;
 
   state.r[31] = 0;
   state.f[31] = 0;
@@ -601,19 +590,7 @@ int CAlphaCPU::DoClock()
       function = ins&0x1fffffff;
       switch (function)
       {
-      case 0x01234ff: 
-        temp_32 = 0;
-        temp_32_1 = 0;
-        temp_char2[0] = 0;
-        UNKNOWN2;
-
-#if !defined(SRM_NO_SRL)
-      case 0x0123400: OP(SRM_WRITE_SERIAL, NOP);
-#endif
-
-#if !defined(SRM_NO_IDE)
-      case 0x0123401: OP(SRM_READ_IDE_DISK, NOP);
-#endif
+        case 0x123401: OP_FNC(vmspal_int_read_ide, NOP);
 
         default: OP(CALL_PAL,PAL);
       }
@@ -1025,8 +1002,8 @@ void CAlphaCPU::SaveState(FILE *f)
 {
   fwrite(&state,sizeof(state),1,f);
   
-  itb->SaveState(f);
-  dtb->SaveState(f);
+//  itb->SaveState(f);
+//  dtb->SaveState(f);
 }
 
 /**
@@ -1037,14 +1014,488 @@ void CAlphaCPU::RestoreState(FILE *f)
 {
   fread(&state,sizeof(state),1,f);
 
-  itb->RestoreState(f);
-  dtb->RestoreState(f);
+//  itb->RestoreState(f);
+//  dtb->RestoreState(f);
 }
 
+int CAlphaCPU::FindTBEntry(u64 virt, int flags)
+{
+  int t = (flags&ACCESS_EXEC)?1:0;
+  int i = state.last_found_tb[t];
+  int asn = (flags & ACCESS_EXEC)?state.asn:state.asn0;
+
+  if (     state.tb[t][i].valid
+       && !((state.tb[t][i].virt ^ virt) & state.tb[t][i].match_mask)
+       &&  (state.tb[t][i].asm_bit || (state.tb[t][i].asn == asn))
+       )
+    return i;
+
+  for (i=0;i<TB_ENTRIES;i++)
+    {
+      if (     state.tb[t][i].valid
+	       && !((state.tb[t][i].virt ^ virt) & state.tb[t][i].match_mask)
+	       &&  (state.tb[t][i].asm_bit || (state.tb[t][i].asn == asn))
+	       )
+      {
+        state.last_found_tb[t] = i;
+	    return i;
+      }
+    }
+  return -1;
+}
+
+int CAlphaCPU::virt2phys(u64 virt, u64 * phys, int flags,bool *asm_bit,u32 ins)
+{
+  int t = (flags&ACCESS_EXEC)?1:0;
+  int i;
+  int res;
+
+  int spe = (flags & ACCESS_EXEC)?state.i_ctl_spe:state.m_ctl_spe;
+  int asn = (flags & ACCESS_EXEC)?state.asn:state.asn0;
+  int cm  = (flags & ALT)?state.alt_cm:state.cm;
+  bool forreal = !(flags & FAKE);
+
+#if defined IDB
+  if (bListing)
+  {
+    *phys = virt;
+    return 0;
+  }
+#endif
+
+#if defined(DEBUG_TB)
+  if (forreal)
+#if defined(IDB)
+  if (bTB_Debug)
+#endif
+    printf("TB %" LL "x,%x: ", virt,flags);
+#endif
+
+if (spe && !cm)
+  {
+#if defined(DEBUG_TB)
+  if (forreal)
+#if defined(IDB)
+          if (bTB_Debug)
+#endif
+    printf("try spe...");
+#endif
+    if ((move_bits_64(virt,47,46,0) == X64(2)) && (spe&4))
+	{
+	  *phys = keep_bits_64(virt,43,0);
+      if (asm_bit)
+	    *asm_bit = false;
+#if defined(DEBUG_TB)
+  if (forreal)
+#if defined(IDB)
+          if (bTB_Debug)
+#endif
+	    printf("SPE\n");
+#endif
+	  return 0;
+	}
+    else if ((move_bits_64(virt,47,41,0) == X64(7e)) && (spe&2))
+	{
+	  *phys = keep_bits_64(virt,40,0) 
+	        | extend_bit_64(virt,43,41,40);
+      if (asm_bit)
+	    *asm_bit = false;
+#if defined(DEBUG_TB)
+  if (forreal)
+#if defined(IDB)
+          if (bTB_Debug)
+#endif
+	    printf("SPE\n");
+#endif
+	  return 0;
+	}
+      else if ((move_bits_64(virt,47,30,0) == X64(3fffe)) && (spe & 1))
+	{
+	  *phys = keep_bits_64(virt,29,0);
+      if (asm_bit)
+	    *asm_bit = false;
+#if defined(DEBUG_TB)
+  if (forreal)
+#if defined(IDB)
+          if (bTB_Debug)
+#endif
+	    printf("SPE\n");
+#endif
+	  return 0;
+	}
+  }
+
+  i = FindTBEntry(virt,flags);
+
+  if (i<0)
+  {
+    if (!forreal)
+        return -1;
+    if (!state.pal_vms)
+    {
+        state.exc_addr = state.current_pc;
+        if (flags & VPTE)
+        {
+          state.fault_va = virt;
+          state.exc_sum = REG_1<<8;
+          state.pc = state.pal_base + 0x101;
+        }
+        else if (flags & ACCESS_EXEC)
+        {
+          state.pc = state.pal_base + 0x581;
+        }
+        else
+        {
+          state.fault_va = virt;
+          state.exc_sum = REG_1<<8;
+          u32 opcode = move_bits_32(ins,31,26,0);
+          state.mm_stat =  ((opcode==0x1b||opcode==0x1f)?opcode-0x18:opcode)<<4 | (flags & ACCESS_WRITE);
+          state.pc = state.pal_base + 0x301;
+        }
+        return -1;
+    }
+    else
+    {
+        if (flags & RECUR)
+            return -1;
+
+        state.exc_addr = state.current_pc;
+        if (flags & VPTE)
+        {
+          if (res = vmspal_ent_dtbm_double_3(flags))
+            return res;
+          return virt2phys(virt,phys,flags | RECUR, asm_bit, ins);
+        }
+        else if (flags & ACCESS_EXEC)
+        {
+          if (res = vmspal_ent_itbm(flags))
+            return res;
+          return virt2phys(virt,phys,flags | RECUR, asm_bit, ins);
+        }
+        else
+        {
+          state.fault_va = virt;
+          state.exc_sum = REG_1<<8;
+          u32 opcode = move_bits_32(ins,31,26,0);
+          state.mm_stat =  ((opcode==0x1b||opcode==0x1f)?opcode-0x18:opcode)<<4 | (flags & ACCESS_WRITE);
+          if (res = vmspal_ent_dtbm_single(flags))
+            return res;
+          return virt2phys(virt,phys,flags | RECUR, asm_bit, ins);
+        }
+    }
+  }
+
+#if defined(DEBUG_TB)
+  else
+  {
+    if (forreal)
+#if defined(IDB)
+      if (bTB_Debug)
+#endif
+        printf("entry %d - ", i);
+  }
+#endif
+
+  // check access...
+  if (!(flags&NO_CHECK))
+  {
+    if (!state.tb[t][i].access[flags&ACCESS_WRITE][cm])
+    {
+#if defined(DEBUG_TB)
+  if (forreal)
+#if defined(IDB)
+      if (bTB_Debug)
+#endif
+        printf("acv\n");
+#endif
+      if (flags & ACCESS_EXEC)
+      {
+        state.exc_addr = state.current_pc;
+        state.exc_sum = 0;
+        if (state.pal_vms)
+        {
+          if (res = vmspal_ent_iacv(flags))
+            return res;
+        }
+        else
+        {
+          state.pc = state.pal_base + 0x481;
+          return -1;
+        }
+      }
+      else
+      {
+        state.exc_addr = state.current_pc;
+        state.fault_va = virt;
+        state.exc_sum = REG_1<<8;
+        u32 opcode = move_bits_32(ins,31,26,0);
+        state.mm_stat =  ((opcode==0x1b||opcode==0x1f)?opcode-0x18:opcode)<<4 | (flags & ACCESS_WRITE) | 2;
+        if (state.pal_vms)
+        {
+          if (res = vmspal_ent_dfault(flags))
+            return res;
+        }
+        else
+        {
+          state.pc = state.pal_base + 0x381;
+          return -1;
+        }
+      }
+    }
+    if (state.tb[t][i].fault[flags&ACCESS_MODE])
+    {
+#if defined(DEBUG_TB)
+  if (forreal)
+#if defined(IDB)
+      if (bTB_Debug)
+#endif
+        printf("fault\n");
+#endif
+      if (flags & ACCESS_EXEC)
+      {
+        state.exc_addr = state.current_pc;
+        state.exc_sum = 0;
+        if (state.pal_vms)
+        {
+          if (res = vmspal_ent_iacv(flags))
+            return res;
+        }
+        else
+        {
+          state.pc = state.pal_base + 0x481;
+          return -1;
+        }
+      }
+      else
+      {
+        state.exc_addr = state.current_pc;
+        state.fault_va = virt;
+        state.exc_sum = REG_1<<8;
+        u32 opcode = move_bits_32(ins,31,26,0);
+        state.mm_stat =  ((opcode==0x1b||opcode==0x1f)?opcode-0x18:opcode)<<4 | (flags & ACCESS_WRITE) | ((flags&ACCESS_WRITE)?8:4);
+        if (state.pal_vms)
+        {
+          if (res = vmspal_ent_dfault(flags))
+            return res;
+        }
+        else
+        {
+          state.pc = state.pal_base + 0x381;
+          return -1;
+        }
+      }
+    }
+  }
+  // all is ok...
+
+
+  *phys = state.tb[t][i].phys | (virt & state.tb[t][i].keep_mask);
+  if (asm_bit)
+    *asm_bit = state.tb[t][i].asm_bit?true:false;
+
+#if defined(DEBUG_TB)
+  if (forreal)
+#if defined(IDB)
+  if (bTB_Debug)
+#endif
+    printf("phys: %" LL "x - OK\n", *phys);
+#endif
+  
+  return 0;
+}
 
 #ifdef IDB
 u64 CAlphaCPU::get_instruction_count()
 {
   return state.instruction_count;
+
 }
+#endif
+
+void CAlphaCPU::add_tb(u64 virt, u64 pte, int flags)
+{
+  int t = (flags&ACCESS_EXEC)?1:0;
+  u64 match_mask;
+  u64 keep_mask;
+  u64 phys_mask;
+  int i;
+  int asn = (flags & ACCESS_EXEC)?state.asn:state.asn0;
+
+  switch (pte & 0x60)
+  {
+	case 0:
+	  match_mask = make_mask_64(42,13);
+	  phys_mask  = make_mask_64(63,13);
+      keep_mask  = make_mask_64(12,0);
+	  break;
+	case 0x20:
+	  match_mask = make_mask_64(42,16);
+	  phys_mask  = make_mask_64(63,16);
+      keep_mask  = make_mask_64(15,0);
+	  break;
+	case 0x40:
+	  match_mask = make_mask_64(42,19);
+	  phys_mask  = make_mask_64(63,19);
+      keep_mask  = make_mask_64(18,0);
+	  break;
+	case 0x60:
+	  match_mask = make_mask_64(42,22);
+	  phys_mask  = make_mask_64(63,22);
+      keep_mask  = make_mask_64(21,0);
+	  break;
+  }
+  i = FindTBEntry(virt,flags);
+
+  if (i<0)
+  {
+      i = state.next_tb[t];
+      state.next_tb[t]++;
+      if (state.next_tb[t] == TB_ENTRIES)
+        state.next_tb[t] = 0;
+  }
+  state.tb[t][i].match_mask = match_mask;
+  state.tb[t][i].keep_mask = keep_mask;
+  state.tb[t][i].virt = virt & match_mask;
+  state.tb[t][i].phys = move_bits_64(pte,62,32,13) & phys_mask;
+  state.tb[t][i].fault[0] = (int)pte & 2;
+  state.tb[t][i].fault[1] = (int)pte & 4;
+  state.tb[t][i].fault[2] = (int)pte & 8;
+  state.tb[t][i].access[0][0] = (int)pte & 0x100;
+  state.tb[t][i].access[1][0] = (int)pte & 0x1000;
+  state.tb[t][i].access[0][1] = (int)pte & 0x200;
+  state.tb[t][i].access[1][1] = (int)pte & 0x2000;
+  state.tb[t][i].access[0][2] = (int)pte & 0x400;
+  state.tb[t][i].access[1][2] = (int)pte & 0x4000;
+  state.tb[t][i].access[0][3] = (int)pte & 0x800;
+  state.tb[t][i].access[1][3] = (int)pte & 0x8000;
+  state.tb[t][i].asm_bit = (int)pte & 0x10;
+  state.tb[t][i].asn = asn;
+  state.tb[t][i].valid = true;
+  state.last_found_tb[t] = i;
+
+#if defined(DEBUG_TB_)
+#if defined(IDB)
+  if (bTB_Debug)
+#endif
+  {
+      printf("Add TB---------------------------------------\n");
+      printf("Map VIRT    %016" LL "x\n",state.tb[i].virt);
+      printf("Matching    %016" LL "x\n",state.tb[i].match_mask);
+      printf("And keeping %016" LL "x\n",state.tb[i].keep_mask);
+      printf("To PHYS     %016" LL "x\n",state.tb[i].phys);
+      printf("Read : %c%c%c%c %c\n",state.tb[i].access[0][0]?'K':'-',
+                                    state.tb[i].access[0][1]?'E':'-',
+                                    state.tb[i].access[0][2]?'S':'-',
+                                    state.tb[i].access[0][3]?'U':'-',
+                                    state.tb[i].fault[0]?'F':'-');
+      printf("Write: %c%c%c%c %c\n",state.tb[i].access[1][0]?'K':'-',
+                                    state.tb[i].access[1][1]?'E':'-',
+                                    state.tb[i].access[1][2]?'S':'-',
+                                    state.tb[i].access[1][3]?'U':'-',
+                                    state.tb[i].fault[1]?'F':'-');
+      printf("Exec : %c%c%c%c %c\n",state.tb[i].access[1][0]?'K':'-',
+                                    state.tb[i].access[1][1]?'E':'-',
+                                    state.tb[i].access[1][2]?'S':'-',
+                                    state.tb[i].access[1][3]?'U':'-',
+                                    state.tb[i].fault[1]?'F':'-');
+    }
+#endif
+
+}
+
+void CAlphaCPU::add_tb_d(u64 virt, u64 pte)
+{
+  add_tb(virt,pte,ACCESS_READ);
+}
+
+void CAlphaCPU::add_tb_i(u64 virt, u64 pte)
+{
+  add_tb(virt, keep_bits_64(pte,12,0) | move_bits_64(pte,43,13,32), ACCESS_EXEC);
+}
+
+void CAlphaCPU::tbia(int flags)
+{
+  int t = (flags&ACCESS_EXEC)?1:0;
+  int i;
+  for (i=0; i<TB_ENTRIES; i++)
+    state.tb[t][i].valid = false;
+  state.last_found_tb[t] = 0;
+  state.next_tb[t] = 0;
+}
+
+void CAlphaCPU::tbiap(int flags)
+{
+  int t = (flags&ACCESS_EXEC)?1:0;
+  int i;
+  for (i=0; i<TB_ENTRIES; i++)
+    if (!state.tb[t][i].asm_bit)
+      state.tb[t][i].valid = false;
+}
+
+void CAlphaCPU::tbis(u64 virt,int flags)
+{
+  int t = (flags&ACCESS_EXEC)?1:0;
+  int i = FindTBEntry(virt,flags);
+  if (i>=0)
+    state.tb[t][i].valid = false;
+}
+
+#if defined(IDB)
+
+char * PAL_NAME[] = {
+  "HALT"		,"CFLUSH"   ,"DRAINA"		,"LDQP"			,"STQP"			,"SWPCTX"		,"MFPR_ASN"		,"MTPR_ASTEN"	,
+  "MTPR_ASTSR","CSERVE"   ,"SWPPAL"		,"MFPR_FEN"		,"MTPR_FEN"		,"MTPR_IPIR"	,"MFPR_IPL"		,"MTPR_IPL"	,
+  "MFPR_MCES"	,"MTPR_MCES","MFPR_PCBB"	,"MFPR_PRBR"	,"MTPR_PRBR"	,"MFPR_PTBR"	,"MFPR_SCBB"	,"MTPR_SCBB"	,
+  "MTPR_SIRR" ,"MFPR_SISR","MFPR_TBCHK"	,"MTPR_TBIA"	,"MTPR_TBIAP"	,"MTPR_TBIS"	,"MFPR_ESP"		,"MTPR_ESP"	,
+  "MFPR_SSP"	,"MTPR_SSP" ,"MFPR_USP"		,"MTPR_USP"		,"MTPR_TBISD"	,"MTPR_TBISI"	,"MFPR_ASTEN"	,"MFPR_ASTSR"	,
+  "28"        ,"MFPR_VPTB","MTPR_VPTB"	,"MTPR_PERFMON"	,"2C"			,"2D"			,"MTPR_DATFX"	,"2F"			,
+  "30"		,"31"		,"32"			,"33"			,"34"			,"35"			,"36"			,"37"			,
+  "38"		,"39"		,"3A"			,"3B"			,"3C"			,"3D"			,"WTINT"		,"MFPR_WHAMI"	,
+  "-"			,"-"		,"-"			,"-"			,"-"			,"-"			,"-"			,"-"			,"-","-","-","-","-","-","-","-",
+  "-"			,"-"		,"-"			,"-"			,"-"			,"-"			,"-"			,"-"			,"-","-","-","-","-","-","-","-",
+  "-"			,"-"		,"-"			,"-"			,"-"			,"-"			,"-"			,"-"			,"-","-","-","-","-","-","-","-",
+  "-"			,"-"		,"-"			,"-"			,"-"			,"-"			,"-"			,"-"			,"-","-","-","-","-","-","-","-",
+  "BPT"		,"BUGCHK"	,"CHME"			,"CHMK"			,"CHMS"			,"CHMU"			,"IMB"			,"INSQHIL"		,
+  "INSQTIL"	,"INSQHIQ"	,"INSQTIQ"		,"INSQUEL"		,"INSQUEQ"		,"INSQUEL/D"	,"INSQUEQ/D"	,"PROBER"		,
+  "PROBEW"	,"RD_PS"	,"REI"			,"REMQHIL"		,"REMQTIL"		,"REMQHIQ"		,"REMQTIQ"		,"REMQUEL"		,
+  "REMQUEQ"	,"REMQUEL/D","REMQUEQ/D"	,"SWASTEN"		,"WR_PS_SW"		,"RSCC"			,"READ_UNQ"		,"WRITE_UNQ"	,
+  "AMOVRR"	,"AMOVRM"	,"INSQHILR"		,"INSQTILR"		,"INSQHIQR"		,"INSQTIQR"		,"REMQHILR"		,"REMQTILR"		,
+  "REMQHIQR"	,"REMQTIQR"	,"GENTRAP"		,"AB"			,"AC"			,"AD"			,"CLRFEN"		,"AF"			,
+  "B0","B1","B2","B3","B4","B5","B6","B7","B8","B9","BA","BB","BC","BD","BE","BF"};
+
+char * IPR_NAME[] = {
+  "ITB_TAG",	"ITB_PTE",	"ITB_IAP",	"ITB_IA",	"ITB_IS",	"PMPC",		"EXC_ADDR",	"IVA_FORM",
+  "IER_CM",	"CM",		"IER",		"IER_CM",	"SIRR",		"ISUM",		"HW_INT_CLR",	"EXC_SUM",
+  "PAL_BASE",	"I_CTL",	"IC_FLUSH_ASM",	"IC_FLUSH",	"PCTR_CTL",	"CLR_MAP",	"I_STAT",	"SLEEP",
+  "?0001.1000?","?0001.1001?",	"?0001.1010?",	"?0001.1011?",	"?0001.1100?",	"?0001.1101?",	"?0001.1110?",	"?0001.1111?",
+  "DTB_TAG0",	"DTB_PTE0",	"?0010.0010?",	"?0010.0011?",	"DTB_IS0",	"DTB_ASN0",	"DTB_ALTMODE",	"MM_STAT",
+  "M_CTL",	"DC_CTL",	"DC_STAT",	"C_DATA",	"C_SHFT",	"M_FIX",	"?0010.1110?",	"?0010.1111?",
+  "?0011.0000?","?0011.0001?",	"?0011.0010?",	"?0011.0011?",	"?0011.0100?",	"?0010.0101?",	"?0010.0110?",	"?0010.0111?",
+  "?0011.1000?","?0011.1001?",	"?0011.1010?",	"?0011.1011?",	"?0011.1100?",	"?0010.1101?",	"?0010.1110?",	"?0010.1111?",
+  "PCTX.00000",	"PCTX.00001",	"PCTX.00010",	"PCTX.00011",	"PCTX.00100",	"PCTX.00101",	"PCTX.00110",	"PCTX.00111",
+  "PCTX.01000",	"PCTX.01001",	"PCTX.01010",	"PCTX.01011",	"PCTX.01100",	"PCTX.01101",	"PCTX.01110",	"PCTX.01111",
+  "PCTX.10000",	"PCTX.10001",	"PCTX.10010",	"PCTX.10011",	"PCTX.10100",	"PCTX.10101",	"PCTX.10110",	"PCTX.10111",
+  "PCTX.11000",	"PCTX.11001",	"PCTX.11010",	"PCTX.11011",	"PCTX.11100",	"PCTX.11101",	"PCTX.11110",	"PCTX.11111",
+  "PCTX.00000",	"PCTX.00001",	"PCTX.00010",	"PCTX.00011",	"PCTX.00100",	"PCTX.00101",	"PCTX.00110",	"PCTX.00111",
+  "PCTX.01000",	"PCTX.01001",	"PCTX.01010",	"PCTX.01011",	"PCTX.01100",	"PCTX.01101",	"PCTX.01110",	"PCTX.01111",
+  "PCTX.10000",	"PCTX.10001",	"PCTX.10010",	"PCTX.10011",	"PCTX.10100",	"PCTX.10101",	"PCTX.10110",	"PCTX.10111",
+  "PCTX.11000",	"PCTX.11001",	"PCTX.11010",	"PCTX.11011",	"PCTX.11100",	"PCTX.11101",	"PCTX.11110",	"PCTX.11111",
+  "?1000.0000?","?1000.0001?",	"?1000.0010?",	"?1000.0011?",	"?1000.0100?",	"?1000.0101?",	"?1000.0110?",	"?1000.0111?",
+  "?1000.1000?","?1000.1001?",	"?1000.1010?",	"?1000.1011?",	"?1000.1100?",	"?1000.1101?",	"?1000.1110?",	"?1000.1111?",
+  "?1001.0000?","?1001.0001?",	"?1001.0010?",	"?1001.0011?",	"?1001.0100?",	"?1001.0101?",	"?1001.0110?",	"?1001.0111?",
+  "?1001.1000?","?1001.1001?",	"?1001.1010?",	"?1001.1011?",	"?1001.1100?",	"?1001.1101?",	"?1001.1110?",	"?1001.1111?",
+  "DTB_TAG1",	"DTB_PTE1",	"DTB_IAP",	"DTB_IA",	"DTB_IS1",	"DTB_ASN1",	"?1010.0110?",	"?1010.0111?",
+  "?1010.1000?","?1010.1001?",	"?1010.1010?",	"?1010.1011?",	"?1010.1100?",	"?1010.1101?",	"?1010.1110?",	"?1010.1111?",
+  "?1011.0000?","?1011.0001?",	"?1011.0010?",	"?1011.0011?",	"?1011.0100?",	"?1011.0101?",	"?1011.0110?",	"?1011.0111?",
+  "?1011.1000?","?1011.1001?",	"?1011.1010?",	"?1011.1011?",	"?1011.1100?",	"?1011.1101?",	"?1011.1110?",	"?1011.1111?",
+  "CC",		"CC_CTL",	"VA",		"VA_FORM",	"VA_CTL",	"?1100.0101?",	"?1100.0110?",	"?1100.0111?",
+  "?1100.1000?","?1100.1001?",	"?1100.1010?",	"?1100.1011?",	"?1100.1100?",	"?1100.1101?",	"?1100.1110?",	"?1100.1111?",
+  "?1101.0000?","?1101.0001?",	"?1101.0010?",	"?1101.0011?",	"?1101.0100?",	"?1101.0101?",	"?1101.0110?",	"?1101.0111?",
+  "?1101.1000?","?1101.1001?",	"?1101.1010?",	"?1101.1011?",	"?1101.1100?",	"?1101.1101?",	"?1101.1110?",	"?1101.1111?",
+  "?1110.0000?","?1110.0001?",	"?1110.0010?",	"?1110.0011?",	"?1110.0100?",	"?1110.0101?",	"?1110.0110?",	"?1110.0111?",
+  "?1110.1000?","?1110.1001?",	"?1110.1010?",	"?1110.1011?",	"?1110.1100?",	"?1110.1101?",	"?1110.1110?",	"?1110.1111?",
+  "?1111.0000?","?1111.0001?",	"?1111.0010?",	"?1111.0011?",	"?1111.0100?",	"?1111.0101?",	"?1111.0110?",	"?1111.0111?",
+  "?1111.1000?","?1111.1001?",	"?1111.1010?",	"?1111.1011?",	"?1111.1100?",	"?1111.1101?",	"?1111.1110?",	"?1111.1111?",
+};
+
 #endif

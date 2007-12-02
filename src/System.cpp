@@ -27,6 +27,10 @@
  * \file 
  * Contains the code for the emulated Typhoon Chipset devices.
  *
+ * X-1.34       Camiel Vanderhoeven                             2-DEC-2007
+ *      Added support for code profiling, and for direct operations on the
+ *      Tsunami/Typhoon's interrupt registers.
+ *
  * X-1.33       Brian Wheeler                                   1-DEC-2007
  *   1. Ignore address bits 35- 42 in the physical address; this is
  *      correct according to the Tsunami/Typhoon HRM; which states that
@@ -365,20 +369,22 @@ int CSystem::Run()
     {
       for(i=0;i<iNumFastClocks;i++)
       {
-        result = acFastClocks[i]->DoClock();
-	if (result)
-	  return result;
+        if (result = acFastClocks[i]->DoClock())
+	     return result;
       }
     }
 	 
     for(i=0;i<iNumSlowClocks;i++)
     {
-      result = acSlowClocks[i]->DoClock();
-      if (result)
-	return result;
+      if (result = acSlowClocks[i]->DoClock())
+    	return result;
     }
-#ifndef HIDE_COUNTER
+#if !defined(HIDE_COUNTER)
+#if defined(PROFILE)
+    printf("%d | %016" LL "x | %" LL "d profiled instructions.  \r",k,acCPUs[0]->get_pc(),profiled_insts);
+#else
     printf("%d | %016" LL "x\r",k,acCPUs[0]->get_pc());
+#endif
 #endif
   }
 
@@ -944,7 +950,7 @@ int CSystem::LoadROM()
     fread(buffer,1,0x200000,f);
     fclose(f);
   }
-#if !defined(SRM_NO_SPEEDUPS) || !defined(SRM_NO_SRL) || !defined(SRM_NO_IDE)
+#if !defined(SRM_NO_SPEEDUPS) || !defined(SRM_NO_IDE)
   printf("%%SYM-I-PATCHROM: Patching ROM for speed.\n");
 #endif
 
@@ -956,11 +962,6 @@ int CSystem::LoadROM()
   WriteMem(X64(8bb78),32,0xe7e00000);       // memory test (aa)
   WriteMem(X64(8bc0c),32,0xe7e00000);       // memory test (bb)
   WriteMem(X64(8bc94),32,0xe7e00000);       // memory test (00)
-#endif
-
-#if !defined(SRM_NO_SRL)
-  WriteMem(X64(a8b38),32,0x00123400);       // SRM_WRITE_SERIAL
-  WriteMem(X64(a8b3c),32,0x6bfa8001);       // JMP r31, r26
 #endif
 
 #if !defined(SRM_NO_IDE)
@@ -1262,7 +1263,8 @@ char *CSystem::GetConfig(const char *key, char *defval) {
 /**
  *  Dump system state to stdout for debugging purposes.
  **/
-void CSystem::panic(char *message, int flags) {
+void CSystem::panic(char *message, int flags) 
+{
   int cpunum,i;
   CAlphaCPU *cpu;
   printf("\n******** SYSTEM PANIC *********\n");
@@ -1308,7 +1310,6 @@ void CSystem::panic(char *message, int flags) {
       }
   }
   printf("\n");
-
 #ifdef IDB
   if(flags & PANIC_LISTING) {
     u64 start,end,xpc;
@@ -1335,3 +1336,15 @@ void CSystem::panic(char *message, int flags) {
 
   return;
 }
+
+void CSystem::clear_clock_int(int ProcNum)
+{
+  state.c_MISC &=~(X64(10)<<ProcNum);
+  acCPUs[ProcNum]->irq_h(2,false);
+}
+
+#if defined(PROFILE)
+u64 profile_buckets[PROFILE_BUCKETS];
+u64 profiled_insts;
+bool profile_started = false;
+#endif

@@ -28,6 +28,9 @@
  * Contains code macros for the processor memory load/store instructions.
  * Based on ARM chapter 4.2.
  *
+ * X-1.5        Camiel Vanderhoeven                             2-DEC-2007
+ *      Changed the way translation buffers work. 
+ *
  * X-1.4        Camiel Vanderhoeven                             11-APR-2007
  *      Moved all data that should be saved to a state file to a structure
  *      "state".
@@ -49,72 +52,70 @@
 #define DO_LDAH state.r[REG_1] = state.r[REG_2] + (DISP_16<<16);
 
 #define DO_LDBU									\
-	  DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_READ, true, false, false);	\
+	  DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_READ);	\
 	  state.r[REG_1] = READ_PHYS(8);
 
 #define DO_LDL									\
 	if (FREG_1 != 31) {							\
-	  DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_READ, true, false, false);	\
-	  state.r[REG_1] = SEXT(READ_PHYS(32),32); }
+	  DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_READ);	\
+	  state.r[REG_1] = sext_64(READ_PHYS(32),32); }
 
 #define DO_LDL_L								\
 	  state.lock_flag = true;							\
-	  DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_READ, true, false, false);	\
-	  state.r[REG_1] = SEXT(READ_PHYS(32),32);
+	  DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_READ);	\
+	  state.r[REG_1] = sext_64(READ_PHYS(32),32);
 
 #define DO_LDQ									\
 	if (FREG_1 != 31) {							\
-	  DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_READ, true, false, false);	\
+	  DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_READ);	\
 	  state.r[REG_1] = READ_PHYS(64); }
 
 #define DO_LDQ_L								\
 	  state.lock_flag = true;							\
-	  DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_READ, true, false, false);	\
+	  DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_READ);	\
 	  state.r[REG_1] = READ_PHYS(64);
 
 #define DO_LDQ_U									\
-	  DATA_PHYS((state.r[REG_2] + DISP_16)& ~X64(7), ACCESS_READ, true, false, false);	\
+	  DATA_PHYS((state.r[REG_2] + DISP_16)& ~X64(7), ACCESS_READ);	\
 	  state.r[REG_1] = READ_PHYS(64);
 
 #define DO_LDWU									\
-	  DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_READ, true, false, false);	\
+	  DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_READ);	\
 	  state.r[REG_1] = READ_PHYS(16);
 
-
-
 #define DO_STB									\
-	  DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_WRITE, true, false, false);	\
+	  DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_WRITE);	\
 	  WRITE_PHYS(state.r[REG_1],8);
 
 #define DO_STL									\
-	  DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_WRITE, true, false, false);	\
+	  DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_WRITE);	\
 	  WRITE_PHYS(state.r[REG_1],32);
 
 #define DO_STL_C								\
 	  if (state.lock_flag) {							\
-	      DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_WRITE, true, false, false);	\
+	      DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_WRITE);	\
 	      WRITE_PHYS(state.r[REG_1],32);						\
 	    }									\
 	  state.r[REG_1] = state.lock_flag?1:0;						\
 	  state.lock_flag = false;
 
 #define DO_STQ									\
-	  DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_WRITE, true, false, false);	\
+	  DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_WRITE);	\
 	  WRITE_PHYS(state.r[REG_1],64);
 
 #define DO_STQ_C								\
 	  if (state.lock_flag) {							\
-	      DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_WRITE, true, false, false);	\
+	      DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_WRITE);	\
 	      WRITE_PHYS(state.r[REG_1],64);						\
 	    }									\
 	  state.r[REG_1] = state.lock_flag?1:0;						\
 	  state.lock_flag = false;
 
 #define DO_STQ_U									\
-	  DATA_PHYS((state.r[REG_2] + DISP_16)& ~X64(7), ACCESS_WRITE, true, false, false);	\
+	  DATA_PHYS((state.r[REG_2] + DISP_16)& ~X64(7), ACCESS_WRITE);	\
 	  WRITE_PHYS(state.r[REG_1],64);
 
 #define DO_STW									\
-	  DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_WRITE, true, false, false);	\
+	  DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_WRITE);	\
 	  WRITE_PHYS(state.r[REG_1],16);
 

@@ -28,6 +28,9 @@
  * Contains the code for the CPU tracing engine.
  * This will become the debugging engine (interactive debugger) soon.
  *
+ * X-1.29       Camiel Vanderhoeven                             2-DEC-2007
+ *      Changed the way translation buffers work. 
+ *
  * X-1.27       Camiel Vanderhoeven                             1-DEC-2007
  *      Moved inclusion of StdAfx.h outside conditional block; necessary
  *      for using precompiled headers in Visual C++.
@@ -163,7 +166,7 @@ inline u64 real_address(u64 address, CAlphaCPU * c, bool bIBOX)
   if (bIBOX && (address&1))
     return address & X64(fffffffffffffffc);
 
-  if (!(c->get_tb(bIBOX)->convert_address(address,&a,0,false,0,&b, false, false)))
+  if (!(c->virt2phys(address,&a,ACCESS_READ | NO_CHECK | FAKE,&b)))
     return a & (bIBOX?X64(fffffffffffffffc):X64(ffffffffffffffff));
 
   return ((address&X64(fffffffff0000000)) ==X64(0000000020000000))?

@@ -28,6 +28,9 @@
  * Contains code macros for the processor BWX (byte and word extension) instructions.
  * Based on ARM chapter 4.6.
  *
+ * X-1.7        Camiel Vanderhoeven                             2-DEC-2007
+ *      Use sext_64 inline.
+ *
  * X-1.6       Camiel Vanderhoeven                             11-APR-2007
  *      Moved all data that should be saved to a state file to a structure
  *      "state".
@@ -89,8 +92,8 @@
 #define DO_MSKLH state.r[REG_3] = (V_2&7) ? (state.r[REG_1] & ~(X64_LONG>>((64-((V_2&7)*8))&63))) : state.r[REG_1];
 #define DO_MSKQH state.r[REG_3] = (V_2&7) ? (state.r[REG_1] & ~(X64_QUAD>>((64-((V_2&7)*8))&63))) : state.r[REG_1];
 
-#define DO_SEXTB state.r[REG_3] = SEXT(V_2,8);
-#define DO_SEXTW state.r[REG_3] = SEXT(V_2,16);
+#define DO_SEXTB state.r[REG_3] = sext_64(V_2,8);
+#define DO_SEXTW state.r[REG_3] = sext_64(V_2,16);
 
 #define DO_ZAP								\
 	  state.r[REG_3] = state.r[REG_1] & (  ((V_2&  1)?0:              X64(ff))	\

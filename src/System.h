@@ -27,7 +27,11 @@
  * \file 
  * Contains the definitions for the emulated Typhoon Chipset devices.
  *
- * X-1.33       Brian Wheeler                                   1-DEC-2007
+ * X-1.17       Camiel Vanderhoeven                             2-DEC-2007
+ *      Added support for code profiling, and for direct operations on the
+ *      Tsunami/Typhoon's interrupt registers.
+ *
+ * X-1.16       Brian Wheeler                                   1-DEC-2007
  *      Added panic.
  *
  * X-1.15       Camiel Vanderhoeven                             16-NOV-2007
@@ -92,6 +96,27 @@
 #define INCLUDED_SYSTEM_H
 
 #define MAX_COMPONENTS 100
+
+
+//#define PROFILE 1
+
+#if defined(PROFILE)
+#define PROFILE_FROM      X64(8000)
+#define PROFILE_TO        X64(1a81c0)
+#define PROFILE_AFTER     X64(200000)
+#define PROFILE_BUCKSIZE  16
+#define PROFILE_LENGTH    (PROFILE_TO - PROFILE_FROM)
+#define PROFILE_INSTS     (PROFILE_LENGTH / 4)
+#define PROFILE_BUCKETS   (PROFILE_INSTS / PROFILE_BUCKSIZE)
+#define PROFILE_YN(a)     ((a >= PROFILE_FROM) && (a < PROFILE_TO) && profile_started)
+#define PROFILE_BUCKET(a) profile_buckets[(a-PROFILE_FROM)/4/PROFILE_BUCKSIZE]
+#define PROFILE_DO(a)     if ((a&(~X64(3)))>=PROFILE_AFTER) profile_started = true; if (PROFILE_YN(a)) { PROFILE_BUCKET(a)++; profiled_insts++; } 
+
+extern u64 profile_buckets[PROFILE_BUCKETS];
+extern u64 profiled_insts;
+extern bool profile_started;
+#endif
+
 
 #if defined(LS_MASTER) || defined(LS_SLAVE)
 extern char * dbg_strptr;
@@ -162,7 +187,13 @@ class CSystem
 #define PANIC_ASKSHUTDOWN 2
 #define PANIC_LISTING 4
 
- private:
+  void clear_clock_int(int ProcNum);
+  u64 get_c_misc();
+  u64 get_c_dir(int ProcNum);
+  u64 get_c_dim(int ProcNum);
+  void set_c_dim(int ProcNum,u64 value);
+
+private:
   int iNumCPUs;
 
   // The state structure contains all elements that need to be saved to the statefile.
@@ -207,5 +238,25 @@ class CSystem
   int iSSCycles;
 #endif
 };
+
+inline u64 CSystem::get_c_misc()
+{
+  return state.c_MISC;
+}
+
+inline u64 CSystem::get_c_dir(int ProcNum)
+{
+  return state.c_DRIR & state.c_DIM[ProcNum];
+}
+
+inline u64 CSystem::get_c_dim(int ProcNum)
+{
+  return state.c_DIM[ProcNum];
+}
+
+inline void CSystem::set_c_dim(int ProcNum,u64 value)
+{
+  state.c_DIM[ProcNum] = value;
+}
 
 #endif // !defined(INCLUDED_SYSTEM_H)
