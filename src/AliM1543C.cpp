@@ -27,6 +27,9 @@
  * \file 
  * Contains the code for the emulated Ali M1543C chipset devices.
  *
+ * X-1.32       Brian Wheeler                                   2-DEC-2007
+ *      Timing / floppy tweak for Linux/BSD guests.
+ *
  * X-1.31       Brian Wheeler                                   1-DEC-2007
  *      Added console support (using SDL library), corrected timer
  *      behavior for Linux/BSD as a guest OS.
@@ -600,17 +603,19 @@ void CAliM1543C::kb_write(u64 address, u8 data)
     } while ((inb(0x61) & 0x20) == 0 && count < TIMEOUT_COUNT);
   to calibrate the cpu clock.
 
-
-  for now I'll flip the bit on every other read so it looks like its doing
-  something.  I did the same thing for port 71 register 0x0a.
+  Every 150000 reads the bit gets flipped so maybe the timing will
+  seem reasonable to the OS.
  */
 u8 CAliM1543C::reg_61_read()
 {
-  if(!(state.reg_61 & 0x20)) {
-    state.reg_61 |= 0x20;
-  } else {
-    state.reg_61 &= ~0x20;
-  }
+  static long read_count = 0;
+  if (read_count % 150000 == 0)
+    if(!(state.reg_61 & 0x20)) {
+      state.reg_61 |= 0x20;
+    } else {
+      state.reg_61 &= ~0x20;
+    }
+  read_count++;
   return state.reg_61;
 }
 
@@ -701,7 +706,6 @@ void CAliM1543C::toy_write(u64 address, u8 data)
 		state.toy_stored_data[0x0a] |= 0x80;  
 	      }
 	      
-
 	      //# /****************************************************/
 	      //# #define RTC_CONTROL RTC_REG_B
 	      //# # define RTC_SET 0x80 /* disable updates for clock setting */
@@ -715,10 +719,7 @@ void CAliM1543C::toy_write(u64 address, u8 data)
 	      //#
 	      // this is set (by the srm?) to 0x0e = SQWE | DM_BINARY | 24H
 	      // sets the PIE bit.
-	      
-
-
-
+    
 	      //# /***********************************************************/
 	      //# #define RTC_INTR_FLAGS RTC_REG_C
 	      //# /* caution - cleared by read */
@@ -727,12 +728,8 @@ void CAliM1543C::toy_write(u64 address, u8 data)
 	      //# # define RTC_AF 0x20
 	      //# # define RTC_UF 0x10
 	      //#
-	      
-	      
-
-
+  
 	    }
-
 	  else
             {
 	      // BCD
@@ -757,8 +754,6 @@ void CAliM1543C::toy_write(u64 address, u8 data)
 
       /* linux reads from 0x1a twice and gets zeros.  Then it halts.  I
 	 wonder what it is expecting.... */
-
-
 
       /* bdw:  I'm getting a 0x17 as data, which should copy some data 
 	 to port 0x71.  However, there's nothing there.  Problem? */
@@ -1428,6 +1423,9 @@ void CAliM1543C::ide_command_write(int index, u64 address, u64 data)
 /**
  * Read from the IDE controller control interface.
  * Return status when \a address is 2, otherwise return 0.
+ *
+ * TO DO: this address range is a combination of IDE and floppy ports.
+ *        Split it up. (3f0 - 3f4 = floppy, 3f6-3f7 = IDE (??)
  **/
 
 u64 CAliM1543C::ide_control_read(int index, u64 address)
@@ -1435,16 +1433,23 @@ u64 CAliM1543C::ide_control_read(int index, u64 address)
   u64 data;
 
   data = 0;
-  if (address==2) 
+  switch(address) 
   {
-      //
-      // HACK FOR STRANGE ERROR WHEN SAVING/LOADING STATE
-      //
-      if (state.ide_status[index]==0xb9)
-        state.ide_status[index] = 0x40;
-      //
-      //
+  case 0: //3f4
+    data = 0x80; // floppy ready
+    break;
+
+  case 2: // 3f6: ide status
+
+    //HACK FOR STRANGE ERROR WHEN SAVING/LOADING STATE
+    if (state.ide_status[index]==0xb9)
+      state.ide_status[index] = 0x40;
+    //END HACK
+
     data = state.ide_status[index];
+    break;
+  default:
+    data = 0;
   }
 
   TRC_DEV4("%%IDE-I-READCTRL: read port %d on IDE control %d: 0x%02x\n", (u32)(address), index, data);
