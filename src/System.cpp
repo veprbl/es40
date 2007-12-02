@@ -27,6 +27,9 @@
  * \file 
  * Contains the code for the emulated Typhoon Chipset devices.
  *
+ * X-1.35       Camiel Vanderhoeven                             2-DEC-2007
+ *      Avoid misprobing of unused PCI configuration space.
+ *
  * X-1.34       Camiel Vanderhoeven                             2-DEC-2007
  *      Added support for code profiling, and for direct operations on the
  *      Tsunami/Typhoon's interrupt registers.
@@ -819,6 +822,14 @@ u64 CSystem::ReadMem(u64 address, int dsize)
 	  return state.tig_HaltB;
 
 	default:
+      if (   (a>=X64(801fe000000) && a<X64(801ff000000))
+          || (a>=X64(803fe000000) && a<X64(803ff000000)) )
+      {
+        // Unused PCI configuration space
+        return make_mask_64(dsize-1,0);
+      }
+
+
 #ifdef DEBUG_UNKMEM
 	printf("%%MEM-I-RDUNKNWN: Attempt to read %d bytes from unknown address %011" LL "x\n",dsize/8,a);
 #endif
