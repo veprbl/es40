@@ -32,6 +32,9 @@
  * \file 
  * Contains the definitions for the emulated DEC 21143 NIC device.
  *
+ * X-1.7        Camiel Vanderhoeven                             2-DEC-2007
+ *      Receive network data in a separate thread.
+ *
  * X-1.6        Camiel Vanderhoeven                             1-DEC-2007
  *      Moved inclusion of StdAfx.h outside conditional block; necessary
  *      for using precompiled headers in Visual C++.
@@ -83,7 +86,15 @@ class CDEC21143 : public CSystemComponent
   virtual void ResetPCI();
   void ResetNIC();
   void SetupFilter();
+  void receive_process();
+
  private:
+#if defined(_WIN32)
+  HANDLE receive_process_handle;
+#else
+  pthread_t receive_process_handle;
+#endif
+
   u64 config_read(u64 address, int dsize);
   void config_write(u64 address, int dsize, u64 data);
   u64 nic_read(u64 address, int dsize);
