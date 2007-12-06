@@ -27,6 +27,9 @@
  * \file 
  * Contains the code for the emulated Ali M1543C chipset devices.
  *
+ * X-1.34       Camiel Vanderhoeven                             6-DEC-2007
+ *      Corrected bug regarding make/break key settings.
+ *
  * X-1.33       Camiel Vanderhoeven                             6-DEC-2007
  *      Changed keyboard implementation (with thanks to the Bochs project!!)
  *
@@ -547,7 +550,7 @@ void CAliM1543C::toy_write(u64 address, u8 data)
   struct tm stime;
   static long read_count = 0;
 
-  printf("%%ALI-I-WRITETOY: write port %02x: 0x%02x\n", (u32)(0x70 + address), data);
+  //printf("%%ALI-I-WRITETOY: write port %02x: 0x%02x\n", (u32)(0x70 + address), data);
 
 
   state.toy_access_ports[address] = (u8)data;
@@ -2119,7 +2122,7 @@ void CAliM1543C::kbd_64_write(u8 value)
       }
 }
 
-void CAliM1543C::kbd_controller_enQ(Bit8u data, unsigned source)
+void CAliM1543C::kbd_controller_enQ(u8 data, unsigned source)
 {
   // source is 0 for keyboard, 1 for mouse
 
@@ -2186,11 +2189,12 @@ void CAliM1543C::set_aux_clock_enable(u8   value)
   }
 }
 
-void CAliM1543C::kbd_ctrl_to_kbd(Bit8u value)
+void CAliM1543C::kbd_ctrl_to_kbd(u8 value)
 {
   BX_DEBUG(("controller passed byte %02xh to keyboard", value));
 
   if (state.kbd_internal_buffer.expecting_make_break) {
+    state.kbd_internal_buffer.expecting_make_break = 0;
     printf("setting key %x to make/break mode (unused)   \n", value);
     kbd_enQ(0xFA); // send ACK
     return;
@@ -2346,7 +2350,7 @@ void CAliM1543C::kbd_ctrl_to_kbd(Bit8u value)
   }
 }
 
-void CAliM1543C::kbd_enQ_imm(Bit8u val)
+void CAliM1543C::kbd_enQ_imm(u8 val)
 {
   int tail;
 
@@ -2646,7 +2650,7 @@ void CAliM1543C::mouse_enQ(u8 mouse_data)
 unsigned CAliM1543C::kbd_periodic()
 {
   static unsigned count_before_paste=0;
-  Bit8u   retval;
+  u8   retval;
 
   //if (state.kbd_controller.kbd_clock_enabled ) {
   //  if(++count_before_paste>=BX_KEY_THIS pastedelay) {
@@ -2715,14 +2719,14 @@ unsigned CAliM1543C::kbd_periodic()
 
 void CAliM1543C::create_mouse_packet(bool force_enq)
 {
-  Bit8u b1, b2, b3, b4;
+  u8 b1, b2, b3, b4;
 
   if(state.mouse_internal_buffer.num_elements && !force_enq)
     return;
 
   Bit16s delta_x = state.mouse.delayed_dx;
   Bit16s delta_y = state.mouse.delayed_dy;
-  Bit8u button_state=state.mouse.button_status | 0x08;
+  u8 button_state=state.mouse.button_status | 0x08;
 
   if(!force_enq && !delta_x && !delta_y) {
     return;
@@ -2736,44 +2740,44 @@ void CAliM1543C::create_mouse_packet(bool force_enq)
   b1 = (button_state & 0x0f) | 0x08; // bit3 always set
 
   if ( (delta_x>=0) && (delta_x<=255) ) {
-    b2 = (Bit8u) delta_x;
+    b2 = (u8) delta_x;
     state.mouse.delayed_dx-=delta_x;
   }
   else if (delta_x > 255) {
-    b2 = (Bit8u) 0xff;
+    b2 = (u8) 0xff;
     state.mouse.delayed_dx-=255;
   }
   else if (delta_x >= -256) {
-    b2 = (Bit8u) delta_x;
+    b2 = (u8) delta_x;
     b1 |= 0x10;
     state.mouse.delayed_dx-=delta_x;
   }
   else {
-    b2 = (Bit8u) 0x00;
+    b2 = (u8) 0x00;
     b1 |= 0x10;
     state.mouse.delayed_dx+=256;
   }
 
   if ( (delta_y>=0) && (delta_y<=255) ) {
-    b3 = (Bit8u) delta_y;
+    b3 = (u8) delta_y;
     state.mouse.delayed_dy-=delta_y;
   }
   else if (delta_y > 255) {
-    b3 = (Bit8u) 0xff;
+    b3 = (u8) 0xff;
     state.mouse.delayed_dy-=255;
   }
   else if (delta_y >= -256) {
-    b3 = (Bit8u) delta_y;
+    b3 = (u8) delta_y;
     b1 |= 0x20;
     state.mouse.delayed_dy-=delta_y;
   }
   else {
-    b3 = (Bit8u) 0x00;
+    b3 = (u8) 0x00;
     b1 |= 0x20;
     state.mouse.delayed_dy+=256;
   }
 
-  b4 = (Bit8u) -state.mouse.delayed_dz;
+  b4 = (u8) -state.mouse.delayed_dz;
 
   mouse_enQ_packet(b1, b2, b3, b4);
 }
