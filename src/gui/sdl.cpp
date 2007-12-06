@@ -51,8 +51,6 @@ extern CAliM1543C * ali;
 // is used to know when we are exporting symbols and when we are importing.
 #define BX_PLUGGABLE
 
-//#include "bochs.h"
-//#include "iodev.h"
 #if BX_WITH_SDL
 
 #include <stdlib.h>
@@ -60,11 +58,7 @@ extern CAliM1543C * ali;
 #include <SDL_endian.h>
 #include <SDL_thread.h>
 
-//#include "icon_bochs.h"
-#include "sdl.h"
-//#ifdef WIN32
-//#include "win32dialog.h"
-//#endif
+#include "sdl_fonts.h"
 
 class bx_sdl_gui_c : public bx_gui_c {
 public:
