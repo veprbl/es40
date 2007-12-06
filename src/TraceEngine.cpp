@@ -28,6 +28,9 @@
  * Contains the code for the CPU tracing engine.
  * This will become the debugging engine (interactive debugger) soon.
  *
+ * X-1.30       Brian Wheeler                                   6-DEC-2007
+ *      Bugfix in real_address.                   
+ *
  * X-1.29       Camiel Vanderhoeven                             2-DEC-2007
  *      Changed the way translation buffers work. 
  *
@@ -166,7 +169,7 @@ inline u64 real_address(u64 address, CAlphaCPU * c, bool bIBOX)
   if (bIBOX && (address&1))
     return address & X64(fffffffffffffffc);
 
-  if (!(c->virt2phys(address,&a,ACCESS_READ | NO_CHECK | FAKE,&b)))
+  if (!(c->virt2phys(address,&a,ACCESS_READ | NO_CHECK | FAKE,&b,0)))
     return a & (bIBOX?X64(fffffffffffffffc):X64(ffffffffffffffff));
 
   return ((address&X64(fffffffff0000000)) ==X64(0000000020000000))?

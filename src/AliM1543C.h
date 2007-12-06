@@ -27,6 +27,9 @@
  * \file 
  * Contains the definitions for the emulated Ali M1543C chipset devices.
  *
+ * X-1.16       Camiel Vanderhoeven                             6-DEC-2007
+ *      Changed keyboard implementation (with thanks to the Bochs project!!)
+ *
  * X-1.15       Brian Wheeler                                   1-DEC-2007
  *      Added console support (using SDL library), corrected timer
  *      behavior for Linux/BSD as a guest OS.
@@ -81,6 +84,15 @@
 #define INCLUDED_ALIM1543C_H
 
 #include "SystemComponent.h"
+#include "gui/gui.h"
+
+#define BX_KBD_ELEMENTS 16
+#define BX_MOUSE_BUFF_SIZE 48
+
+#define MOUSE_MODE_RESET  10
+#define MOUSE_MODE_STREAM 11
+#define MOUSE_MODE_REMOTE 12
+#define MOUSE_MODE_WRAP   13
 
 /**
  * Disk information structure.
@@ -124,16 +136,27 @@ class CAliM1543C : public CSystemComponent
   FILE * get_ide_disk(int controller, int drive);
   virtual void ResetPCI();
 
-  void kb_enqueue(u8 data, int type);
-  u8 kb_dequeue();
-  bool kb_ready();
-
+  void kbd_gen_scancode(u32 key);
 
  private:
 
   // REGISTERS 60 & 64: KEYBOARD
-  u8 kb_read(u64 address);
-  void kb_write(u64 address, u8 data);
+  u8 kbd_60_read();
+  void kbd_60_write(u8 data);
+  u8 kbd_64_read();
+  void kbd_64_write(u8 data);
+  void kbd_resetinternals(bool powerup);
+  void kbd_enQ(u8 scancode);
+  void kbd_controller_enQ(Bit8u data, unsigned source);
+  void set_kbd_clock_enable(u8 value);
+  void set_aux_clock_enable(u8 value);
+  void kbd_ctrl_to_kbd(u8 value);
+  void kbd_enQ_imm(u8 val);
+  void kbd_ctrl_to_mouse(u8 value);
+  bool mouse_enQ_packet(u8 b1, u8 b2, u8 b3, u8 b4);
+  void mouse_enQ(u8 mouse_data);
+  unsigned kbd_periodic();
+  void create_mouse_packet(bool force_enq);
 
   // REGISTER 61 (NMI)
   u8 reg_61_read();
@@ -174,23 +197,128 @@ class CAliM1543C : public CSystemComponent
   u8 dma_read(int channel, u64 address);
   void dma_write(int channel, u64 address, u8 data);
 
+  // LPT controller
+  u8 lpt_read(u64 address);
+  void lpt_write(u64 address, u8 data);
+
 #ifdef USE_CONSOLE
   u8 key2scan(int key);
 #endif
 
-
   // The state structure contains all elements that need to be saved to the statefile.
   struct SAliM1543CState {
     // REGISTERS 60 & 64: KEYBOARD / MOUSE
-    u8 kb_Input;
-    u8 kb_Output;   	
-    u8 kb_Status;   	
-    u8 kb_Command;
-    u8 kb_intState;
-    u8 kb_buffer[32];
-    u64 kb_head, kb_tail;
-    u8 kb_dataPending;
-    bool kb_mode;
+    struct {
+      /* status bits matching the status port*/
+      bx_bool pare; // Bit7, 1= parity error from keyboard/mouse - ignored.
+      bx_bool tim;  // Bit6, 1= timeout from keyboard - ignored.
+      bx_bool auxb; // Bit5, 1= mouse data waiting for CPU to read.
+      bx_bool keyl; // Bit4, 1= keyswitch in lock position - ignored.
+      bx_bool c_d; /*  Bit3, 1=command to port 64h, 0=data to port 60h */
+      bx_bool sysf; // Bit2,
+      bx_bool inpb; // Bit1,
+      bx_bool outb; // Bit0, 1= keyboard data or mouse data ready for CPU
+                    //       check aux to see which. Or just keyboard
+                    //       data before AT style machines
+
+      /* internal to our version of the keyboard controller */
+      bx_bool kbd_clock_enabled;
+      bx_bool aux_clock_enabled;
+      bx_bool allow_irq1;
+      bx_bool allow_irq12;
+      Bit8u   kbd_output_buffer;
+      Bit8u   aux_output_buffer;
+      Bit8u   last_comm;
+      Bit8u   expecting_port60h;
+      Bit8u   expecting_mouse_parameter;
+      Bit8u   last_mouse_command;
+      Bit32u   timer_pending;
+      bx_bool irq1_requested;
+      bx_bool irq12_requested;
+      bx_bool scancodes_translate;
+      bx_bool expecting_scancodes_set;
+      Bit8u   current_scancodes_set;
+      bx_bool bat_in_progress;
+    } kbd_controller;
+
+    struct mouseStruct {
+      bx_bool captured; // host mouse capture enabled
+//      Bit8u   type;
+      Bit8u   sample_rate;
+      Bit8u   resolution_cpmm; // resolution in counts per mm
+      Bit8u   scaling;
+      Bit8u   mode;
+      Bit8u   saved_mode;  // the mode prior to entering wrap mode
+      bx_bool enable;
+
+      Bit8u get_status_byte ()
+	{
+	  // top bit is 0 , bit 6 is 1 if remote mode.
+	  Bit8u ret = (Bit8u) ((mode == MOUSE_MODE_REMOTE) ? 0x40 : 0);
+	  ret |= (enable << 5);
+	  ret |= (scaling == 1) ? 0 : (1 << 4);
+	  ret |= ((button_status & 0x1) << 2);
+	  ret |= ((button_status & 0x2) << 0);
+	  return ret;
+	}
+
+      Bit8u get_resolution_byte ()
+	{
+	  Bit8u ret = 0;
+
+	  switch (resolution_cpmm) {
+	  case 1:
+	    ret = 0;
+	    break;
+
+	  case 2:
+	    ret = 1;
+	    break;
+
+	  case 4:
+	    ret = 2;
+	    break;
+
+	  case 8:
+	    ret = 3;
+	    break;
+
+	  default:
+	    FAILURE("mouse: invalid resolution_cpmm");
+	  };
+	  return ret;
+	}
+
+      Bit8u button_status;
+      Bit16s delayed_dx;
+      Bit16s delayed_dy;
+      Bit16s delayed_dz;
+      Bit8u im_request;
+      bx_bool im_mode;
+    } mouse;
+
+    struct {
+      int     num_elements;
+      Bit8u   buffer[BX_KBD_ELEMENTS];
+      int     head;
+      bx_bool expecting_typematic;
+      bx_bool expecting_led_write;
+      bool expecting_make_break;
+      Bit8u   delay;
+      Bit8u   repeat_rate;
+      Bit8u   led_status;
+      bx_bool scanning_enabled;
+    } kbd_internal_buffer;
+
+    struct {
+      int     num_elements;
+      Bit8u   buffer[BX_MOUSE_BUFF_SIZE];
+      int     head;
+    } mouse_internal_buffer;
+#define BX_KBD_CONTROLLER_QSIZE 5
+    Bit8u    kbd_controller_Q[BX_KBD_CONTROLLER_QSIZE];
+    unsigned kbd_controller_Qsize;
+    unsigned kbd_controller_Qsource; // 0=keyboard, 1=mouse
 
     // REGISTER 61 (NMI)
     u8 reg_61;
@@ -216,6 +344,7 @@ class CAliM1543C : public CSystemComponent
     u8 ide_config_data[256];
     u8 ide_config_mask[256];
     u8 ide_command[2][8];
+    u8 ide_control[2];
     u8 ide_status[2];
     u8 ide_error[2];
     u16 ide_data[2][256];
@@ -228,9 +357,13 @@ class CAliM1543C : public CSystemComponent
     // USB host controller
     u8 usb_config_data[256];
     u8 usb_config_mask[256];
+
+    u8 lpt_data;
+    u8 lpt_control;
   } state;
 
   struct disk_info ide_info[2][2];
+  FILE *lpt;
 };
 
 inline FILE * CAliM1543C::get_ide_disk(int controller, int drive)

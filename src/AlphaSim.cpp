@@ -27,6 +27,9 @@
  * \file
  * Defines the entry point for the application.
  *
+ * X-1.31       Camiel Vanderhoeven/Brian Wheeler               6-DEC-2007
+ *      Use Boch's SDL gui plugin (with thanks to the Bochs project!!)
+ *
  * X-1.30       Camiel Vanderhoeven                             2-DEC-2007
  *      Added support for code profiling.
  *
@@ -147,6 +150,7 @@
 
 #if defined(USE_CONSOLE)
 #include "S3Trio64.h"
+#include "gui/plugin.h"
 #endif
 
 #include "DPR.h"
@@ -226,6 +230,9 @@ int main(int argc, char* argv[])
 #if defined(USE_CONSOLE)
   // Initialize Any external libraries for the console.  We do this early since
   // devices might need things set up before they're init'd
+
+  PLUG_load_plugin (sdl, PLUGTYPE_OPTIONAL);
+
   if(SDL_Init(SDL_INIT_AUDIO|SDL_INIT_VIDEO) < 0) {
     printf("%%SIM-F-INIT: Cannot initialize SDL library.\n");
     exit(1);

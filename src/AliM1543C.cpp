@@ -27,6 +27,9 @@
  * \file 
  * Contains the code for the emulated Ali M1543C chipset devices.
  *
+ * X-1.33       Camiel Vanderhoeven                             6-DEC-2007
+ *      Changed keyboard implementation (with thanks to the Bochs project!!)
+ *
  * X-1.32       Brian Wheeler                                   2-DEC-2007
  *      Timing / floppy tweak for Linux/BSD guests.
  *
@@ -163,15 +166,10 @@
 #include "AliM1543C.h"
 #include "System.h"
 
-#if defined(USE_CONSOLE)
-#if defined(_WIN32)
-#include <SDL.h>
-#else
-#include <SDL/SDL.h>
-#endif
-#include "sdl_scancodes.h"
-#endif
+#include <math.h>
 
+#include "gui/scancodes.h"
+#include "gui/keymap.h"
 
 #ifdef DEBUG_PIC
 bool pic_messages = false;
@@ -224,24 +222,63 @@ CAliM1543C::CAliM1543C(CSystem * c): CSystemComponent(c)
     }
   }
   
-  c->RegisterMemory(this, 1, X64(00000801fc000060),8);
-  state.kb_intState = 0;
-  state.kb_Status = 0x14;
-  state.kb_Output = 0;
-  state.kb_Command = 0;
-  state.kb_Input = 0;
-  state.kb_dataPending=0xff;
-  state.kb_mode = true;
-  state.kb_head=0;
-  state.kb_tail=0;
+  c->RegisterMemory(this, 1, X64(00000801fc000061),1);
+  c->RegisterMemory(this, 28, X64(00000801fc000060),1);
+  c->RegisterMemory(this, 29, X64(00000801fc000064),1);
 
-#ifdef USE_CONSOLE
+  kbd_resetinternals(1);
 
-#ifndef _WIN32
-  
-#endif
-#endif
+  state.kbd_internal_buffer.led_status = 0;
+  state.kbd_internal_buffer.scanning_enabled = 1;
 
+  state.mouse_internal_buffer.num_elements = 0;
+  for (i=0; i<BX_MOUSE_BUFF_SIZE; i++)
+    state.mouse_internal_buffer.buffer[i] = 0;
+  state.mouse_internal_buffer.head = 0;
+
+  state.kbd_controller.pare = 0;
+  state.kbd_controller.tim  = 0;
+  state.kbd_controller.auxb = 0;
+  state.kbd_controller.keyl = 1;
+  state.kbd_controller.c_d  = 1;
+  state.kbd_controller.sysf = 0;
+  state.kbd_controller.inpb = 0;
+  state.kbd_controller.outb = 0;
+
+  state.kbd_controller.kbd_clock_enabled = 1;
+  state.kbd_controller.aux_clock_enabled = 0;
+  state.kbd_controller.allow_irq1 = 1;
+  state.kbd_controller.allow_irq12 = 1;
+  state.kbd_controller.kbd_output_buffer = 0;
+  state.kbd_controller.aux_output_buffer = 0;
+  state.kbd_controller.last_comm = 0;
+  state.kbd_controller.expecting_port60h = 0;
+  state.kbd_controller.irq1_requested = 0;
+  state.kbd_controller.irq12_requested = 0;
+  state.kbd_controller.expecting_mouse_parameter = 0;
+  state.kbd_controller.bat_in_progress = 0;
+  state.kbd_controller.scancodes_translate = 1;
+
+  state.kbd_controller.timer_pending = 0;
+
+  // Mouse initialization stuff
+  state.mouse.captured        = atoi(cSystem->GetConfig("mouse.enabled","1"));
+//  state.mouse.type            = SIM->get_param_enum(BXPN_MOUSE_TYPE)->get();
+  state.mouse.sample_rate     = 100; // reports per second
+  state.mouse.resolution_cpmm = 4;   // 4 counts per millimeter
+  state.mouse.scaling         = 1;   /* 1:1 (default) */
+  state.mouse.mode            = MOUSE_MODE_RESET;
+  state.mouse.enable          = 0;
+  state.mouse.delayed_dx      = 0;
+  state.mouse.delayed_dy      = 0;
+  state.mouse.delayed_dz      = 0;
+  state.mouse.im_request      = 0; // wheel mouse mode request
+  state.mouse.im_mode         = 0; // wheel mouse mode
+
+  for (i=0; i<BX_KBD_CONTROLLER_QSIZE; i++)
+    state.kbd_controller_Q[i] = 0;
+  state.kbd_controller_Qsize = 0;
+  state.kbd_controller_Qsource = 0;
 
 
   state.reg_61 = 0;
@@ -251,7 +288,10 @@ CAliM1543C::CAliM1543C(CSystem * c): CSystemComponent(c)
     state.toy_access_ports[i] = 0;
   for (i=0;i<256;i++)
     state.toy_stored_data[i] = 0;
-  //    state.toy_stored_data[0x17] = 1;
+  
+#if defined(USE_CONSOLE)
+  state.toy_stored_data[0x17] = 1;
+#endif
 
   ResetPCI();
 									
@@ -273,6 +313,17 @@ CAliM1543C::CAliM1543C(CSystem * c): CSystemComponent(c)
   c->RegisterMemory(this, 12, X64(00000801fc000000), 16);
   c->RegisterMemory(this, 13, X64(00000801fc0000c0), 32);
 
+
+  // Initialize parallel port
+  c->RegisterMemory(this,27, X64(00000801fc0003bc), 4);
+  filename=c->GetConfig("lpt.outfile",NULL);
+  if(filename) {
+    lpt=fopen(filename,"wb");
+  } else {
+    lpt=NULL;
+  }
+
+
   printf("%%ALI-I-INIT: ALi M1543C chipset emulator initialized.\n");
   printf("%%ALI-I-IMPL: Implemented: keyboard, port 61, toy clock, isa bridge, flash ROM.\n");
 }
@@ -287,12 +338,7 @@ u64 CAliM1543C::ReadMem(int index, u64 address, int dsize)
   switch(index)
     {
     case 1:
-      if ((address==0) || (address==4))
-	return kb_read(address);
-      else if (address==1)
-	return reg_61_read();
-      else
-	printf("%%ALI-W-INVPORT: Read from unknown port %02x\n",(int)(0x60+address));
+	  return reg_61_read();
     case 2:
       return toy_read(address);
     case 3:
@@ -332,6 +378,12 @@ u64 CAliM1543C::ReadMem(int index, u64 address, int dsize)
     case 18:
     case 25:
       return ide_busmaster_read(channel,address);
+    case 27:
+      return lpt_read(address);
+    case 28:
+      return kbd_60_read();
+    case 29:
+      return kbd_64_read();
     }
 
   return 0;
@@ -343,12 +395,7 @@ void CAliM1543C::WriteMem(int index, u64 address, int dsize, u64 data)
   switch(index)
     {
     case 1:
-      if ((address==0) || (address==4))
-	kb_write(address, (u8) data);
-      else if (address==1)
-	reg_61_write((u8)data);
-      else
-	printf("%%ALI-W-INVPORT: Write to unknown port %02x\n",(int)(0x60+address));
+	  reg_61_write((u8)data);
       return;
     case 2:
       toy_write(address, (u8)data);
@@ -386,6 +433,8 @@ void CAliM1543C::WriteMem(int index, u64 address, int dsize, u64 data)
     case 17:
     case 24:
       channel = 1;
+      ide_control_write(channel,address, data);
+      return;
     case 16:
     case 23:
       ide_control_write(channel,address, data);
@@ -397,202 +446,63 @@ void CAliM1543C::WriteMem(int index, u64 address, int dsize, u64 data)
     case 25:
       ide_busmaster_write(channel,address, data);
       return;
+    case 27:
+      lpt_write(address,(u8)data);
+      return;
+    case 28:
+      kbd_60_write((u8)data);
+      return;
+    case 29:
+      kbd_64_write((u8)data);
+      return;
     }
 }
 
+void CAliM1543C::kbd_gen_scancode(u32 key)
+{
+  unsigned char *scancode;
+  u8  i;
 
-void CAliM1543C::kb_enqueue(u8 data, int type) {
-  if(state.kb_tail - state.kb_head > 31) {
-    // buffer is full.
-    printf("%%KEYB-E-QFULL: keyboard queue is full.\n");
-  } else {
-    state.kb_buffer[state.kb_tail % 32] = data;
-    state.kb_tail++;
-    state.kb_Status |= 1;  // output buffer is ready.
-    if(type==1)
-      state.kb_Status |= 0x20;  // it is mouse data.
-    if(state.kb_Command & 1  && type == 0) {
-      /* keyboard enabled and interrupt on keystroke */
-      //      printf("Interrupt posted.\n");
-      pic_interrupt(0,1);
+  printf("gen_scancode(): %s %s  \n", bx_keymap.getBXKeyName(key), (key >> 31)?"released":"pressed");
+
+  if (!state.kbd_controller.scancodes_translate)
+    BX_DEBUG(("keyboard: gen_scancode with scancode_translate cleared"));
+
+  // Ignore scancode if keyboard clock is driven low
+  if (state.kbd_controller.kbd_clock_enabled==0)
+    return;
+
+  // Ignore scancode if scanning is disabled
+  if (state.kbd_internal_buffer.scanning_enabled==0)
+    return;
+
+  // Switch between make and break code
+  if (key & BX_KEY_RELEASED)
+    scancode=(unsigned char *)scancodes[(key&0xFF)][state.kbd_controller.current_scancodes_set].brek;
+  else
+    scancode=(unsigned char *)scancodes[(key&0xFF)][state.kbd_controller.current_scancodes_set].make;
+
+  if (state.kbd_controller.scancodes_translate) {
+    // Translate before send
+    u8 escaped=0x00;
+
+    for (i=0; i<strlen((const char *)scancode); i++) {
+      if (scancode[i] == 0xF0)
+        escaped=0x80;
+      else {
+	    printf("gen_scancode(): writing translated %02x   \n",translation8042[scancode[i] ] | escaped);
+        kbd_enQ(translation8042[scancode[i]] | escaped);
+        escaped=0x00;
+      }
     }
-    if(state.kb_Command & 2 && type == 1) {
-      /* mouse enabled and interrupt on mouse */
-      //printf("Mouse Interrupt Posted.\n");
-      pic_interrupt(1,4);
+  } 
+  else {
+    // Send raw data
+    for (i=0; i<strlen((const char *)scancode); i++) {
+      printf("gen_scancode(): writing raw %02x",scancode[i]);
+      kbd_enQ(scancode[i]);
     }
   }
-}
-
-u8 CAliM1543C::kb_dequeue() {
-  u8 data = state.kb_buffer[state.kb_head % 32];
-  state.kb_head++;
-  if(state.kb_tail - state.kb_head == 0)
-    state.kb_Status &= ~0x21; // buffer not ready, and not mouse.
-  return data;
-}
-
-bool CAliM1543C::kb_ready() {
-  if(state.kb_Status & 1) 
-    return true;
-  else
-    return false;
-}
-
-
-
-u8 CAliM1543C::kb_read(u64 address)
-{
-  u8 data;
-
-  switch (address)
-    {
-    case 0:
-      if(!kb_ready()) 
-	data = state.kb_Output;
-      else 
-	data = state.kb_Output = kb_dequeue();
-      break;
-    case 1:
-      printf("%%ALI-W-P61: Read\n");
-      data = 0;
-    case 4:
-      data = state.kb_Status;
-      break;
-    default:
-      data = 0;
-      break;
-    }
-  
-  //if(address != 4 || data & 1)
-  //printf("%%ALI-I-KBDREAD: %02" LL"x read from Keyboard port %02x\n",data,address+0x60);
-  return data;
-}
-
-void CAliM1543C::kb_write(u64 address, u8 data)
-{
-  //printf("%%ALI-I-KBDWRITE: %02" LL "x written to Keyboard port %02x\n",data,address+0x60);
-  switch (address)
-    {
-    case 0:
-      // port 60: keyboard command
-      state.kb_Status &= ~8;
-      state.kb_Input = (u8) data;
-
-      if(state.kb_mode) {  // talking to keyboard.
-	//printf("Keyboard message.\n");
-	switch (data) {
-	case 0xEE: // echo
-	  kb_enqueue(0xEE,0);
-	  break;
-	case 0xF0: // set scan code set
-	  state.kb_dataPending=0xf0;
-	  kb_enqueue(0xFA,0);
-	  break;
-	case 0xF4: // enable scanning
-	  kb_enqueue(0xFA,0);
-	  break;
-	case 0xF6: // set defaults
-	  kb_enqueue(0xFA,0);
-	  break;
-	case 0xFC: // set make/break
-	  state.kb_dataPending=0xfc;
-	  kb_enqueue(0xFA,0);
-	break;
-	case 0xFF: // reset
-	  while(kb_ready()) kb_dequeue(); // drain the queue.
-	  kb_enqueue(0xFA,0); // ack
-	  kb_enqueue(0xAA,0); // done with reset.
-
-	  break;
-	default: // data?
-	  switch(state.kb_dataPending) {
-	  case 0:
-	    //printf("-ALI-I-CMDWRI: Command Byte written with %02x\n",data);
-	    state.kb_Command=data;
-	    state.kb_dataPending=0xff;
-	    break;
-	  case 0xf0:
-	    //printf("-ALI-I-CMDWRI: Scan code set to %02x\n",data);
-	    state.kb_dataPending=0xff;
-	    kb_enqueue(0xFA,0); // ack.
-	    break;
-	  case 0xfc:
-	    //printf("-ALI-I-CMDWRI: set make/break\n");
-	    state.kb_dataPending=0xff;
-	    kb_enqueue(0xFA,0);
-	    break;
-	  case 0xff:
-	    //printf("-ALI-W-CMDUNEX: Unexpected data %02x to port 60.\n",data);
-	    break;
-	  default:
-	    printf("-ALI-W-CMDWRI: data %02x for unknown slot %02x!\n",data,state.kb_dataPending);
-	  }
-	  return;
-	}
-      } else {
-	// talking to mouse!
-	//printf("Mouse message.\n");
-	switch (data)
-	  {
-	  case 0xf4: // start scanning?
-	    kb_enqueue(0xFA,1); // ack
-	    break;
-	  default:
-	    printf("%%ALI-W-MOUSEMSG: Unknown message to mouse: %02x\n",data);
-	    break;
-	  }
-	state.kb_mode=true;
-      }
-      return;
-    case 1:
-      printf("%%ALI-W-P61: Write:  %02x\n",data);
-      return;
-    case 4:
-      // port 64: keyboard controller command
-      state.kb_Status |= 8; // last data was command 
-      //state.kb_Command = (u8) data;
-      switch (data)
-        {
-	case 0xA7: // disable mouse interface
-	  state.kb_Command &= 0x20;
-	  return;
-	case 0xA8: // enable mouse port
-	  state.kb_Command &= ~0x20;
-	  return;
-        case 0xAA: // self-test
-	  while(kb_ready()) kb_dequeue(); // drain the queue.
-	  kb_enqueue(0x55,0);
-	  state.kb_Status |= 0x04; // initialized
-	  return;
-        case 0xAB: // interface test
-#if defined(USE_CONSOLE)
-	  kb_enqueue(0x00,0); // keyboard is ok.
-#else
-	  kb_enqueue(0x01,0); // keyboard line stuck low. 
-#endif
-	  return;
-	case 0xAE: // Enable Keyboard
-	  // clear bit 4 of command byte.
-	  state.kb_Command &= ~0x10;
-	  //cSystem->panic("Keyboard controller was sent AE command",PANIC_NOSHUTDOWN);
-	  //	  kb_enqueue(0x00,0);
-	  return;
-	case 0xD4: // write to mouse
-	  state.kb_mode=false;
-	  return;
-	case 0x20: // read keyboard controller command byte
-	  kb_enqueue(state.kb_Command,0);
-	  return;
-	case 0x60: // write keyboard controller command byte
-	  state.kb_dataPending=0;
-	  return;
-        default:
-	      printf("%%ALI-W-UNKCMD: Unknown keyboard controller command: %02x\n", data);
-	  return;
-        }
-    }
-
 }
 
 /* BDW:
@@ -609,12 +519,12 @@ void CAliM1543C::kb_write(u64 address, u8 data)
 u8 CAliM1543C::reg_61_read()
 {
   static long read_count = 0;
-  if (read_count % 150000 == 0)
-    if(!(state.reg_61 & 0x20)) {
+  if(!(state.reg_61 & 0x20)) {
+    if (read_count % 1500 == 0)
       state.reg_61 |= 0x20;
-    } else {
-      state.reg_61 &= ~0x20;
-    }
+  } else {
+    state.reg_61 &= ~0x20;
+  }
   read_count++;
   return state.reg_61;
 }
@@ -635,8 +545,10 @@ void CAliM1543C::toy_write(u64 address, u8 data)
 {
   time_t ltime;
   struct tm stime;
+  static long read_count = 0;
 
-  //printf("%%ALI-I-WRITETOY: write port %02x: 0x%02x\n", (u32)(0x70 + address), data);
+  printf("%%ALI-I-WRITETOY: write port %02x: 0x%02x\n", (u32)(0x70 + address), data);
+
 
   state.toy_access_ports[address] = (u8)data;
 
@@ -698,13 +610,15 @@ void CAliM1543C::toy_write(u64 address, u8 data)
 	      //#
 	      
 	      // Soooooo, the kernel seems to be waiting for the RTC to issue an
-	      // update in progress and then clear it.  This _very_ fast
-	      // clock (or very slow cpu) gets a UIP every other read...
+	      // update in progress and then clear it.  this clock takes 1500
+	      // reads to switch from one state to another.
 	      if(state.toy_stored_data[0x0a] & 0x80) {
 		state.toy_stored_data[0x0a] &= ~0x80;
 	      } else {
-		state.toy_stored_data[0x0a] |= 0x80;  
+		if(read_count % 1500 == 0)
+		  state.toy_stored_data[0x0a] |= 0x80;  
 	      }
+	      read_count++;
 	      
 	      //# /****************************************************/
 	      //# #define RTC_CONTROL RTC_REG_B
@@ -848,48 +762,17 @@ int CAliM1543C::DoClock()
   cSystem->interrupt(-1, true);
 
 #ifdef USE_CONSOLE
-  // We catch any console events which may have happened and
-  // push them into the keyboard buffer.  
-  // If we get different types of events (mouse & keyboard) we
-  // only process one type before yielding.  This way the status
-  // flags in the keyboard's status register will be correct and
-  // the software will not get confused.
-  SDL_Event event;
-  int last_event = -1;
-
-  while(SDL_PollEvent(&event)) {
-    
-    switch(event.type) {
-    case SDL_KEYDOWN:
-      kb_enqueue(key2scan(event.key.keysym.sym),0);
-      last_event=1;
-      break;
-    case SDL_KEYUP:
-      kb_enqueue(0xf0,0);
-      kb_enqueue(key2scan(event.key.keysym.sym),0);
-      last_event=1;
-      break;
-    case SDL_MOUSEMOTION:
-      last_event=2;
-      break;
-    case SDL_MOUSEBUTTONDOWN:
-      last_event=2;
-      break;
-    case SDL_MOUSEBUTTONUP:
-      last_event=2;
-      break;
-    case SDL_QUIT:  // window close.
-      return 1;
-    default:
-      //ignored event.
-      break;
-    }
-
-    
-
-
-  }
+  bx_gui->handle_events();
 #endif
+
+  unsigned retval;
+
+  retval=kbd_periodic();
+
+  if(retval&0x01)
+    pic_interrupt(0,1);
+  if(retval&0x02)
+    pic_interrupt(1,4);
 
   return 0;
 }
@@ -1191,7 +1074,7 @@ u64 CAliM1543C::ide_command_read(int index, u64 address)
 	    {
 	      fread(&(state.ide_data[index][0]),1,512,ide_info[index][state.ide_selected[index]].handle);
 	      state.ide_sectors[index]--;
-	      if (!(state.ide_command[index][6]&2))
+	      if (!(state.ide_control[index]&2))
 		pic_interrupt(1,6+index);
 	    }
 	  else
@@ -1256,7 +1139,7 @@ void CAliM1543C::ide_command_write(int index, u64 address, u64 data)
 	  fwrite(&(state.ide_data[index][0]),1,512,ide_info[index][state.ide_selected[index]].handle);
 	  state.ide_sectors[index]--;
 	  state.ide_data_ptr[index] = 0;
-	  if (!(state.ide_command[index][6]&2))
+	  if (!(state.ide_control[index]&2))
             pic_interrupt(1,6+index);
 	}
 	if (state.ide_sectors[index])
@@ -1343,11 +1226,13 @@ void CAliM1543C::ide_command_write(int index, u64 address, u64 data)
 
 	      state.ide_status[index] = 0x48;	// RDY+DRQ
 
-	      if (!(state.ide_command[index][6]&2))
+	      if (!(state.ide_control[index]&2))
 		pic_interrupt(1,6+index);
+	     
 
 	      break;
 	    case 0x20: // read sector
+	    case 0x21:
 	      lba =      endian_32(*((u32*)(&(state.ide_command[index][3])))) & 0x0fffffff;
 	      TRC_DEV5("%%IDE-I-READSECT: Read  %3d sectors @ IDE %d.%d LBA %8d\n",state.ide_command[index][2]?state.ide_command[index][2]:256,index,state.ide_selected[index],lba);
 #ifdef DEBUG_IDE
@@ -1359,10 +1244,11 @@ void CAliM1543C::ide_command_write(int index, u64 address, u64 data)
 	      state.ide_status[index] = 0x48;
 	      state.ide_sectors[index] = state.ide_command[index][2]-1;
 	      if (state.ide_sectors[index]) state.ide_reading[index] = true;
-	      if (!(state.ide_command[index][6]&2))
+	      if (!(state.ide_control[index]&2))
 		pic_interrupt(1,6+index);
 	      break;
 	    case 0x30:
+	    case 0x31:
 	      if (!ide_info[index][state.ide_selected[index]].mode)
 	      {
 	        printf("%%IDE-W-WRITPROT: Attempt to write to write-protected disk.\n");
@@ -1388,7 +1274,23 @@ void CAliM1543C::ide_command_write(int index, u64 address, u64 data)
 	      printf("%%IDE-I-SETTRANS: Set IDE translation\n");
 #endif
 	      state.ide_status[index] = 0x40;
-	      if (!(state.ide_command[index][6]&2))
+	      if (!(state.ide_control[index]&2))
+		pic_interrupt(1,6+index);
+	      break;
+
+	    case 0x08: // reset drive (DRST)
+#ifdef DEBUG_IDE
+
+	      printf("%%IDE-I-RESET: IDE Reset\n");
+#endif
+	      state.ide_status[index]= 0x40;
+	      if (!(state.ide_control[index]&2))
+		pic_interrupt(1,6+index);
+	      break;
+
+	    case 0x00: // nop
+	      state.ide_status[index]= 0x40;
+	      if (!(state.ide_control[index]&2))
 		pic_interrupt(1,6+index);
 	      break;
         default:
@@ -1400,7 +1302,7 @@ void CAliM1543C::ide_command_write(int index, u64 address, u64 data)
 	      for (x=0;x<8;x++) printf("%02x ",state.ide_command[index][x]);
 	      printf("\n");
 #endif
-	      if (!(state.ide_command[index][6]&2))
+	      if (!(state.ide_control[index]&2))
 		pic_interrupt(1,6+index);
 	  }
 	}
@@ -1435,10 +1337,11 @@ u64 CAliM1543C::ide_control_read(int index, u64 address)
   data = 0;
   switch(address) 
   {
-  case 0: //3f4
+  case 0: //3f4 floppy main status register
     data = 0x80; // floppy ready
     break;
-
+  case 1: //3f5 floppy command status register
+    break;
   case 2: // 3f6: ide status
 
     //HACK FOR STRANGE ERROR WHEN SAVING/LOADING STATE
@@ -1471,6 +1374,15 @@ void CAliM1543C::ide_control_write(int index, u64 address, u64 data)
 #ifdef DEBUG_IDE
   printf("%%IDE-I-WRITCTRL: write port %d on IDE control %d: 0x%02x\n",  (u32)(address),index, data);
 #endif
+
+  switch(address) {
+  case 0: // floppy main status register
+    break;  // its read only
+  case 1: // floppy command status register.
+    break; // Ignored for now.
+  case 2: // command register
+    state.ide_control[index] = (data & 0xff) | 0x08;
+  } 
 }
 
 /**
@@ -1735,7 +1647,7 @@ void CAliM1543C::ResetPCI()
   state.ide_selected[1] = 0;
   state.ide_error[1] = 0;
 
-  cSystem->RegisterMemory(this, 11, X64(00000801fe009800), 0x100);
+//  cSystem->RegisterMemory(this, 11, X64(00000801fe009800), 0x100);
   for (i=0;i<256;i++)
     {
       state.usb_config_data[i] = 0;
@@ -1788,23 +1700,1080 @@ void CAliM1543C::RestoreState(FILE *f)
   ide_config_write(0x20,32,(*((u32*)(&state.ide_config_data[0x20])))&~1);
 }
 
+u8 CAliM1543C::lpt_read(u64 address) {
+  u8 data = 0;
+  switch(address) {
+  case 0:
+    data=state.lpt_data;
+    break;
+  case 1:
+    // 1 0 0 0 1 000
+    // ^ ^ ^ ^ ^----- printer has no-error condition
+    // | | | +------- printer is not selected.
+    // | | +--------- printer has paper
+    // | +----------- printer is asserting 'ack'
+    // +------------- printer is not busy.
+    data = 0x88;
+    break;
+  case 2:
+    data = state.lpt_control;
+  }
+  return data;
+}
 
-#ifdef USE_CONSOLE
-u8 CAliM1543C::key2scan(int key) {
-  if(key < 128) {
-    // use ASCII table.
-    return map_ascii[key];
-  } else if(key >= SDLK_KP0 && key-SDLK_KP0 < MAP_KEYPAD_LEN) {
-    return map_keypad[key-SDLK_KP0];
-  } else if(key >= SDLK_UP && key-SDLK_UP < MAP_MIDPAD_LEN) {
-    return map_midpad[key-SDLK_UP];
-  } else if(key >= SDLK_F1 && key-SDLK_F1 < MAP_FKEYS_LEN) {
-    return map_fkeys[key-SDLK_F1];
-  } else if(key >= SDLK_NUMLOCK && key-SDLK_NUMLOCK < MAP_MODKEYS_LEN) {
-    return map_modkeys[key-SDLK_NUMLOCK];
-  } else {
-    printf("%%CON-W-UNKEY: Unknown key code %02x\n",key);
-    return 0;
+
+void CAliM1543C::lpt_write(u64 address, u8 data) {
+  switch(address) {
+  case 0:
+    state.lpt_data=data;
+    if(lpt)
+      fputc(data,lpt);
+    if(state.lpt_control & 0x10)
+      pic_interrupt(0,7);
+    break;
+  case 1:
+    break;
+  case 2:
+    state.lpt_control=data;
   }
 }
-#endif
+
+void CAliM1543C::kbd_resetinternals(bool powerup)
+{
+  state.kbd_internal_buffer.num_elements = 0;
+  for (int i=0; i<BX_KBD_ELEMENTS; i++)
+    state.kbd_internal_buffer.buffer[i] = 0;
+  state.kbd_internal_buffer.head = 0;
+
+  state.kbd_internal_buffer.expecting_typematic = 0;
+  state.kbd_internal_buffer.expecting_make_break = 0;
+
+  // Default scancode set is mf2 (translation is controlled by the 8042)
+  state.kbd_controller.expecting_scancodes_set = 0;
+  state.kbd_controller.current_scancodes_set = 1;
+  
+  if (powerup) {
+    state.kbd_internal_buffer.expecting_led_write = 0;
+    state.kbd_internal_buffer.delay = 1; // 500 mS
+    state.kbd_internal_buffer.repeat_rate = 0x0b; // 10.9 chars/sec
+  }
+}
+
+void CAliM1543C::kbd_enQ(u8 scancode)
+{
+  int tail;
+
+  printf("kbd_enQ(0x%02x)", (unsigned) scancode);
+
+  if (state.kbd_internal_buffer.num_elements >= BX_KBD_ELEMENTS) {
+    printf("internal keyboard buffer full, ignoring scancode.(%02x)",
+      (unsigned) scancode);
+    return;
+  }
+
+  /* enqueue scancode in multibyte internal keyboard buffer */
+  BX_DEBUG(("kbd_enQ: putting scancode 0x%02x in internal buffer",
+      (unsigned) scancode));
+  tail = (state.kbd_internal_buffer.head + state.kbd_internal_buffer.num_elements) %
+   BX_KBD_ELEMENTS;
+  state.kbd_internal_buffer.buffer[tail] = scancode;
+  state.kbd_internal_buffer.num_elements++;
+
+  if (!state.kbd_controller.outb && state.kbd_controller.kbd_clock_enabled) {
+    state.kbd_controller.timer_pending = 1;
+    printf("activating timer...");
+    return;
+  }
+}
+
+u8 CAliM1543C::kbd_60_read()
+{
+  u8 val;
+/* output buffer */
+    if (state.kbd_controller.auxb) { /* mouse byte available */
+      val = state.kbd_controller.aux_output_buffer;
+      state.kbd_controller.aux_output_buffer = 0;
+      state.kbd_controller.outb = 0;
+      state.kbd_controller.auxb = 0;
+      state.kbd_controller.irq12_requested = 0;
+
+      if (state.kbd_controller_Qsize) {
+        unsigned i;
+        state.kbd_controller.aux_output_buffer = state.kbd_controller_Q[0];
+        state.kbd_controller.outb = 1;
+        state.kbd_controller.auxb = 1;
+        if (state.kbd_controller.allow_irq12)
+          state.kbd_controller.irq12_requested = 1;
+        for (i=0; i<state.kbd_controller_Qsize-1; i++) {
+          // move Q elements towards head of queue by one
+          state.kbd_controller_Q[i] = state.kbd_controller_Q[i+1];
+        }
+        state.kbd_controller_Qsize--;
+      }
+
+      //DEV_pic_lower_irq(12);
+      state.kbd_controller.timer_pending = 1;
+      BX_DEBUG(("[mouse] read from 0x60 returns 0x%02x", val));
+      return val;
+    }
+    else if (state.kbd_controller.outb) { /* kbd byte available */
+      val = state.kbd_controller.kbd_output_buffer;
+      state.kbd_controller.outb = 0;
+      state.kbd_controller.auxb = 0;
+      state.kbd_controller.irq1_requested = 0;
+      state.kbd_controller.bat_in_progress = 0;
+
+      if (state.kbd_controller_Qsize) {
+        unsigned i;
+        state.kbd_controller.aux_output_buffer = state.kbd_controller_Q[0];
+        state.kbd_controller.outb = 1;
+        state.kbd_controller.auxb = 1;
+        if (state.kbd_controller.allow_irq1)
+          state.kbd_controller.irq1_requested = 1;
+        for (i=0; i<state.kbd_controller_Qsize-1; i++) {
+          // move Q elements towards head of queue by one
+          state.kbd_controller_Q[i] = state.kbd_controller_Q[i+1];
+        }
+	BX_DEBUG(("s.controller_Qsize: %02X",state.kbd_controller_Qsize));
+        state.kbd_controller_Qsize--;
+      }
+
+//      DEV_pic_lower_irq(1);
+      state.kbd_controller.timer_pending = 1;
+      BX_DEBUG(("READ(60) = %02x", (unsigned) val));
+      return val;
+    }
+    else {
+      BX_DEBUG(("num_elements = %d", state.kbd_internal_buffer.num_elements));
+      BX_DEBUG(("read from port 60h with outb empty"));
+      return state.kbd_controller.kbd_output_buffer;
+    }
+}
+
+u8 CAliM1543C::kbd_64_read()
+{
+  u8 val;
+/* status register */
+    val = (state.kbd_controller.pare << 7)  |
+          (state.kbd_controller.tim  << 6)  |
+          (state.kbd_controller.auxb << 5)  |
+          (state.kbd_controller.keyl << 4)  |
+          (state.kbd_controller.c_d  << 3)  |
+          (state.kbd_controller.sysf << 2)  |
+          (state.kbd_controller.inpb << 1)  |
+          (state.kbd_controller.outb << 0);
+    state.kbd_controller.tim = 0;
+    return val;
+}
+
+void CAliM1543C::kbd_60_write(u8 value)
+{
+// input buffer
+      // if expecting data byte from command last sent to port 64h
+      if (state.kbd_controller.expecting_port60h) {
+        state.kbd_controller.expecting_port60h = 0;
+        // data byte written last to 0x60
+        state.kbd_controller.c_d = 0;
+        if (state.kbd_controller.inpb) {
+          BX_PANIC(("write to port 60h, not ready for write"));
+        }
+        switch (state.kbd_controller.last_comm) {
+          case 0x60: // write command byte
+            {
+            bx_bool scan_convert, disable_keyboard,
+                    disable_aux;
+
+            scan_convert = (value >> 6) & 0x01;
+            disable_aux      = (value >> 5) & 0x01;
+            disable_keyboard = (value >> 4) & 0x01;
+            state.kbd_controller.sysf = (value >> 2) & 0x01;
+            state.kbd_controller.allow_irq1  = (value >> 0) & 0x01;
+            state.kbd_controller.allow_irq12 = (value >> 1) & 0x01;
+            set_kbd_clock_enable(!disable_keyboard);
+            set_aux_clock_enable(!disable_aux);
+            if (state.kbd_controller.allow_irq12 && state.kbd_controller.auxb)
+              state.kbd_controller.irq12_requested = 1;
+            else if (state.kbd_controller.allow_irq1  && state.kbd_controller.outb)
+              state.kbd_controller.irq1_requested = 1;
+
+            BX_DEBUG(( " allow_irq12 set to %u",
+              (unsigned) state.kbd_controller.allow_irq12));
+            if (!scan_convert)
+              BX_INFO(("keyboard: scan convert turned off"));
+
+	    // (mch) NT needs this
+	    state.kbd_controller.scancodes_translate = scan_convert;
+            }
+            break;
+          case 0xd1: // write output port
+            BX_DEBUG(("write output port with value %02xh", (unsigned) value));
+	    BX_DEBUG(("write output port : %sable A20",(value & 0x02)?"en":"dis"));
+//            BX_SET_ENABLE_A20((value & 0x02) != 0);
+            if (!(value & 0x01)) {
+              BX_INFO(("write output port : processor reset requested!"));
+//              bx_pc_system.Reset( BX_RESET_SOFTWARE);
+            }
+            break;
+          case 0xd4: // Write to mouse
+            // I don't think this enables the AUX clock
+            //set_aux_clock_enable(1); // enable aux clock line
+            kbd_ctrl_to_mouse(value);
+            // ??? should I reset to previous value of aux enable?
+            break;
+
+          case 0xd3: // write mouse output buffer
+            // Queue in mouse output buffer
+            kbd_controller_enQ(value, 1);
+            break;
+
+	  case 0xd2:
+	    // Queue in keyboard output buffer
+	    kbd_controller_enQ(value, 0);
+	    break;
+
+          default:
+            BX_PANIC(("=== unsupported write to port 60h(lastcomm=%02x): %02x",
+              (unsigned) state.kbd_controller.last_comm, (unsigned) value));
+          }
+      } else {
+        // data byte written last to 0x60
+        state.kbd_controller.c_d = 0;
+        state.kbd_controller.expecting_port60h = 0;
+        /* pass byte to keyboard */
+        /* ??? should conditionally pass to mouse device here ??? */
+        if (state.kbd_controller.kbd_clock_enabled==0) {
+          set_kbd_clock_enable(1);
+        }
+        kbd_ctrl_to_kbd(value);
+      }
+}
+
+void CAliM1543C::kbd_64_write(u8 value)
+{
+  static int kbd_initialized=0;
+  u8 command_byte;
+
+// control register
+      // command byte written last to 0x64
+      state.kbd_controller.c_d = 1;
+      state.kbd_controller.last_comm = value;
+      // most commands NOT expecting port60 write next
+      state.kbd_controller.expecting_port60h = 0;
+
+      switch (value) {
+        case 0x20: // get keyboard command byte
+          BX_DEBUG(("get keyboard command byte"));
+          // controller output buffer must be empty
+          if (state.kbd_controller.outb) {
+            BX_ERROR(("kbd: OUTB set and command 0x%02x encountered", value));
+            break;
+          }
+          command_byte =
+            (state.kbd_controller.scancodes_translate << 6) |
+            ((!state.kbd_controller.aux_clock_enabled) << 5) |
+            ((!state.kbd_controller.kbd_clock_enabled) << 4) |
+            (0 << 3) |
+            (state.kbd_controller.sysf << 2) |
+            (state.kbd_controller.allow_irq12 << 1) |
+            (state.kbd_controller.allow_irq1  << 0);
+          kbd_controller_enQ(command_byte, 0);
+          break;
+        case 0x60: // write command byte
+          BX_DEBUG(("write command byte"));
+          // following byte written to port 60h is command byte
+          state.kbd_controller.expecting_port60h = 1;
+          break;
+
+        case 0xa0:
+          BX_DEBUG(("keyboard BIOS name not supported"));
+          break;
+
+        case 0xa1:
+          BX_DEBUG(("keyboard BIOS version not supported"));
+          break;
+
+        case 0xa7: // disable the aux device
+          set_aux_clock_enable(0);
+          BX_DEBUG(("aux device disabled"));
+          break;
+        case 0xa8: // enable the aux device
+          set_aux_clock_enable(1);
+          BX_DEBUG(("aux device enabled"));
+          break;
+        case 0xa9: // Test Mouse Port
+          // controller output buffer must be empty
+          if (state.kbd_controller.outb) {
+            BX_PANIC(("kbd: OUTB set and command 0x%02x encountered", value));
+            break;
+          }
+          kbd_controller_enQ(0x00, 0); // no errors detected
+          break;
+        case 0xaa: // motherboard controller self test
+          BX_DEBUG(("Self Test"));
+	  if (kbd_initialized == 0) {
+	    state.kbd_controller_Qsize = 0;
+	    state.kbd_controller.outb = 0;
+	    kbd_initialized++;
+	  }
+          // controller output buffer must be empty
+          if (state.kbd_controller.outb) {
+            BX_ERROR(("kbd: OUTB set and command 0x%02x encountered", value));
+            break;
+          }
+	  // (mch) Why is this commented out??? Enabling
+          state.kbd_controller.sysf = 1; // self test complete
+          kbd_controller_enQ(0x55, 0); // controller OK
+          break;
+        case 0xab: // Interface Test
+          // controller output buffer must be empty
+          if (state.kbd_controller.outb) {
+            BX_PANIC(("kbd: OUTB set and command 0x%02x encountered", value));
+            break;
+          }
+          kbd_controller_enQ(0x00, 0);
+          break;
+        case 0xad: // disable keyboard
+          set_kbd_clock_enable(0);
+          BX_DEBUG(("keyboard disabled"));
+          break;
+        case 0xae: // enable keyboard
+          set_kbd_clock_enable(1);
+          BX_DEBUG(("keyboard enabled"));
+          break;
+        case 0xaf: // get controller version
+          BX_INFO(("'get controller version' not supported yet"));
+          break;
+        case 0xc0: // read input port
+          // controller output buffer must be empty
+          if (state.kbd_controller.outb) {
+            BX_PANIC(("kbd: OUTB set and command 0x%02x encountered", value));
+            break;
+          }
+          // keyboard not inhibited
+          kbd_controller_enQ(0x80, 0);
+          break;
+        case 0xd0: // read output port: next byte read from port 60h
+          BX_DEBUG(("io write to port 64h, command d0h (partial)"));
+          // controller output buffer must be empty
+          if (state.kbd_controller.outb) {
+            BX_PANIC(("kbd: OUTB set and command 0x%02x encountered", value));
+            break;
+          }
+          kbd_controller_enQ(
+              (state.kbd_controller.irq12_requested << 5) |
+              (state.kbd_controller.irq1_requested << 4) |
+//              (BX_GET_ENABLE_A20() << 1) |
+              0x01, 0);
+          break;
+
+        case 0xd1: // write output port: next byte written to port 60h
+          BX_DEBUG(("write output port"));
+          // following byte to port 60h written to output port
+          state.kbd_controller.expecting_port60h = 1;
+          break;
+
+        case 0xd3: // write mouse output buffer
+	  //FIXME: Why was this a panic?
+          BX_DEBUG(("io write 0x64: command = 0xD3(write mouse outb)"));
+	  // following byte to port 60h written to output port as mouse write.
+          state.kbd_controller.expecting_port60h = 1;
+          break;
+
+        case 0xd4: // write to mouse
+          BX_DEBUG(("io write 0x64: command = 0xD4 (write to mouse)"));
+          // following byte written to port 60h
+          state.kbd_controller.expecting_port60h = 1;
+          break;
+
+        case 0xd2: // write keyboard output buffer
+	  BX_DEBUG(("io write 0x64: write keyboard output buffer"));
+	  state.kbd_controller.expecting_port60h = 1;
+	  break;
+        case 0xdd: // Disable A20 Address Line
+//	  BX_SET_ENABLE_A20(0);
+	  break;
+        case 0xdf: // Enable A20 Address Line
+//	  BX_SET_ENABLE_A20(1);
+	  break;
+        case 0xc1: // Continuous Input Port Poll, Low
+        case 0xc2: // Continuous Input Port Poll, High
+        case 0xe0: // Read Test Inputs
+          BX_PANIC(("io write 0x64: command = %02xh", (unsigned) value));
+          break;
+
+        case 0xfe: // System (cpu?) Reset, transition to real mode
+          BX_INFO(("io write 0x64: command 0xfe: reset cpu"));
+//          bx_pc_system.Reset(BX_RESET_SOFTWARE);
+          break;
+
+        default:
+          if (value==0xff || (value>=0xf0 && value<=0xfd)) {
+            /* useless pulse output bit commands ??? */
+            BX_DEBUG(("io write to port 64h, useless command %02x",
+                (unsigned) value));
+            return;
+          }
+          BX_ERROR(("unsupported io write to keyboard port 64, value = %x",
+            (unsigned) value));
+          break;
+      }
+}
+
+void CAliM1543C::kbd_controller_enQ(Bit8u data, unsigned source)
+{
+  // source is 0 for keyboard, 1 for mouse
+
+  BX_DEBUG(("kbd_controller_enQ(%02x) source=%02x", (unsigned) data,source));
+
+  // see if we need to Q this byte from the controller
+  // remember this includes mouse bytes.
+  if (state.kbd_controller.outb) {
+    if (state.kbd_controller_Qsize >= BX_KBD_CONTROLLER_QSIZE)
+      BX_PANIC(("controller_enq(): controller_Q full!"));
+    state.kbd_controller_Q[state.kbd_controller_Qsize++] = data;
+    state.kbd_controller_Qsource = source;
+    return;
+  }
+
+  // the Q is empty
+  if (source == 0) { // keyboard
+    state.kbd_controller.kbd_output_buffer = data;
+    state.kbd_controller.outb = 1;
+    state.kbd_controller.auxb = 0;
+    state.kbd_controller.inpb = 0;
+    if (state.kbd_controller.allow_irq1)
+      state.kbd_controller.irq1_requested = 1;
+  } else { // mouse
+    state.kbd_controller.aux_output_buffer = data;
+    state.kbd_controller.outb = 1;
+    state.kbd_controller.auxb = 1;
+    state.kbd_controller.inpb = 0;
+    if (state.kbd_controller.allow_irq12)
+      state.kbd_controller.irq12_requested = 1;
+  }
+}
+
+void CAliM1543C::set_kbd_clock_enable(u8   value)
+{
+  bool prev_kbd_clock_enabled;
+
+  if (value==0) {
+    state.kbd_controller.kbd_clock_enabled = 0;
+  } else {
+    /* is another byte waiting to be sent from the keyboard ? */
+    prev_kbd_clock_enabled = state.kbd_controller.kbd_clock_enabled;
+    state.kbd_controller.kbd_clock_enabled = 1;
+
+    if (prev_kbd_clock_enabled==0 && state.kbd_controller.outb==0) {
+      state.kbd_controller.timer_pending = 1;
+    }
+  }
+}
+
+void CAliM1543C::set_aux_clock_enable(u8   value)
+{
+  bool prev_aux_clock_enabled;
+
+  BX_DEBUG(("set_aux_clock_enable(%u)", (unsigned) value));
+  if (value==0) {
+    state.kbd_controller.aux_clock_enabled = 0;
+  } else {
+    /* is another byte waiting to be sent from the keyboard ? */
+    prev_aux_clock_enabled = state.kbd_controller.aux_clock_enabled;
+    state.kbd_controller.aux_clock_enabled = 1;
+    if (prev_aux_clock_enabled==0 && state.kbd_controller.outb==0)
+      state.kbd_controller.timer_pending = 1;
+  }
+}
+
+void CAliM1543C::kbd_ctrl_to_kbd(Bit8u value)
+{
+  BX_DEBUG(("controller passed byte %02xh to keyboard", value));
+
+  if (state.kbd_internal_buffer.expecting_make_break) {
+    printf("setting key %x to make/break mode (unused)   \n", value);
+    kbd_enQ(0xFA); // send ACK
+    return;
+  }
+
+  if (state.kbd_internal_buffer.expecting_typematic) {
+    state.kbd_internal_buffer.expecting_typematic = 0;
+    state.kbd_internal_buffer.delay = (value >> 5) & 0x03;
+    switch (state.kbd_internal_buffer.delay) {
+      case 0: BX_INFO(("setting delay to 250 mS (unused)")); break;
+      case 1: BX_INFO(("setting delay to 500 mS (unused)")); break;
+      case 2: BX_INFO(("setting delay to 750 mS (unused)")); break;
+      case 3: BX_INFO(("setting delay to 1000 mS (unused)")); break;
+    }
+    state.kbd_internal_buffer.repeat_rate = value & 0x1f;
+    double cps = 1 /((double)(8 + (value & 0x07)) * (double)exp(log((double)2) * (double)((value >> 3) & 0x03)) * 0.00417);
+    BX_INFO(("setting repeat rate to %.1f cps (unused)", cps));
+    kbd_enQ(0xFA); // send ACK
+    return;
+  }
+
+  if (state.kbd_internal_buffer.expecting_led_write) {
+    state.kbd_internal_buffer.expecting_led_write = 0;
+    state.kbd_internal_buffer.led_status = value;
+    BX_DEBUG(("LED status set to %02x",
+      (unsigned) state.kbd_internal_buffer.led_status));
+    kbd_enQ(0xFA); // send ACK %%%
+    return;
+  }
+
+  if (state.kbd_controller.expecting_scancodes_set) {
+    state.kbd_controller.expecting_scancodes_set = 0;
+    if( value != 0 ) {
+      if( value<4 ) {
+        state.kbd_controller.current_scancodes_set = (value-1);
+        BX_INFO(("Switched to scancode set %d",
+          (unsigned) state.kbd_controller.current_scancodes_set + 1));
+        kbd_enQ(0xFA);
+      } else {
+        BX_ERROR(("Received scancodes set out of range: %d", value ));
+        kbd_enQ(0xFF); // send ERROR
+      }
+    } else {
+      // Send ACK (SF patch #1159626)
+      kbd_enQ(0xFA);
+      // Send current scancodes set to port 0x60
+      kbd_enQ(1 + (state.kbd_controller.current_scancodes_set)); 
+    }
+    return;
+  }
+
+  switch (value) {
+    case 0x00: // ??? ignore and let OS timeout with no response
+      kbd_enQ(0xFA); // send ACK %%%
+      break;
+
+    case 0x05: // ???
+      // (mch) trying to get this to work...
+      state.kbd_controller.sysf = 1;
+      kbd_enQ_imm(0xfe);
+      break;
+
+    case 0xed: // LED Write
+      state.kbd_internal_buffer.expecting_led_write = 1;
+      kbd_enQ_imm(0xFA); // send ACK %%%
+      break;
+
+    case 0xee: // echo
+      kbd_enQ(0xEE); // return same byte (EEh) as echo diagnostic
+      break;
+
+    case 0xf0: // Select alternate scan code set
+      state.kbd_controller.expecting_scancodes_set = 1;
+      BX_DEBUG(("Expecting scancode set info..."));
+      kbd_enQ(0xFA); // send ACK
+      break;
+
+    case 0xf2:  // identify keyboard
+      BX_INFO(("identify keyboard command received"));
+
+      // XT sends nothing, AT sends ACK 
+      // MFII with translation sends ACK+ABh+41h
+      // MFII without translation sends ACK+ABh+83h
+//      if (SIM->get_param_enum(BXPN_KBD_TYPE)->get() != BX_KBD_XT_TYPE) {
+        kbd_enQ(0xFA); 
+//        if (SIM->get_param_enum(BXPN_KBD_TYPE)->get() == BX_KBD_MF_TYPE) {
+          kbd_enQ(0xAB);
+          
+          if(state.kbd_controller.scancodes_translate)
+            kbd_enQ(0x41);
+          else
+            kbd_enQ(0x83);
+  //      }
+//      }
+      break;
+
+    case 0xf3:  // typematic info
+      state.kbd_internal_buffer.expecting_typematic = 1;
+      BX_INFO(("setting typematic info"));
+      kbd_enQ(0xFA); // send ACK
+      break;
+
+    case 0xf4:  // enable keyboard
+      state.kbd_internal_buffer.scanning_enabled = 1;
+      kbd_enQ(0xFA); // send ACK
+      break;
+
+    case 0xf5:  // reset keyboard to power-up settings and disable scanning
+      kbd_resetinternals(1);
+      kbd_enQ(0xFA); // send ACK
+      state.kbd_internal_buffer.scanning_enabled = 0;
+      BX_INFO(("reset-disable command received"));
+      break;
+
+    case 0xf6:  // reset keyboard to power-up settings and enable scanning
+      kbd_resetinternals(1);
+      kbd_enQ(0xFA); // send ACK
+      state.kbd_internal_buffer.scanning_enabled = 1;
+      BX_INFO(("reset-enable command received"));
+      break;
+
+    case 0xfc:  // PS/2 Set Key Type to Make/Break
+      state.kbd_internal_buffer.expecting_make_break = 1;
+      kbd_enQ(0xFA); /* send ACK */
+      break;
+
+    case 0xfe:  // resend. aiiee.
+      BX_PANIC(("got 0xFE (resend)"));
+      break;
+
+    case 0xff:  // reset: internal keyboard reset and afterwards the BAT
+      BX_DEBUG(("reset command received"));
+      kbd_resetinternals(1);
+      kbd_enQ(0xFA); // send ACK
+      state.kbd_controller.bat_in_progress = 1;
+      kbd_enQ(0xAA); // BAT test passed
+      break;
+
+    case 0xd3:
+      kbd_enQ(0xfa);
+      break;
+
+    case 0xf7:  // PS/2 Set All Keys To Typematic
+    case 0xf8:  // PS/2 Set All Keys to Make/Break
+    case 0xf9:  // PS/2 PS/2 Set All Keys to Make
+    case 0xfa:  // PS/2 Set All Keys to Typematic Make/Break
+    case 0xfb:  // PS/2 Set Key Type to Typematic
+    case 0xfd:  // PS/2 Set Key Type to Make
+    default:
+      BX_ERROR(("kbd_ctrl_to_kbd(): got value of 0x%02x", value));
+      kbd_enQ(0xFE); /* send NACK */
+      break;
+  }
+}
+
+void CAliM1543C::kbd_enQ_imm(Bit8u val)
+{
+  int tail;
+
+  if (state.kbd_internal_buffer.num_elements >= BX_KBD_ELEMENTS) {
+    BX_PANIC(("internal keyboard buffer full (imm)"));
+    return;
+  }
+
+  /* enqueue scancode in multibyte internal keyboard buffer */
+  tail = (state.kbd_internal_buffer.head + state.kbd_internal_buffer.num_elements) %
+    BX_KBD_ELEMENTS;
+
+  state.kbd_controller.kbd_output_buffer = val;
+  state.kbd_controller.outb = 1;
+
+  if (state.kbd_controller.allow_irq1)
+    state.kbd_controller.irq1_requested = 1;
+}
+
+void CAliM1543C::kbd_ctrl_to_mouse(u8 value)
+{
+  // if we are not using a ps2 mouse, some of the following commands need to return different values
+//  bx_bool is_ps2 = 0;
+//  if ((state.mouse.type == BX_MOUSE_TYPE_PS2) ||
+//      (state.mouse.type == BX_MOUSE_TYPE_IMPS2)) is_ps2 = 1;
+
+  BX_DEBUG(("MOUSE: kbd_ctrl_to_mouse(%02xh)", (unsigned) value));
+  BX_DEBUG(("  enable = %u", (unsigned) state.mouse.enable));
+  BX_DEBUG(("  allow_irq12 = %u",
+    (unsigned) state.kbd_controller.allow_irq12));
+  BX_DEBUG(("  aux_clock_enabled = %u",
+    (unsigned) state.kbd_controller.aux_clock_enabled));
+
+  // an ACK (0xFA) is always the first response to any valid input
+  // received from the system other than Set-Wrap-Mode & Resend-Command
+
+  if (state.kbd_controller.expecting_mouse_parameter) {
+    state.kbd_controller.expecting_mouse_parameter = 0;
+    switch (state.kbd_controller.last_mouse_command) {
+      case 0xf3: // Set Mouse Sample Rate
+        state.mouse.sample_rate = value;
+        BX_DEBUG(("[mouse] Sampling rate set: %d Hz", value));
+        if ((value == 200) && (!state.mouse.im_request)) {
+          state.mouse.im_request = 1;
+        } else if ((value == 100) && (state.mouse.im_request == 1)) {
+          state.mouse.im_request = 2;
+        } else if ((value == 80) && (state.mouse.im_request == 2)) {
+//          if (state.mouse.type == BX_MOUSE_TYPE_IMPS2) {
+            BX_INFO(("wheel mouse mode enabled"));
+            state.mouse.im_mode = 1;
+//          } else {
+//            BX_INFO(("wheel mouse mode request rejected"));
+//          }
+          state.mouse.im_request = 0;
+        } else {
+          state.mouse.im_request = 0;
+        }
+        kbd_controller_enQ(0xFA, 1); // ack
+        break;
+
+      case 0xe8: // Set Mouse Resolution
+        switch (value) {
+          case 0:
+            state.mouse.resolution_cpmm = 1;
+            break;
+          case 1:
+            state.mouse.resolution_cpmm = 2;
+            break;
+          case 2:
+            state.mouse.resolution_cpmm = 4;
+            break;
+          case 3:
+            state.mouse.resolution_cpmm = 8;
+            break;
+          default:
+            BX_PANIC(("[mouse] Unknown resolution %d", value));
+            break;
+        }
+        BX_DEBUG(("[mouse] Resolution set to %d counts per mm",
+          state.mouse.resolution_cpmm));
+
+        kbd_controller_enQ(0xFA, 1); // ack
+        break;
+
+      default:
+        BX_PANIC(("MOUSE: unknown last command (%02xh)", (unsigned) state.kbd_controller.last_mouse_command));
+    }
+  } else {
+    state.kbd_controller.expecting_mouse_parameter = 0;
+    state.kbd_controller.last_mouse_command = value;
+
+    // test for wrap mode first
+    if (state.mouse.mode == MOUSE_MODE_WRAP) {
+      // if not a reset command or reset wrap mode
+      // then just echo the byte.
+      if ((value != 0xff) && (value != 0xec)) {
+//        if (bx_dbg.mouse)
+          BX_INFO(("[mouse] wrap mode: Ignoring command %0X02.",value));
+        kbd_controller_enQ(value,1);
+        // bail out
+        return;
+      }
+    }
+    switch (value) {
+      case 0xe6: // Set Mouse Scaling to 1:1
+        kbd_controller_enQ(0xFA, 1); // ACK
+        state.mouse.scaling = 2;
+        BX_DEBUG(("[mouse] Scaling set to 1:1"));
+        break;
+
+      case 0xe7: // Set Mouse Scaling to 2:1
+        kbd_controller_enQ(0xFA, 1); // ACK
+        state.mouse.scaling         = 2;
+        BX_DEBUG(("[mouse] Scaling set to 2:1"));
+        break;
+
+      case 0xe8: // Set Mouse Resolution
+        kbd_controller_enQ(0xFA, 1); // ACK
+        state.kbd_controller.expecting_mouse_parameter = 1;
+        break;
+
+      case 0xea: // Set Stream Mode
+//        if (bx_dbg.mouse)
+          BX_INFO(("[mouse] Mouse stream mode on."));
+        state.mouse.mode = MOUSE_MODE_STREAM;
+        kbd_controller_enQ(0xFA, 1); // ACK
+        break;
+
+      case 0xec: // Reset Wrap Mode
+        // unless we are in wrap mode ignore the command
+        if (state.mouse.mode == MOUSE_MODE_WRAP) {
+//          if (bx_dbg.mouse)
+            BX_INFO(("[mouse] Mouse wrap mode off."));
+          // restore previous mode except disable stream mode reporting.
+          // ### TODO disabling reporting in stream mode
+          state.mouse.mode = state.mouse.saved_mode;
+          kbd_controller_enQ(0xFA, 1); // ACK
+        }
+        break;
+      case 0xee: // Set Wrap Mode
+        // ### TODO flush output queue.
+        // ### TODO disable interrupts if in stream mode.
+//        if (bx_dbg.mouse)
+          BX_INFO(("[mouse] Mouse wrap mode on."));
+        state.mouse.saved_mode = state.mouse.mode;
+        state.mouse.mode = MOUSE_MODE_WRAP;
+        kbd_controller_enQ(0xFA, 1); // ACK
+        break;
+
+      case 0xf0: // Set Remote Mode (polling mode, i.e. not stream mode.)
+//        if (bx_dbg.mouse)
+          BX_INFO(("[mouse] Mouse remote mode on."));
+        // ### TODO should we flush/discard/ignore any already queued packets?
+        state.mouse.mode = MOUSE_MODE_REMOTE;
+        kbd_controller_enQ(0xFA, 1); // ACK
+        break;
+
+      case 0xf2: // Read Device Type
+        kbd_controller_enQ(0xFA, 1); // ACK
+        if (state.mouse.im_mode)
+          kbd_controller_enQ(0x03, 1); // Device ID (wheel z-mouse)
+        else
+          kbd_controller_enQ(0x00, 1); // Device ID (standard)
+        BX_DEBUG(("[mouse] Read mouse ID"));
+        break;
+
+      case 0xf3: // Set Mouse Sample Rate (sample rate written to port 60h)
+        kbd_controller_enQ(0xFA, 1); // ACK
+        state.kbd_controller.expecting_mouse_parameter = 1;
+        break;
+
+      case 0xf4: // Enable (in stream mode)
+        // is a mouse present?
+//        if (is_ps2) {
+          state.mouse.enable = 1;
+          kbd_controller_enQ(0xFA, 1); // ACK
+          BX_DEBUG(("[mouse] Mouse enabled (stream mode)"));
+//        } else {
+//          // a mouse isn't present.  We need to return a 0xFE (resend) instead of a 0xFA (ACK)
+//          kbd_controller_enQ(0xFE, 1); // RESEND
+//          state.kbd_controller.tim = 1;
+//        }
+        break;
+
+      case 0xf5: // Disable (in stream mode)
+        state.mouse.enable = 0;
+        kbd_controller_enQ(0xFA, 1); // ACK
+        BX_DEBUG(("[mouse] Mouse disabled (stream mode)"));
+        break;
+
+      case 0xf6: // Set Defaults
+        state.mouse.sample_rate     = 100; /* reports per second (default) */
+        state.mouse.resolution_cpmm = 4; /* 4 counts per millimeter (default) */
+        state.mouse.scaling         = 1;   /* 1:1 (default) */
+        state.mouse.enable          = 0;
+        state.mouse.mode            = MOUSE_MODE_STREAM;
+        kbd_controller_enQ(0xFA, 1); // ACK
+        BX_DEBUG(("[mouse] Set Defaults"));
+        break;
+
+      case 0xff: // Reset
+        // is a mouse present?
+//        if (is_ps2) {
+          state.mouse.sample_rate     = 100; /* reports per second (default) */
+          state.mouse.resolution_cpmm = 4; /* 4 counts per millimeter (default) */
+          state.mouse.scaling         = 1;   /* 1:1 (default) */
+          state.mouse.mode            = MOUSE_MODE_RESET;
+          state.mouse.enable          = 0;
+          if (state.mouse.im_mode)
+            BX_INFO(("wheel mouse mode disabled"));
+          state.mouse.im_mode         = 0;
+          /* (mch) NT expects an ack here */
+          kbd_controller_enQ(0xFA, 1); // ACK
+          kbd_controller_enQ(0xAA, 1); // completion code
+          kbd_controller_enQ(0x00, 1); // ID code (standard after reset)
+          BX_DEBUG(("[mouse] Mouse reset"));
+//        } else {
+//          // a mouse isn't present.  We need to return a 0xFE (resend) instead of a 0xFA (ACK)
+//          kbd_controller_enQ(0xFE, 1); // RESEND
+//          state.kbd_controller.tim = 1;
+//        }
+        break;
+
+      case 0xe9: // Get mouse information
+        // should we ack here? (mch): Yes
+        kbd_controller_enQ(0xFA, 1); // ACK
+        kbd_controller_enQ(state.mouse.get_status_byte(), 1); // status
+        kbd_controller_enQ(state.mouse.get_resolution_byte(), 1); // resolution
+        kbd_controller_enQ(state.mouse.sample_rate, 1); // sample rate
+        BX_DEBUG(("[mouse] Get mouse information"));
+        break;
+
+      case 0xeb: // Read Data (send a packet when in Remote Mode)
+        kbd_controller_enQ(0xFA, 1); // ACK
+        // perhaps we should be adding some movement here.
+        mouse_enQ_packet(((state.mouse.button_status & 0x0f) | 0x08),
+          0x00, 0x00, 0x00); // bit3 of first byte always set
+        //assumed we really aren't in polling mode, a rather odd assumption.
+        BX_ERROR(("[mouse] Warning: Read Data command partially supported."));
+        break;
+
+      case 0xbb: // OS/2 Warp 3 uses this command
+       BX_ERROR(("[mouse] ignoring 0xbb command"));
+       break;
+
+      default:
+        // If PS/2 mouse present, send NACK for unknown commands, otherwise ignore
+//        if (is_ps2) {
+          BX_ERROR(("[mouse] kbd_ctrl_to_mouse(): got value of 0x%02x", value));
+          kbd_controller_enQ(0xFE, 1); /* send NACK */
+//        }
+    }
+  }
+}
+
+bool CAliM1543C::mouse_enQ_packet(u8 b1, u8 b2, u8 b3, u8 b4)
+{
+  int bytes = 3;
+  if (state.mouse.im_mode) bytes = 4;
+
+  if ((state.mouse_internal_buffer.num_elements + bytes) >= BX_MOUSE_BUFF_SIZE) {
+    return(0); /* buffer doesn't have the space */
+  }
+
+  mouse_enQ(b1);
+  mouse_enQ(b2);
+  mouse_enQ(b3);
+  if (state.mouse.im_mode) mouse_enQ(b4);
+
+  return(1);
+}
+
+void CAliM1543C::mouse_enQ(u8 mouse_data)
+{
+  int tail;
+
+  BX_DEBUG(("mouse_enQ(%02x)", (unsigned) mouse_data));
+
+  if (state.mouse_internal_buffer.num_elements >= BX_MOUSE_BUFF_SIZE) {
+    BX_ERROR(("[mouse] internal mouse buffer full, ignoring mouse data.(%02x)",
+      (unsigned) mouse_data));
+    return;
+  }
+
+  /* enqueue mouse data in multibyte internal mouse buffer */
+  tail = (state.mouse_internal_buffer.head + state.mouse_internal_buffer.num_elements) %
+   BX_MOUSE_BUFF_SIZE;
+  state.mouse_internal_buffer.buffer[tail] = mouse_data;
+  state.mouse_internal_buffer.num_elements++;
+
+  if (!state.kbd_controller.outb && state.kbd_controller.aux_clock_enabled) {
+    state.kbd_controller.timer_pending = 1;
+    return;
+  }
+}
+
+unsigned CAliM1543C::kbd_periodic()
+{
+  static unsigned count_before_paste=0;
+  Bit8u   retval;
+
+  //if (state.kbd_controller.kbd_clock_enabled ) {
+  //  if(++count_before_paste>=BX_KEY_THIS pastedelay) {
+  //    // after the paste delay, consider adding moving more chars
+  //    // from the paste buffer to the keyboard buffer.
+  //    stateervice_paste_buf();
+  //    count_before_paste=0;
+  //  }
+  //}
+
+  retval = (state.kbd_controller.irq1_requested << 0)
+         | (state.kbd_controller.irq12_requested << 1);
+  state.kbd_controller.irq1_requested = 0;
+  state.kbd_controller.irq12_requested = 0;
+
+  if (state.kbd_controller.timer_pending == 0) {
+    return(retval);
+  }
+
+  if (1 >= state.kbd_controller.timer_pending) {
+    state.kbd_controller.timer_pending = 0;
+  } else {
+    state.kbd_controller.timer_pending -= 1;
+    return(retval);
+  }
+
+  if (state.kbd_controller.outb) {
+    return(retval);
+  }
+
+  /* nothing in outb, look for possible data xfer from keyboard or mouse */
+  if (state.kbd_internal_buffer.num_elements &&
+      (state.kbd_controller.kbd_clock_enabled || state.kbd_controller.bat_in_progress)) {
+    BX_DEBUG(("service_keyboard: key in internal buffer waiting"));
+    state.kbd_controller.kbd_output_buffer =
+      state.kbd_internal_buffer.buffer[state.kbd_internal_buffer.head];
+    state.kbd_controller.outb = 1;
+    // commented out since this would override the current state of the
+    // mouse buffer flag - no bug seen - just seems wrong (das)
+    //    state.kbd_controller.auxb = 0;
+    state.kbd_internal_buffer.head = (state.kbd_internal_buffer.head + 1) %
+      BX_KBD_ELEMENTS;
+    state.kbd_internal_buffer.num_elements--;
+    if (state.kbd_controller.allow_irq1)
+      state.kbd_controller.irq1_requested = 1;
+  } else { 
+    create_mouse_packet(0);
+    if (state.kbd_controller.aux_clock_enabled && state.mouse_internal_buffer.num_elements) {
+      BX_DEBUG(("service_keyboard: key(from mouse) in internal buffer waiting"));
+      state.kbd_controller.aux_output_buffer =
+	state.mouse_internal_buffer.buffer[state.mouse_internal_buffer.head];
+
+      state.kbd_controller.outb = 1;
+      state.kbd_controller.auxb = 1;
+      state.mouse_internal_buffer.head = (state.mouse_internal_buffer.head + 1) %
+	BX_MOUSE_BUFF_SIZE;
+      state.mouse_internal_buffer.num_elements--;
+      if (state.kbd_controller.allow_irq12)
+	state.kbd_controller.irq12_requested = 1;
+    } else {
+      BX_DEBUG(("service_keyboard(): no keys waiting"));
+    }
+  }
+  return(retval);
+}
+
+void CAliM1543C::create_mouse_packet(bool force_enq)
+{
+  Bit8u b1, b2, b3, b4;
+
+  if(state.mouse_internal_buffer.num_elements && !force_enq)
+    return;
+
+  Bit16s delta_x = state.mouse.delayed_dx;
+  Bit16s delta_y = state.mouse.delayed_dy;
+  Bit8u button_state=state.mouse.button_status | 0x08;
+
+  if(!force_enq && !delta_x && !delta_y) {
+    return;
+  }
+
+  if(delta_x>254) delta_x=254;
+  if(delta_x<-254) delta_x=-254;
+  if(delta_y>254) delta_y=254;
+  if(delta_y<-254) delta_y=-254;
+
+  b1 = (button_state & 0x0f) | 0x08; // bit3 always set
+
+  if ( (delta_x>=0) && (delta_x<=255) ) {
+    b2 = (Bit8u) delta_x;
+    state.mouse.delayed_dx-=delta_x;
+  }
+  else if (delta_x > 255) {
+    b2 = (Bit8u) 0xff;
+    state.mouse.delayed_dx-=255;
+  }
+  else if (delta_x >= -256) {
+    b2 = (Bit8u) delta_x;
+    b1 |= 0x10;
+    state.mouse.delayed_dx-=delta_x;
+  }
+  else {
+    b2 = (Bit8u) 0x00;
+    b1 |= 0x10;
+    state.mouse.delayed_dx+=256;
+  }
+
+  if ( (delta_y>=0) && (delta_y<=255) ) {
+    b3 = (Bit8u) delta_y;
+    state.mouse.delayed_dy-=delta_y;
+  }
+  else if (delta_y > 255) {
+    b3 = (Bit8u) 0xff;
+    state.mouse.delayed_dy-=255;
+  }
+  else if (delta_y >= -256) {
+    b3 = (Bit8u) delta_y;
+    b1 |= 0x20;
+    state.mouse.delayed_dy-=delta_y;
+  }
+  else {
+    b3 = (Bit8u) 0x00;
+    b1 |= 0x20;
+    state.mouse.delayed_dy+=256;
+  }
+
+  b4 = (Bit8u) -state.mouse.delayed_dz;
+
+  mouse_enQ_packet(b1, b2, b3, b4);
+}

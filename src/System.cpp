@@ -27,6 +27,9 @@
  * \file 
  * Contains the code for the emulated Typhoon Chipset devices.
  *
+ * X-1.36       Camiel Vanderhoeven                             6-DEC-2007
+ *      Report references to unused PCI space.
+ *
  * X-1.35       Camiel Vanderhoeven                             2-DEC-2007
  *      Avoid misprobing of unused PCI configuration space.
  *
@@ -351,11 +354,15 @@ int CSystem::RegisterMemory(CSystemComponent *component, int index, u64 base, u6
   return 0;
 }
 
+
+
 int got_sigint = 0;
 void sigint_handler (int signum) 
 {
   got_sigint=1;
 }
+
+
 
 
 int CSystem::Run()
@@ -444,6 +451,12 @@ int CSystem::SingleStep()
   return 0;
 }
 
+
+#ifdef DEBUG_PORTACCESS
+u64 lastport;
+#endif
+
+
 void CSystem::WriteMem(u64 address, int dsize, u64 data)
 {
   u64 a;
@@ -459,6 +472,7 @@ void CSystem::WriteMem(u64 address, int dsize, u64 data)
 
   if (a>>iNumMemoryBits)
     {
+
       // non-memory...
       for(i=0;i<iNumMemories;i++) {
 	if (   (a >= asMemories[i]->base)
@@ -628,6 +642,34 @@ void CSystem::WriteMem(u64 address, int dsize, u64 data)
             acComponents[i]->ResetPCI();
 	  return;
 	default:
+      if (a>=X64(801fc000000) && a<X64(801fe000000))
+      {
+        // Unused PCI I/O space
+        printf("Write to unknown IO port %"LL"x on PCI 0   \n",a & X64(1ffffff));
+        return;
+      }
+
+      if (a>=X64(803fc000000) && a<X64(803fe000000))
+      {
+        // Unused PCI I/O space
+        printf("Write to unknown IO port %"LL"x on PCI 1   \n",a & X64(1ffffff));
+        return;
+      }
+
+      if (a>=X64(80000000000) && a<X64(80100000000))
+      {
+        // Unused PCI memory space
+        printf("Write to unknown memory %"LL"x on PCI 0   \n",a & X64(ffffffff));
+        return;
+      }
+
+      if (a>=X64(80200000000) && a<X64(80300000000))
+      {
+        // Unused PCI memory space
+        printf("Write to unknown memory %"LL"x on PCI 1   \n",a & X64(ffffffff));
+        return;
+      }
+
 #ifdef DEBUG_UNKMEM
 	printf("%%MEM-I-WRUNKNWN: Attempt to write %d bytes (%016" LL "x) from unknown address %011" LL "x\n",dsize/8,data,a);
 #endif
@@ -829,11 +871,45 @@ u64 CSystem::ReadMem(u64 address, int dsize)
         return make_mask_64(dsize-1,0);
       }
 
+      if (a>=X64(800000c0000) && a<X64(801000e0000))
+      {
+        // Unused PCI ROM BIOS space
+        return 0;
+      }
+
+      if (a>=X64(801fc000000) && a<X64(801fe000000))
+      {
+        // Unused PCI I/O space
+        printf("Read from unknown IO port %"LL"x on PCI 0   \n",a & X64(1ffffff));
+        return 0;
+      }
+
+      if (a>=X64(803fc000000) && a<X64(803fe000000))
+      {
+        // Unused PCI I/O space
+        printf("Read from unknown IO port %"LL"x on PCI 1   \n",a & X64(1ffffff));
+        return 0;
+      }
+
+      if (a>=X64(80000000000) && a<X64(80100000000))
+      {
+        // Unused PCI memory space
+        printf("Read from unknown memory %"LL"x on PCI 0   \n",a & X64(ffffffff));
+        return 0;
+      }
+
+      if (a>=X64(80200000000) && a<X64(80300000000))
+      {
+        // Unused PCI memory space
+        printf("Read from unknown memory %"LL"x on PCI 1   \n",a & X64(ffffffff));
+        return 0;
+      }
 
 #ifdef DEBUG_UNKMEM
 	printf("%%MEM-I-RDUNKNWN: Attempt to read %d bytes from unknown address %011" LL "x\n",dsize/8,a);
 #endif
-	  return 0;
+	return 0x00;
+
 	  //			return 0x77; // 7f
 	}
     }

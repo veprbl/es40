@@ -32,6 +32,9 @@
  * \file 
  * Contains the code for the emulated DEC 21143 NIC device.
  *
+ * X-1.14       Camiel Vanderhoeven                             6-DEC-2007
+ *      Identifies itself as DE-500BA.
+ *
  * X-1.13       Camiel Vanderhoeven                             2-DEC-2007
  *      Receive network data in a separate thread.
  *
@@ -94,16 +97,14 @@
 #define	MII_STATE_D				        5
 #define	MII_STATE_IDLE				    6
 
-CDEC21143 * pDEC21143;
-
 #if defined(_WIN32)
 DWORD WINAPI recv_proc(LPVOID lpParam)
 #else
+#include <pthread.h>
 static void * recv_proc(void * lpParam)
 #endif
 {
-  pDEC21143 = (CDEC21143 *) lpParam;
-  pDEC21143->receive_process();
+  ((CDEC21143 *) lpParam)->receive_process();
   return 0;
 }
 
@@ -1141,7 +1142,9 @@ void CDEC21143::ResetPCI()
   state.config_data[0x02] = 0x19; // device id 0019h
   state.config_data[0x03] = 0x00;
   state.config_data[0x04] = 0x00; // cfcs 02800000h
+    state.config_mask[0x04] = 0xff;
   state.config_data[0x05] = 0x00;
+    state.config_mask[0x05] = 0xff;
   state.config_data[0x06] = 0x80;
   state.config_data[0x07] = 0x02; 
   state.config_data[0x08] = 0x41; // cfrv 02000041h
@@ -1156,6 +1159,12 @@ void CDEC21143::ResetPCI()
   state.config_data[0x15] = 0x00; state.config_mask[0x15] = 0xff;	
   state.config_data[0x16] = 0x00; state.config_mask[0x16] = 0xff;
   state.config_data[0x17] = 0x00; state.config_mask[0x17] = 0xff;
+
+  state.config_data[0x2c] = 0x11; // subsys vendor id 1011h
+  state.config_data[0x2d] = 0x10;
+  state.config_data[0x2e] = 0x0b; // subsys device id 500bh
+  state.config_data[0x2f] = 0x50;
+
   state.config_data[0x3c] = 0xff; state.config_mask[0x3c] = 0xff; // cfit 281401xxh
   state.config_data[0x3d] = 0x01;	
   state.config_data[0x3e] = 0x14;

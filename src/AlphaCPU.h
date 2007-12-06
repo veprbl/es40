@@ -235,7 +235,7 @@ class CAlphaCPU : public CSystemComponent
   void listing(u64 from, u64 to, u64 mark);
 #endif
 
-  int virt2phys(u64 virt, u64 * phys, int flags, bool * asm_bit,u32 instruction);
+  int virt2phys(u64 virt, u64 * phys, int flags, bool * asm_bit, u32 instruction);
 
  private:
   int get_icache(u64 address, u32 * data);
