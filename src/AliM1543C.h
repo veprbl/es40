@@ -27,6 +27,9 @@
  * \file 
  * Contains the definitions for the emulated Ali M1543C chipset devices.
  *
+ * X-1.18       Camiel Vanderhoeven                             7-DEC-2007
+ *      Add busmaster_status; add pic_edge_level.
+ *
  * X-1.17       Camiel Vanderhoeven                             7-DEC-2007
  *      Generate keyboard interrupts when needed.
  *
@@ -182,6 +185,8 @@ class CAliM1543C : public CSystemComponent
   u8 pic_read(int index, u64 address);
   void pic_write(int index, u64 address, u8 data);
   u8 pic_read_vector();
+  u8 pic_read_edge_level(int index);
+  void pic_write_edge_level(int index, u8 data);
 
   // IDE controller
   u64 ide_config_read(u64 address, int dsize);
@@ -343,6 +348,7 @@ class CAliM1543C : public CSystemComponent
     u8 pic_intvec[2];
     u8 pic_mask[2];
     u8 pic_asserted[2];
+    u8 pic_edge_level[2];
 
     // IDE controller
     u8 ide_config_data[256];
@@ -357,6 +363,7 @@ class CAliM1543C : public CSystemComponent
     bool ide_reading[2];
     int ide_sectors[2];
     int ide_selected[2];
+    u8 ide_bm_status[2];
 
     // USB host controller
     u8 usb_config_data[256];

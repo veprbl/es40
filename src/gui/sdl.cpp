@@ -27,6 +27,9 @@
 
 /**
  *
+ * X-1.3        Camiel Vanderhoeven                             7-DEC-2007
+ *      Made keyboard messages conditional.
+ *
  * X-1.2        Camiel Vanderhoeven                             7-DEC-2007
  *      Code cleanup.
  *
@@ -767,7 +770,9 @@ void bx_sdl_gui_c::handle_events(void)
     //    if (!SIM->get_param_bool(BXPN_KBD_USEMAPPING)->get())
     {
 	  key_event = sdl_sym_to_bx_key (sdl_event.key.keysym.sym);
+#if defined(DEBUG_KBD)
 	  BX_DEBUG (("keypress scancode=%d, sym=%d, bx_key = %d", sdl_event.key.keysym.scancode, sdl_event.key.keysym.sym, key_event));
+#endif
 	} else {
 	  /* use mapping */
 	  BXKeyEntry *entry = bx_keymap.findHostKey (sdl_event.key.keysym.sym);
