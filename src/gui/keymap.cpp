@@ -27,18 +27,13 @@
 
 /**
  *
+ * X-1.2        Camiel Vanderhoeven                             7-DEC-2007
+ *      Code cleanup.
+ *
  * X-1.1        Camiel Vanderhoeven                             6-DEC-2007
  *      Initial version for ES40 emulator.
  *
  **/
-
-
-/////////////////////////////////////////////////////////////////////////
-//
-// Todo
-//  . Currently supported by sdl, wxGTK and x11. Check if other guis need mapping.
-//  . Tables look-up should be optimised.
-//
 
 #include "StdAfx.h"
 #include "gui.h"
@@ -47,10 +42,6 @@
 
 extern CSystem * systm;
 
-//#include "bochs.h"
-
-// Table of bochs "BX_KEY_*" symbols
-// the table must be in BX_KEY_* order
 char *bx_key_symbol[BX_KEY_NBKEYS] = {
   "BX_KEY_CTRL_L",         "BX_KEY_SHIFT_L",        "BX_KEY_F1",
   "BX_KEY_F2",             "BX_KEY_F3",             "BX_KEY_F4",
@@ -96,12 +87,8 @@ char *bx_key_symbol[BX_KEY_NBKEYS] = {
 
 bx_keymap_c bx_keymap;
 
-#define LOG_THIS bx_keymap.
-
 bx_keymap_c::bx_keymap_c(void)
 {
-//    put("KMAP");
-
     keymapCount = 0;
     keymapTable = (BXKeyEntry *)NULL;
 }
@@ -115,7 +102,7 @@ bx_keymap_c::~bx_keymap_c(void)
     keymapCount = 0;
 }
 
-void bx_keymap_c::loadKeymap(Bit32u stringToSymbol(const char*))
+void bx_keymap_c::loadKeymap(u32 stringToSymbol(const char*))
 {
   if (atoi(systm->GetConfig("keyboard.use_mapping","0")))
   {
@@ -126,7 +113,7 @@ void bx_keymap_c::loadKeymap(Bit32u stringToSymbol(const char*))
 //  }
 }
 
-bx_bool bx_keymap_c::isKeymapLoaded ()
+bool bx_keymap_c::isKeymapLoaded ()
 {
   return (keymapCount > 0);
 }
@@ -152,7 +139,7 @@ static void init_parse_line(char *line_to_parse)
   }
 }
 
-static Bit32s get_next_word(char *output)
+static s32 get_next_word(char *output)
 {
   char *copyp = output;
   // find first nonspace
@@ -172,7 +159,7 @@ static Bit32s get_next_word(char *output)
   return 0;
 }
 
-static Bit32s get_next_keymap_line (FILE *fp, char *bxsym, char *modsym, Bit32s *ascii, char *hostsym)
+static s32 get_next_keymap_line (FILE *fp, char *bxsym, char *modsym, s32 *ascii, char *hostsym)
 {
   char line[256];
   char buf[256];
@@ -194,7 +181,7 @@ static Bit32s get_next_keymap_line (FILE *fp, char *bxsym, char *modsym, Bit32s 
 	return -1;
       }
       if (buf[0] == '\'' && buf[2] == '\'' && buf[3]==0) {
-	*ascii = (Bit8u) buf[1];
+	*ascii = (u8) buf[1];
       } else if (!strcmp(buf, "space")) {
 	*ascii = ' ';
       } else if (!strcmp(buf, "return")) {
@@ -220,12 +207,12 @@ static Bit32s get_next_keymap_line (FILE *fp, char *bxsym, char *modsym, Bit32s 
   }
 }
 
-void bx_keymap_c::loadKeymap(Bit32u stringToSymbol(const char*), const char* filename)
+void bx_keymap_c::loadKeymap(u32 stringToSymbol(const char*), const char* filename)
 {
   FILE   *keymapFile;
   char baseSym[256], modSym[256], hostSym[256]; 
-  Bit32s ascii = 0;
-  Bit32u baseKey, modKey, hostKey;
+  s32 ascii = 0;
+  u32 baseKey, modKey, hostKey;
 
   if((keymapFile = fopen(filename,"r"))==NULL) {
     BX_PANIC(("Can not open keymap file '%s'.",filename));
@@ -277,10 +264,10 @@ void bx_keymap_c::loadKeymap(Bit32u stringToSymbol(const char*), const char* fil
   fclose(keymapFile);
 }
 
-Bit32u bx_keymap_c::convertStringToBXKey(const char* string)
+u32 bx_keymap_c::convertStringToBXKey(const char* string)
 {
   // We look through the bx_key_symbol table to find the searched string
-  for (Bit16u i=0; i<BX_KEY_NBKEYS; i++) {
+  for (u16 i=0; i<BX_KEY_NBKEYS; i++) {
     if (strcmp(string,bx_key_symbol[i])==0) {
       return i;
     }
@@ -290,10 +277,10 @@ Bit32u bx_keymap_c::convertStringToBXKey(const char* string)
   return BX_KEYMAP_UNKNOWN;
 }
 
-BXKeyEntry *bx_keymap_c::findHostKey(Bit32u key)
+BXKeyEntry *bx_keymap_c::findHostKey(u32 key)
 {
   // We look through the keymap table to find the searched key
-  for (Bit16u i=0; i<keymapCount; i++) {
+  for (u16 i=0; i<keymapCount; i++) {
     if (keymapTable[i].hostKey == key) {
       BX_DEBUG (("key 0x%02x matches hostKey for entry #%d", key, i));
       return &keymapTable[i];
@@ -305,12 +292,12 @@ BXKeyEntry *bx_keymap_c::findHostKey(Bit32u key)
   return NULL;
 }
 
-BXKeyEntry *bx_keymap_c::findAsciiChar(Bit8u ch)
+BXKeyEntry *bx_keymap_c::findAsciiChar(u8 ch)
 {
   BX_DEBUG (("findAsciiChar (0x%02x)", ch));
 
   // We look through the keymap table to find the searched key
-  for (Bit16u i=0; i<keymapCount; i++) {
+  for (u16 i=0; i<keymapCount; i++) {
     if (keymapTable[i].ascii == ch) {
       BX_DEBUG (("key %02x matches ascii for entry #%d", ch, i));
       return &keymapTable[i];
@@ -322,7 +309,7 @@ BXKeyEntry *bx_keymap_c::findAsciiChar(Bit8u ch)
   return NULL;
 }
 
-char *bx_keymap_c::getBXKeyName(Bit32u key)
+char *bx_keymap_c::getBXKeyName(u32 key)
 {
   return bx_key_symbol[key & 0x7fffffff];
 }

@@ -27,13 +27,16 @@
 
 /**
  *
+ * X-1.2        Camiel Vanderhoeven                             7-DEC-2007
+ *      Code cleanup.
+ *
  * X-1.1        Camiel Vanderhoeven                             6-DEC-2007
  *      Initial version for ES40 emulator.
  *
  **/
 
 /////////////////////////////////////////////////////////////////////////
-// $Id: extplugin.h,v 1.2 2007/12/06 15:31:14 iamcamiel Exp $
+// $Id: extplugin.h,v 1.3 2007/12/07 08:58:32 iamcamiel Exp $
 /////////////////////////////////////////////////////////////////////////
 //
 // extplugin.h
@@ -51,10 +54,6 @@
 #ifndef __EXTPLUGIN_H
 #define __EXTPLUGIN_H
 
-#if BX_PLUGINS
-#include "ltdl.h"
-#endif
-
 enum plugintype_t {
   PLUGTYPE_NULL=100,
   PLUGTYPE_CORE,
@@ -68,9 +67,6 @@ typedef struct _plugin_t
 {
     plugintype_t type;
     int  initialized;
-#if BX_PLUGINS
-    lt_dlhandle handle;
-#endif
     int  argc;
     char *name, *args, *argv[MAX_ARGC];
     int  (*plugin_init)(struct _plugin_t *plugin, plugintype_t type, int argc, char *argv[]);
@@ -82,4 +78,3 @@ typedef struct _plugin_t
 
 
 #endif /* __EXTPLUGIN_H */
-

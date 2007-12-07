@@ -27,6 +27,9 @@
 
 /**
  *
+ * X-1.2        Camiel Vanderhoeven                             7-DEC-2007
+ *      Code cleanup.
+ *
  * X-1.1        Camiel Vanderhoeven                             6-DEC-2007
  *      Initial version for ES40 emulator.
  *
@@ -146,10 +149,10 @@
 //  virtual ~bx_vga_c();
 //  virtual void   init(void);
 //  virtual void   reset(unsigned type);
-//  BX_VGA_SMF bx_bool mem_read_handler(unsigned long addr, unsigned long len, void *data, void *param);
-//  BX_VGA_SMF bx_bool mem_write_handler(unsigned long addr, unsigned long len, void *data, void *param);
-//  virtual Bit8u  mem_read(Bit32u addr);
-//  virtual void   mem_write(Bit32u addr, Bit8u value);
+//  BX_VGA_SMF bool mem_read_handler(unsigned long addr, unsigned long len, void *data, void *param);
+//  BX_VGA_SMF bool mem_write_handler(unsigned long addr, unsigned long len, void *data, void *param);
+//  virtual u8  mem_read(u32 addr);
+//  virtual void   mem_write(u32 addr, u8 value);
 //  virtual void   trigger_timer(void *this_ptr);
 //  virtual void   dump_status(void);
 //#if BX_SUPPORT_SAVE_RESTORE
@@ -158,40 +161,40 @@
 //#endif
 //
 //#if BX_SUPPORT_VBE
-//  BX_VGA_SMF Bit8u  vbe_mem_read(Bit32u addr) BX_CPP_AttrRegparmN(1);
-//  BX_VGA_SMF void   vbe_mem_write(Bit32u addr, Bit8u value) BX_CPP_AttrRegparmN(2);
+//  BX_VGA_SMF u8  vbe_mem_read(u32 addr) BX_CPP_AttrRegparmN(1);
+//  BX_VGA_SMF void   vbe_mem_write(u32 addr, u8 value) BX_CPP_AttrRegparmN(2);
 //#endif
 //
 //  virtual void   redraw_area(unsigned x0, unsigned y0,
 //                             unsigned width, unsigned height);
 //
-//  virtual void   get_text_snapshot(Bit8u **text_snapshot, unsigned *txHeight,
+//  virtual void   get_text_snapshot(u8 **text_snapshot, unsigned *txHeight,
 //                                   unsigned *txWidth);
-//  virtual Bit8u  get_actl_palette_idx(Bit8u index);
+//  virtual u8  get_actl_palette_idx(u8 index);
 //
 //protected:
 //  void init_iohandlers(bx_read_handler_t f_read, bx_write_handler_t f_write);
 //  void init_systemtimer(bx_timer_handler_t f_timer, param_event_handler f_param);
 //
-//  static Bit32u read_handler(void *this_ptr, Bit32u address, unsigned io_len);
-//  static void   write_handler(void *this_ptr, Bit32u address, Bit32u value, unsigned io_len);
-//  static void   write_handler_no_log(void *this_ptr, Bit32u address, Bit32u value, unsigned io_len);
+//  static u32 read_handler(void *this_ptr, u32 address, unsigned io_len);
+//  static void   write_handler(void *this_ptr, u32 address, u32 value, unsigned io_len);
+//  static void   write_handler_no_log(void *this_ptr, u32 address, u32 value, unsigned io_len);
 //
 //#if BX_SUPPORT_VBE
-//  static Bit32u vbe_read_handler(void *this_ptr, Bit32u address, unsigned io_len);
-//  static void   vbe_write_handler(void *this_ptr, Bit32u address, Bit32u value, unsigned io_len);
+//  static u32 vbe_read_handler(void *this_ptr, u32 address, unsigned io_len);
+//  static void   vbe_write_handler(void *this_ptr, u32 address, u32 value, unsigned io_len);
 //#endif
 //
 //  struct {
 //    struct {
-//      bx_bool color_emulation;  // 1=color emulation, base address = 3Dx
+//      bool color_emulation;  // 1=color emulation, base address = 3Dx
 //                                // 0=mono emulation,  base address = 3Bx
-//      bx_bool enable_ram;       // enable CPU access to video memory if set
-//      Bit8u   clock_select;     // 0=25Mhz 1=28Mhz
-//      bx_bool select_high_bank; // when in odd/even modes, select
+//      bool enable_ram;       // enable CPU access to video memory if set
+//      u8   clock_select;     // 0=25Mhz 1=28Mhz
+//      bool select_high_bank; // when in odd/even modes, select
 //                                // high 64k bank if set
-//      bx_bool horiz_sync_pol;   // bit6: negative if set
-//      bx_bool vert_sync_pol;    // bit7: negative if set
+//      bool horiz_sync_pol;   // bit6: negative if set
+//      bool vert_sync_pol;    // bit7: negative if set
 //                                //   bit7,bit6 represent number of lines on display:
 //                                //   0 = reserved
 //                                //   1 = 400 lines
@@ -200,143 +203,143 @@
 //    } misc_output;
 //
 //    struct {
-//      Bit8u   address;
-//      Bit8u   reg[0x19];
-//      bx_bool write_protect;
+//      u8   address;
+//      u8   reg[0x19];
+//      bool write_protect;
 //    } CRTC;
 //
 //    struct {
-//      bx_bool  flip_flop; /* 0 = address, 1 = data-write */
+//      bool  flip_flop; /* 0 = address, 1 = data-write */
 //      unsigned address;  /* register number */
-//      bx_bool  video_enabled;
-//      Bit8u    palette_reg[16];
-//      Bit8u    overscan_color;
-//      Bit8u    color_plane_enable;
-//      Bit8u    horiz_pel_panning;
-//      Bit8u    color_select;
+//      bool  video_enabled;
+//      u8    palette_reg[16];
+//      u8    overscan_color;
+//      u8    color_plane_enable;
+//      u8    horiz_pel_panning;
+//      u8    color_select;
 //      struct {
-//        bx_bool graphics_alpha;
-//        bx_bool display_type;
-//        bx_bool enable_line_graphics;
-//        bx_bool blink_intensity;
-//        bx_bool pixel_panning_compat;
-//        bx_bool pixel_clock_select;
-//        bx_bool internal_palette_size;
+//        bool graphics_alpha;
+//        bool display_type;
+//        bool enable_line_graphics;
+//        bool blink_intensity;
+//        bool pixel_panning_compat;
+//        bool pixel_clock_select;
+//        bool internal_palette_size;
 //      } mode_ctrl;
 //    } attribute_ctrl;
 //
 //    struct {
-//      Bit8u write_data_register;
-//      Bit8u write_data_cycle; /* 0, 1, 2 */
-//      Bit8u read_data_register;
-//      Bit8u read_data_cycle; /* 0, 1, 2 */
-//      Bit8u dac_state;
+//      u8 write_data_register;
+//      u8 write_data_cycle; /* 0, 1, 2 */
+//      u8 read_data_register;
+//      u8 read_data_cycle; /* 0, 1, 2 */
+//      u8 dac_state;
 //      struct {
-//        Bit8u red;
-//        Bit8u green;
-//        Bit8u blue;
+//        u8 red;
+//        u8 green;
+//        u8 blue;
 //      } data[256];
-//      Bit8u mask;
+//      u8 mask;
 //    } pel;
 //
 //    struct {
-//      Bit8u   index;
-//      Bit8u   set_reset;
-//      Bit8u   enable_set_reset;
-//      Bit8u   color_compare;
-//      Bit8u   data_rotate;
-//      Bit8u   raster_op;
-//      Bit8u   read_map_select;
-//      Bit8u   write_mode;
-//      bx_bool read_mode;
-//      bx_bool odd_even;
-//      bx_bool chain_odd_even;
-//      Bit8u   shift_reg;
-//      bx_bool graphics_alpha;
-//      Bit8u   memory_mapping; /* 0 = use A0000-BFFFF
+//      u8   index;
+//      u8   set_reset;
+//      u8   enable_set_reset;
+//      u8   color_compare;
+//      u8   data_rotate;
+//      u8   raster_op;
+//      u8   read_map_select;
+//      u8   write_mode;
+//      bool read_mode;
+//      bool odd_even;
+//      bool chain_odd_even;
+//      u8   shift_reg;
+//      bool graphics_alpha;
+//      u8   memory_mapping; /* 0 = use A0000-BFFFF
 //                               * 1 = use A0000-AFFFF EGA/VGA graphics modes
 //                               * 2 = use B0000-B7FFF Monochrome modes
 //                               * 3 = use B8000-BFFFF CGA modes
 //                               */
-//      Bit8u   color_dont_care;
-//      Bit8u   bitmask;
-//      Bit8u   latch[4];
+//      u8   color_dont_care;
+//      u8   bitmask;
+//      u8   latch[4];
 //    } graphics_ctrl;
 //
 //    struct {
-//      Bit8u   index;
-//      Bit8u   map_mask;
-//      bx_bool reset1;
-//      bx_bool reset2;
-//      Bit8u   reg1;
-//      Bit8u   char_map_select;
-//      bx_bool extended_mem;
-//      bx_bool odd_even;
-//      bx_bool chain_four;
+//      u8   index;
+//      u8   map_mask;
+//      bool reset1;
+//      bool reset2;
+//      u8   reg1;
+//      u8   char_map_select;
+//      bool extended_mem;
+//      bool odd_even;
+//      bool chain_four;
 //    } sequencer;
 //
-//    bx_bool  vga_enabled;
-//    bx_bool  vga_mem_updated;
+//    bool  vga_enabled;
+//    bool  vga_mem_updated;
 //    unsigned x_tilesize;
 //    unsigned y_tilesize;
 //    unsigned line_offset;
 //    unsigned line_compare;
 //    unsigned vertical_display_end;
-//    bx_bool  vga_tile_updated[BX_NUM_X_TILES][BX_NUM_Y_TILES];
-//    Bit8u *memory;
-//    Bit32u memsize;
-//    Bit8u text_snapshot[128 * 1024]; // current text snapshot
-//    Bit8u tile[X_TILESIZE * Y_TILESIZE * 4]; /**< Currently allocates the tile as large as needed. */
-//    Bit16u charmap_address;
-//    bx_bool x_dotclockdiv2;
-//    bx_bool y_doublescan;
-//    Bit8u last_bpp;
+//    bool  vga_tile_updated[BX_NUM_X_TILES][BX_NUM_Y_TILES];
+//    u8 *memory;
+//    u32 memsize;
+//    u8 text_snapshot[128 * 1024]; // current text snapshot
+//    u8 tile[X_TILESIZE * Y_TILESIZE * 4]; /**< Currently allocates the tile as large as needed. */
+//    u16 charmap_address;
+//    bool x_dotclockdiv2;
+//    bool y_doublescan;
+//    u8 last_bpp;
 //
 //#if BX_SUPPORT_VBE    
-//    Bit16u  vbe_cur_dispi;
-//    Bit16u  vbe_xres;
-//    Bit16u  vbe_yres;
-//    Bit16u  vbe_bpp;
-//    Bit16u  vbe_max_xres;
-//    Bit16u  vbe_max_yres;
-//    Bit16u  vbe_max_bpp;
-//    Bit16u  vbe_bank;
-//    bx_bool vbe_enabled;
-//    Bit16u  vbe_curindex;
-//    Bit32u  vbe_visible_screen_size; /**< in bytes */
-//    Bit16u  vbe_offset_x;		 /**< Virtual screen x start (in pixels) */ 
-//    Bit16u  vbe_offset_y;		 /**< Virtual screen y start (in pixels) */
-//    Bit16u  vbe_virtual_xres;
-//    Bit16u  vbe_virtual_yres;
-//    Bit32u  vbe_virtual_start;   /**< For dealing with bpp>8, this is where the virtual screen starts. */
-//    Bit8u   vbe_bpp_multiplier;  /**< We have to save this b/c sometimes we need to recalculate stuff with it. */
-//    bx_bool vbe_lfb_enabled;
-//    bx_bool vbe_get_capabilities;
-//    bx_bool vbe_8bit_dac;
+//    u16  vbe_cur_dispi;
+//    u16  vbe_xres;
+//    u16  vbe_yres;
+//    u16  vbe_bpp;
+//    u16  vbe_max_xres;
+//    u16  vbe_max_yres;
+//    u16  vbe_max_bpp;
+//    u16  vbe_bank;
+//    bool vbe_enabled;
+//    u16  vbe_curindex;
+//    u32  vbe_visible_screen_size; /**< in bytes */
+//    u16  vbe_offset_x;		 /**< Virtual screen x start (in pixels) */ 
+//    u16  vbe_offset_y;		 /**< Virtual screen y start (in pixels) */
+//    u16  vbe_virtual_xres;
+//    u16  vbe_virtual_yres;
+//    u32  vbe_virtual_start;   /**< For dealing with bpp>8, this is where the virtual screen starts. */
+//    u8   vbe_bpp_multiplier;  /**< We have to save this b/c sometimes we need to recalculate stuff with it. */
+//    bool vbe_lfb_enabled;
+//    bool vbe_get_capabilities;
+//    bool vbe_8bit_dac;
 //#endif    
 //  } s;  // state information
 //
 //
 //#if !BX_USE_VGA_SMF
-//  Bit32u read(Bit32u address, unsigned io_len);
-//  void  write(Bit32u address, Bit32u value, unsigned io_len, bx_bool no_log);
+//  u32 read(u32 address, unsigned io_len);
+//  void  write(u32 address, u32 value, unsigned io_len, bool no_log);
 //#else
-//  void write(Bit32u address, Bit32u value, unsigned io_len, bx_bool no_log);
+//  void write(u32 address, u32 value, unsigned io_len, bool no_log);
 //#endif
 //
 //#if BX_SUPPORT_VBE
 //
 //#if !BX_USE_VGA_SMF
-//  Bit32u vbe_read(Bit32u address, unsigned io_len);
-//  void  vbe_write(Bit32u address, Bit32u value, unsigned io_len, bx_bool no_log);
+//  u32 vbe_read(u32 address, unsigned io_len);
+//  void  vbe_write(u32 address, u32 value, unsigned io_len, bool no_log);
 //#else
-//  void vbe_write(Bit32u address, Bit32u value, unsigned io_len, bx_bool no_log);
+//  void vbe_write(u32 address, u32 value, unsigned io_len, bool no_log);
 //#endif
 //#endif
 //
 //  int timer_id;
-//  bx_bool extension_init;
-//  bx_bool extension_checked;
+//  bool extension_init;
+//  bool extension_checked;
 //
 //  public:
 //  static void     timer_handler(void *);

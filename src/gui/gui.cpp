@@ -27,6 +27,9 @@
 
 /**
  *
+ * X-1.2        Camiel Vanderhoeven                             7-DEC-2007
+ *      Code cleanup.
+ *
  * X-1.1        Camiel Vanderhoeven                             6-DEC-2007
  *      Initial version for ES40 emulator.
  *
@@ -38,39 +41,14 @@
 
 #include "gui.h"
 
-
-//#include "bochs.h"
-//#include "iodev.h"
-//#include "gui/bitmaps/floppya.h"
-//#include "gui/bitmaps/floppyb.h"
-//#include "gui/bitmaps/mouse.h"
-//#include "gui/bitmaps/reset.h"
-//#include "gui/bitmaps/power.h"
-//#include "gui/bitmaps/snapshot.h"
-//#include "gui/bitmaps/copy.h"
-//#include "gui/bitmaps/paste.h"
-//#include "gui/bitmaps/configbutton.h"
-//#include "gui/bitmaps/cdromd.h"
-//#include "gui/bitmaps/userbutton.h"
-#if BX_SUPPORT_SAVE_RESTORE
-#include "gui/bitmaps/saverestore.h"
-#endif
-
-#if BX_WITH_MACOS
-#  include <Disks.h>
-#endif
-
 bx_gui_c *bx_gui = NULL;
-
-#define BX_GUI_THIS bx_gui->
-#define LOG_THIS BX_GUI_THIS
 
 #define BX_KEY_UNKNOWN 0x7fffffff
 #define N_USER_KEYS 36
 
 typedef struct {
   char *key;
-  Bit32u symbol;
+  u32 symbol;
 } user_key_t;
 
 static user_key_t user_keys[N_USER_KEYS] =
@@ -125,141 +103,27 @@ bx_gui_c::~bx_gui_c()
   }
 }
 
-void bx_gui_c::init(int argc, char **argv, unsigned tilewidth, unsigned tileheight)
+void bx_gui_c::init(unsigned tilewidth, unsigned tileheight)
 {
-  BX_GUI_THIS new_gfx_api = 0;
-  BX_GUI_THIS host_xres = 640;
-  BX_GUI_THIS host_yres = 480;
-  BX_GUI_THIS host_bpp = 8;
-  //BX_GUI_THIS dialog_caps = BX_GUI_DLG_RUNTIME | BX_GUI_DLG_SAVE_RESTORE;
+  new_gfx_api = 0;
+  host_xres = 640;
+  host_yres = 480;
+  host_bpp = 8;
 
-  //specific_init(argc, argv, tilewidth, tileheight, BX_HEADER_BAR_Y);
+  specific_init(tilewidth, tileheight);
 
-  // Define some bitmaps to use in the headerbar
-  //BX_GUI_THIS floppyA_bmap_id = create_bitmap(bx_floppya_bmap,
-  //                        BX_FLOPPYA_BMAP_X, BX_FLOPPYA_BMAP_Y);
-  //BX_GUI_THIS floppyA_eject_bmap_id = create_bitmap(bx_floppya_eject_bmap,
-  //                        BX_FLOPPYA_BMAP_X, BX_FLOPPYA_BMAP_Y);
-  //BX_GUI_THIS floppyB_bmap_id = create_bitmap(bx_floppyb_bmap,
-  //                        BX_FLOPPYB_BMAP_X, BX_FLOPPYB_BMAP_Y);
-  //BX_GUI_THIS floppyB_eject_bmap_id = create_bitmap(bx_floppyb_eject_bmap,
-  //                        BX_FLOPPYB_BMAP_X, BX_FLOPPYB_BMAP_Y);
-  //BX_GUI_THIS cdromD_bmap_id = create_bitmap(bx_cdromd_bmap,
-  //                        BX_CDROMD_BMAP_X, BX_CDROMD_BMAP_Y);
-  //BX_GUI_THIS cdromD_eject_bmap_id = create_bitmap(bx_cdromd_eject_bmap,
-  //                        BX_CDROMD_BMAP_X, BX_CDROMD_BMAP_Y);
-  //BX_GUI_THIS mouse_bmap_id = create_bitmap(bx_mouse_bmap,
-  //                        BX_MOUSE_BMAP_X, BX_MOUSE_BMAP_Y);
-  //BX_GUI_THIS nomouse_bmap_id = create_bitmap(bx_nomouse_bmap,
-  //                        BX_MOUSE_BMAP_X, BX_MOUSE_BMAP_Y);
+  charmap_updated = 0;
 
-  //BX_GUI_THIS power_bmap_id = create_bitmap(bx_power_bmap, BX_POWER_BMAP_X, BX_POWER_BMAP_Y);
-  //BX_GUI_THIS reset_bmap_id = create_bitmap(bx_reset_bmap, BX_RESET_BMAP_X, BX_RESET_BMAP_Y);
-  //BX_GUI_THIS snapshot_bmap_id = create_bitmap(bx_snapshot_bmap, BX_SNAPSHOT_BMAP_X, BX_SNAPSHOT_BMAP_Y);
-  //BX_GUI_THIS copy_bmap_id = create_bitmap(bx_copy_bmap, BX_COPY_BMAP_X, BX_COPY_BMAP_Y);
-  //BX_GUI_THIS paste_bmap_id = create_bitmap(bx_paste_bmap, BX_PASTE_BMAP_X, BX_PASTE_BMAP_Y);
-  //BX_GUI_THIS config_bmap_id = create_bitmap(bx_config_bmap, BX_CONFIG_BMAP_X, BX_CONFIG_BMAP_Y);
-  //BX_GUI_THIS user_bmap_id = create_bitmap(bx_user_bmap, BX_USER_BMAP_X, BX_USER_BMAP_Y);
-
-//#if BX_SUPPORT_SAVE_RESTORE
-//  BX_GUI_THIS save_restore_bmap_id = create_bitmap(bx_save_restore_bmap,
-//                          BX_SAVE_RESTORE_BMAP_X, BX_SAVE_RESTORE_BMAP_Y);
-//#endif
-//
-//  // Add the initial bitmaps to the headerbar, and enable callback routine, for use
-//  // when that bitmap is clicked on
-//
-//  // Floppy A:
-//  BX_GUI_THIS floppyA_status = DEV_floppy_get_media_status(0);
-//  if (BX_GUI_THIS floppyA_status)
-//    BX_GUI_THIS floppyA_hbar_id = headerbar_bitmap(BX_GUI_THIS floppyA_bmap_id,
-//                          BX_GRAVITY_LEFT, floppyA_handler);
-//  else
-//    BX_GUI_THIS floppyA_hbar_id = headerbar_bitmap(BX_GUI_THIS floppyA_eject_bmap_id,
-//                          BX_GRAVITY_LEFT, floppyA_handler);
-//  BX_GUI_THIS set_tooltip(BX_GUI_THIS floppyA_hbar_id, "Change floppy A: media");
-//
-//  // Floppy B:
-//  BX_GUI_THIS floppyB_status = DEV_floppy_get_media_status(1);
-//  if (BX_GUI_THIS floppyB_status)
-//    BX_GUI_THIS floppyB_hbar_id = headerbar_bitmap(BX_GUI_THIS floppyB_bmap_id,
-//                          BX_GRAVITY_LEFT, floppyB_handler);
-//  else
-//    BX_GUI_THIS floppyB_hbar_id = headerbar_bitmap(BX_GUI_THIS floppyB_eject_bmap_id,
-//                          BX_GRAVITY_LEFT, floppyB_handler);
-//  BX_GUI_THIS set_tooltip(BX_GUI_THIS floppyB_hbar_id, "Change floppy B: media");
-//
-//  // CDROM, 
-//  // the harddrive object is not initialised yet,
-//  // so we just set the bitmap to ejected for now
-//  BX_GUI_THIS cdromD_hbar_id = headerbar_bitmap(BX_GUI_THIS cdromD_eject_bmap_id,
-//                          BX_GRAVITY_LEFT, cdromD_handler);
-//  BX_GUI_THIS set_tooltip(BX_GUI_THIS cdromD_hbar_id, "Change first CDROM media");
-//
-//  // Mouse button
-//  if (SIM->get_param_bool(BXPN_MOUSE_ENABLED)->get())
-//    BX_GUI_THIS mouse_hbar_id = headerbar_bitmap(BX_GUI_THIS mouse_bmap_id,
-//                          BX_GRAVITY_LEFT, toggle_mouse_enable);
-//  else
-//    BX_GUI_THIS mouse_hbar_id = headerbar_bitmap(BX_GUI_THIS nomouse_bmap_id,
-//                          BX_GRAVITY_LEFT, toggle_mouse_enable);
-//  BX_GUI_THIS set_tooltip(BX_GUI_THIS mouse_hbar_id, "Enable mouse capture");
-//
-//  // These are the buttons on the right side.  They are created in order
-//  // of right to left.
-//
-//  // Power button
-//  BX_GUI_THIS power_hbar_id = headerbar_bitmap(BX_GUI_THIS power_bmap_id,
-//                          BX_GRAVITY_RIGHT, power_handler);
-//  BX_GUI_THIS set_tooltip(BX_GUI_THIS power_hbar_id, "Turn power off");
-//  // Save/Restore Button
-//#if BX_SUPPORT_SAVE_RESTORE
-//  BX_GUI_THIS save_restore_hbar_id = headerbar_bitmap(BX_GUI_THIS save_restore_bmap_id,
-//                          BX_GRAVITY_RIGHT, save_restore_handler);
-//  BX_GUI_THIS set_tooltip(BX_GUI_THIS save_restore_hbar_id, "Save simulation state");
-//#endif
-//  // Reset button
-//  BX_GUI_THIS reset_hbar_id = headerbar_bitmap(BX_GUI_THIS reset_bmap_id,
-//                          BX_GRAVITY_RIGHT, reset_handler);
-//  BX_GUI_THIS set_tooltip(BX_GUI_THIS reset_hbar_id, "Reset the system");
-//  // Configure button
-//  BX_GUI_THIS config_hbar_id = headerbar_bitmap(BX_GUI_THIS config_bmap_id,
-//                          BX_GRAVITY_RIGHT, config_handler);
-//  BX_GUI_THIS set_tooltip(BX_GUI_THIS config_hbar_id, "Runtime config dialog");
-//  // Snapshot button
-//  BX_GUI_THIS snapshot_hbar_id = headerbar_bitmap(BX_GUI_THIS snapshot_bmap_id,
-//                          BX_GRAVITY_RIGHT, snapshot_handler);
-//  BX_GUI_THIS set_tooltip(BX_GUI_THIS snapshot_hbar_id, "Save snapshot of the text mode screen");
-//  // Paste button
-//  BX_GUI_THIS paste_hbar_id = headerbar_bitmap(BX_GUI_THIS paste_bmap_id,
-//                          BX_GRAVITY_RIGHT, paste_handler);
-//  BX_GUI_THIS set_tooltip(BX_GUI_THIS paste_hbar_id, "Paste clipboard text as emulated keystrokes");
-//  // Copy button
-//  BX_GUI_THIS copy_hbar_id = headerbar_bitmap(BX_GUI_THIS copy_bmap_id,
-//                          BX_GRAVITY_RIGHT, copy_handler);
-//  BX_GUI_THIS set_tooltip(BX_GUI_THIS copy_hbar_id, "Copy text mode screen to the clipboard");
-//  // User button
-//  BX_GUI_THIS user_hbar_id = headerbar_bitmap(BX_GUI_THIS user_bmap_id,
-//                          BX_GRAVITY_RIGHT, userbutton_handler);
-//  BX_GUI_THIS set_tooltip(BX_GUI_THIS user_hbar_id, "Send keyboard shortcut");
-//
-//  if (SIM->get_param_bool(BXPN_TEXT_SNAPSHOT_CHECK)->get()) {
-//    bx_pc_system.register_timer(this, bx_gui_c::snapshot_checker, (unsigned) 1000000, 1, 1, "snap_chk");
-//  }
-
-  BX_GUI_THIS charmap_updated = 0;
-
-  if (!BX_GUI_THIS new_gfx_api && (BX_GUI_THIS framebuffer == NULL)) {
-    BX_GUI_THIS framebuffer = new Bit8u[BX_MAX_XRES * BX_MAX_YRES * 4];
+  if (!new_gfx_api && (framebuffer == NULL)) {
+    framebuffer = new u8[BX_MAX_XRES * BX_MAX_YRES * 4];
   }
-  //show_headerbar();
 }
 
 void bx_gui_c::cleanup(void)
 {
 }
 
-Bit32u get_user_key(char *key)
+u32 get_user_key(char *key)
 {
   int i = 0;
 
@@ -271,20 +135,12 @@ Bit32u get_user_key(char *key)
   return BX_KEY_UNKNOWN;
 }
 
-void bx_gui_c::mouse_enabled_changed (bx_bool val)
+void bx_gui_c::mouse_enabled_changed (bool val)
 {
   // This is only called when SIM->get_init_done is 1.  Note that VAL
   // is the new value of mouse_enabled, which may not match the old
   // value which is still in SIM->get_param_bool(BXPN_MOUSE_ENABLED)->get().
-  //BX_DEBUG (("replacing the mouse bitmaps"));
-  //if (val)
-  //  BX_GUI_THIS replace_bitmap(BX_GUI_THIS mouse_hbar_id, BX_GUI_THIS mouse_bmap_id);
-  //else
-  //  BX_GUI_THIS replace_bitmap(BX_GUI_THIS mouse_hbar_id, BX_GUI_THIS nomouse_bmap_id);
-  // give the GUI a chance to respond to the event.  Most guis will hide
-  // the native mouse cursor and do something to trap the mouse inside the
-  // bochs VGA display window.
-  BX_GUI_THIS mouse_enabled_changed_specific (val);
+  bx_gui->mouse_enabled_changed_specific (val);
 }
 
 void bx_gui_c::init_signal_handlers()
@@ -292,8 +148,8 @@ void bx_gui_c::init_signal_handlers()
 #if BX_GUI_SIGHANDLER
   if (bx_gui_sighandler) 
   {
-    Bit32u mask = bx_gui->get_sighandler_mask ();
-    for (Bit32u sig=0; sig<32; sig++)
+    u32 mask = bx_gui->get_sighandler_mask ();
+    for (u32 sig=0; sig<32; sig++)
     {
       if (mask & (1<<sig))
         signal (sig, bx_signal_handler);
@@ -302,18 +158,18 @@ void bx_gui_c::init_signal_handlers()
 #endif
 }
 
-void bx_gui_c::set_text_charmap(Bit8u *fbuffer)
+void bx_gui_c::set_text_charmap(u8 *fbuffer)
 {
-  memcpy(& BX_GUI_THIS vga_charmap, fbuffer, 0x2000);
-  for (unsigned i=0; i<256; i++) BX_GUI_THIS char_changed[i] = 1;
-  BX_GUI_THIS charmap_updated = 1;
+  memcpy(& bx_gui->vga_charmap, fbuffer, 0x2000);
+  for (unsigned i=0; i<256; i++) bx_gui->char_changed[i] = 1;
+  bx_gui->charmap_updated = 1;
 }
 
-void bx_gui_c::set_text_charbyte(Bit16u address, Bit8u data)
+void bx_gui_c::set_text_charbyte(u16 address, u8 data)
 {
-  BX_GUI_THIS vga_charmap[address] = data;
-  BX_GUI_THIS char_changed[address >> 5] = 1;
-  BX_GUI_THIS charmap_updated = 1;
+  bx_gui->vga_charmap[address] = data;
+  bx_gui->char_changed[address >> 5] = 1;
+  bx_gui->charmap_updated = 1;
 }
   
 void bx_gui_c::beep_on(float frequency)
@@ -326,7 +182,7 @@ void bx_gui_c::beep_off()
   BX_INFO(("GUI Beep OFF"));
 }
 
-void bx_gui_c::get_capabilities(Bit16u *xres, Bit16u *yres, Bit16u *bpp)
+void bx_gui_c::get_capabilities(u16 *xres, u16 *yres, u16 *bpp)
 {
   *xres = 1024;
   *yres = 768;
@@ -342,10 +198,10 @@ bx_svga_tileinfo_t *bx_gui_c::graphics_tile_info(bx_svga_tileinfo_t *info)
     }
   }
 
-  BX_GUI_THIS host_pitch = BX_GUI_THIS host_xres * ((BX_GUI_THIS host_bpp + 1) >> 3);
+  host_pitch = host_xres * ((host_bpp + 1) >> 3);
 
-  info->bpp = BX_GUI_THIS host_bpp;
-  info->pitch = BX_GUI_THIS host_pitch;
+  info->bpp = host_bpp;
+  info->pitch = host_pitch;
   switch (info->bpp) {
     case 15:
       info->red_shift = 15;
@@ -373,7 +229,7 @@ bx_svga_tileinfo_t *bx_gui_c::graphics_tile_info(bx_svga_tileinfo_t *info)
       info->blue_mask = 0x0000ff;
       break;
   }
-  info->is_indexed = (BX_GUI_THIS host_bpp == 8);
+  info->is_indexed = (host_bpp == 8);
 #ifdef BX_LITTLE_ENDIAN
   info->is_little_endian = 1;
 #else
@@ -383,34 +239,34 @@ bx_svga_tileinfo_t *bx_gui_c::graphics_tile_info(bx_svga_tileinfo_t *info)
   return info;
 }
 
-Bit8u *bx_gui_c::graphics_tile_get(unsigned x0, unsigned y0,
+u8 *bx_gui_c::graphics_tile_get(unsigned x0, unsigned y0,
                             unsigned *w, unsigned *h)
 {
-  if (x0+X_TILESIZE > BX_GUI_THIS host_xres) {
-    *w = BX_GUI_THIS host_xres - x0;
+  if (x0+X_TILESIZE > host_xres) {
+    *w = host_xres - x0;
   }
   else {
     *w = X_TILESIZE;
   }
 
-  if (y0+Y_TILESIZE > BX_GUI_THIS host_yres) {
-    *h = BX_GUI_THIS host_yres - y0;
+  if (y0+Y_TILESIZE > host_yres) {
+    *h = host_yres - y0;
   }
   else {
     *h = Y_TILESIZE;
   }
 
-  return (Bit8u *)framebuffer + y0 * BX_GUI_THIS host_pitch +
-                  x0 * ((BX_GUI_THIS host_bpp + 1) >> 3);
+  return (u8 *)framebuffer + y0 * host_pitch +
+                  x0 * ((host_bpp + 1) >> 3);
 }
 
 void bx_gui_c::graphics_tile_update_in_place(unsigned x0, unsigned y0,
                                         unsigned w, unsigned h)
 {
-  Bit8u tile[X_TILESIZE * Y_TILESIZE * 4];
-  Bit8u *tile_ptr, *fb_ptr;
-  Bit16u xc, yc, fb_pitch, tile_pitch;
-  Bit8u r, diffx, diffy;
+  u8 tile[X_TILESIZE * Y_TILESIZE * 4];
+  u8 *tile_ptr, *fb_ptr;
+  u16 xc, yc, fb_pitch, tile_pitch;
+  u8 r, diffx, diffy;
 
   diffx = (x0 % X_TILESIZE);
   diffy = (y0 % Y_TILESIZE);
@@ -422,25 +278,18 @@ void bx_gui_c::graphics_tile_update_in_place(unsigned x0, unsigned y0,
     y0 -= diffy;
     h += diffy;
   }
-  fb_pitch = BX_GUI_THIS host_pitch;
-  tile_pitch = X_TILESIZE * ((BX_GUI_THIS host_bpp + 1) >> 3);
+  fb_pitch = host_pitch;
+  tile_pitch = X_TILESIZE * ((host_bpp + 1) >> 3);
   for (yc=y0; yc<(y0+h); yc+=Y_TILESIZE) {
     for (xc=x0; xc<(x0+w); xc+=X_TILESIZE) {
-      fb_ptr = BX_GUI_THIS framebuffer + (yc * fb_pitch + xc * ((BX_GUI_THIS host_bpp + 1) >> 3));
+      fb_ptr = framebuffer + (yc * fb_pitch + xc * ((host_bpp + 1) >> 3));
       tile_ptr = &tile[0];
       for (r=0; r<h; r++) {
         memcpy(tile_ptr, fb_ptr, tile_pitch);
         fb_ptr += fb_pitch;
         tile_ptr += tile_pitch;
       }
-      BX_GUI_THIS graphics_tile_update(tile, xc, yc);
+      graphics_tile_update(tile, xc, yc);
     }
   }
-}
-
-void bx_gui_c::show_ips(Bit32u ips_count)
-{
-#if BX_SHOW_IPS
-  BX_INFO(("ips = %u", ips_count));
-#endif
 }

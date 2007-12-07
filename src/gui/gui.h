@@ -27,11 +27,13 @@
 
 /**
  *
+ * X-1.2        Camiel Vanderhoeven                             7-DEC-2007
+ *      Code cleanup.
+ *
  * X-1.1        Camiel Vanderhoeven                             6-DEC-2007
  *      Initial version for ES40 emulator.
  *
  **/
-
 
 #ifndef __GUI_H__
 #define __GUI_H__
@@ -43,138 +45,94 @@
 
 #define BX_WITH_SDL 1
 
-#define Bit32s s32
-#define Bit32u u32
-#define Bit16u u16
-#define Bit16s s16
-#define Bit8u u8
-#define Bit8s s8
-
-#define bx_bool bool
-
 #define BOCHSAPI
 
 #include "vga.h" 
-#include "siminterface.h"
 #include "extplugin.h"
 
-#define BX_MAX_STATUSITEMS 10
-
-#define BX_GUI_DLG_FLOPPY       0x01
-#define BX_GUI_DLG_CDROM        0x02
-#define BX_GUI_DLG_SNAPSHOT     0x04
-#define BX_GUI_DLG_RUNTIME      0x08
-#define BX_GUI_DLG_USER         0x10
-#define BX_GUI_DLG_SAVE_RESTORE 0x20
-#define BX_GUI_DLG_ALL          0x3F
-
 typedef struct {
-  Bit16u  start_address;
-  Bit8u   cs_start;
-  Bit8u   cs_end;
-  Bit16u  line_offset;
-  Bit16u  line_compare;
-  Bit8u   h_panning;
-  Bit8u   v_panning;
-  bx_bool line_graphics;
-  bx_bool split_hpanning;
+  u16  start_address;
+  u8   cs_start;
+  u8   cs_end;
+  u16  line_offset;
+  u16  line_compare;
+  u8   h_panning;
+  u8   v_panning;
+  bool line_graphics;
+  bool split_hpanning;
 } bx_vga_tminfo_t;
 
 typedef struct {
-  Bit16u bpp, pitch;
-  Bit8u red_shift, green_shift, blue_shift;
-  Bit8u is_indexed, is_little_endian;
+  u16 bpp, pitch;
+  u8 red_shift, green_shift, blue_shift;
+  u8 is_indexed, is_little_endian;
   unsigned long red_mask, green_mask, blue_mask;
 } bx_svga_tileinfo_t;
 
-
-BOCHSAPI extern class bx_gui_c *bx_gui;
-
-#if BX_SUPPORT_X86_64
-  #define BOCHS_WINDOW_NAME "Bochs x86-64 emulator, http://bochs.sourceforge.net/"
-#else
-  #define BOCHS_WINDOW_NAME "Bochs x86 emulator, http://bochs.sourceforge.net/"
-#endif
+extern class bx_gui_c *bx_gui;
 
 // The bx_gui_c class provides data and behavior that is common to
 // all guis.  Each gui implementation will override the abstract methods.
-class BOCHSAPI bx_gui_c {
+class bx_gui_c {
 public:
   bx_gui_c (void);
   virtual ~bx_gui_c ();
   // Define the following functions in the module for your particular GUI
   // (x.cc, beos.cc, ...)
-  virtual void specific_init(int argc, char **argv,
-                 unsigned x_tilesize, unsigned y_tilesize, unsigned header_bar_y) = 0;
-  virtual void text_update(Bit8u *old_text, Bit8u *new_text,
+  virtual void specific_init(
+    //int argc, char **argv,
+                 unsigned x_tilesize, unsigned y_tilesize) = 0;
+  virtual void text_update(u8 *old_text, u8 *new_text,
                           unsigned long cursor_x, unsigned long cursor_y,
                           bx_vga_tminfo_t tm_info, unsigned rows) = 0;
-  virtual void graphics_tile_update(Bit8u *snapshot, unsigned x, unsigned y) = 0;
+  virtual void graphics_tile_update(u8 *snapshot, unsigned x, unsigned y) = 0;
   virtual bx_svga_tileinfo_t *graphics_tile_info(bx_svga_tileinfo_t *info);
-  virtual Bit8u *graphics_tile_get(unsigned x, unsigned y, unsigned *w, unsigned *h);
+  virtual u8 *graphics_tile_get(unsigned x, unsigned y, unsigned *w, unsigned *h);
   virtual void graphics_tile_update_in_place(unsigned x, unsigned y, unsigned w, unsigned h);
   virtual void handle_events(void) = 0;
   virtual void flush(void) = 0;
   virtual void clear_screen(void) = 0;
-  virtual bx_bool palette_change(unsigned index, unsigned red, unsigned green, unsigned blue) = 0;
+  virtual bool palette_change(unsigned index, unsigned red, unsigned green, unsigned blue) = 0;
   virtual void dimension_update(unsigned x, unsigned y, unsigned fheight=0, unsigned fwidth=0, unsigned bpp=8) = 0;
-  virtual void mouse_enabled_changed_specific (bx_bool val) = 0;
+  virtual void mouse_enabled_changed_specific (bool val) = 0;
   virtual void exit(void) = 0;
-  // set_display_mode() changes the mode between the configuration interface
-  // and the simulation.  This is primarily intended for display libraries
-  // which have a full-screen mode such as SDL, term, and svgalib.  The display
-  // mode is set to DISP_MODE_CONFIG before displaying any configuration menus,
-  // for panics that requires user input, when entering the debugger, etc.  It
-  // is set to DISP_MODE_SIM when the Bochs simulation resumes.  The
-  // enum is defined in gui/siminterface.h.
-  virtual void set_display_mode (disp_mode_t newmode) { /* default=no action*/ }
   // These are only needed for the term gui. For all other guis they will
   // have no effect.
   // returns 32-bit bitmask in which 1 means the GUI should handle that signal
-  virtual Bit32u get_sighandler_mask () {return 0;}
+  virtual u32 get_sighandler_mask () {return 0;}
   // called when registered signal arrives
   virtual void sighandler (int sig) {}
-#if BX_USE_IDLE_HACK
-  // this is called from the CPU model when the HLT instruction is executed.
-  virtual void sim_is_idle(void) {}
-#endif
-  virtual void show_ips(Bit32u ips_count);
   virtual void beep_on(float frequency);
   virtual void beep_off();
-  virtual void get_capabilities(Bit16u *xres, Bit16u *yres, Bit16u *bpp);
+  virtual void get_capabilities(u16 *xres, u16 *yres, u16 *bpp);
 
   // The following function(s) are defined already, and your
   // GUI code calls them
-  static void key_event(Bit32u key);
-  static void set_text_charmap(Bit8u *fbuffer);
-  static void set_text_charbyte(Bit16u address, Bit8u data);
-  static Bit8u get_mouse_headerbar_id();
+  static void key_event(u32 key);
+  static void set_text_charmap(u8 *fbuffer);
+  static void set_text_charbyte(u16 address, u8 data);
 
-  void init(int argc, char **argv,
+  void init( /*int argc, char **argv, */
                  unsigned x_tilesize, unsigned y_tilesize);
   void cleanup(void);
-  void update_drive_status_buttons(void);
-  static void     mouse_enabled_changed(bx_bool val);
-  int register_statusitem(const char *text);
+  static void     mouse_enabled_changed(bool val);
   static void init_signal_handlers();
 
 
 protected:
   // And these are defined and used privately in gui.cc
-  static Bit32s make_text_snapshot (char **snapshot, Bit32u *length);
+  static s32 make_text_snapshot (char **snapshot, u32 *length);
   static void toggle_mouse_enable(void);
 
   unsigned char vga_charmap[0x2000];
-  bx_bool charmap_updated;
-  bx_bool char_changed[256];
-  disp_mode_t disp_mode;
-  bx_bool new_gfx_api;
-  Bit16u host_xres;
-  Bit16u host_yres;
-  Bit16u host_pitch;
-  Bit8u host_bpp;
-  Bit8u *framebuffer;
-  Bit32u dialog_caps;
+  bool charmap_updated;
+  bool char_changed[256];
+  bool new_gfx_api;
+  u16 host_xres;
+  u16 host_yres;
+  u16 host_pitch;
+  u8 host_bpp;
+  u8 *framebuffer;
 };
 
 
@@ -188,45 +146,31 @@ protected:
 //    };
 // Then, each method must be defined later in the file.
 #define DECLARE_GUI_VIRTUAL_METHODS()                                       \
-virtual void specific_init(int argc, char **argv,                           \
-         unsigned x_tilesize, unsigned y_tilesize,                      \
-         unsigned header_bar_y);                                        \
-virtual void text_update(Bit8u *old_text, Bit8u *new_text,                  \
+virtual void specific_init(/*int argc, char **argv, */                          \
+         unsigned x_tilesize, unsigned y_tilesize                      \
+         );                                        \
+virtual void text_update(u8 *old_text, u8 *new_text,                  \
                   unsigned long cursor_x, unsigned long cursor_y,       \
                   bx_vga_tminfo_t tm_info, unsigned rows);              \
-virtual void graphics_tile_update(Bit8u *snapshot, unsigned x, unsigned y); \
+virtual void graphics_tile_update(u8 *snapshot, unsigned x, unsigned y); \
 virtual void handle_events(void);                                           \
 virtual void flush(void);                                                   \
 virtual void clear_screen(void);                                            \
-virtual bx_bool palette_change(unsigned index,                              \
+virtual bool palette_change(unsigned index,                              \
 unsigned red, unsigned green, unsigned blue);                           \
 virtual void dimension_update(unsigned x, unsigned y, unsigned fheight=0,   \
                           unsigned fwidth=0, unsigned bpp=8);           \
-virtual void mouse_enabled_changed_specific (bx_bool val);                  \
+virtual void mouse_enabled_changed_specific (bool val);                  \
 virtual void exit(void);                                                    \
 /* end of DECLARE_GUI_VIRTUAL_METHODS */
 
 #define DECLARE_GUI_NEW_VIRTUAL_METHODS()                                   \
 virtual bx_svga_tileinfo_t *graphics_tile_info(bx_svga_tileinfo_t *info);   \
-virtual Bit8u *graphics_tile_get(unsigned x, unsigned y,                    \
+virtual u8 *graphics_tile_get(unsigned x, unsigned y,                    \
                              unsigned *w, unsigned *h);                 \
 virtual void graphics_tile_update_in_place(unsigned x, unsigned y,          \
                                        unsigned w, unsigned h);
 /* end of DECLARE_GUI_NEW_VIRTUAL_METHODS */
-
-#define BX_HEADER_BAR_Y 32
-
-#if BX_SUPPORT_SAVE_RESTORE
-#define BX_MAX_PIXMAPS 17
-#define BX_MAX_HEADERBAR_ENTRIES 12
-#else
-#define BX_MAX_PIXMAPS 16
-#define BX_MAX_HEADERBAR_ENTRIES 11
-#endif
-
-// align pixmaps towards left or right side of header bar
-#define BX_GRAVITY_LEFT 10
-#define BX_GRAVITY_RIGHT 11
 
 #define BX_KEY_PRESSED  0x00000000
 #define BX_KEY_RELEASED 0x80000000
