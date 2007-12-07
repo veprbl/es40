@@ -27,6 +27,9 @@
  * \file 
  * Contains the definitions for the emulated Ali M1543C chipset devices.
  *
+ * X-1.17       Camiel Vanderhoeven                             7-DEC-2007
+ *      Generate keyboard interrupts when needed.
+ *
  * X-1.16       Camiel Vanderhoeven                             6-DEC-2007
  *      Changed keyboard implementation (with thanks to the Bochs project!!)
  *
@@ -147,7 +150,7 @@ class CAliM1543C : public CSystemComponent
   void kbd_64_write(u8 data);
   void kbd_resetinternals(bool powerup);
   void kbd_enQ(u8 scancode);
-  void kbd_controller_enQ(Bit8u data, unsigned source);
+  void kbd_controller_enQ(u8 data, unsigned source);
   void set_kbd_clock_enable(u8 value);
   void set_aux_clock_enable(u8 value);
   void kbd_ctrl_to_kbd(u8 value);
@@ -156,6 +159,7 @@ class CAliM1543C : public CSystemComponent
   bool mouse_enQ_packet(u8 b1, u8 b2, u8 b3, u8 b4);
   void mouse_enQ(u8 mouse_data);
   unsigned kbd_periodic();
+  void kbd_clock();
   void create_mouse_packet(bool force_enq);
 
   // REGISTER 61 (NMI)
@@ -210,51 +214,51 @@ class CAliM1543C : public CSystemComponent
     // REGISTERS 60 & 64: KEYBOARD / MOUSE
     struct {
       /* status bits matching the status port*/
-      bx_bool pare; // Bit7, 1= parity error from keyboard/mouse - ignored.
-      bx_bool tim;  // Bit6, 1= timeout from keyboard - ignored.
-      bx_bool auxb; // Bit5, 1= mouse data waiting for CPU to read.
-      bx_bool keyl; // Bit4, 1= keyswitch in lock position - ignored.
-      bx_bool c_d; /*  Bit3, 1=command to port 64h, 0=data to port 60h */
-      bx_bool sysf; // Bit2,
-      bx_bool inpb; // Bit1,
-      bx_bool outb; // Bit0, 1= keyboard data or mouse data ready for CPU
+      bool pare; // Bit7, 1= parity error from keyboard/mouse - ignored.
+      bool tim;  // Bit6, 1= timeout from keyboard - ignored.
+      bool auxb; // Bit5, 1= mouse data waiting for CPU to read.
+      bool keyl; // Bit4, 1= keyswitch in lock position - ignored.
+      bool c_d; /*  Bit3, 1=command to port 64h, 0=data to port 60h */
+      bool sysf; // Bit2,
+      bool inpb; // Bit1,
+      bool outb; // Bit0, 1= keyboard data or mouse data ready for CPU
                     //       check aux to see which. Or just keyboard
                     //       data before AT style machines
 
       /* internal to our version of the keyboard controller */
-      bx_bool kbd_clock_enabled;
-      bx_bool aux_clock_enabled;
-      bx_bool allow_irq1;
-      bx_bool allow_irq12;
-      Bit8u   kbd_output_buffer;
-      Bit8u   aux_output_buffer;
-      Bit8u   last_comm;
-      Bit8u   expecting_port60h;
-      Bit8u   expecting_mouse_parameter;
-      Bit8u   last_mouse_command;
-      Bit32u   timer_pending;
-      bx_bool irq1_requested;
-      bx_bool irq12_requested;
-      bx_bool scancodes_translate;
-      bx_bool expecting_scancodes_set;
-      Bit8u   current_scancodes_set;
-      bx_bool bat_in_progress;
+      bool kbd_clock_enabled;
+      bool aux_clock_enabled;
+      bool allow_irq1;
+      bool allow_irq12;
+      u8   kbd_output_buffer;
+      u8   aux_output_buffer;
+      u8   last_comm;
+      u8   expecting_port60h;
+      u8   expecting_mouse_parameter;
+      u8   last_mouse_command;
+      u32   timer_pending;
+      bool irq1_requested;
+      bool irq12_requested;
+      bool scancodes_translate;
+      bool expecting_scancodes_set;
+      u8   current_scancodes_set;
+      bool bat_in_progress;
     } kbd_controller;
 
     struct mouseStruct {
-      bx_bool captured; // host mouse capture enabled
-//      Bit8u   type;
-      Bit8u   sample_rate;
-      Bit8u   resolution_cpmm; // resolution in counts per mm
-      Bit8u   scaling;
-      Bit8u   mode;
-      Bit8u   saved_mode;  // the mode prior to entering wrap mode
-      bx_bool enable;
+      bool captured; // host mouse capture enabled
+//      u8   type;
+      u8   sample_rate;
+      u8   resolution_cpmm; // resolution in counts per mm
+      u8   scaling;
+      u8   mode;
+      u8   saved_mode;  // the mode prior to entering wrap mode
+      bool enable;
 
-      Bit8u get_status_byte ()
+      u8 get_status_byte ()
 	{
 	  // top bit is 0 , bit 6 is 1 if remote mode.
-	  Bit8u ret = (Bit8u) ((mode == MOUSE_MODE_REMOTE) ? 0x40 : 0);
+	  u8 ret = (u8) ((mode == MOUSE_MODE_REMOTE) ? 0x40 : 0);
 	  ret |= (enable << 5);
 	  ret |= (scaling == 1) ? 0 : (1 << 4);
 	  ret |= ((button_status & 0x1) << 2);
@@ -262,9 +266,9 @@ class CAliM1543C : public CSystemComponent
 	  return ret;
 	}
 
-      Bit8u get_resolution_byte ()
+      u8 get_resolution_byte ()
 	{
-	  Bit8u ret = 0;
+	  u8 ret = 0;
 
 	  switch (resolution_cpmm) {
 	  case 1:
@@ -289,34 +293,34 @@ class CAliM1543C : public CSystemComponent
 	  return ret;
 	}
 
-      Bit8u button_status;
-      Bit16s delayed_dx;
-      Bit16s delayed_dy;
-      Bit16s delayed_dz;
-      Bit8u im_request;
-      bx_bool im_mode;
+      u8 button_status;
+      s16 delayed_dx;
+      s16 delayed_dy;
+      s16 delayed_dz;
+      u8 im_request;
+      bool im_mode;
     } mouse;
 
     struct {
       int     num_elements;
-      Bit8u   buffer[BX_KBD_ELEMENTS];
+      u8   buffer[BX_KBD_ELEMENTS];
       int     head;
-      bx_bool expecting_typematic;
-      bx_bool expecting_led_write;
+      bool expecting_typematic;
+      bool expecting_led_write;
       bool expecting_make_break;
-      Bit8u   delay;
-      Bit8u   repeat_rate;
-      Bit8u   led_status;
-      bx_bool scanning_enabled;
+      u8   delay;
+      u8   repeat_rate;
+      u8   led_status;
+      bool scanning_enabled;
     } kbd_internal_buffer;
 
     struct {
       int     num_elements;
-      Bit8u   buffer[BX_MOUSE_BUFF_SIZE];
+      u8   buffer[BX_MOUSE_BUFF_SIZE];
       int     head;
     } mouse_internal_buffer;
 #define BX_KBD_CONTROLLER_QSIZE 5
-    Bit8u    kbd_controller_Q[BX_KBD_CONTROLLER_QSIZE];
+    u8    kbd_controller_Q[BX_KBD_CONTROLLER_QSIZE];
     unsigned kbd_controller_Qsize;
     unsigned kbd_controller_Qsource; // 0=keyboard, 1=mouse
 

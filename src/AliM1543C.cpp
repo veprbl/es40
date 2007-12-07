@@ -27,6 +27,9 @@
  * \file 
  * Contains the code for the emulated Ali M1543C chipset devices.
  *
+ * X-1.35       Camiel Vanderhoeven                             7-DEC-2007
+ *      Generate keyboard interrupts when needed.
+ *
  * X-1.34       Camiel Vanderhoeven                             6-DEC-2007
  *      Corrected bug regarding make/break key settings.
  *
@@ -764,18 +767,7 @@ int CAliM1543C::DoClock()
 {
   cSystem->interrupt(-1, true);
 
-#ifdef USE_CONSOLE
-  bx_gui->handle_events();
-#endif
-
-  unsigned retval;
-
-  retval=kbd_periodic();
-
-  if(retval&0x01)
-    pic_interrupt(0,1);
-  if(retval&0x02)
-    pic_interrupt(1,4);
+  kbd_clock();
 
   return 0;
 }
@@ -1883,7 +1875,7 @@ void CAliM1543C::kbd_60_write(u8 value)
         switch (state.kbd_controller.last_comm) {
           case 0x60: // write command byte
             {
-            bx_bool scan_convert, disable_keyboard,
+            bool scan_convert, disable_keyboard,
                     disable_aux;
 
             scan_convert = (value >> 6) & 0x01;
@@ -1949,6 +1941,7 @@ void CAliM1543C::kbd_60_write(u8 value)
         }
         kbd_ctrl_to_kbd(value);
       }
+      kbd_clock();
 }
 
 void CAliM1543C::kbd_64_write(u8 value)
@@ -2120,6 +2113,7 @@ void CAliM1543C::kbd_64_write(u8 value)
             (unsigned) value));
           break;
       }
+      kbd_clock();
 }
 
 void CAliM1543C::kbd_controller_enQ(u8 data, unsigned source)
@@ -2373,7 +2367,7 @@ void CAliM1543C::kbd_enQ_imm(u8 val)
 void CAliM1543C::kbd_ctrl_to_mouse(u8 value)
 {
   // if we are not using a ps2 mouse, some of the following commands need to return different values
-//  bx_bool is_ps2 = 0;
+//  bool is_ps2 = 0;
 //  if ((state.mouse.type == BX_MOUSE_TYPE_PS2) ||
 //      (state.mouse.type == BX_MOUSE_TYPE_IMPS2)) is_ps2 = 1;
 
@@ -2649,17 +2643,7 @@ void CAliM1543C::mouse_enQ(u8 mouse_data)
 
 unsigned CAliM1543C::kbd_periodic()
 {
-  static unsigned count_before_paste=0;
   u8   retval;
-
-  //if (state.kbd_controller.kbd_clock_enabled ) {
-  //  if(++count_before_paste>=BX_KEY_THIS pastedelay) {
-  //    // after the paste delay, consider adding moving more chars
-  //    // from the paste buffer to the keyboard buffer.
-  //    stateervice_paste_buf();
-  //    count_before_paste=0;
-  //  }
-  //}
 
   retval = (state.kbd_controller.irq1_requested << 0)
          | (state.kbd_controller.irq12_requested << 1);
@@ -2673,7 +2657,7 @@ unsigned CAliM1543C::kbd_periodic()
   if (1 >= state.kbd_controller.timer_pending) {
     state.kbd_controller.timer_pending = 0;
   } else {
-    state.kbd_controller.timer_pending -= 1;
+    state.kbd_controller.timer_pending--;
     return(retval);
   }
 
@@ -2724,8 +2708,8 @@ void CAliM1543C::create_mouse_packet(bool force_enq)
   if(state.mouse_internal_buffer.num_elements && !force_enq)
     return;
 
-  Bit16s delta_x = state.mouse.delayed_dx;
-  Bit16s delta_y = state.mouse.delayed_dy;
+  s16 delta_x = state.mouse.delayed_dx;
+  s16 delta_y = state.mouse.delayed_dy;
   u8 button_state=state.mouse.button_status | 0x08;
 
   if(!force_enq && !delta_x && !delta_y) {
@@ -2780,4 +2764,20 @@ void CAliM1543C::create_mouse_packet(bool force_enq)
   b4 = (u8) -state.mouse.delayed_dz;
 
   mouse_enQ_packet(b1, b2, b3, b4);
+}
+
+void CAliM1543C::kbd_clock()
+{
+  unsigned retval;
+
+#ifdef USE_CONSOLE
+  bx_gui->handle_events();
+#endif
+
+  retval=kbd_periodic();
+
+  if(retval&0x01)
+    pic_interrupt(0,1);
+  if(retval&0x02)
+    pic_interrupt(1,4);
 }

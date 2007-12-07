@@ -26,6 +26,9 @@
  * \file
  * Contains the code for emulated S3 Trio 64 Video Card device.
  *
+ * X-1.3        Camiel Vanderhoeven                             7-DEC-2007
+ *      Code cleanup.
+ *
  * X-1.2        Camiel Vanderhoeven/Brian Wheeler               6-DEC-2007
  *      Changed implementation (with thanks to the Bochs project!!)
  *
@@ -41,7 +44,6 @@
 #include "StdAfx.h"
 #include "S3Trio64.h"
 #include "System.h"
-#include "vgafont.h"
 #include "AliM1543C.h"
 #include "gui/gui.h"
 
@@ -57,7 +59,7 @@ extern CAliM1543C * ali;
 
 unsigned old_iHeight = 0, old_iWidth = 0, old_MSL = 0;
 
-static const Bit8u ccdat[16][4] = {
+static const u8 ccdat[16][4] = {
   { 0x00, 0x00, 0x00, 0x00 },
   { 0xff, 0x00, 0x00, 0x00 },
   { 0x00, 0xff, 0x00, 0x00 },
@@ -232,7 +234,7 @@ CS3Trio64::CS3Trio64(CSystem * c): CSystemComponent(c)
   //extname = SIM->get_param_string(BXPN_VGA_EXTENSION)->getptr();
   //if ((strlen(extname) == 0) || (!strcmp(extname, "none"))) {
     state.memsize = 0x40000;
-    state.memory = new Bit8u[state.memsize];
+    state.memory = new u8[state.memsize];
     memset(state.memory, 0, state.memsize);
   //}
 
@@ -241,14 +243,10 @@ CS3Trio64::CS3Trio64(CSystem * c): CSystemComponent(c)
     for (unsigned x=0; x<640/X_TILESIZE; x++)
       SET_TILE_UPDATED (x, y, 0);
 
-  char * argv[2];
-  memset(argv, 0, sizeof(argv));
-  int argc = 1;
-  argv[0] = "bochs";
-  bx_gui->init(argc,argv, state.x_tilesize, state.y_tilesize);
+  bx_gui->init(state.x_tilesize, state.y_tilesize);
 
 #if !BX_SUPPORT_CLGD54XX
-//  BX_VGA_THIS init_systemtimer(timer_handler, vga_param_handler);
+//  this->init_systemtimer(timer_handler, vga_param_handler);
 #endif // !BX_SUPPORT_CLGD54XX
 
   state.charmap_address = 0;
@@ -277,7 +275,7 @@ CS3Trio64::CS3Trio64(CSystem * c): CSystemComponent(c)
                                  VBE_DISPI_LFB_PHYSICAL_ADDRESS + VBE_DISPI_TOTAL_VIDEO_MEMORY_BYTES - 1);
 
     if (state.memory == NULL)
-      state.memory = new Bit8u[VBE_DISPI_TOTAL_VIDEO_MEMORY_BYTES];
+      state.memory = new u8[VBE_DISPI_TOTAL_VIDEO_MEMORY_BYTES];
     memset(state.memory, 0, VBE_DISPI_TOTAL_VIDEO_MEMORY_BYTES);
     state.memsize = VBE_DISPI_TOTAL_VIDEO_MEMORY_BYTES;
     state.vbe_cur_dispi=VBE_DISPI_ID0;
@@ -311,40 +309,16 @@ CS3Trio64::CS3Trio64(CSystem * c): CSystemComponent(c)
     } else {
       state.vbe_max_bpp=max_bpp;
     }
-    BX_VGA_THIS extension_init = 1;
+    this->extension_init = 1;
   
     BX_INFO(("VBE Bochs Display Extension Enabled"));
   }
 #endif  
 
-
     state.CRTC.reg[0x09] = 16;
     state.graphics_ctrl.memory_mapping = 3; // color text mode
 
-    // put a welcome message into the legacy text-mode framebuffer
-    // so we know its actually working.
-    u8 message[] = {'T', 0x4f, 'h', 0x4f, 'i', 0x4f, 's', 0x4f, ' ', 0x4f,
-		    'i', 0x4f, 's', 0x4f, ' ', 0x4f,
-		    't', 0x4f, 'h', 0x4f, 'e', 0x4f, ' ', 0x4f,
-		    'E', 0x4f, 'S', 0x4f, '4', 0x4f, '0', 0x4f, ' ', 0x4f,
-		    'f', 0x4f, 'r', 0x4f, 'a', 0x4f, 'm', 0x4f, 'e', 0x4f,
-		    'b', 0x4f, 'u', 0x4f, 'f', 0x4f, 'f', 0x4f, 'e', 0x4f,
-		    'r', 0x4f, '.', 0x4f, 0};
-    i = 0;
-    //u8 *fb = &state.memory[0x18000];
-    //int fb = 0x18000;
-    while(message[i] != 0) {
-      legacy_write(i+0x18000,8,message[i]);
-      i++;
-      //*fb++ = message[i++];
-    }
-
-
     state.vga_mem_updated = 1;
-
-//    bx_gui->handle_events();
-        
-//    state.disabled=atoi(c->GetConfig("console.disabled","0"));
 
 #if defined(_WIN32)
     screen_refresh_handle = CreateThread(NULL,0,refresh_proc,this,0,NULL);
@@ -901,16 +875,16 @@ void CS3Trio64::write_b_3c0(u8 value)
        { /* address mode */
          prev_video_enabled = state.attribute_ctrl.video_enabled;
          state.attribute_ctrl.video_enabled = (value >> 5) & 0x01;
-#if !defined(VGA_TRACE_FEATURE)
-         //printf("io write 3c0: video_enabled = %u   \n", (unsigned) state.attribute_ctrl.video_enabled);
+#if defined(DEBUG_VGA)
+         printf("io write 3c0: video_enabled = %u   \n", (unsigned) state.attribute_ctrl.video_enabled);
 #endif
          if (state.attribute_ctrl.video_enabled == 0)
          {
            bx_gui->clear_screen();
          }
          else if (!prev_video_enabled) {
-#if !defined(VGA_TRACE_FEATURE)
-           //printf("found enable transition   \n");
+#if defined(DEBUG_VGA)
+           printf("found enable transition   \n");
 #endif
              redraw_area(0, 0, old_iWidth, old_iHeight);
          }
@@ -923,8 +897,10 @@ void CS3Trio64::write_b_3c0(u8 value)
            case 0x0c: case 0x0d: case 0x0e: case 0x0f:
              break;
  
+#if defined(DEBUG_VGA)
            default:
              printf("io write 3c0: address mode reg=%u   \n",(unsigned) value);
+#endif
            }
          }
        else { /* data-write mode */
@@ -962,13 +938,13 @@ void CS3Trio64::write_b_3c0(u8 value)
              if (((value >> 7) & 0x01) != prev_int_pal_size) {
              redraw_area(0, 0, old_iWidth, old_iHeight);
              }
-#if !defined(VGA_TRACE_FEATURE)
+#if defined(DEBUG_VGA)
              printf("io write 3c0: mode control: %02x h   \n", (unsigned) value);
 #endif
              break;
            case 0x11: // Overscan Color Register
              state.attribute_ctrl.overscan_color = (value & 0x3f);
-#if !defined(VGA_TRACE_FEATURE)
+#if defined(DEBUG_VGA)
              printf("io write 3c0: overscan color = %02x   \n",
                          (unsigned) value);
 #endif
@@ -976,7 +952,7 @@ void CS3Trio64::write_b_3c0(u8 value)
            case 0x12: // Color Plane Enable Register
              state.attribute_ctrl.color_plane_enable = (value & 0x0f);
              redraw_area(0, 0, old_iWidth, old_iHeight);
-#if !defined(VGA_TRACE_FEATURE)
+#if defined(DEBUG_VGA)
              printf("io write 3c0: color plane enable = %02x   \n",
                          (unsigned) value);
 #endif
@@ -984,7 +960,7 @@ void CS3Trio64::write_b_3c0(u8 value)
            case 0x13: // Horizontal Pixel Panning Register
              state.attribute_ctrl.horiz_pel_panning = (value & 0x0f);
              redraw_area(0, 0, old_iWidth, old_iHeight);
-#if !defined(VGA_TRACE_FEATURE)
+#if defined(DEBUG_VGA)
              printf("io write 3c0: horiz pel panning = %02x   \n",
                          (unsigned) value);
 #endif
@@ -992,7 +968,7 @@ void CS3Trio64::write_b_3c0(u8 value)
            case 0x14: // Color Select Register
              state.attribute_ctrl.color_select = (value & 0x0f);
              redraw_area(0, 0, old_iWidth, old_iHeight);
-#if !defined(VGA_TRACE_FEATURE)
+#if defined(DEBUG_VGA)
              printf("io write 3c0: color select = %02x   \n",
                          (unsigned) state.attribute_ctrl.color_select);
 #endif
@@ -1014,7 +990,7 @@ void CS3Trio64::write_b_3c2(u8 value)
       state.misc_output.select_high_bank = (value >> 5) & 0x01;
       state.misc_output.horiz_sync_pol   = (value >> 6) & 0x01;
       state.misc_output.vert_sync_pol    = (value >> 7) & 0x01;
-#if !defined(VGA_TRACE_FEATURE)
+#if defined(DEBUG_VGA)
          printf("io write 3c2:   \n");
          printf("  color_emulation = %u   \n", (unsigned) state.misc_output.color_emulation);
          printf("  enable_ram = %u   \n",(unsigned) state.misc_output.enable_ram);
@@ -1039,7 +1015,7 @@ void CS3Trio64::write_b_3c5(u8 value)
     /* Sequencer Registers 00..04 */
        switch (state.sequencer.index) {
          case 0: /* sequencer: reset */
- #if !defined(VGA_TRACE_FEATURE)
+ #if defined(DEBUG_VGA)
            printf("write 0x3c5: sequencer reset: value=0x%02x   \n", (unsigned) value);
  #endif
            if (state.sequencer.reset1 && ((value & 0x01) == 0)) 
@@ -1053,7 +1029,7 @@ void CS3Trio64::write_b_3c5(u8 value)
            state.sequencer.reset2 = (value >> 1) & 0x01;
            break;
          case 1: /* sequencer: clocking mode */
-#if !defined(VGA_TRACE_FEATURE)
+#if defined(DEBUG_VGA)
            printf("io write 3c5=%02x: clocking mode reg: ignoring   \n", (unsigned) value);
 #endif
            state.sequencer.reg1 = value & 0x3f;
@@ -1083,7 +1059,7 @@ void CS3Trio64::write_b_3c5(u8 value)
            state.sequencer.odd_even       = (value >> 2) & 0x01;
            state.sequencer.chain_four     = (value >> 3) & 0x01;
  
- #if !defined(VGA_TRACE_FEATURE)
+ #if defined(DEBUG_VGA)
            printf("io write 3c5: index 4:   \n");
            printf("  extended_mem %u   \n", (unsigned) state.sequencer.extended_mem);
            printf("  odd_even %u   \n", (unsigned) state.sequencer.odd_even);
@@ -1100,8 +1076,10 @@ void CS3Trio64::write_b_3c6(u8 value)
 {
 /* PEL mask */
        state.pel.mask = value;
+#if defined(DEBUG_VGA)
        if (state.pel.mask != 0xff)
          printf("io write 3c6: PEL mask=0x%02x != 0xFF   \n", value);
+#endif
        // state.pel.mask should be and'd with final value before
        // indexing into color register state.pel.data[]
 }
@@ -1157,9 +1135,11 @@ void CS3Trio64::write_b_3c9(u8 value)
 void CS3Trio64::write_b_3ce(u8 value)
 {
   /* Graphics Controller Index Register */
-       if (value > 0x08) /* ??? */
-         printf("io write: 3ce: value > 8   \n");
-       state.graphics_ctrl.index = value;
+#if defined(DEBUG_VGA)
+  if (value > 0x08) /* ??? */
+    printf("io write: 3ce: value > 8   \n");
+#endif
+  state.graphics_ctrl.index = value;
 }
 
 void CS3Trio64::write_b_3cf(u8 value)
@@ -1184,7 +1164,7 @@ void CS3Trio64::write_b_3cf(u8 value)
            break;
          case 4: /* Read Map Select */
            state.graphics_ctrl.read_map_select = value & 0x03;
-#if !defined(VGA_TRACE_FEATURE)
+#if defined(DEBUG_VGA)
            printf("io write to 03cf = %02x (RMS)   \n", (unsigned) value);
 #endif
            break;
@@ -1194,12 +1174,14 @@ void CS3Trio64::write_b_3cf(u8 value)
            state.graphics_ctrl.odd_even   = (value >> 4) & 0x01;
            state.graphics_ctrl.shift_reg         = (value >> 5) & 0x03;
  
+#if defined(DEBUG_VGA)
            if (state.graphics_ctrl.odd_even)
              printf("io write: 3cf: reg 05: value = %02xh   \n",
                (unsigned) value);
            if (state.graphics_ctrl.shift_reg)
              printf("io write: 3cf: reg 05: value = %02xh   \n",
                (unsigned) value);
+#endif
            break;
          case 6: /* Miscellaneous */
            prev_graphics_alpha = state.graphics_ctrl.graphics_alpha;
@@ -1209,7 +1191,7 @@ void CS3Trio64::write_b_3cf(u8 value)
            state.graphics_ctrl.graphics_alpha = value & 0x01;
            state.graphics_ctrl.chain_odd_even = (value >> 1) & 0x01;
            state.graphics_ctrl.memory_mapping = (value >> 2) & 0x03;
-#if !defined(VGA_TRACE_FEATURE)
+#if defined(DEBUG_VGA)
            printf("memory_mapping set to %u   \n",
                (unsigned) state.graphics_ctrl.memory_mapping);
            printf("graphics mode set to %u   \n",
@@ -1244,17 +1226,21 @@ void CS3Trio64::write_b_3cf(u8 value)
 void CS3Trio64::write_b_3d4(u8 value)
 {
   state.CRTC.address = value & 0x7f;
+#if defined(DEBUG_VGA)
        if (state.CRTC.address > 0x18)
          printf("write: invalid CRTC register 0x%02x selected",
            (unsigned) state.CRTC.address);
+#endif
 }
 
 void CS3Trio64::write_b_3d5(u8 value)
 {
   /* CRTC Registers */
   if (state.CRTC.address > 0x18) {
+#if defined(DEBUG_VGA)
          printf("write: invalid CRTC register 0x%02x ignored",
            (unsigned) state.CRTC.address);
+#endif
          return;
        }
        if (state.CRTC.write_protect && (state.CRTC.address < 0x08)) {
@@ -1397,11 +1383,15 @@ u8 CS3Trio64::read_b_3c5()
 {
       switch (state.sequencer.index) {
         case 0: /* sequencer: reset */
+#if defined(DEBUG_VGA)
           BX_DEBUG(("io read 0x3c5: sequencer reset"));
+#endif
           return (state.sequencer.reset1?1:0) | (state.sequencer.reset2?2:0);
           break;
         case 1: /* sequencer: clocking mode */
-          BX_DEBUG(("io read 0x3c5: sequencer clocking mode"));
+ #if defined(DEBUG_VGA)
+         BX_DEBUG(("io read 0x3c5: sequencer clocking mode"));
+#endif
           return state.sequencer.reg1;
           break;
         case 2: /* sequencer: map mask register */
@@ -1495,9 +1485,11 @@ u8 CS3Trio64::read_b_3cf()
             ((state.graphics_ctrl.read_mode & 0x01) << 3) |
             ((state.graphics_ctrl.write_mode & 0x03) << 0);
 
+#if defined(DEBUG_VGA)
           if (state.graphics_ctrl.odd_even ||
               state.graphics_ctrl.shift_reg)
             BX_DEBUG(("io read 0x3cf: reg 05 = 0x%02x", (unsigned) retval));
+#endif
           return (retval);
           break;
         case 6: /* Miscellaneous */
@@ -1665,15 +1657,15 @@ void CS3Trio64::update(void)
     unsigned r, c, w, h;
     int i;
     unsigned long red, green, blue, colour;
-    Bit8u * vid_ptr, * vid_ptr2;
-    Bit8u * tile_ptr, * tile_ptr2;
+    u8 * vid_ptr, * vid_ptr2;
+    u8 * tile_ptr, * tile_ptr2;
     bx_svga_tileinfo_t info;
-    Bit8u dac_size = state.vbe_8bit_dac ? 8 : 6;
+    u8 dac_size = state.vbe_8bit_dac ? 8 : 6;
 
     iWidth=state.vbe_xres;
     iHeight=state.vbe_yres;
     pitch = state.line_offset;
-    Bit8u *disp_ptr = &state.memory[state.vbe_virtual_start]; 
+    u8 *disp_ptr = &state.memory[state.vbe_virtual_start]; 
 
     if (bx_gui->graphics_tile_info(&info)) {
       if (info.is_indexed) {
@@ -1701,12 +1693,12 @@ void CS3Trio64::update(void)
                       }
                       if (info.is_little_endian) {
                         for (i=0; i<info.bpp; i+=8) {
-                          *(tile_ptr2++) = (Bit8u)(colour >> i);
+                          *(tile_ptr2++) = (u8)(colour >> i);
                         }
                       }
                       else {
                         for (i=info.bpp-8; i>-8; i-=8) {
-                          *(tile_ptr2++) = (Bit8u)(colour >> i);
+                          *(tile_ptr2++) = (u8)(colour >> i);
                         }
                       }
                     }
@@ -1743,12 +1735,12 @@ void CS3Trio64::update(void)
                         state.pel.data[colour].blue, dac_size, info.blue_shift, info.blue_mask);
                       if (info.is_little_endian) {
                         for (i=0; i<info.bpp; i+=8) {
-                          *(tile_ptr2++) = (Bit8u)(colour >> i);
+                          *(tile_ptr2++) = (u8)(colour >> i);
                         }
                       }
                       else {
                         for (i=info.bpp-8; i>-8; i-=8) {
-                          *(tile_ptr2++) = (Bit8u)(colour >> i);
+                          *(tile_ptr2++) = (u8)(colour >> i);
                         }
                       }
                     }
@@ -1779,12 +1771,12 @@ void CS3Trio64::update(void)
                         colour & 0x7c00, 15, info.red_shift, info.red_mask);
                       if (info.is_little_endian) {
                         for (i=0; i<info.bpp; i+=8) {
-                          *(tile_ptr2++) = (Bit8u)(colour >> i);
+                          *(tile_ptr2++) = (u8)(colour >> i);
                         }
                       }
                       else {
                         for (i=info.bpp-8; i>-8; i-=8) {
-                          *(tile_ptr2++) = (Bit8u)(colour >> i);
+                          *(tile_ptr2++) = (u8)(colour >> i);
                         }
                       }
                     }
@@ -1815,12 +1807,12 @@ void CS3Trio64::update(void)
                         colour & 0xf800, 16, info.red_shift, info.red_mask);
                       if (info.is_little_endian) {
                         for (i=0; i<info.bpp; i+=8) {
-                          *(tile_ptr2++) = (Bit8u)(colour >> i);
+                          *(tile_ptr2++) = (u8)(colour >> i);
                         }
                       }
                       else {
                         for (i=info.bpp-8; i>-8; i-=8) {
-                          *(tile_ptr2++) = (Bit8u)(colour >> i);
+                          *(tile_ptr2++) = (u8)(colour >> i);
                         }
                       }
                     }
@@ -1852,12 +1844,12 @@ void CS3Trio64::update(void)
                         blue, 8, info.blue_shift, info.blue_mask);
                       if (info.is_little_endian) {
                         for (i=0; i<info.bpp; i+=8) {
-                          *(tile_ptr2++) = (Bit8u)(colour >> i);
+                          *(tile_ptr2++) = (u8)(colour >> i);
                         }
                       }
                       else {
                         for (i=info.bpp-8; i>-8; i-=8) {
-                          *(tile_ptr2++) = (Bit8u)(colour >> i);
+                          *(tile_ptr2++) = (u8)(colour >> i);
                         }
                       }
                     }
@@ -1890,12 +1882,12 @@ void CS3Trio64::update(void)
                         blue, 8, info.blue_shift, info.blue_mask);
                       if (info.is_little_endian) {
                         for (i=0; i<info.bpp; i+=8) {
-                          *(tile_ptr2++) = (Bit8u)(colour >> i);
+                          *(tile_ptr2++) = (u8)(colour >> i);
                         }
                       }
                       else {
                         for (i=info.bpp-8; i>-8; i-=8) {
-                          *(tile_ptr2++) = (Bit8u)(colour >> i);
+                          *(tile_ptr2++) = (u8)(colour >> i);
                         }
                       }
                     }
@@ -1935,7 +1927,7 @@ void CS3Trio64::update(void)
   // if (state.vga_mem_updated==0 || state.attribute_ctrl.video_enabled == 0)
 
   if (state.graphics_ctrl.graphics_alpha) {
-    Bit8u color;
+    u8 color;
     unsigned bit_no, r, c, x, y;
     unsigned long byte_offset, start_addr;
     unsigned xc, yc, xti, yti;
@@ -1960,9 +1952,9 @@ void CS3Trio64::update(void)
     switch ( state.graphics_ctrl.shift_reg ) {
 
       case 0:
-        Bit8u attribute, palette_reg_val, DAC_regno;
+        u8 attribute, palette_reg_val, DAC_regno;
         unsigned long line_compare;
-        Bit8u *plane0, *plane1, *plane2, *plane3;
+        u8 *plane0, *plane1, *plane2, *plane3;
 
         if (state.graphics_ctrl.memory_mapping == 3) { // CGA 640x200x2
 
@@ -2118,7 +2110,10 @@ void CS3Trio64::update(void)
           unsigned long pixely, pixelx, plane;
 
           if (state.misc_output.select_high_bank != 1)
-            BX_PANIC(("update: select_high_bank != 1"));
+          {
+            printf("update: select_high_bank != 1   \n");
+            exit(1);
+          }
 
           for (yc=0, yti=0; yc<iHeight; yc+=Y_TILESIZE, yti++) {
             for (xc=0, xti=0; xc<iWidth; xc+=X_TILESIZE, xti++) {
@@ -2170,8 +2165,9 @@ void CS3Trio64::update(void)
         break; // case 2
 
       default:
-        BX_PANIC(("update: shift_reg == %u", (unsigned)
-          state.graphics_ctrl.shift_reg ));
+        printf("update: shift_reg == %u   \n", (unsigned)
+          state.graphics_ctrl.shift_reg );
+        exit(1);
       }
 
     state.vga_mem_updated = 0;
@@ -2208,7 +2204,9 @@ void CS3Trio64::update(void)
     // Maximum Scan Line: height of character cell
     MSL = state.CRTC.reg[0x09] & 0x1f;
     if (MSL == 0) {
+#if defined(DEBUG_VGA)
       BX_ERROR(("character height = 1, skipping text update"));
+#endif
       return;
     }
     cols = state.CRTC.reg[1] + 1;
@@ -2385,8 +2383,8 @@ u8 CS3Trio64::vga_mem_read(u32 addr)
 
     case 1: /* read mode 1 */
       {
-      Bit8u color_compare, color_dont_care;
-      Bit8u latch0, latch1, latch2, latch3, retval;
+      u8 color_compare, color_dont_care;
+      u8 latch0, latch1, latch2, latch3, retval;
 
       color_compare   = state.graphics_ctrl.color_compare & 0x0f;
       color_dont_care = state.graphics_ctrl.color_dont_care & 0x0f;
@@ -2415,12 +2413,12 @@ u8 CS3Trio64::vga_mem_read(u32 addr)
   }
 }
 
-void CS3Trio64::vga_mem_write(Bit32u addr, Bit8u value)
+void CS3Trio64::vga_mem_write(u32 addr, u8 value)
 {
-  Bit32u offset;
-  Bit8u new_val[4];
+  u32 offset;
+  u8 new_val[4];
   unsigned start_addr;
-  Bit8u *plane0, *plane1, *plane2, *plane3;
+  u8 *plane0, *plane1, *plane2, *plane3;
 
 #if BX_SUPPORT_VBE
   // if in a vbe enabled mode, write to the vbe_memory
@@ -2442,26 +2440,17 @@ void CS3Trio64::vga_mem_write(Bit32u addr, Bit8u value)
   switch (state.graphics_ctrl.memory_mapping) {
     case 1: // 0xA0000 .. 0xAFFFF
       if (addr > 0xAFFFF)
-      {
-        printf("Wrong!   \n");
         return;
-      }
       offset = addr - 0xA0000;
       break;
     case 2: // 0xB0000 .. 0xB7FFF
       if ((addr < 0xB0000) || (addr > 0xB7FFF))
-      {
-        printf("Wrong!   \n");
         return;
-      }
       offset = addr - 0xB0000;
       break;
     case 3: // 0xB8000 .. 0xBFFFF
       if (addr < 0xB8000)
-      {
-        printf("Wrong!   \n");
         return;
-      }
       offset = addr - 0xB8000;
       break;
     default: // 0xA0000 .. 0xBFFFF
@@ -2570,9 +2559,9 @@ void CS3Trio64::vga_mem_write(Bit32u addr, Bit8u value)
 
     case 0: /* write mode 0 */
       {
-        const Bit8u bitmask = state.graphics_ctrl.bitmask;
-        const Bit8u set_reset = state.graphics_ctrl.set_reset;
-        const Bit8u enable_set_reset = state.graphics_ctrl.enable_set_reset;
+        const u8 bitmask = state.graphics_ctrl.bitmask;
+        const u8 set_reset = state.graphics_ctrl.set_reset;
+        const u8 enable_set_reset = state.graphics_ctrl.enable_set_reset;
         /* perform rotate on CPU data in case its needed */
         if (state.graphics_ctrl.data_rotate) {
           value = (value >> state.graphics_ctrl.data_rotate) |
@@ -2687,7 +2676,7 @@ void CS3Trio64::vga_mem_write(Bit32u addr, Bit8u value)
 
     case 2: /* write mode 2 */
       {
-        const Bit8u bitmask = state.graphics_ctrl.bitmask;
+        const u8 bitmask = state.graphics_ctrl.bitmask;
 
         new_val[0] = state.graphics_ctrl.latch[0] & ~bitmask;
         new_val[1] = state.graphics_ctrl.latch[1] & ~bitmask;
@@ -2748,8 +2737,8 @@ void CS3Trio64::vga_mem_write(Bit32u addr, Bit8u value)
 
     case 3: /* write mode 3 */
       {
-        const Bit8u bitmask = state.graphics_ctrl.bitmask & value;
-        const Bit8u set_reset = state.graphics_ctrl.set_reset;
+        const u8 bitmask = state.graphics_ctrl.bitmask & value;
+        const u8 set_reset = state.graphics_ctrl.set_reset;
 
         /* perform rotate on CPU data */
         if (state.graphics_ctrl.data_rotate) {

@@ -27,6 +27,9 @@
  * \file
  * Defines the entry point for the application.
  *
+ * X-1.32       Camiel Vanderhoeven                             7-DEC-2007
+ *      Moved SDL_Init to gui implementation.
+ *
  * X-1.31       Camiel Vanderhoeven/Brian Wheeler               6-DEC-2007
  *      Use Boch's SDL gui plugin (with thanks to the Bochs project!!)
  *
@@ -233,10 +236,6 @@ int main(int argc, char* argv[])
 
   PLUG_load_plugin (sdl, PLUGTYPE_OPTIONAL);
 
-  if(SDL_Init(SDL_INIT_AUDIO|SDL_INIT_VIDEO) < 0) {
-    printf("%%SIM-F-INIT: Cannot initialize SDL library.\n");
-    exit(1);
-  }
   atexit(SDL_Quit);
 #endif // USE_CONSOLE
 
