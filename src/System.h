@@ -1,7 +1,7 @@
 /** ES40 emulator.
- * Copyright (C) 2007 by Camiel Vanderhoeven
+ * Copyright (C) 2007 by the ES40 Emulator Project
  *
- * Website: www.camicom.com
+ * Website: http://sourceforge.net/projects/es40
  * E-mail : camiel@camicom.com
  * 
  * This program is free software; you can redistribute it and/or
@@ -26,6 +26,9 @@
 /**
  * \file 
  * Contains the definitions for the emulated Typhoon Chipset devices.
+ *
+ * X-1.19       Camiel Vanderhoeven                             10-DEC-2007
+ *      Added get_cpu
  *
  * X-1.18       Camiel Vanderhoeven                             10-DEC-2007
  *      Use configurator.
@@ -175,6 +178,8 @@ class CSystem
 	
   CSystem(CConfigurator * cfg);
   void ResetMem(unsigned int membits);
+
+  CAlphaCPU * get_cpu(int cpunum) { return acCPUs[cpunum]; };
 
   virtual ~CSystem();
   unsigned int iNumMemoryBits;

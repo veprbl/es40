@@ -1,7 +1,7 @@
 /* ES40 emulator.
- * Copyright (C) 2007 by Camiel Vanderhoeven
+ * Copyright (C) 2007 by the ES40 Emulator Project
  *
- * Website: www.camicom.com
+ * Website: http://sourceforge.net/projects/es40
  * E-mail : camiel@camicom.com
  * 
  * This program is free software; you can redistribute it and/or
@@ -26,6 +26,9 @@
 /** 
  * \file
  * Contains the code for the emulated Dual Port Ram and RMC devices.
+ *
+ * X-1.12       Camiel Vanderhoeven                             10-DEC-2007
+ *      Changes to make the TraceEngine work again after recent changes.
  *
  * X-1.11       Camiel Vanderhoeven                             10-DEC-2007
  *      Use configurator.
@@ -501,40 +504,59 @@ void CDPR::SaveState(FILE * f)
  * Save state to a DPR rom file.
  **/
 
-void CDPR::SaveStateF()
+void CDPR::SaveStateF(char * fn)
 {
   FILE * ff;
-  ff = fopen(myCfg->get_text_value("rom.dpr","dpr.rom"),"wb");
+  ff = fopen(fn,"wb");
   if (ff)
     {
       SaveState(ff);
       fclose(ff);
-      printf("%%DPR-I-SAVEST: DPR state saved to %s\n",myCfg->get_text_value("rom.dpr","dpr.rom"));
+      printf("%%DPR-I-SAVEST: DPR state saved to %s\n",fn);
     }
   else
   {
-    printf("%%DPR-F-NOSAVE: DPR could not be saved to %s\n",myCfg->get_text_value("rom.dpr","dpr.rom"));
+    printf("%%DPR-F-NOSAVE: DPR could not be saved to %s\n",fn);
   }
+}
+
+/**
+ * Save state to the default DPR rom file.
+ **/
+
+void CDPR::SaveStateF()
+{
+  SaveStateF(myCfg->get_text_value("rom.dpr","dpr.rom"));
 }
 
 /**
  * Restore state from a DPR rom file.
  **/
 
-void CDPR::RestoreStateF()
+void CDPR::RestoreStateF(char * fn)
 {
   FILE * ff;
-  ff = fopen(myCfg->get_text_value("rom.dpr","dpr.rom"),"rb");
+  ff = fopen(fn,"rb");
   if (ff)
     {
       RestoreState(ff);
       fclose(ff);
-      printf("%%DPR-I-RESTST: DPR state restored from %s\n",myCfg->get_text_value("rom.dpr","dpr.rom"));
+      printf("%%DPR-I-RESTST: DPR state restored from %s\n",fn);
     }
   else
   {
-    printf("%%DPR-F-NOREST: DPR could not be restored from %s\n",myCfg->get_text_value("rom.dpr","dpr.rom"));
+    printf("%%DPR-F-NOREST: DPR could not be restored from %s\n",fn);
   }
+}
+
+
+/**
+ * Restore state from the default DPR rom file.
+ **/
+
+void CDPR::RestoreStateF()
+{
+  RestoreStateF(myCfg->get_text_value("rom.dpr","dpr.rom"));
 }
 
 /**

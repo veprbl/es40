@@ -1,7 +1,7 @@
 /* ES40 emulator.
- * Copyright (C) 2007 by Camiel Vanderhoeven
+ * Copyright (C) 2007 by the ES40 Emulator Project
  *
- * Website: www.camicom.com
+ * Website: http://sourceforge.net/projects/es40
  * E-mail : camiel@camicom.com
  * 
  * This program is free software; you can redistribute it and/or
@@ -26,6 +26,9 @@
 /** 
  * \file
  * Contains the code for the emulated Flash ROM devices.
+ *
+ * X-1.12       Camiel Vanderhoeven                             10-DEC-2007
+ *      Changes to make the TraceEngine work again after recent changes.
  *
  * X-1.11       Camiel Vanderhoeven                             10-DEC-2007
  *      Use configurator.
@@ -248,20 +251,29 @@ void CFlash::SaveState(FILE * f)
  * Save state to a flash rom file.
  **/
 
-void CFlash::SaveStateF()
+void CFlash::SaveStateF(char * fn)
 {
   FILE * ff;
-  ff = fopen(myCfg->get_text_value("rom.flash","flash.rom"),"wb");
+  ff = fopen(fn,"wb");
   if (ff)
     {
       SaveState(ff);
       fclose(ff);
-      printf("%%FLS-I-SAVEST: Flash state saved to %s\n",myCfg->get_text_value("rom.flash","flash.rom"));
+      printf("%%FLS-I-SAVEST: Flash state saved to %s\n",fn);
     }
   else
   {
-    printf("%%FLS-F-NOSAVE: Flash could not be saved to %s\n",myCfg->get_text_value("rom.flash","flash.rom"));
+    printf("%%FLS-F-NOSAVE: Flash could not be saved to %s\n",fn);
   }
+}
+
+/**
+ * Save state to the default flash rom file.
+ **/
+
+void CFlash::SaveStateF()
+{
+  SaveStateF(myCfg->get_text_value("rom.flash","flash.rom"));
 }
 
 /**
@@ -278,20 +290,29 @@ void CFlash::RestoreState(FILE * f)
  * Restore state from a flash rom file.
  **/
 
-void CFlash::RestoreStateF()
+void CFlash::RestoreStateF(char * fn)
 {
   FILE * ff;
-  ff = fopen(myCfg->get_text_value("rom.flash","flash.rom"),"rb");
+  ff = fopen(fn,"rb");
   if (ff)
     {
       RestoreState(ff);
       fclose(ff);
-      printf("%%FLS-I-RESTST: Flash state restored from %s\n",myCfg->get_text_value("rom.flash","flash.rom"));
+      printf("%%FLS-I-RESTST: Flash state restored from %s\n",fn);
     }
   else
   {
-    printf("%%FLS-F-NOREST: Flash could not be restored from %s\n",myCfg->get_text_value("rom.flash","flash.rom"));
+    printf("%%FLS-F-NOREST: Flash could not be restored from %s\n",fn);
   }
+}
+
+/**
+ * Restore state from the default flash rom file.
+ **/
+
+void CFlash::RestoreStateF()
+{
+  RestoreStateF(myCfg->get_text_value("rom.flash","flash.rom"));
 }
 
 CFlash * theSROM = 0;

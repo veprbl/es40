@@ -1,7 +1,7 @@
 /* ES40 emulator.
- * Copyright (C) 2007 by Camiel Vanderhoeven
+ * Copyright (C) 2007 by the ES40 Emulator Project
  *
- * Website: www.camicom.com
+ * Website: http://sourceforge.net/projects/es40
  * E-mail : camiel@camicom.com
  * 
  * This program is free software; you can redistribute it and/or
@@ -27,6 +27,9 @@
  * \file 
  * Contains the code for the CPU tracing engine.
  * This will become the debugging engine (interactive debugger) soon.
+ *
+ * X-1.31       Camiel Vanderhoeven                             10-DEC-2007
+ *      Changes to make the TraceEngine work again after recent changes.
  *
  * X-1.30       Brian Wheeler                                   6-DEC-2007
  *      Bugfix in real_address.                   
@@ -131,8 +134,6 @@
  * \author Camiel Vanderhoeven (camiel@camicom.com / www.camicom.com)
  **/
 
-
-
 #include "StdAfx.h"
 
 #if defined(IDB)
@@ -143,11 +144,6 @@
 #include "DPR.h"
 #include "Flash.h"
 #include "lockstep.h"
-
-extern CSystem * systm;
-extern CAlphaCPU * cpu [4];
-extern CDPR * dpr;
-extern CFlash * srom;
 
 CTraceEngine * trc;
 
@@ -621,7 +617,7 @@ void CTraceEngine::run_script(char * filename)
     }
     else
     {
-      printf("IDB %016" LL "x %c>",cpu[0]->get_clean_pc(), (cpu[0]->get_pc()&X64(1))?'P':'-');
+      printf("IDB %016" LL "x %c>",theSystem->get_cpu(0)->get_clean_pc(), (theSystem->get_cpu(0)->get_pc()&X64(1))?'P':'-');
     }
 #endif
 
@@ -734,7 +730,7 @@ int CTraceEngine::parse(char command[100][100])
     if (!strncasecmp(command[0],"STEP",strlen(command[0])))
     {
       printf("%%IDB-I-SSTEP : Single step.\n");
-      systm->SingleStep();
+      theSystem->SingleStep();
       return 0;
     }
     if (!strncasecmp(command[0],"DUMPREGS",strlen(command[0])))
@@ -743,27 +739,27 @@ int CTraceEngine::parse(char command[100][100])
       for(i=0;i<32;i++)
       {
 	if (i<10) printf("R");
-	printf("%d:%016" LL "x", i, cpu[0]->get_r(i,false));
+	printf("%d:%016" LL "x", i, theSystem->get_cpu(0)->get_r(i,false));
 	if (i%4==3) printf("\n"); else printf(" ");
       }
       printf("\n");
       for(i=4;i<8;i++)
       {
 	if (i<10) printf("S");
-	printf("%d:%016" LL "x", i, cpu[0]->get_r(i+32,false));
+	printf("%d:%016" LL "x", i, theSystem->get_cpu(0)->get_r(i+32,false));
 	if (i%4==3) printf("\n"); else printf(" ");
       }
       for(i=20;i<24;i++)
       {
 	if (i<10) printf("S");
-	printf("%d:%016" LL "x", i, cpu[0]->get_r(i+32,false));
+	printf("%d:%016" LL "x", i, theSystem->get_cpu(0)->get_r(i+32,false));
 	if (i%4==3) printf("\n"); else printf(" ");
       }
       printf("\n");
       for(i=0;i<32;i++)
       {
 	if (i<10) printf("F");
-	printf("%d:%016" LL "x", i, cpu[0]->get_f(i));
+	printf("%d:%016" LL "x", i, theSystem->get_cpu(0)->get_f(i));
 	if (i%4==3) printf("\n"); else printf(" ");
       }
       printf("=========================================================\n");
@@ -782,12 +778,12 @@ int CTraceEngine::parse(char command[100][100])
       case -1:
 	for (i=0;;i++)
 	{
-	  if (systm->SingleStep())
+	  if (theSystem->SingleStep())
 	  {
 	    printf("%%IDB-I-ABORT : Abort run requested (probably from serial port)\n");
 	    break;
 	  }
-	  if (cpu[0]->get_clean_pc() < iBreakPoint)
+	  if (theSystem->get_cpu(0)->get_clean_pc() < iBreakPoint)
 	  {
             printf("%%IDB-I-BRKPT : Breakpoint encountered.\n");
 	    break;
@@ -797,12 +793,12 @@ int CTraceEngine::parse(char command[100][100])
       case 0:
 	for(i=0;;i++)
 	{
-	  if (systm->SingleStep())
+	  if (theSystem->SingleStep())
 	  {
 	    printf("%%IDB-I-ABORT : Abort run requested (probably from serial port)\n");
 	    break;
 	  }
-	  if (cpu[0]->get_clean_pc() == iBreakPoint)
+	  if (theSystem->get_cpu(0)->get_clean_pc() == iBreakPoint)
 	  {
             printf("%%IDB-I-BRKPT : Breakpoint encountered.\n");
 	    break;
@@ -812,12 +808,12 @@ int CTraceEngine::parse(char command[100][100])
       case 1:
 	for(i=0;;i++)
 	{
-	  if (systm->SingleStep())
+	  if (theSystem->SingleStep())
 	  {
 	    printf("%%IDB-I-ABORT : Abort run requested (probably from serial port)\n");
 	    break;
 	  }
-	  if (cpu[0]->get_clean_pc() > iBreakPoint)
+	  if (theSystem->get_cpu(0)->get_clean_pc() > iBreakPoint)
 	  {
             printf("%%IDB-I-BRKPT : Breakpoint encountered.\n");
 	    break;
@@ -896,13 +892,13 @@ int CTraceEngine::parse(char command[100][100])
       if (!strcasecmp(command[1],"ON"))
       {
 	printf("%%IDB-I-PALON : PALmode enabled.\n");
-	cpu[0]->set_pc(cpu[0]->get_clean_pc() + 1);
+	theSystem->get_cpu(0)->set_pc(theSystem->get_cpu(0)->get_clean_pc() + 1);
 	return 0;
       }
       if (!strcasecmp(command[1],"OFF"))
       {
 	printf("%%IDB-I-PALOFF: PALmode disabled.\n");
-	cpu[0]->set_pc(cpu[0]->get_clean_pc());
+	theSystem->get_cpu(0)->set_pc(theSystem->get_cpu(0)->get_clean_pc());
 	return 0;
       }
     }
@@ -946,12 +942,12 @@ int CTraceEngine::parse(char command[100][100])
         case -1:
 	  for (i=0;i<RunCycles;i++)
 	  {
-	    if (systm->SingleStep())
+	    if (theSystem->SingleStep())
 	    {
 	      printf("%%IDB-I-ABORT : Abort run requested (probably from serial port)\n");
 	      break;
 	    }
- 	    if (cpu[0]->get_clean_pc() < iBreakPoint)
+ 	    if (theSystem->get_cpu(0)->get_clean_pc() < iBreakPoint)
 	    {
               printf("%%IDB-I-BRKPT : Breakpoint encountered.\n");
 	      break;
@@ -961,12 +957,12 @@ int CTraceEngine::parse(char command[100][100])
         case 0:
 	  for(i=0;i<RunCycles;i++)
 	  {
-	    if (systm->SingleStep())
+	    if (theSystem->SingleStep())
 	    {
 	      printf("%%IDB-I-ABORT : Abort run requested (probably from serial port)\n");
 	      break;
 	    }
-	    if (cpu[0]->get_clean_pc() == iBreakPoint)
+	    if (theSystem->get_cpu(0)->get_clean_pc() == iBreakPoint)
 	    {
               printf("%%IDB-I-BRKPT : Breakpoint encountered.\n");
 	      break;
@@ -976,12 +972,12 @@ int CTraceEngine::parse(char command[100][100])
         case 1:
 	  for(i=0;i<RunCycles;i++)
 	  {
-	    if (systm->SingleStep())
+	    if (theSystem->SingleStep())
 	    {
 	      printf("%%IDB-I-ABORT : Abort run requested (probably from serial port)\n");
 	      break;
 	    }
-	    if (cpu[0]->get_clean_pc() > iBreakPoint)
+	    if (theSystem->get_cpu(0)->get_clean_pc() > iBreakPoint)
 	    {
               printf("%%IDB-I-BRKPT : Breakpoint encountered.\n");
 	      break;
@@ -996,7 +992,7 @@ int CTraceEngine::parse(char command[100][100])
       {
         printf("%%IDB-I-RUNCYC: Running until max cycles reached.\n");
 	for(i=0;i<RunCycles;i++)
-	  if (systm->SingleStep())
+	  if (theSystem->SingleStep())
 	  {
 	    printf("%%IDB-I-ABORT : Abort run requested (probably from serial port)\n");
 	    break;
@@ -1019,7 +1015,7 @@ int CTraceEngine::parse(char command[100][100])
 	return 0;
       }
       printf("%%IDB-I-JUMPTO: Jumping.\n");
-      cpu[0]->set_pc(iJump + (cpu[0]->get_pc() & X64(1)));
+      theSystem->get_cpu(0)->set_pc(iJump + (theSystem->get_cpu(0)->get_pc() & X64(1)));
       return 0;
     }
     break;
@@ -1069,17 +1065,17 @@ int CTraceEngine::parse(char command[100][100])
       }
       if (!strncasecmp(command[1],"STATE",strlen(command[1])))
       {
-	systm->RestoreState(command[2]);
+	theSystem->RestoreState(command[2]);
 	return 0;
       }
       if (!strncasecmp(command[1],"DPR",strlen(command[1])))
       {
-	dpr->RestoreStateF(command[2]);
+	theDPR->RestoreStateF(command[2]);
 	return 0;
       }
       if (!strncasecmp(command[1],"FLASH",strlen(command[1])))
       {
-	srom->RestoreStateF(command[2]);
+	theSROM->RestoreStateF(command[2]);
 	return 0;
       }
     }
@@ -1087,17 +1083,17 @@ int CTraceEngine::parse(char command[100][100])
     {
       if (!strncasecmp(command[1],"STATE",strlen(command[1])))
       {
-	systm->SaveState(command[2]);
+	theSystem->SaveState(command[2]);
 	return 0;
       }
       if (!strncasecmp(command[1],"DPR",strlen(command[1])))
       {
-	dpr->SaveStateF(command[2]);
+	theDPR->SaveStateF(command[2]);
 	return 0;
       }
       if (!strncasecmp(command[1],"FLASH",strlen(command[1])))
       {
-	srom->SaveStateF(command[2]);
+	theSROM->SaveStateF(command[2]);
 	return 0;
       }
     }
@@ -1114,7 +1110,7 @@ int CTraceEngine::parse(char command[100][100])
 	  printf("%%IDB-F-INVVAL: Invalid hexadecimal value.\n");
 	  return 0;
       }
-      cpu[0]->set_r(reg,value);
+      theSystem->get_cpu(0)->set_r(reg,value);
       return 0;
     }
     if (!strncasecmp(command[0],"LOADFPREG",strlen(command[0]))) {
@@ -1130,7 +1126,7 @@ int CTraceEngine::parse(char command[100][100])
 	  printf("%%IDB-F-INVVAL: Invalid hexadecimal value.\n");
 	  return 0;
       }
-      cpu[0]->set_f(reg,value);
+      theSystem->get_cpu(0)->set_f(reg,value);
       return 0;
     }
     break;
@@ -1155,7 +1151,7 @@ int CTraceEngine::parse(char command[100][100])
 	printf("%%IDB-F-FRLTTO: From value exceeds to value.\n");
 	return 0;
       }
-      cpu[0]->listing(iFrom,iTo);
+      theSystem->get_cpu(0)->listing(iFrom,iTo);
       return 0;
     }
     break;
@@ -1180,8 +1176,8 @@ void CTraceEngine::list_all()
   struct sRegion *p = NULL;
   int f = 0;
   int t = 0;
-  int ms   = 1<<(systm->get_memory_bits() - 3);
-  u64 * pM = (u64*) systm->PtrToMem(0);
+  int ms   = 1<<(theSystem->get_memory_bits() - 3);
+  u64 * pM = (u64*) theSystem->PtrToMem(0);
   
 
   for (;;)
@@ -1225,7 +1221,7 @@ void CTraceEngine::list_all()
   while (p)
   {
     printf("\n======== DISASSEMBLING %08" LL "x TO %08" LL "x ========\n\n",p->from, p->to);
-    cpu[0]->listing(p->from,p->to);
+    theSystem->get_cpu(0)->listing(p->from,p->to);
     p = p->pNext;
   }
 }

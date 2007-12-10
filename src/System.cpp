@@ -1,7 +1,7 @@
 /* ES40 emulator.
- * Copyright (C) 2007 by Camiel Vanderhoeven
+ * Copyright (C) 2007 by the ES40 Emulator Project
  *
- * Website: www.camicom.com
+ * Website: http://sourceforge.net/projects/es40
  * E-mail : camiel@camicom.com
  * 
  * This program is free software; you can redistribute it and/or
@@ -26,6 +26,9 @@
 /**
  * \file 
  * Contains the code for the emulated Typhoon Chipset devices.
+ *
+ * X-1.38       Camiel Vanderhoeven                             10-DEC-2007
+ *      Added get_cpu
  *
  * X-1.37       Camiel Vanderhoeven                             10-DEC-2007
  *      Use configurator.

@@ -1,7 +1,7 @@
 /* ES40 emulator.
- * Copyright (C) 2007 by Camiel Vanderhoeven
+ * Copyright (C) 2007 by the ES40 Emulator Project
  *
- * Website: www.camicom.com
+ * Website: http://sourceforge.net/projects/es40
  * E-mail : camiel@camicom.com
  * 
  * This program is free software; you can redistribute it and/or
@@ -26,6 +26,9 @@
 /**
  * \file 
  * Contains the definitions for the emulated Flash ROM devices.
+ *
+ * X-1.9        Camiel Vanderhoeven                             10-DEC-2007
+ *      Changes to make the TraceEngine work again after recent changes.
  *
  * X-1.8        Camiel Vanderhoeven                             10-DEC-2007
  *      Use configurator.
@@ -76,8 +79,10 @@ class CFlash : public CSystemComponent
   virtual ~CFlash();
   virtual void SaveState(FILE * f);
   virtual void RestoreState(FILE * f);
-  virtual void SaveStateF();
-  virtual void RestoreStateF();
+  void SaveStateF();
+  void RestoreStateF();
+  void SaveStateF(char * fn);
+  void RestoreStateF(char * fn);
 
  protected:
   u8 Flash[2*1024*1024];
