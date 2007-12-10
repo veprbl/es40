@@ -26,6 +26,9 @@
  * \file
  * Contains the definitions for emulated S3 Trio 64 Video Card device.
  *
+ * X-1.4        Brian Wheeler                                   10-DEC-2007
+ *      Added SDL.h.
+ *
  * X-1.3        Camiel Vanderhoeven                             10-DEC-2007
  *      Use new base class VGA.
  *
@@ -48,7 +51,7 @@
 #include "Configurator.h"
 
 #include <stdlib.h>
-
+#include <SDL.h>
 #include "gui/vga.h"
 
 /* video card has 4M of ram */

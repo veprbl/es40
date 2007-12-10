@@ -27,6 +27,9 @@
  * \file 
  * Contains the code for the emulated Ali M1543C chipset devices.
  *
+ * X-1.39       Brian Wheeler                                   10-DEC-2007
+ *      Improved timer logic.             
+ *
  * X-1.38       Camiel Vanderhoeven                             10-DEC-2007
  *      Added config item for vga_console.
  *
@@ -191,6 +194,9 @@
 bool pic_messages = false;
 #endif
 
+/* Timer Calibration: Instructions per Microsecond (assuming 1 clock = 1 instruction) */
+#define IPus 847
+
 u32 ali_cfg_data[64] = {
 /*00*/  0x153310b9, // CFID: vendor + device
 /*04*/  0x0200000f, // CFCS: command + status
@@ -243,6 +249,7 @@ u32 ali_cfg_mask[64] = {
         0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
         0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
 };
+
 
 /**
  * Constructor.
@@ -510,7 +517,7 @@ void CAliM1543C::kbd_gen_scancode(u32 key)
     } while ((inb(0x61) & 0x20) == 0 && count < TIMEOUT_COUNT);
   to calibrate the cpu clock.
 
-  Every 150000 reads the bit gets flipped so maybe the timing will
+  Every 1500 reads the bit gets flipped so maybe the timing will
   seem reasonable to the OS.
  */
 u8 CAliM1543C::reg_61_read()
@@ -534,7 +541,6 @@ void CAliM1543C::reg_61_write(u8 data)
 u8 CAliM1543C::toy_read(u64 address)
 {
   //printf("%%ALI-I-READTOY: read port %02x: 0x%02x\n", (u32)(0x70 + address), state.toy_access_ports[address]);
-
   return (u8)state.toy_access_ports[address];
 }
 
@@ -543,6 +549,7 @@ void CAliM1543C::toy_write(u64 address, u8 data)
   time_t ltime;
   struct tm stime;
   static long read_count = 0;
+  static long hold_count = 0;
 
   //printf("%%ALI-I-WRITETOY: write port %02x: 0x%02x\n", (u32)(0x70 + address), data);
 
@@ -575,71 +582,7 @@ void CAliM1543C::toy_write(u64 address, u8 data)
 	      state.toy_stored_data[6] = (u8)(stime.tm_wday + 1);
 	      state.toy_stored_data[7] = (u8)(stime.tm_mday);
 	      state.toy_stored_data[8] = (u8)(stime.tm_mon + 1);
-	      state.toy_stored_data[9] = (u8)(stime.tm_year % 100);
-
-            
-
-	      // Debian Linux wants something out of 0x0a.  It gets initialized
-	      // with 0x26, by the SRM (I assume) but I don't know what this
-	      // byte is supposed to mean...
-	      // Ah, here's something from the linux kernel:
-	      
-	      //# /********************************************************
-	      //# * register details
-	      //# ********************************************************/
-	      //# #define RTC_FREQ_SELECT RTC_REG_A
-	      //#
-	      //# /* update-in-progress - set to "1" 244 microsecs before RTC goes off the bus,
-	      //# * reset after update (may take 1.984ms @ 32768Hz RefClock) is complete,
-	      //# * totalling to a max high interval of 2.228 ms.
-	      //# */
-	      //# # define RTC_UIP 0x80
-	      //# # define RTC_DIV_CTL 0x70
-	      //# /* divider control: refclock values 4.194 / 1.049 MHz / 32.768 kHz */
-	      //# # define RTC_REF_CLCK_4MHZ 0x00
-	      //# # define RTC_REF_CLCK_1MHZ 0x10
-	      //# # define RTC_REF_CLCK_32KHZ 0x20
-	      //# /* 2 values for divider stage reset, others for "testing purposes only" */
-	      //# # define RTC_DIV_RESET1 0x60
-	      //# # define RTC_DIV_RESET2 0x70
-	      //# /* Periodic intr. / Square wave rate select. 0=none, 1=32.8kHz,... 15=2Hz */
-	      //# # define RTC_RATE_SELECT 0x0F
-	      //#
-	      
-	      // Soooooo, the kernel seems to be waiting for the RTC to issue an
-	      // update in progress and then clear it.  this clock takes 1500
-	      // reads to switch from one state to another.
-	      if(state.toy_stored_data[0x0a] & 0x80) {
-		state.toy_stored_data[0x0a] &= ~0x80;
-	      } else {
-		if(read_count % 1500 == 0)
-		  state.toy_stored_data[0x0a] |= 0x80;  
-	      }
-	      read_count++;
-	      
-	      //# /****************************************************/
-	      //# #define RTC_CONTROL RTC_REG_B
-	      //# # define RTC_SET 0x80 /* disable updates for clock setting */
-	      //# # define RTC_PIE 0x40 /* periodic interrupt enable */
-	      //# # define RTC_AIE 0x20 /* alarm interrupt enable */
-	      //# # define RTC_UIE 0x10 /* update-finished interrupt enable */
-	      //# # define RTC_SQWE 0x08 /* enable square-wave output */
-	      //# # define RTC_DM_BINARY 0x04 /* all time/date values are BCD if clear */
-	      //# # define RTC_24H 0x02 /* 24 hour mode - else hours bit 7 means pm */
-	      //# # define RTC_DST_EN 0x01 /* auto switch DST - works f. USA only */
-	      //#
-	      // this is set (by the srm?) to 0x0e = SQWE | DM_BINARY | 24H
-	      // sets the PIE bit.
-    
-	      //# /***********************************************************/
-	      //# #define RTC_INTR_FLAGS RTC_REG_C
-	      //# /* caution - cleared by read */
-	      //# # define RTC_IRQF 0x80 /* any of the following 3 is active */
-	      //# # define RTC_PF 0x40
-	      //# # define RTC_AF 0x20
-	      //# # define RTC_UF 0x10
-	      //#
-  
+	      state.toy_stored_data[9] = (u8)(stime.tm_year % 100);  
 	    }
 	  else
             {
@@ -661,16 +604,98 @@ void CAliM1543C::toy_write(u64 address, u8 data)
 	      state.toy_stored_data[8] = (u8)((((stime.tm_mon+1)/10)<<4) | ((stime.tm_mon+1)%10));
 	      state.toy_stored_data[9] = (u8)((((stime.tm_year%100)/10)<<4) | ((stime.tm_year%100)%10));
             }
+
+
+	  // Debian Linux wants something out of 0x0a.  It gets initialized
+	  // with 0x26, by the SRM
+	  // Ah, here's something from the linux kernel:
+	  //# /********************************************************
+	  //# * register details
+	  //# ********************************************************/
+	  //# #define RTC_FREQ_SELECT RTC_REG_A
+	  //#
+	  //# /* update-in-progress - set to "1" 244 microsecs before RTC goes off the bus,
+	  //# * reset after update (may take 1.984ms @ 32768Hz RefClock) is complete,
+	  //# * totalling to a max high interval of 2.228 ms.
+	  //# */
+	  //# # define RTC_UIP 0x80
+	  //# # define RTC_DIV_CTL 0x70
+	  //# /* divider control: refclock values 4.194 / 1.049 MHz / 32.768 kHz */
+	  //# # define RTC_REF_CLCK_4MHZ 0x00
+	  //# # define RTC_REF_CLCK_1MHZ 0x10
+	  //# # define RTC_REF_CLCK_32KHZ 0x20
+	  //# /* 2 values for divider stage reset, others for "testing purposes only" */
+	  //# # define RTC_DIV_RESET1 0x60
+	  //# # define RTC_DIV_RESET2 0x70
+	  //# /* Periodic intr. / Square wave rate select. 0=none, 1=32.8kHz,... 15=2Hz */
+	  //# # define RTC_RATE_SELECT 0x0F
+	  //#
+	  
+	  // The SRM-init value of 0x26 means:
+	  //  xtal speed 32.768KHz  (standard)
+	  //  periodic interrupt rate divisor of 32 =
+	  // interrupt every 976.562 ms (1024Hz clock)
+	  
+
+	  if(state.toy_stored_data[0x0a] & 0x80) {
+	    // Once the UIP line goes high, we have to stay high for 2228us.
+	    hold_count--;
+	    if(hold_count==0) {
+	      state.toy_stored_data[0x0a] &= ~0x80;
+	      read_count=0;
+	    }
+	  } else {
+	    // UIP isn't high, so if we're looping and waiting for it to go, it
+	    // will take 1,000,000/(IPus*3) reads for a 3 instruction loop.
+	    // If it happens to be a one time read, it'll only throw our calculations
+	    // off a tiny bit, and they'll be re-synced on the next read-loop.
+	    read_count++;
+	    if(read_count > 1000000/(IPus*3)) {   // 3541 @ 847IPus
+	      state.toy_stored_data[0x0a] |= 0x80;
+	      hold_count=(2228/(IPus*3))+1; // .876 @ 847IPus, so we add one.
+	    }
+	  }
+	  
+	  
+	  //# /****************************************************/
+	  //# #define RTC_CONTROL RTC_REG_B
+	  //# # define RTC_SET 0x80 /* disable updates for clock setting */
+	  //# # define RTC_PIE 0x40 /* periodic interrupt enable */
+	  //# # define RTC_AIE 0x20 /* alarm interrupt enable */
+	  //# # define RTC_UIE 0x10 /* update-finished interrupt enable */
+	  //# # define RTC_SQWE 0x08 /* enable square-wave output */
+	  //# # define RTC_DM_BINARY 0x04 /* all time/date values are BCD if clear */
+	  //# # define RTC_24H 0x02 /* 24 hour mode - else hours bit 7 means pm */
+	  //# # define RTC_DST_EN 0x01 /* auto switch DST - works f. USA only */
+	  //#
+	  // this is set (by the srm?) to 0x0e = SQWE | DM_BINARY | 24H
+	  // linux sets the PIE bit later.
+
+    
+	  //# /***********************************************************/
+	  //# #define RTC_INTR_FLAGS RTC_REG_C
+	  //# /* caution - cleared by read */
+	  //# # define RTC_IRQF 0x80 /* any of the following 3 is active */
+	  //# # define RTC_PF 0x40
+	  //# # define RTC_AF 0x20
+	  //# # define RTC_UF 0x10
+	  //#
+
 	}
-
-      /* linux reads from 0x1a twice and gets zeros.  Then it halts.  I
-	 wonder what it is expecting.... */
-
-      /* bdw:  I'm getting a 0x17 as data, which should copy some data 
-	 to port 0x71.  However, there's nothing there.  Problem? */
       state.toy_access_ports[1] = state.toy_stored_data[data & 0x7f];
+
+      // register C is cleared after a read, and we don't care if its a write
+      if(data== 0x0c) {
+	state.toy_stored_data[data & 0x7f]=0;
+      }
       break;
     case 1:
+      if(state.toy_access_ports[0]==0x0b &&
+	 data & 0x040) {
+	// If we're writing to register B, we make register C look like
+	// it fired.
+	state.toy_stored_data[0x0c]=0xf0;
+      }
       state.toy_stored_data[state.toy_access_ports[0] & 0x7f] = (u8)data;
       break;
     case 2:
@@ -697,9 +722,20 @@ void CAliM1543C::pit_write(u64 address, u8 data)
 
 int CAliM1543C::DoClock()
 {
+  static int interrupt_factor=0;
   cSystem->interrupt(-1, true);
 
   kbd_clock();
+#if 0
+  // this isn't ready yet.
+  if(state.toy_stored_data[0x0b] & 0x40 &&
+     interrupt_factor++ > 10000) {
+    //printf("Issuing RTC Interrupt\n");
+    pic_interrupt(0,8);
+    state.toy_stored_data[0x0c] |= 0xf0; // mark that the interrupt has happened.
+    interrupt_factor=0;
+  }
+#endif
 
   return 0;
 }

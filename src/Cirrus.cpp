@@ -27,6 +27,9 @@
  * \file
  * Contains the code for the emulated Cirrus CL GD-5434 Video Card device.
  *
+ * X-1.3        Brian Wheeler                                   10-DEC-2007
+ *      Made refresh function name unique.
+ *
  * X-1.2        Camiel Vanderhoeven                             10-DEC-2007
  *      Don't decode IO addresses 3bc-3bf.
  *
@@ -85,11 +88,11 @@ static const u8 ccdat[16][4] = {
      : 0)
 
 #if defined(_WIN32)
-static HANDLE screen_refresh_handle;
-static DWORD WINAPI refresh_proc(LPVOID lpParam)
+static HANDLE screen_refresh_handle_cirrus;
+static DWORD WINAPI refresh_proc_cirrus(LPVOID lpParam)
 #else
-  pthread_t screen_refresh_handle;
-  static void *refresh_proc(void *lpParam)
+  pthread_t screen_refresh_handle_cirrus;
+  static void *refresh_proc_cirrus(void *lpParam)
 #endif
 {
   CCirrus *c = (CCirrus *) lpParam;
@@ -185,6 +188,11 @@ CCirrus::CCirrus(CConfigurator * cfg, CSystem * c, int pcibus, int pcidev): CVGA
 
     // use a VGA rom from bochs
     FILE *rom=fopen(myCfg->get_text_value("rom","vgabios.bin"),"rb");
+    if(!rom) {
+      printf("%%VGA-F-ROM: Cannot load rom '%s'\n",myCfg->get_text_value("rom","vgabios.bin"));
+      exit(1);
+    }
+
     rom_max=fread(option_rom,1,65536,rom);
     fclose(rom);
     printf("%%VGA-I-ROMSIZE: ROM is %d bytes.\n",rom_max);
@@ -359,12 +367,12 @@ CCirrus::CCirrus(CConfigurator * cfg, CSystem * c, int pcibus, int pcidev): CVGA
     state.vga_mem_updated = 1;
 
 #if defined(_WIN32)
-    screen_refresh_handle = CreateThread(NULL,0,refresh_proc,this,0,NULL);
+    screen_refresh_handle_cirrus = CreateThread(NULL,0,refresh_proc_cirrus,this,0,NULL);
 #else
-    pthread_create(&screen_refresh_handle,NULL,refresh_proc,this);
+    pthread_create(&screen_refresh_handle_cirrus,NULL,refresh_proc_cirrus,this);
 #endif
 
-    printf("%%VGA-I-INIT: S3 Trio 64 Initialized\n");
+    printf("%%VGA-I-INIT: Cirrus Video Initialized\n");
 }
 
 CCirrus::~CCirrus()

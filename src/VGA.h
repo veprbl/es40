@@ -27,6 +27,9 @@
  * \file
  * Contains the definitions for the VGA base class.
  *
+ * X-1.2        Brian Wheeler                                   10-DEC-2007
+ *      Made include's case-correct.
+ *
  * X-1.1        Camiel Vanderhoeven                             10-DEC-2007
  *      Initial version in CVS.
  **/
@@ -34,7 +37,7 @@
 #if !defined(__VGA_H__)
 #define __VGA_H__
 
-#include "pcidevice.h"
+#include "PCIDevice.h"
 
 class CVGA :
   public CPCIDevice

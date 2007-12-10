@@ -27,6 +27,9 @@
  * \file
  * Contains the code for the PCI device class.
  *
+ * X-1.3        Brian Wheeler                                   10-DEC-2007
+ *      More verbose error reporting.
+ *
  * X-1.2        Camiel Vanderhoeven                             10-DEC-2007
  *      Removed some printf's.
  *
@@ -224,13 +227,13 @@ u64 CPCIDevice::ReadMem(int index, u64 address, int dsize)
 {
   int func;
   int bar;
-
+  
   if (dsize != 8 && dsize != 16 && dsize != 32)
   {
-    printf("%s(%s) Unsupported dsize %d.\n",myCfg->get_myName(), myCfg->get_myValue(),dsize);
+    printf("ReadMem: %s(%s) Unsupported dsize %d. (%d, %" LL "x)\n",myCfg->get_myName(), myCfg->get_myValue(),dsize,index,address);
     exit(1);
   }
-
+  
   if (index < PCI_RANGE_BASE)
   {
     if (dev_range_is_io[index] && !(pci_state.config_data[0][1]&1))
@@ -274,13 +277,13 @@ void CPCIDevice::WriteMem(int index, u64 address, int dsize, u64 data)
 {
   int func;
   int bar;
-
+  
   if (dsize != 8 && dsize != 16 && dsize != 32)
   {
-    printf("%s(%s) Unsupported dsize %d.\n",myCfg->get_myName(), myCfg->get_myValue(),dsize);
+    printf("WriteMem: %s(%s) Unsupported dsize %d. (%d,%" LL "x,%" LL "x)\n",myCfg->get_myName(), myCfg->get_myValue(),dsize,index,address,data);
     exit(1);
   }
-
+  
   if (index < PCI_RANGE_BASE)
   {
     if (dev_range_is_io[index] && !(pci_state.config_data[0][1]&1))

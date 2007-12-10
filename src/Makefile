@@ -69,11 +69,11 @@ CC = g++
 LDFLAGS =
 
 #to use Intel's ICC
-# CC = /opt/intel/cc/9.1.046/bin/icc
-#LDFLAGS = -L/opt/intel/cc/9.1.046/lib -lirc -lpcap
+#CC = /home/bdwheele/intel/cce/10.1.008/bin/icc
+#LDFLAGS = -L/home/bdwheele/intel/cce/10.1.008/lib -lirc -lintlc
 
-CFLAGS = -O2 -g -I.
-LDFLAGS = -lpcap
+CFLAGS = -g  -O2 -I. -I.. -I/usr/include/SDL -DUSE_CONSOLE -DUSE_NETWORK
+LDFLAGS = -lpcap -lSDL
 IDB_CFLAGS = -DIDB 
 LSM_CFLAGS = -DIDB -DLS_MASTER
 LSS_CFLAGS = -DIDB -DLS_SLAVE
@@ -82,21 +82,32 @@ LD = g++
 DEPEND = makedepend $(CFLAGS)
 
 OBJS =  AliM1543C.o \
+	AliM1543C_ide.o \
+	AliM1543C_usb.o \
         AlphaCPU.o \
+	AlphaCPU_vmspal.o \
         AlphaSim.o \
+	Cirrus.o \
+	Configurator.o \
+        DEC21143.o \
         DPR.o \
+        es40_debug.o \
         Flash.o \
         FloppyController.o \
+	lockstep.o \
+	PCIDevice.o \
         Port80.o \
-	  Serial.o \
+	S3Trio64.o \
+	Serial.o \
         StdAfx.o \
         SystemComponent.o \
         System.o \
         TraceEngine.o \
-        TranslationBuffer.o \
-	  lockstep.o \
-        DEC21143.o \
-        es40_debug.o
+	VGA.o \
+	gui/gui.o \
+	gui/keymap.o \
+	gui/scancodes.o \
+	gui/sdl.o
 
 IDB_OBJS = $(subst .o,.do,$(OBJS))
 LSM_OBJS = $(subst .o,.mao,$(OBJS))
@@ -105,7 +116,7 @@ LSS_OBJS = $(subst .o,.slo,$(OBJS))
 .SUFFIXES: .do .mao .slo
 
 .cpp.o:
-	$(CC) $(CFLAGS) -c $< 
+	$(CC) $(CFLAGS) -c $<  -o $@
 
 .cpp.do:
 	$(CC) $(CFLAGS) $(IDB_CFLAGS) -c $< -o $@
@@ -134,5 +145,5 @@ depend: $(SRCS)
 	$(DEPEND) $(SRCS)
 	$(DEPEND) -o.do -a -- $(IDB_CFLAGS) -- $(SRCS)
 clean:
-	rm -f es40 es40_idb es40_lss es40_lsm *.o *.do *.mao *.slo *.trc
+	rm -f es40 es40_idb es40_lss es40_lsm *.o *.do *.mao *.slo *.trc gui/*.o gui/*.mao gui/*.slo gui/*.do
 

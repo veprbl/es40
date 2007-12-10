@@ -27,6 +27,9 @@
  * \file
  * Contains the code for the emulated Serial Port devices.
  *
+ * X-1.29       Brian Wheeler                                   10-DEC-2007
+ *      Better exec handling.
+ *
  * X-1.28       Camiel Vanderhoeven                             10-DEC-2007
  *      Use configurator.
  *
@@ -135,6 +138,8 @@
 
 #if defined(_WIN32)
 #include <process.h>
+#else
+#include <sys/wait.h>
 #endif
 
 #include "telnet.h"
@@ -226,8 +231,20 @@ CSerial::CSerial(CConfigurator * cfg, CSystem * c, u16 number) : CSystemComponen
 #if defined(_WIN32)
     _spawnvp(_P_NOWAIT, nargv, argv);
 #else
-    if (!fork())
+    pid_t child;
+    int  status;
+    if (!(child=fork())){
       execvp(argv[0], argv);
+      printf("Exec of '%s' failed.\n",argv[0]);
+      exit(1);
+    } else {
+      sleep(1);  // give it a chance to start up.
+      waitpid(child,&status,WNOHANG); // reap it, if needed.
+      if(kill(child,0) < 0) { // uh oh, no kiddo.
+	printf("%%SRL-F-EXEC: Exec of '%s' has failed.\n",argv[0]);
+	exit(1);
+      }
+    }
 #endif
   }
 

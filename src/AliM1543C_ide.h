@@ -27,13 +27,16 @@
  * \file
  * Contains the definitions for the emulated Ali M1543C IDE chipset part.
  *
+ * X-1.2        Brian Wheeler                                   10-DEC-2007
+ *      Fixed include case.
+ *
  * X-1.1        Camiel Vanderhoeven                             10-DEC-2007
  *      Initial version in CVS; this part was split off from the CAliM1543C
  *      class.
  **/
 
 #if !defined(INCLUDED_ALIM1543C_IDE_H_)
-#define INCLUDED_ALIM1543C_IDE_H
+#define INCLUDED_ALIM1543C_IDE_H_
 
 #include "PCIDevice.h"
 #include "gui/gui.h"

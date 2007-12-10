@@ -26,6 +26,9 @@
  * \file
  * Contains the code for emulated S3 Trio 64 Video Card device.
  *
+ * X-1.5        Brian Wheeler                                   10-DEC-2007
+ *      Made refresh function name unique.
+ *
  * X-1.4        Camiel Vanderhoeven                             10-DEC-2007
  *      Use new base class VGA.
  *
@@ -93,11 +96,11 @@ static const u8 ccdat[16][4] = {
      : 0)
 
 #if defined(_WIN32)
-static HANDLE screen_refresh_handle;
-static DWORD WINAPI refresh_proc(LPVOID lpParam)
+static HANDLE screen_refresh_handle_s3;
+static DWORD WINAPI refresh_proc_s3(LPVOID lpParam)
 #else
-  pthread_t screen_refresh_handle;
-  static void *refresh_proc(void *lpParam)
+  pthread_t screen_refresh_handle_s3;
+  static void *refresh_proc_s3(void *lpParam)
 #endif
 {
   CS3Trio64 *c = (CS3Trio64 *) lpParam;
@@ -167,6 +170,7 @@ CS3Trio64::CS3Trio64(CConfigurator * cfg, CSystem * c, int pcibus, int pcidev): 
   add_function(0,s3_cfg_data,s3_cfg_mask);
 
   int i;
+  char *romfile;
 
     c->RegisterClock(this, true);
 
@@ -191,7 +195,12 @@ CS3Trio64::CS3Trio64(CConfigurator * cfg, CSystem * c, int pcibus, int pcidev): 
     bios_message[0] = '\0';
 
     // use a VGA rom from bochs
-    FILE *rom=fopen(myCfg->get_text_value("rom","vgabios.bin"),"rb");
+    romfile=myCfg->get_text_value("vga.rom","vgabios.bin");
+    FILE *rom=fopen(romfile,"rb");
+    if(!rom) {
+      printf("%%VGA-F-ROM: Cannot open %s\n",romfile);
+      exit(1);
+    }
     rom_max=fread(option_rom,1,65536,rom);
     fclose(rom);
     printf("%%VGA-I-ROMSIZE: ROM is %d bytes.\n",rom_max);
@@ -367,9 +376,9 @@ CS3Trio64::CS3Trio64(CConfigurator * cfg, CSystem * c, int pcibus, int pcidev): 
     state.vga_mem_updated = 1;
 
 #if defined(_WIN32)
-    screen_refresh_handle = CreateThread(NULL,0,refresh_proc,this,0,NULL);
+    screen_refresh_handle_s3 = CreateThread(NULL,0,refresh_proc_s3,this,0,NULL);
 #else
-    pthread_create(&screen_refresh_handle,NULL,refresh_proc,this);
+    pthread_create(&screen_refresh_handle_s3,NULL,refresh_proc_s3,this);
 #endif
 
     printf("%%VGA-I-INIT: S3 Trio 64 Initialized\n");

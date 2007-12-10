@@ -32,6 +32,9 @@
  * \file 
  * Contains the code for the emulated DEC 21143 NIC device.
  *
+ * X-1.16       Brian Wheeler                                   10-DEC-2007
+ *      Added pthread.h
+ *
  * X-1.15       Camiel Vanderhoeven                             10-DEC-2007
  *      Use configurator.
  *
@@ -90,6 +93,10 @@
 
 #include "DEC21143.h"
 #include "System.h"
+
+#if !defined(_WIN32)
+#include <pthread.h>
+#endif
 
 /*  Internal states during MII data stream decode:  */
 #define	MII_STATE_RESET				    0

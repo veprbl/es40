@@ -27,6 +27,9 @@
  * \file
  * Contains the code for the configuration file interpreter.
  *
+ * X-1.2        Brian Wheeler                                   10-DEC-2007
+ *      Better error reporting.
+ *
  * X-1.1        Camiel Vanderhoeven                             10-DEC-2007
  *      Initial version in CVS.
  **/
@@ -45,8 +48,10 @@
 #if defined(USE_CONSOLE)
 #include "S3Trio64.h"
 #include "Cirrus.h"
-#include "DEC21143.h"
 #include "gui/plugin.h"
+#endif
+#if defined(USE_NETWORK)
+#include "DEC21143.h"
 #endif
 
 CConfigurator::CConfigurator(class CConfigurator * parent, char * name, char * value, char * text, int textlen)
@@ -158,13 +163,13 @@ CConfigurator::CConfigurator(class CConfigurator * parent, char * name, char * v
         name_len = curtext - name_start;
       }
       else if (!isalnum(text[curtext]) && text[curtext]!='.' && text[curtext] != '_')
-        printf("Illegal character: \'%c\'!!\n", text[curtext]);
+        printf("STATE_NAME: Illegal character: \'%c\'!! (%02x @ %d)\n", text[curtext],text[curtext],curtext);
       break;
     case STATE_NAME_DONE:
       if (text[curtext] == '=')
         state = STATE_IS;
       else if (!isblank(text[curtext]))
-        printf("Illegal character: \'%c\'!!\n", text[curtext]);
+        printf("STATE_NAME_DONE: Illegal character: \'%c\'!! (%02x @ %d)\n", text[curtext],text[curtext],curtext);
       break;
     case STATE_IS:
       if (isalnum(text[curtext]) || text[curtext]=='.' || text[curtext] == '_')
@@ -203,13 +208,13 @@ CConfigurator::CConfigurator(class CConfigurator * parent, char * name, char * v
         child_start = curtext+1;
         child_depth = 1;
       }
-      else if (isblank(text[curtext]))
+      else if (isspace(text[curtext]))
       {
         state = STATE_VALUE_DONE;
         value_len = curtext - value_start;
       }
       else if (!isalnum(text[curtext]) && text[curtext]!='.' && text[curtext] != '_')
-        printf("Illegal character: \'%c\'!!\n", text[curtext]);
+        printf("STATE_VALUE: Illegal character: \'%c\'!! (%02x @ %d)\n", text[curtext],text[curtext],curtext);
       break;
     case STATE_VALUE_DONE:
       if (text[curtext] == ';')
@@ -232,8 +237,8 @@ CConfigurator::CConfigurator(class CConfigurator * parent, char * name, char * v
         child_start = curtext+1;
         child_depth = 1;
       }
-      else if (!isblank(text[curtext]))
-        printf("Illegal character: \'%c\'!!\n", text[curtext]);
+      else if (!isspace(text[curtext]))
+        printf("STATE_VALUE_DONE: Illegal character: \'%c\'!! (%02x @ %d)\n", text[curtext],text[curtext],curtext);
       break;
     case STATE_CHILD:
       if (text[curtext] == '{')
