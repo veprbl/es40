@@ -1,7 +1,7 @@
 /* ES40 emulator.
- * Copyright (C) 2007 by Camiel Vanderhoeven
+ * Copyright (C) 2007 by the ES40 Emulator Project
  *
- * Website: www.camicom.com
+ * Website: http://sourceforge.net/projects/es40
  * E-mail : camiel@camicom.com
  * 
  * This program is free software; you can redistribute it and/or
@@ -26,6 +26,9 @@
 /**
  * \file 
  * Contains the code for the emulated Ali M1543C chipset devices.
+ *
+ * X-1.38       Camiel Vanderhoeven                             10-DEC-2007
+ *      Added config item for vga_console.
  *
  * X-1.37       Camiel Vanderhoeven                             10-DEC-2007
  *      Use configurator; move IDE and USB to their own classes.
@@ -324,9 +327,7 @@ CAliM1543C::CAliM1543C(CConfigurator * cfg, CSystem * c, int pcibus, int pcidev)
   for (i=0;i<256;i++)
     state.toy_stored_data[i] = 0;
   
-#if defined(USE_CONSOLE)
-//  state.toy_stored_data[0x17] = 1;
-#endif
+  state.toy_stored_data[0x17] = myCfg->get_bool_value("vga_console")?1:0;
 
   ResetPCI();
 									

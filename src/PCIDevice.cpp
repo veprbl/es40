@@ -27,6 +27,9 @@
  * \file
  * Contains the code for the PCI device class.
  *
+ * X-1.2        Camiel Vanderhoeven                             10-DEC-2007
+ *      Removed some printf's.
+ *
  * X-1.1        Camiel Vanderhoeven                             10-DEC-2007
  *      Initial version in CVS.
  **/
@@ -98,14 +101,14 @@ u32 CPCIDevice::config_read(int func, u32 address, int dsize)
 
   data = config_read_custom(func, address, dsize, data);
 
-  printf("%s(%s).%d config read  %d bytes @ %x = %x\n",myCfg->get_myName(), myCfg->get_myValue(), func,dsize/8,address, data);
+//  printf("%s(%s).%d config read  %d bytes @ %x = %x\n",myCfg->get_myName(), myCfg->get_myValue(), func,dsize/8,address, data);
 
   return data;
 }
 
 void CPCIDevice::config_write(int func, u32 address, int dsize, u32 data)
 {
-  printf("%s(%s).%d config write %d bytes @ %x = %x\n",myCfg->get_myName(), myCfg->get_myValue(), func,dsize/8,address, data);
+//  printf("%s(%s).%d config write %d bytes @ %x = %x\n",myCfg->get_myName(), myCfg->get_myValue(), func,dsize/8,address, data);
 
   u8 * x;
   u8 * y;
@@ -175,7 +178,7 @@ void CPCIDevice::register_bar(int func, int bar, u32 data, u32 mask)
                                t= X64(00000801fc000000)
                                + (X64(0000000200000000) * myPCIBus)
                                + (data & ~0x3),length);
-    printf("%s(%s).%d PCI BAR %d set to IO  % " LL "x, len %x.\n",myCfg->get_myName(), myCfg->get_myValue(), func,bar,t,length);
+//    printf("%s(%s).%d PCI BAR %d set to IO  % " LL "x, len %x.\n",myCfg->get_myName(), myCfg->get_myValue(), func,bar,t,length);
   }
   else
   {
@@ -186,7 +189,7 @@ void CPCIDevice::register_bar(int func, int bar, u32 data, u32 mask)
                                t= X64(0000080000000000)
                                + (X64(0000000200000000) * myPCIBus)
                                + (data & ~0xf),length);
-    printf("%s(%s).%d PCI BAR %d set to MEM % " LL "x, len %x.\n",myCfg->get_myName(), myCfg->get_myValue(), func,bar,t,length);
+//    printf("%s(%s).%d PCI BAR %d set to MEM % " LL "x, len %x.\n",myCfg->get_myName(), myCfg->get_myValue(), func,bar,t,length);
   }
 }
 
