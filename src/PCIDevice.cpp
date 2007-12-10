@@ -27,6 +27,9 @@
  * \file
  * Contains the code for the PCI device class.
  *
+ * X-1.4        Camiel Vanderhoeven                             10-DEC-2007
+ *      Translate a 64-bit PCI access into 2 32-bit accesses.
+ *
  * X-1.3        Brian Wheeler                                   10-DEC-2007
  *      More verbose error reporting.
  *
@@ -227,7 +230,10 @@ u64 CPCIDevice::ReadMem(int index, u64 address, int dsize)
 {
   int func;
   int bar;
-  
+
+  if (dsize==64)
+    return ReadMem(index, address, 32) | (((u64)ReadMem(index, address+4, 32)) << 32);
+
   if (dsize != 8 && dsize != 16 && dsize != 32)
   {
     printf("ReadMem: %s(%s) Unsupported dsize %d. (%d, %" LL "x)\n",myCfg->get_myName(), myCfg->get_myValue(),dsize,index,address);
@@ -278,6 +284,13 @@ void CPCIDevice::WriteMem(int index, u64 address, int dsize, u64 data)
   int func;
   int bar;
   
+  if (dsize==64)
+  {
+    WriteMem(index, address,   32, data & X64(ffffffff));
+    WriteMem(index, address+4, 32, (data>>32) & X64(ffffffff));
+    return;
+  }
+
   if (dsize != 8 && dsize != 16 && dsize != 32)
   {
     printf("WriteMem: %s(%s) Unsupported dsize %d. (%d,%" LL "x,%" LL "x)\n",myCfg->get_myName(), myCfg->get_myValue(),dsize,index,address,data);
