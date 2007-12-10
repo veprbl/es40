@@ -35,7 +35,7 @@
  *
  **/
 
-#include "StdAfx.h"
+#include "../StdAfx.h"
 
 #include <signal.h>
 

@@ -40,7 +40,7 @@
  *
  **/
 
-#include "StdAfx.h"
+#include "../StdAfx.h"
 #include "gui.h"
 #include "keymap.h"
 #include "../System.h"

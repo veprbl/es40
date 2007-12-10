@@ -32,7 +32,7 @@
  *
  **/
 
-#include "StdAfx.h"
+#include "../StdAfx.h"
 
 //#include "bochs.h"
 #include "scancodes.h"
