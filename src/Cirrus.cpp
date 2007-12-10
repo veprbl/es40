@@ -27,6 +27,9 @@
  * \file
  * Contains the code for the emulated Cirrus CL GD-5434 Video Card device.
  *
+ * X-1.2        Camiel Vanderhoeven                             10-DEC-2007
+ *      Don't decode IO addresses 3bc-3bf.
+ *
  * X-1.1        Camiel Vanderhoeven                             10-DEC-2007
  *      Initial version in CVS.
  **/
@@ -159,8 +162,9 @@ CCirrus::CCirrus(CConfigurator * cfg, CSystem * c, int pcibus, int pcidev): CVGA
 
     c->RegisterClock(this, true);
 
-    /* the VGA I/O ports are at 3b0 -> 3df */
-    add_legacy_io(2,0x3b0,48);
+    /* the VGA I/O ports are at 3b0 -> 3bb and 3c0 -> 3cf */
+    add_legacy_io(1,0x3b0,12);
+    add_legacy_io(2,0x3c0,32);
 
     /* we listen for messages from outer space (a.k.a. VGA bios) at port 500. */
     add_legacy_io(7,0x500,1);
@@ -372,8 +376,10 @@ u32 CCirrus::ReadMem_Legacy(int index, u32 address, int dsize)
 {
   switch(index)
     {
-    case 2: /* io ports */
+    case 1: /* io ports */
       return endian_bits(io_read(address, dsize), dsize);
+    case 2: /* io ports */
+      return endian_bits(io_read(address+0x10, dsize), dsize);
     case 4: /* legacy memory */
       return endian_bits(legacy_read(address, dsize), dsize);
     case 5: /* rom */
@@ -387,8 +393,11 @@ void CCirrus::WriteMem_Legacy(int index, u32 address, int dsize, u32 data)
 {
   switch(index)
     {
-    case 2:  /* io port */
+    case 1:  /* io port */
       io_write(address,dsize,endian_bits(data,dsize));
+      return;
+    case 2:  /* io port */
+      io_write(address+0x10,dsize,endian_bits(data,dsize));
       return;
     case 4:  /* legacy memory */
       legacy_write(address,dsize,endian_bits(data,dsize));
