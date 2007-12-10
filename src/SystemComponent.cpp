@@ -27,6 +27,9 @@
  * \file 
  * Contains code for the base class for devices that connect to the chipset.
  *
+ * X-1.8        Camiel Vanderhoeven                             10-DEC-2007
+ *      Use configurator.
+ *
  * X-1.7        Camiel Vanderhoeven                             30-MAR-2007
  *      Added old changelog comments.
  *
@@ -59,10 +62,11 @@
  * Constructor.
  **/
 
-CSystemComponent::CSystemComponent(CSystem * system)
+CSystemComponent::CSystemComponent(CConfigurator * cfg, CSystem * system)
 {
   system->RegisterComponent(this);
   cSystem = system;
+  myCfg = cfg;
 }
 
 /**

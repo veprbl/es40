@@ -1,7 +1,8 @@
 /* ES40 emulator.
- * Copyright (C) 2007 by Brian Wheeler
+ * Copyright (C) 2007 by the ES40 Emulator Project
  *
- * E-mail : bdwheele@indiana.edu
+ * WWW    : http://sourceforge.net/projects/es40
+ * E-mail : camiel@camicom.com
  * 
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -24,28 +25,14 @@
 
 /**
  * \file
- * Contains the code for emulated S3 Trio 64 Video Card device.
+ * Contains the code for the emulated Cirrus CL GD-5434 Video Card device.
  *
- * X-1.4        Camiel Vanderhoeven                             10-DEC-2007
- *      Use new base class VGA.
- *
- * X-1.3        Camiel Vanderhoeven                             7-DEC-2007
- *      Code cleanup.
- *
- * X-1.2        Camiel Vanderhoeven/Brian Wheeler               6-DEC-2007
- *      Changed implementation (with thanks to the Bochs project!!)
- *
- * X-1.1        Camiel Vanderhoeven                             1-DEC-2007
+ * X-1.1        Camiel Vanderhoeven                             10-DEC-2007
  *      Initial version in CVS.
- *
- * X-0.0        bdwheele@indiana.edu     
- *      Generated file.
- *
- * \author  Brian Wheeler (bdwheele@indiana.edu)
  **/
 
 #include "StdAfx.h"
-#include "S3Trio64.h"
+#include "Cirrus.h"
 #include "System.h"
 #include "AliM1543C.h"
 #include "gui/gui.h"
@@ -56,7 +43,9 @@
 #include "signal.h"
 #endif
 
-static unsigned old_iHeight = 0, old_iWidth = 0, old_MSL = 0;
+#define VGA_TRACE_FEATURE 1
+
+unsigned old_iHeight = 0, old_iWidth = 0, old_MSL = 0;
 
 static const u8 ccdat[16][4] = {
   { 0x00, 0x00, 0x00, 0x00 },
@@ -100,7 +89,7 @@ static DWORD WINAPI refresh_proc(LPVOID lpParam)
   static void *refresh_proc(void *lpParam)
 #endif
 {
-  CS3Trio64 *c = (CS3Trio64 *) lpParam;
+  CCirrus *c = (CCirrus *) lpParam;
   while(1) {
     //c->screenrefresh();
 //    bx_gui->handle_events();
@@ -115,8 +104,8 @@ static unsigned int rom_max;
 static u8 option_rom[65536];
 
 
-u32 s3_cfg_data[64] = {
-/*00*/  0x88115333, // CFID: vendor + device
+static u32 cirrus_cfg_data[64] = {
+/*00*/  0x00a81013, // CFID: vendor + device
 /*04*/  0x011f0000, // CFCS: command + status
 /*08*/  0x03000002, // CFRV: class + revision
 /*0c*/  0x00000000, // CFLT: latency timer + cache line size
@@ -137,7 +126,7 @@ u32 s3_cfg_data[64] = {
         0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
 };
 
-u32 s3_cfg_mask[64] = {
+static u32 cirrus_cfg_mask[64] = {
 /*00*/  0x00000000, // CFID: vendor + device
 /*04*/  0x0000ffff, // CFCS: command + status
 /*08*/  0x00000000, // CFRV: class + revision
@@ -162,9 +151,9 @@ u32 s3_cfg_mask[64] = {
 /**
  * Constructor.
  **/
-CS3Trio64::CS3Trio64(CConfigurator * cfg, CSystem * c, int pcibus, int pcidev): CVGA(cfg,c,pcibus,pcidev)
+CCirrus::CCirrus(CConfigurator * cfg, CSystem * c, int pcibus, int pcidev): CVGA(cfg,c,pcibus,pcidev)
 {
-  add_function(0,s3_cfg_data,s3_cfg_mask);
+  add_function(0,cirrus_cfg_data,cirrus_cfg_mask);
 
   int i;
 
@@ -198,7 +187,6 @@ CS3Trio64::CS3Trio64(CConfigurator * cfg, CSystem * c, int pcibus, int pcidev): 
 
     /* Option ROM address space: C0000  */
     add_legacy_mem(5,0xc0000,rom_max);
-
 
   state.vga_enabled = 1;
   state.misc_output.color_emulation  = 1;
@@ -375,12 +363,12 @@ CS3Trio64::CS3Trio64(CConfigurator * cfg, CSystem * c, int pcibus, int pcidev): 
     printf("%%VGA-I-INIT: S3 Trio 64 Initialized\n");
 }
 
-CS3Trio64::~CS3Trio64()
+CCirrus::~CCirrus()
 {
   printf("%%VGA-I-SHUTDOWN: vga console has shut down.\n");
 }
 
-u32 CS3Trio64::ReadMem_Legacy(int index, u32 address, int dsize)
+u32 CCirrus::ReadMem_Legacy(int index, u32 address, int dsize)
 {
   switch(index)
     {
@@ -395,7 +383,7 @@ u32 CS3Trio64::ReadMem_Legacy(int index, u32 address, int dsize)
   return 0;
 }
 
-void CS3Trio64::WriteMem_Legacy(int index, u32 address, int dsize, u32 data)
+void CCirrus::WriteMem_Legacy(int index, u32 address, int dsize, u32 data)
 {
   switch(index)
     {
@@ -424,7 +412,7 @@ void CS3Trio64::WriteMem_Legacy(int index, u32 address, int dsize, u32 data)
     }
 }
 
-u32 CS3Trio64::ReadMem_Bar(int func, int bar, u32 address, int dsize)
+u32 CCirrus::ReadMem_Bar(int func, int bar, u32 address, int dsize)
 {
   switch(bar)
     {
@@ -434,7 +422,7 @@ u32 CS3Trio64::ReadMem_Bar(int func, int bar, u32 address, int dsize)
   return 0;
 }
 
-void CS3Trio64::WriteMem_Bar(int func, int bar, u32 address, int dsize, u32 data)
+void CCirrus::WriteMem_Bar(int func, int bar, u32 address, int dsize, u32 data)
 {
   switch(bar)
     {
@@ -447,7 +435,7 @@ void CS3Trio64::WriteMem_Bar(int func, int bar, u32 address, int dsize, u32 data
 /**
  * Redraw the screen.
  **/
-int CS3Trio64::DoClock()
+int CCirrus::DoClock()
 {
   return 0;
 }
@@ -456,7 +444,7 @@ int CS3Trio64::DoClock()
  * Save state to a Virtual Machine State file.
  **/
 
-void CS3Trio64::SaveState(FILE *f)
+void CCirrus::SaveState(FILE *f)
 {
   CPCIDevice::SaveState(f);
   fwrite(&state,sizeof(state),1,f);
@@ -466,7 +454,7 @@ void CS3Trio64::SaveState(FILE *f)
  * Restore state from a Virtual Machine State file.
  **/
 
-void CS3Trio64::RestoreState(FILE *f)
+void CCirrus::RestoreState(FILE *f)
 {
   CPCIDevice::RestoreState(f);
   fread(&state,sizeof(state),1,f);
@@ -476,7 +464,7 @@ void CS3Trio64::RestoreState(FILE *f)
 /**
  * Read from Framebuffer
  */
-u64 CS3Trio64::mem_read(u64 address, int dsize)
+u64 CCirrus::mem_read(u64 address, int dsize)
 {
   u64 data = 0;
   //printf("S3 mem read: %" LL "x, %d, %" LL "x   \n", address, dsize, data);
@@ -487,7 +475,7 @@ u64 CS3Trio64::mem_read(u64 address, int dsize)
 /**
  * Write to Framebuffer
  */
-void CS3Trio64::mem_write(u64 address, int dsize, u64 data)
+void CCirrus::mem_write(u64 address, int dsize, u64 data)
 {
 
   //printf("S3 mem write: %" LL "x, %d, %" LL "x   \n", address, dsize, data);
@@ -503,7 +491,7 @@ void CS3Trio64::mem_write(u64 address, int dsize, u64 data)
 /**
  * Read from Legacy Framebuffer
  */
-u64 CS3Trio64::legacy_read(u64 address, int dsize)
+u64 CCirrus::legacy_read(u64 address, int dsize)
 {
   u64 data = 0;    
   switch (dsize)
@@ -528,7 +516,7 @@ u64 CS3Trio64::legacy_read(u64 address, int dsize)
 /**
  * Write to Legacy Framebuffer
  */
-void CS3Trio64::legacy_write(u64 address, int dsize, u64 data)
+void CCirrus::legacy_write(u64 address, int dsize, u64 data)
 {
 //  //printf("S3 legacy write: %" LL "x, %d, %" LL "x   \n", address, dsize, data);
   switch(dsize) {
@@ -551,7 +539,7 @@ void CS3Trio64::legacy_write(u64 address, int dsize, u64 data)
 /**
  * Read from Option ROM
  */
-u64 CS3Trio64::rom_read(u64 address, int dsize)
+u64 CCirrus::rom_read(u64 address, int dsize)
 {
   u64 data = 0x00;  // make it easy for the checksummer.
   u8 *x=(u8 *)option_rom;
@@ -582,7 +570,7 @@ u64 CS3Trio64::rom_read(u64 address, int dsize)
 /**
  * Write to Option ROM
  */
-void CS3Trio64::rom_write(u64 address, int dsize, u64 data)
+void CCirrus::rom_write(u64 address, int dsize, u64 data)
 {
   //printf("S3 rom write: %" LL "x, %d, %" LL "x --", address, dsize, data);
 }
@@ -590,7 +578,7 @@ void CS3Trio64::rom_write(u64 address, int dsize, u64 data)
 /**
  * Read from I/O Port
  */
-u64 CS3Trio64::io_read(u64 address, int dsize)
+u64 CCirrus::io_read(u64 address, int dsize)
 {
   u64 data = 0;
   if (dsize !=8)
@@ -691,7 +679,7 @@ u64 CS3Trio64::io_read(u64 address, int dsize)
 /**
  * Write to I/O Port
  */
-void CS3Trio64::io_write(u64 address, int dsize, u64 data)
+void CCirrus::io_write(u64 address, int dsize, u64 data)
 {
 //  printf("S3 io write: %" LL "x, %d, %" LL "x   \n", address+VGA_BASE, dsize, data);
   switch(dsize)
@@ -709,7 +697,7 @@ void CS3Trio64::io_write(u64 address, int dsize, u64 data)
   }
 }
 
-void CS3Trio64::io_write_b(u64 address, u8 data)
+void CCirrus::io_write_b(u64 address, u8 data)
 {
   switch(address+VGA_BASE) {
 
@@ -758,7 +746,7 @@ void CS3Trio64::io_write_b(u64 address, u8 data)
   }
 }
 
-void CS3Trio64::write_b_3c0(u8 value)
+void CCirrus::write_b_3c0(u8 value)
 {
   bool prev_video_enabled, prev_line_graphics, prev_int_pal_size;
 
@@ -873,7 +861,7 @@ void CS3Trio64::write_b_3c0(u8 value)
        state.attribute_ctrl.flip_flop = !state.attribute_ctrl.flip_flop;
 }
 
-void CS3Trio64::write_b_3c2(u8 value)
+void CCirrus::write_b_3c2(u8 value)
 {
   /* Miscellaneous Output Register */
       state.misc_output.color_emulation  = (value >> 0) & 0x01;
@@ -893,13 +881,13 @@ void CS3Trio64::write_b_3c2(u8 value)
 #endif
 }
 
-void CS3Trio64::write_b_3c4(u8 value)
+void CCirrus::write_b_3c4(u8 value)
 {
      /* Sequencer Index Register */
        state.sequencer.index = value;
 }
 
-void CS3Trio64::write_b_3c5(u8 value)
+void CCirrus::write_b_3c5(u8 value)
 {
   unsigned i;
   u8 charmap1, charmap2;
@@ -964,7 +952,7 @@ void CS3Trio64::write_b_3c5(u8 value)
          }
 }
 
-void CS3Trio64::write_b_3c6(u8 value)
+void CCirrus::write_b_3c6(u8 value)
 {
 /* PEL mask */
        state.pel.mask = value;
@@ -976,7 +964,7 @@ void CS3Trio64::write_b_3c6(u8 value)
        // indexing into color register state.pel.data[]
 }
 
-void CS3Trio64::write_b_3c7(u8 value)
+void CCirrus::write_b_3c7(u8 value)
 {
 // PEL address, read mode
        state.pel.read_data_register = value;
@@ -984,7 +972,7 @@ void CS3Trio64::write_b_3c7(u8 value)
        state.pel.dac_state = 0x03;
 }
 
-void CS3Trio64::write_b_3c8(u8 value)
+void CCirrus::write_b_3c8(u8 value)
 {
 /* PEL address write mode */
        state.pel.write_data_register = value;
@@ -992,7 +980,7 @@ void CS3Trio64::write_b_3c8(u8 value)
        state.pel.dac_state = 0x00;
 }
 
-void CS3Trio64::write_b_3c9(u8 value)
+void CCirrus::write_b_3c9(u8 value)
 {
   /* PEL Data Register, colors 00..FF */
   switch (state.pel.write_data_cycle) {
@@ -1024,7 +1012,7 @@ void CS3Trio64::write_b_3c9(u8 value)
           }
 }
 
-void CS3Trio64::write_b_3ce(u8 value)
+void CCirrus::write_b_3ce(u8 value)
 {
   /* Graphics Controller Index Register */
 #if defined(DEBUG_VGA)
@@ -1034,7 +1022,7 @@ void CS3Trio64::write_b_3ce(u8 value)
   state.graphics_ctrl.index = value;
 }
 
-void CS3Trio64::write_b_3cf(u8 value)
+void CCirrus::write_b_3cf(u8 value)
 {
   u8 prev_memory_mapping;
   bool prev_graphics_alpha, prev_chain_odd_even;
@@ -1115,7 +1103,7 @@ void CS3Trio64::write_b_3cf(u8 value)
          }
 }
 
-void CS3Trio64::write_b_3d4(u8 value)
+void CCirrus::write_b_3d4(u8 value)
 {
   state.CRTC.address = value & 0x7f;
 #if defined(DEBUG_VGA)
@@ -1125,7 +1113,7 @@ void CS3Trio64::write_b_3d4(u8 value)
 #endif
 }
 
-void CS3Trio64::write_b_3d5(u8 value)
+void CCirrus::write_b_3d5(u8 value)
 {
   /* CRTC Registers */
   if (state.CRTC.address > 0x18) {
@@ -1207,7 +1195,7 @@ void CS3Trio64::write_b_3d5(u8 value)
        }
 }
 
-u8 CS3Trio64::read_b_3c0()
+u8 CCirrus::read_b_3c0()
 {
   if (state.attribute_ctrl.flip_flop == 0) {
     //BX_INFO(("io read: 0x3c0: flip_flop = 0"));
@@ -1219,7 +1207,7 @@ u8 CS3Trio64::read_b_3c0()
   }
 }
 
-u8 CS3Trio64::read_b_3c1()
+u8 CCirrus::read_b_3c1()
 {
   u8 retval;
        switch (state.attribute_ctrl.address) {
@@ -1260,18 +1248,18 @@ u8 CS3Trio64::read_b_3c1()
          }
 }
 
-u8 CS3Trio64::read_b_3c3()
+u8 CCirrus::read_b_3c3()
 {
       return state.vga_enabled;
 
 }
 
-u8 CS3Trio64::read_b_3c4()
+u8 CCirrus::read_b_3c4()
 {
   return state.sequencer.index;
 }
 
-u8 CS3Trio64::read_b_3c5()
+u8 CCirrus::read_b_3c5()
 {
       switch (state.sequencer.index) {
         case 0: /* sequencer: reset */
@@ -1306,7 +1294,7 @@ u8 CS3Trio64::read_b_3c5()
         }
 }
 
-u8 CS3Trio64::read_b_3c9()
+u8 CCirrus::read_b_3c9()
 {
   u8 retval;
       if (state.pel.dac_state == 0x03) {
@@ -1336,7 +1324,7 @@ u8 CS3Trio64::read_b_3c9()
 
 }
 
-u8 CS3Trio64::read_b_3cc()
+u8 CCirrus::read_b_3cc()
 {
     /* Miscellaneous Output / Graphics 1 Position ??? */
        return
@@ -1348,7 +1336,7 @@ u8 CS3Trio64::read_b_3cc()
          ((state.misc_output.vert_sync_pol    & 0x01) << 7);
 }
 
-u8 CS3Trio64::read_b_3cf()
+u8 CCirrus::read_b_3cf()
 {
   u8 retval;
       switch (state.graphics_ctrl.index) {
@@ -1406,12 +1394,12 @@ u8 CS3Trio64::read_b_3cf()
 
 }
 
-u8 CS3Trio64::read_b_3d4()
+u8 CCirrus::read_b_3d4()
 {
     return state.CRTC.address;
 }
 
-u8 CS3Trio64::read_b_3d5()
+u8 CCirrus::read_b_3d5()
 {
     if (state.CRTC.address > 0x18) {
         printf("io read: invalid CRTC register 0x%02x   \n",
@@ -1423,7 +1411,7 @@ u8 CS3Trio64::read_b_3d5()
   
 }
 
-u8 CS3Trio64::read_b_3da()
+u8 CCirrus::read_b_3da()
 {
 /* Input Status 1 (color emulation modes) */
 
@@ -1467,12 +1455,12 @@ u8 CS3Trio64::read_b_3da()
        return retval;
 }
 
-u8 CS3Trio64::get_actl_palette_idx(u8 index)
+u8 CCirrus::get_actl_palette_idx(u8 index)
 {
   return state.attribute_ctrl.palette_reg[index];
 }
 
-void CS3Trio64::redraw_area(unsigned x0, unsigned y0, unsigned width, unsigned height)
+void CCirrus::redraw_area(unsigned x0, unsigned y0, unsigned width, unsigned height)
 {
   unsigned xti, yti, xt0, xt1, yt0, yt1, xmax, ymax;
 
@@ -1521,7 +1509,7 @@ void CS3Trio64::redraw_area(unsigned x0, unsigned y0, unsigned width, unsigned h
   }
 }
 
-void CS3Trio64::update(void)
+void CCirrus::update(void)
 {
   unsigned iHeight, iWidth;
 
@@ -2146,7 +2134,7 @@ void CS3Trio64::update(void)
   }
 }
 
-void CS3Trio64::determine_screen_dimensions(unsigned *piHeight, unsigned *piWidth)
+void CCirrus::determine_screen_dimensions(unsigned *piHeight, unsigned *piWidth)
 {
   int ai[0x20];
   int i,h,v;
@@ -2203,7 +2191,7 @@ void CS3Trio64::determine_screen_dimensions(unsigned *piHeight, unsigned *piWidt
   }
 }
 
-u8 CS3Trio64::vga_mem_read(u32 addr)
+u8 CCirrus::vga_mem_read(u32 addr)
 {
   u32 offset;
   u8 *plane0, *plane1, *plane2, *plane3;
@@ -2305,7 +2293,7 @@ u8 CS3Trio64::vga_mem_read(u32 addr)
   }
 }
 
-void CS3Trio64::vga_mem_write(u32 addr, u8 value)
+void CCirrus::vga_mem_write(u32 addr, u8 value)
 {
   u32 offset;
   u8 new_val[4];

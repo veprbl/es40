@@ -29,6 +29,9 @@
  * DecChip 21264CB EV68 Alpha processor. Based on disassembly of original VMS
  * PALcode, HRM, and OpenVMS AXP Internals and Data Structures.
  *
+ * X-1.2        Camiel Vanderhoeven                             10-DEC-2007
+ *      Use configurator.
+ *
  * X-1.1        Camiel Vanderhoeven                             2-DEC-2007
  *      Initial version in CVS.
  *
@@ -39,10 +42,7 @@
 #include "AlphaCPU.h"
 
 #include "Serial.h"
-#include "AliM1543C.h"
-
-extern CSerial * srl[2];
-extern CAliM1543C * ali;
+#include "AliM1543C_ide.h"
 
 /***********************************************************
  *                                                         *
@@ -1635,7 +1635,7 @@ int CAlphaCPU::vmspal_int_read_ide()
   ldl(controller+0x21c,controller);
   controller = (controller&0x80)?0:1;
 
-  fseek(ali->get_ide_disk((u32)controller,(u32)drive),(long)filepos,0);
+  fseek(theAliIDE->get_ide_disk((u32)controller,(u32)drive),(long)filepos,0);
 
   r0 = 0;
 
@@ -1646,7 +1646,7 @@ int CAlphaCPU::vmspal_int_read_ide()
     else
       try_b = (long)bytes;
     virt2phys(virt,&phys,ACCESS_WRITE,NULL,0);
-    ok_b  = fread(cSystem->PtrToMem(phys),1,try_b,ali->get_ide_disk((u32)controller,(u32)drive));
+    ok_b  = fread(cSystem->PtrToMem(phys),1,try_b,theAliIDE->get_ide_disk((u32)controller,(u32)drive));
     r0    += ok_b;
     virt  += ok_b;
     bytes -=ok_b;
@@ -1654,7 +1654,7 @@ int CAlphaCPU::vmspal_int_read_ide()
       break;
   }
 
-  stq(filepos_a,ftell(ali->get_ide_disk((u32)controller,(u32)drive)));
+  stq(filepos_a,ftell(theAliIDE->get_ide_disk((u32)controller,(u32)drive)));
 
   TRC_DEV5("%%SRM-I-READIDE : Read  %3" LL "d sectors @ IDE %d.%d @ LBA %8d\n",r18*r17/512,(u32)controller,(u32)drive,(long)(filepos/512));
   return 0;

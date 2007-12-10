@@ -27,6 +27,9 @@
  * \file 
  * Contains the definitions for the emulated Typhoon Chipset devices.
  *
+ * X-1.18       Camiel Vanderhoeven                             10-DEC-2007
+ *      Use configurator.
+ *
  * X-1.17       Camiel Vanderhoeven                             2-DEC-2007
  *      Added support for code profiling, and for direct operations on the
  *      Tsunami/Typhoon's interrupt registers.
@@ -91,6 +94,7 @@
 #include "datatypes.h"
 #include "SystemComponent.h"
 #include "TraceEngine.h"
+#include "Configurator.h"
 
 #if !defined(INCLUDED_SYSTEM_H)
 #define INCLUDED_SYSTEM_H
@@ -169,16 +173,11 @@ class CSystem
   int RegisterComponent(CSystemComponent * component);
   int RegisterCPU(class CAlphaCPU * cpu);
 	
-  CSystem(const char *filename);
+  CSystem(CConfigurator * cfg);
   void ResetMem(unsigned int membits);
 
   virtual ~CSystem();
   unsigned int iNumMemoryBits;
-
-  char *FindConfig();
-  void LoadConfig(const char *filename);
-  char *GetConfig(const char *key);
-  char *GetConfig(const char *key, char *defval);
 
   void panic(char *message, int flags);
 
@@ -229,8 +228,7 @@ private:
 
   class CAlphaCPU * acCPUs[4];
 
-  struct SConfig *asConfig[30];
-  int iNumConfig;
+  CConfigurator *myCfg;
 
   int iSingleStep;
 
@@ -258,5 +256,7 @@ inline void CSystem::set_c_dim(int ProcNum,u64 value)
 {
   state.c_DIM[ProcNum] = value;
 }
+
+extern CSystem * theSystem;
 
 #endif // !defined(INCLUDED_SYSTEM_H)

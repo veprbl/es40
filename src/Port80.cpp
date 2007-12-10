@@ -27,6 +27,9 @@
  * \file
  * Contains the code for the emulated Port 80 device.
  *
+ * X-1.9        Camiel Vanderhoeven                             10-DEC-2007
+ *      Use configurator.
+ *
  * X-1.8        Camiel Vanderhoeven                             31-MAR-2007
  *      Added old changelog comments.
  *
@@ -62,7 +65,7 @@
  * Constructor.
  **/
 
-CPort80::CPort80(CSystem * c) : CSystemComponent(c)
+CPort80::CPort80(CConfigurator * cfg, CSystem * c) : CSystemComponent(cfg,c)
 {
   c->RegisterMemory(this, 0, X64(00000801fc000080),1);
   p80 = 0;

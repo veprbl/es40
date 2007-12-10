@@ -27,6 +27,9 @@
  * \file 
  * Contains the code for the emulated Typhoon Chipset devices.
  *
+ * X-1.37       Camiel Vanderhoeven                             10-DEC-2007
+ *      Use configurator.
+ *
  * X-1.36       Camiel Vanderhoeven                             6-DEC-2007
  *      Report references to unused PCI space.
  *
@@ -201,16 +204,20 @@ char * dbg_strptr = debug_string;
  * Constructor.
  **/
 
-CSystem::CSystem(const char *filename)
+CSystem::CSystem(CConfigurator * cfg)
 {
-  this->LoadConfig(filename);
+  if (theSystem != 0)
+    FAILURE("More than one system!!\n");
+  theSystem = this;
+  myCfg = cfg;
 
   iNumComponents = 0;
   iNumFastClocks = 0;
   iNumSlowClocks = 0;
   iNumMemories = 0;
   iNumCPUs = 0;
-  iNumMemoryBits = atoi(this->GetConfig("memory.bits","27"));
+  iNumMemoryBits = myCfg->get_int_value("memory.bits",27);
+//  iNumConfig = 0;
 
 #if defined(IDB)
   iSingleStep = 0;
@@ -645,7 +652,7 @@ void CSystem::WriteMem(u64 address, int dsize, u64 data)
       if (a>=X64(801fc000000) && a<X64(801fe000000))
       {
         // Unused PCI I/O space
-        printf("Write to unknown IO port %"LL"x on PCI 0   \n",a & X64(1ffffff));
+//        printf("Write to unknown IO port %"LL"x on PCI 0   \n",a & X64(1ffffff));
         return;
       }
 
@@ -880,7 +887,7 @@ u64 CSystem::ReadMem(u64 address, int dsize)
       if (a>=X64(801fc000000) && a<X64(801fe000000))
       {
         // Unused PCI I/O space
-        printf("Read from unknown IO port %"LL"x on PCI 0   \n",a & X64(1ffffff));
+   //     printf("Read from unknown IO port %"LL"x on PCI 0   \n",a & X64(1ffffff));
         return 0;
       }
 
@@ -963,16 +970,16 @@ int CSystem::LoadROM()
   u64 temp;
   u32 scratch;
 
-  f = fopen(GetConfig("rom.decompressed","decompressed.rom"),"rb");
+  f = fopen(myCfg->get_text_value("rom.decompressed","decompressed.rom"),"rb");
   if (!f)
   {
-    f = fopen(GetConfig("rom.srm","cl67srmrom.exe"),"rb");
+    f = fopen(myCfg->get_text_value("rom.srm","cl67srmrom.exe"),"rb");
     if (!f)
     {
       printf("%%SYS-F-NOROM: No original or decompressed ROM image found!\n");
       return -1;
     }
-    printf("%%SYS-I-READROM: Reading original ROM image from %s.\n", GetConfig("rom.srm","cl67srmrom.exe"));
+    printf("%%SYS-I-READROM: Reading original ROM image from %s.\n", myCfg->get_text_value("rom.srm","cl67srmrom.exe"));
     for(i=0;i<0x240;i++)
     {
       if (feof(f)) break;
@@ -1009,14 +1016,14 @@ int CSystem::LoadROM()
     }
     printf("100%%\n");
 
-    f = fopen(GetConfig("rom.decompressed","decompressed.rom"),"wb");
+    f = fopen(myCfg->get_text_value("rom.decompressed","decompressed.rom"),"wb");
     if (!f)
     {
-      printf("%%SYS-W-NOWRITE: Couldn't write decompressed rom to %s.\n", GetConfig("rom.decompressed","decompressed.rom"));
+      printf("%%SYS-W-NOWRITE: Couldn't write decompressed rom to %s.\n", myCfg->get_text_value("rom.decompressed","decompressed.rom"));
     }
     else
     {
-      printf("%%SYS-I-ROMWRT: Writing decompressed rom to %s.\n", GetConfig("rom.decompressed","decompressed.rom"));
+      printf("%%SYS-I-ROMWRT: Writing decompressed rom to %s.\n", myCfg->get_text_value("rom.decompressed","decompressed.rom"));
       temp = endian_64(acCPUs[0]->get_pc());
       fwrite(&temp,1,sizeof(u64),f);
       temp = endian_64(acCPUs[0]->get_pal_base());
@@ -1028,7 +1035,7 @@ int CSystem::LoadROM()
   }
   else
   {
-    printf("%%SYS-I-READROM: Reading decompressed ROM image from %s.\n", GetConfig("rom.decompressed","decompressed.rom"));
+    printf("%%SYS-I-READROM: Reading decompressed ROM image from %s.\n", myCfg->get_text_value("rom.decompressed","decompressed.rom"));
     fread(&temp,1,sizeof(u64),f);
     acCPUs[0]->set_pc(endian_64(temp));
     fread(&temp,1,sizeof(u64),f);
@@ -1266,87 +1273,6 @@ void CSystem::DumpMemory(unsigned int filenum)
   fclose(f);
 }
 
-
-
-void CSystem::LoadConfig(const char *filename) {
-  char linebuf[121];
-  char *p, *keyp, *valp, *key, *val;
-  struct SConfig *conf;
-
-  printf("%%SYS-I-READCFG: Reading configuration file '%s'\n",filename);
-  iNumConfig=0;
-  FILE *f = fopen(filename,"r");
-  if(f==NULL) {
-    printf("%%SYS-E-READCFG: Configuration file cannot be read.\n");
-    return;
-  }
-  while(!feof(f)) {
-    fgets(linebuf,120,f);
-    // terminate the line at the comment char, if any.
-    if((p=strchr(linebuf,'#'))) *p=0;
-    
-    // if the line has an =, it is a config line.
-    if((p=strchr(linebuf,'='))) {
-      *p=0;
-      keyp = linebuf;
-      valp = p+1;
-
-      // find start of key
-      while(isblank(*keyp) && *keyp!=0) 
-        keyp++;
-      p=keyp;
-      // find end of variable
-      while(!isblank(*p) && *p !=0) 
-        p++;
-      *p=0;
-
-      // find start of value
-      while(isblank(*valp) && *valp!=0) 
-        valp++;
-      p=valp;
-      // find end of value
-      p += strlen(p) -1;
-      while(isblank(*p) || *p == '\n' || *p == '\r') 
-        p--;
-      *++p=0;
-
-      // keyp and valp now point to valid strings for the variable
-      // name and value name, respectively
-      CHECK_ALLOCATION(conf = (struct SConfig*)malloc(sizeof(struct SConfig)));
-      
-      CHECK_ALLOCATION(val = (char *)malloc(strlen(valp)+1));
-      CHECK_ALLOCATION(key = (char *)malloc(strlen(keyp)+1));
-      strcpy(val,valp);
-      strcpy(key,keyp);
-
-      conf->value=val;
-      conf->key=key;
-      
-      asConfig[iNumConfig++]=conf;
-    }
-  }
-  fclose(f);
-  printf("%%SYS-I-READCFG: Successful.  %d configuration variables read.\n",iNumConfig);
-
-  //  for(int x = 0; x<iNumConfig; x++) {
-  //   printf("'%s'='%s'\n",asConfig[x]->key,asConfig[x]->value);
-  // }
-
-}
-
-char *CSystem::GetConfig(const char *key) {
-  return GetConfig(key,NULL);
-}
-
-char *CSystem::GetConfig(const char *key, char *defval) {
-  for(int i=0;i<iNumConfig;i++) {
-    if(strcmp(asConfig[i]->key,key)==0) {
-      return asConfig[i]->value;
-    }
-  }
-  return defval;
-}
-
 /**
  *  Dump system state to stdout for debugging purposes.
  **/
@@ -1435,3 +1361,5 @@ u64 profile_buckets[PROFILE_BUCKETS];
 u64 profiled_insts;
 bool profile_started = false;
 #endif
+
+CSystem * theSystem = 0;

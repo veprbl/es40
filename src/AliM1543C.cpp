@@ -27,6 +27,9 @@
  * \file 
  * Contains the code for the emulated Ali M1543C chipset devices.
  *
+ * X-1.37       Camiel Vanderhoeven                             10-DEC-2007
+ *      Use configurator; move IDE and USB to their own classes.
+ *
  * X-1.36       Camiel Vanderhoeven                             7-DEC-2007
  *      Made keyboard messages conditional; add busmaster_status; add
  *      pic_edge_level.
@@ -185,56 +188,77 @@
 bool pic_messages = false;
 #endif
 
+u32 ali_cfg_data[64] = {
+/*00*/  0x153310b9, // CFID: vendor + device
+/*04*/  0x0200000f, // CFCS: command + status
+/*08*/  0x060100c3, // CFRV: class + revision
+/*0c*/  0x00000000, // CFLT: latency timer + cache line size
+/*10*/  0x00000000, // BAR0: 
+/*14*/  0x00000000, // BAR1: 
+/*18*/  0x00000000, // BAR2: 
+/*1c*/  0x00000000, // BAR3: 
+/*20*/  0x00000000, // BAR4: 
+/*24*/  0x00000000, // BAR5: 
+/*28*/  0x00000000, // CCIC: CardBus
+/*2c*/  0x00000000, // CSID: subsystem + vendor
+/*30*/  0x00000000, // BAR6: expansion rom base
+/*34*/  0x00000000, // CCAP: capabilities pointer
+/*38*/  0x00000000,
+/*3c*/  0x00000000, // CFIT: interrupt configuration
+        0,0,0,0,0,
+/*54*/  0x00000200, //                             
+        0,0,0,0,0,0,0,0,0,0,
+        0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+        0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+};
+
+u32 ali_cfg_mask[64] = {
+/*00*/  0x00000000, // CFID: vendor + device
+/*04*/  0x00000000, // CFCS: command + status
+/*08*/  0x00000000, // CFRV: class + revision
+/*0c*/  0x00000000, // CFLT: latency timer + cache line size
+/*10*/  0x00000000, // BAR0
+/*14*/  0x00000000, // BAR1: CBMA
+/*18*/  0x00000000, // BAR2: 
+/*1c*/  0x00000000, // BAR3: 
+/*20*/  0x00000000, // BAR4: 
+/*24*/  0x00000000, // BAR5: 
+/*28*/  0x00000000, // CCIC: CardBus
+/*2c*/  0x00000000, // CSID: subsystem + vendor
+/*30*/  0x00000000, // BAR6: expansion rom base
+/*34*/  0x00000000, // CCAP: capabilities pointer
+/*38*/  0x00000000,
+/*3c*/  0x00000000, // CFIT: interrupt configuration
+/*40*/  0xffcfff7f,
+/*44*/  0xff00cbdf,
+/*48*/  0xffffffff,
+/*4c*/  0x000000ff,
+/*50*/  0xffff8fff,
+/*54*/  0xf0ffff00,
+/*58*/  0x030f0d7f,
+        0,0,0,0,0,0,0,0,0,
+        0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+        0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+};
+
 /**
  * Constructor.
  **/
 
-CAliM1543C::CAliM1543C(CSystem * c): CSystemComponent(c)
+CAliM1543C::CAliM1543C(CConfigurator * cfg, CSystem * c, int pcibus, int pcidev): CPCIDevice(cfg,c,pcibus,pcidev)
 {
+  if (theAli != 0)
+    FAILURE("More than one Ali!!\n");
+  theAli = this;
+
+  add_function(0, ali_cfg_data, ali_cfg_mask);
+
   int i;
-  char buffer[64];
   char * filename;
-  char *p;
-  
-  for(i=0;i<4;i++) {
-    int C = i/2;
-    int D = i%2;
 
-    ide_info[C][D].handle = NULL;
-    ide_info[C][D].filename = NULL;
-
-    sprintf(buffer,"disk.%d",i);
-    filename=c->GetConfig(buffer,NULL);
-    if (filename)
-    {
-      if(*filename == '+') {
-	filename++;
-	ide_info[C][D].handle=fopen(filename,"rb+");
-	ide_info[C][D].mode=1;
-      } else {
-	ide_info[C][D].handle=fopen(filename,"rb");
-	ide_info[C][D].mode=0;
-      }
-
-      if(ide_info[C][D].handle != NULL) {
-        printf("%%IDE-I-MOUNT: Device '%s' mounted on IDE %d\n",filename,i);
-        CHECK_ALLOCATION(p=(char *)malloc(strlen(filename)+1));
-        strcpy(p,filename);
-        ide_info[C][D].filename=p;
-
-	fseek(ide_info[C][D].handle,0,SEEK_END);
-	ide_info[C][D].size=ftell(ide_info[C][D].handle)/512;
-	printf("-IDE-I-SIZE: %d blocks available.\n",ide_info[C][D].size);
-
-      } else {
-          printf("%%IDE-E-MOUNT: Cannot mount '%s'\n",filename);
-      }
-    }
-  }
-  
-  c->RegisterMemory(this, 1, X64(00000801fc000061),1);
-  c->RegisterMemory(this, 28, X64(00000801fc000060),1);
-  c->RegisterMemory(this, 29, X64(00000801fc000064),1);
+  add_legacy_io(1,0x61,1);
+  add_legacy_io(28,0x60,1);
+  add_legacy_io(29,0x64,1);
 
   kbd_resetinternals(1);
 
@@ -272,7 +296,7 @@ CAliM1543C::CAliM1543C(CSystem * c): CSystemComponent(c)
   state.kbd_controller.timer_pending = 0;
 
   // Mouse initialization stuff
-  state.mouse.captured        = atoi(cSystem->GetConfig("mouse.enabled","1"));
+  state.mouse.captured        = myCfg->get_bool_value("mouse.enabled",true);
 //  state.mouse.type            = SIM->get_param_enum(BXPN_MOUSE_TYPE)->get();
   state.mouse.sample_rate     = 100; // reports per second
   state.mouse.resolution_cpmm = 4;   // 4 counts per millimeter
@@ -293,6 +317,7 @@ CAliM1543C::CAliM1543C(CSystem * c): CSystemComponent(c)
 
   state.reg_61 = 0;
 
+  add_legacy_io(2,0x70,4);
   c->RegisterMemory(this, 2, X64(00000801fc000070), 4);
   for (i=0;i<4;i++)
     state.toy_access_ports[i] = 0;
@@ -305,13 +330,16 @@ CAliM1543C::CAliM1543C(CSystem * c): CSystemComponent(c)
 
   ResetPCI();
 									
-  c->RegisterMemory(this, 6, X64(00000801fc000040), 4);
+  add_legacy_io(6,0x40,4);
   c->RegisterClock(this, true);
   state.pit_enable = false;
 
-  c->RegisterMemory(this, 7,  X64(00000801fc000020), 2);
-  c->RegisterMemory(this, 8,  X64(00000801fc0000a0), 2);
-  c->RegisterMemory(this, 30, X64(00000801fc0004d0), 2);
+  add_legacy_io(7,0x20,2);
+  add_legacy_io(8,0xa0,2);
+  add_legacy_io(30,0x4d0,2);
+//  c->RegisterMemory(this, 7,  X64(00000801fc000020), 2);
+//  c->RegisterMemory(this, 8,  X64(00000801fc0000a0), 2);
+//  c->RegisterMemory(this, 30, X64(00000801fc0004d0), 2);
   c->RegisterMemory(this, 20, X64(00000801f8000000), 1);
   for(i=0;i<2;i++)
     {
@@ -321,13 +349,16 @@ CAliM1543C::CAliM1543C(CSystem * c): CSystemComponent(c)
       state.pic_asserted[i] = 0;
     }
 
-  c->RegisterMemory(this, 12, X64(00000801fc000000), 16);
-  c->RegisterMemory(this, 13, X64(00000801fc0000c0), 32);
+  add_legacy_io(12,0x00,16);
+  add_legacy_io(13,0xc0,32);
+//  c->RegisterMemory(this, 12, X64(00000801fc000000), 16);
+//  c->RegisterMemory(this, 13, X64(00000801fc0000c0), 32);
 
 
   // Initialize parallel port
-  c->RegisterMemory(this,27, X64(00000801fc0003bc), 4);
-  filename=c->GetConfig("lpt.outfile",NULL);
+  add_legacy_io(27,0x3bc,4);
+//  c->RegisterMemory(this,27, X64(00000801fc0003bc), 4);
+  filename=myCfg->get_text_value("lpt.outfile");
   if(filename) {
     lpt=fopen(filename,"wb");
   } else {
@@ -343,7 +374,7 @@ CAliM1543C::~CAliM1543C()
 {
 }
 
-u64 CAliM1543C::ReadMem(int index, u64 address, int dsize)
+u32 CAliM1543C::ReadMem_Legacy(int index, u32 address, int dsize)
 {
   int channel = 0;
   switch(index)
@@ -352,8 +383,6 @@ u64 CAliM1543C::ReadMem(int index, u64 address, int dsize)
 	  return reg_61_read();
     case 2:
       return toy_read(address);
-    case 3:
-      return endian_bits(isa_config_read(address, dsize), dsize);
     case 6:
       return pit_read(address);
     case 8:
@@ -364,33 +393,11 @@ u64 CAliM1543C::ReadMem(int index, u64 address, int dsize)
       return pic_read_vector();
     case 30:
       return pic_read_edge_level(address);
-    case 9:
-      return endian_bits(ide_config_read(address, dsize), dsize);
-    case 11:
-      return endian_bits(usb_config_read(address, dsize), dsize);
     case 13:
       channel = 1;
       address >>= 1;
     case 12:
       return dma_read(channel, address);
-    case 15:
-    case 22:
-      channel = 1;
-    case 14:
-    case 21:
-      return ide_command_read(channel,address);
-    case 17:
-    case 24:
-      channel = 1;
-    case 16:
-    case 23:
-      return ide_control_read(channel,address);
-    case 19:
-    case 26:
-      channel = 1;
-    case 18:
-    case 25:
-      return ide_busmaster_read(channel,address);
     case 27:
       return lpt_read(address);
     case 28:
@@ -402,7 +409,7 @@ u64 CAliM1543C::ReadMem(int index, u64 address, int dsize)
   return 0;
 }
 
-void CAliM1543C::WriteMem(int index, u64 address, int dsize, u64 data)
+void CAliM1543C::WriteMem_Legacy(int index, u32 address, int dsize, u32 data)
 {
   int channel = 0;
   switch(index)
@@ -412,9 +419,6 @@ void CAliM1543C::WriteMem(int index, u64 address, int dsize, u64 data)
       return;
     case 2:
       toy_write(address, (u8)data);
-      return;
-    case 3:
-      isa_config_write(address, dsize, endian_bits(data, dsize));
       return;
     case 6:
       pit_write(address, (u8) data);
@@ -427,40 +431,11 @@ void CAliM1543C::WriteMem(int index, u64 address, int dsize, u64 data)
     case 30:
       pic_write_edge_level(address, (u8) data);
       return;
-    case 9:
-      ide_config_write(address, dsize, endian_bits(data, dsize));
-      return;
-    case 11:
-      usb_config_write(address, dsize, endian_bits(data, dsize));
-      return;
     case 13:
       channel = 1;
       address >>= 1;
     case 12:
       dma_write(channel, address, (u8) data);
-      return;
-    case 15:
-    case 22:
-      channel = 1;
-    case 14:
-    case 21:
-      ide_command_write(channel,address, data);
-      return;
-    case 17:
-    case 24:
-      channel = 1;
-      ide_control_write(channel,address, data);
-      return;
-    case 16:
-    case 23:
-      ide_control_write(channel,address, data);
-      return;
-    case 19:
-    case 26:
-      channel = 1;
-    case 18:
-    case 25:
-      ide_busmaster_write(channel,address, data);
       return;
     case 27:
       lpt_write(address,(u8)data);
@@ -706,65 +681,6 @@ void CAliM1543C::toy_write(u64 address, u8 data)
     }
 }
 
-/**
- * Read from the ISA interfaces PCI configuration space.
- **/
-
-u64 CAliM1543C::isa_config_read(u64 address, int dsize)
-{
-    
-  u64 data;
-  void * x;
-
-  x = &(state.isa_config_data[address]);
-
-  switch (dsize)
-    {
-    case 8:
-      data = (u64)(*((u8*)x))&0xff;
-      break;
-    case 16:
-      data = (u64)(*((u16*)x))&0xffff;
-      break;
-    case 32:
-      data = (u64)(*((u32*)x))&0xffffffff;
-      break;
-    default:
-      data = (u64)(*((u64*)x));
-      break;
-    }
-  return data;
-}
-
-/**
- * Write to the ISA interfaces PCI configuration space.
- **/
-
-void CAliM1543C::isa_config_write(u64 address, int dsize, u64 data)
-{
-  void * x;
-  void * y;
-
-  x = &(state.isa_config_data[address]);
-  y = &(state.isa_config_mask[address]);
-
-  switch (dsize)
-    {
-    case 8:
-      *((u8*)x) = (*((u8*)x) & ~*((u8*)y)) | (((u8)data) & *((u8*)y));
-      break;
-    case 16:
-      *((u16*)x) = (*((u16*)x) & ~*((u16*)y)) | (((u16)data) & *((u16*)y));
-      break;
-    case 32:
-      *((u32*)x) = (*((u32*)x) & ~*((u32*)y)) | (((u32)data) & *((u32*)y));
-      break;
-    case 64:
-      *((u64*)x) = (*((u64*)x) & ~*((u64*)y)) | (((u64)data) & *((u64*)y));
-      break;
-    }
-}
-
 u8 CAliM1543C::pit_read(u64 address)
 {
   u8 data;
@@ -974,557 +890,6 @@ void CAliM1543C::pic_interrupt(int index, int intno)
 }
 
 /**
- * Read from the IDE controllers PCI configuration space.
- **/
-
-u64 CAliM1543C::ide_config_read(u64 address, int dsize)
-{
-    
-  u64 data;
-  void * x;
-
-  x = &(state.ide_config_data[address]);
-
-  switch (dsize)
-    {
-    case 8:
-      data = (u64)(*((u8*)x))&0xff;
-      break;
-    case 16:
-      data = (u64)(*((u16*)x))&0xffff;
-      break;
-    case 32:
-      data = (u64)(*((u32*)x))&0xffffffff;
-      break;
-    default:
-      data = (u64)(*((u64*)x));
-      break;
-    }
-  return data;
-
-}
-
-/**
- * Write to the IDE controllers PCI configuration space.
- **/
-
-void CAliM1543C::ide_config_write(u64 address, int dsize, u64 data)
-{
-
-  void * x;
-  void * y;
-
-  x = &(state.ide_config_data[address]);
-  y = &(state.ide_config_mask[address]);
-
-  switch (dsize)
-    {
-    case 8:
-      *((u8*)x) = (*((u8*)x)  & ~*((u8*)y) ) 
-	| (  ((u8)data) &  *((u8*)y) );
-      break;
-    case 16:
-      *((u16*)x) = (*((u16*)x) & ~*((u16*)y)) | (((u16)data) & *((u16*)y));
-      break;
-    case 32:
-      *((u32*)x) = (*((u32*)x) & ~*((u32*)y)) | ((u32)data & *((u32*)y));
-      break;
-    case 64:
-      *((u64*)x) = (*((u64*)x) & ~*((u64*)y)) | ((u64)data & *((u64*)y));
-      break;
-    }
-  if (   ((data&0xffffffff)!=0xffffffff) 
-	 && ((data&0xffffffff)!=0x00000000) 
-	 && ( dsize           ==32        ))
-    switch(address)
-      {
-      case 0x10:
-	// command
-	cSystem->RegisterMemory(this,21, X64(00000801fc000000) + (endian_32(data)&0x00fffffe), 8);
-	return;
-      case 0x14:
-	// control
-	cSystem->RegisterMemory(this,23, X64(00000801fc000000) + (endian_32(data)&0x00fffffe), 4);
-	return;
-      case 0x18:
-	// command
-	cSystem->RegisterMemory(this,22, X64(00000801fc000000) + (endian_32(data)&0x00fffffe), 8);
-	return;
-      case 0x1c:
-	// control
-	cSystem->RegisterMemory(this,24, X64(00000801fc000000) + (endian_32(data)&0x00fffffe), 4);
-	return;
-      case 0x20:
-	// bus master control
-	cSystem->RegisterMemory(this,25, X64(00000801fc000000) + (endian_32(data)&0x00fffffe), 8);
-	// bus master control
-	cSystem->RegisterMemory(this,26, X64(00000801fc000000) + (endian_32(data)&0x00fffffe) + 8, 8);
-	return;
-      }
-}
-
-u64 CAliM1543C::ide_command_read(int index, u64 address)
-{
-  u64 data;
-
-  data = state.ide_command[index][address];
-
-  if (!(ide_info[index][state.ide_selected[index]].handle))
-  {
-    // nonexistent drive
-    if (address)
-      return 0xff;
-    else
-      return 0xffff;
-  }
-
-  switch (address)
-    {
-    case 0:
-      if (state.ide_reading[index])
-        data = endian_16(state.ide_data[index][state.ide_data_ptr[index]]);
-      else
-        data = state.ide_data[index][state.ide_data_ptr[index]];
-//      printf("%c%c",printable((char)(data&0xff)),printable((char)((data>>8)&0xff)));
-      state.ide_data_ptr[index]++;
-      if (state.ide_data_ptr[index]==256)
-	{
-//	  printf("\n");
-	  if (state.ide_reading[index] && state.ide_sectors[index])
-	    {
-	      fread(&(state.ide_data[index][0]),1,512,ide_info[index][state.ide_selected[index]].handle);
-	      state.ide_sectors[index]--;
-	      if (!(state.ide_control[index]&2))
-          {
-  		    pic_interrupt(1,6+index);
-            state.ide_bm_status[index] |= 4;
-          }
-	    }
-	  else
-	    {
-	      state.ide_status[index] &= ~0x08;	// (no DRQ)
-	      state.ide_reading[index] = false;
-	    }
-	  state.ide_data_ptr[index] = 0;
-	}
-      break;
-    case 1:
-      data = state.ide_error[index]; // no error
-      break;
-    case 7:
-      //
-      // HACK FOR STRANGE ERROR WHEN SAVING/LOADING STATE
-      //
-      if (state.ide_status[index]==0xb9)
-        state.ide_status[index] = 0x40;
-      //
-      //
-      data = state.ide_status[index];
-      break;
-    }
-  TRC_DEV4("%%ALI-I-READIDECMD: read port %d on IDE command %d: 0x%02x\n", (u32)(address), index, data);
-#ifdef DEBUG_IDE
-  if (address)
-    printf("%%ALI-I-READIDECMD: read port %d on IDE command %d: 0x%02x\n", (u32)(address), index, data);
-#endif
-  return data;
-}
-
-void CAliM1543C::ide_command_write(int index, u64 address, u64 data)
-{
-  int lba;
-  int x;
-  int l;
-
-  TRC_DEV4("%%ALI-I-WRITEIDECMD: write port %d on IDE command %d: 0x%02x\n",  (u32)(address),index, data);
-
-#ifdef DEBUG_IDE
-  if (address)
-    printf("%%ALI-I-WRITEIDECMD: write port %d on IDE command %d: 0x%02x\n",  (u32)(address),index, data);
-#endif
-
-  state.ide_command[index][address]=(u8)data;
-	
-  state.ide_selected[index] = (state.ide_command[index][6]>>4)&1;
-
-  if (ide_info[index][state.ide_selected[index]].handle)
-    {
-      // drive is present
-      state.ide_status[index] = 0x40;
-      state.ide_error[index] = 0;
-
-      if (address==0 && state.ide_writing[index])
-      {
-        state.ide_data[index][state.ide_data_ptr[index]] = endian_16((u16)data);
-        state.ide_data_ptr[index]++;
-        if (state.ide_data_ptr[index]==256)
-	{
-	  fwrite(&(state.ide_data[index][0]),1,512,ide_info[index][state.ide_selected[index]].handle);
-	  state.ide_sectors[index]--;
-	  state.ide_data_ptr[index] = 0;
-	  if (!(state.ide_control[index]&2))
-      {
-	    pic_interrupt(1,6+index);
-        state.ide_bm_status[index] |= 4;
-      }
-	}
-	if (state.ide_sectors[index])
-	  state.ide_status[index] = 0x48;
-	else	      
-	  state.ide_writing[index] = false;
-      }
-      else if (address==7)	// command
-	{
-	  switch (data)
-	    {
-	    case 0xec:	// identify drive
-//#ifdef DEBUG_IDE
-	      printf("%%IDE-I-IDENTIFY: Identify IDE disk\n");
-//#endif
-	      state.ide_data_ptr[index] = 0;
-	      state.ide_data[index][0] = 0x0140;	// flags
-	      state.ide_data[index][1] = 3000;	// cylinders
-	      state.ide_data[index][2] = 0xc837;	// specific configuration (ATA-4 specs)
-	      state.ide_data[index][3] = 14;		// heads
-	      state.ide_data[index][4] = 25600;	// bytes per track
-	      state.ide_data[index][5] = 512;		// bytes per sector
-	      state.ide_data[index][6] = 50;		// sectors per track
-	      state.ide_data[index][7] = 0;		// spec. bytes
-	      state.ide_data[index][8] = 0;		// spec. bytes
-	      state.ide_data[index][9] = 0;		// unique vendor status words
-	      state.ide_data[index][10] = 0x2020;	// serial number
-	      state.ide_data[index][11] = 0x2020;
-	      state.ide_data[index][12] = 0x2020;
-	      state.ide_data[index][13] = 0x2020;
-	      state.ide_data[index][14] = 0x2020;
-	      state.ide_data[index][15] = 0x2020;
-	      state.ide_data[index][16] = 0x2020;
-	      state.ide_data[index][17] = 0x2020;
-	      state.ide_data[index][18] = 0x2020;
-	      state.ide_data[index][19] = 0x2020;
-	      state.ide_data[index][20] = 1;		// single ported, single buffer
-	      state.ide_data[index][21] = 51200;	// buffer size
-	      state.ide_data[index][22] = 0;		// ecc bytes
-	      state.ide_data[index][23] = 0x2020;	// firmware revision
-	      state.ide_data[index][24] = 0x2020;
-	      state.ide_data[index][25] = 0x2020;
-	      state.ide_data[index][26] = 0x2020;
-
-	      // clear the name
-	      for(x=27;x<47;x++) {
-		state.ide_data[index][x]=0x2020;
-	      }
-	      l = strlen(ide_info[index][state.ide_selected[index]].filename);
-	      l = (l > 40)? 40 : l;
-	      memcpy((char *)&state.ide_data[index][27],ide_info[index][state.ide_selected[index]].filename,l);
-     #if defined(ES40_LITTLE_ENDIAN)         
-	      for(x=27;x<47;x++) {
-		state.ide_data[index][x]=((state.ide_data[index][x]>>8) & 0xff) | (state.ide_data[index][x]<<8);
-	      }
-     #endif
-     
-              state.ide_data[index][47] = 1;		// read/write multiples
-	      state.ide_data[index][48] = 0;		// double-word IO transfers supported
-	      state.ide_data[index][49] = 0x0202;		// capability LBA
-	      state.ide_data[index][50] = 0;
-	      state.ide_data[index][51] = 0x101;		// cycle time
-	      state.ide_data[index][52] = 0x101;		// cycle time
-	      state.ide_data[index][53] = 1;			// field_valid
-	      state.ide_data[index][54] = 3000;		// cylinders
-	      state.ide_data[index][55] = 14;		// heads
-	      state.ide_data[index][56] = 50;		// sectors
-	      state.ide_data[index][57] = ide_info[index][state.ide_selected[index]].size & 0xFFFF;	// total_sectors
-	      state.ide_data[index][58] = ide_info[index][state.ide_selected[index]].size >> 16;	// ""
-	      state.ide_data[index][59] = 0;							// multiple sector count
-	      state.ide_data[index][60] = ide_info[index][state.ide_selected[index]].size & 0xFFFF;	// LBA capacity
-	      state.ide_data[index][61] = ide_info[index][state.ide_selected[index]].size >> 16;	// ""
-				
-	      //	unsigned int	lba_capacity;	/* total number of sectors */
-	      //	unsigned short	dma_1word;	/* single-word dma info */
-	      //	unsigned short	dma_mword;	/* multiple-word dma info */
-	      //	unsigned short  eide_pio_modes; /* bits 0:mode3 1:mode4 */
-	      //	unsigned short  eide_dma_min;	/* min mword dma cycle time (ns) */
-	      //	unsigned short  eide_dma_time;	/* recommended mword dma cycle time (ns) */
-	      //	unsigned short  eide_pio;       /* min cycle time (ns), no IORDY  */
-	      //	unsigned short  eide_pio_iordy; /* min cycle time (ns), with IORDY */
-
-
-
-	      state.ide_status[index] = 0x48;	// RDY+DRQ
-
-	      if (!(state.ide_control[index]&2))
-          {
-  		    pic_interrupt(1,6+index);
-            state.ide_bm_status[index] |= 4;
-          }
-
-	      break;
-	    case 0x20: // read sector
-	    case 0x21:
-	      lba =      endian_32(*((u32*)(&(state.ide_command[index][3])))) & 0x0fffffff;
-	      TRC_DEV5("%%IDE-I-READSECT: Read  %3d sectors @ IDE %d.%d LBA %8d\n",state.ide_command[index][2]?state.ide_command[index][2]:256,index,state.ide_selected[index],lba);
-#ifdef DEBUG_IDE
-	      printf("%%IDE-I-READSECT: Read  %3d sectors @ IDE %d.%d LBA %8d\n",state.ide_command[index][2]?state.ide_command[index][2]:256,index,state.ide_selected[index],lba);
-#endif
-	      fseek(ide_info[index][state.ide_selected[index]].handle,lba*512,0);
-	      fread(&(state.ide_data[index][0]),1,512,ide_info[index][state.ide_selected[index]].handle);
-	      state.ide_data_ptr[index] = 0;
-	      state.ide_status[index] = 0x48;
-	      state.ide_sectors[index] = state.ide_command[index][2]-1;
-	      if (state.ide_sectors[index]) state.ide_reading[index] = true;
-	      if (!(state.ide_control[index]&2))
-          {
-  		    pic_interrupt(1,6+index);
-            state.ide_bm_status[index] |= 4;
-          }
-	      break;
-	    case 0x30:
-	    case 0x31:
-	      if (!ide_info[index][state.ide_selected[index]].mode)
-	      {
-	        printf("%%IDE-W-WRITPROT: Attempt to write to write-protected disk.\n");
-		state.ide_status[index] = 0x41;
-		state.ide_error[index] = 0x04;
-	      }
-	      else
-	      {
-	        lba =      endian_32(*((u32*)(&(state.ide_command[index][3])))) & 0x0fffffff;
-	        TRC_DEV5("%%IDE-I-WRITSECT: Write %3d sectors @ IDE %d.%d @ LBA %8d\n",state.ide_command[index][2]?state.ide_command[index][2]:256,index,state.ide_selected[index],lba);
-#ifdef DEBUG_IDE
-	        printf("%%IDE-I-WRITSECT: Write %3d sectors @ IDE %d.%d @ LBA %8d\n",state.ide_command[index][2]?state.ide_command[index][2]:256,index,state.ide_selected[index],lba);
-#endif
-	        fseek(ide_info[index][state.ide_selected[index]].handle,lba*512,0);
-	        state.ide_data_ptr[index] = 0;
-	        state.ide_status[index] = 0x48;
-	        state.ide_sectors[index] = state.ide_command[index][2];
-	        state.ide_writing[index] = true;
-	      }
-	      break;
-	case 0x91:			// SET TRANSLATION
-//#ifdef DEBUG_IDE
-	      printf("%%IDE-I-SETTRANS: Set IDE translation\n");
-//#endif
-	      state.ide_status[index] = 0x40;
-	      if (!(state.ide_control[index]&2))
-          {
-  		    pic_interrupt(1,6+index);
-            state.ide_bm_status[index] |= 4;
-          }
-	      break;
-
-	    case 0x08: // reset drive (DRST)
-//#ifdef DEBUG_IDE
-
-	      printf("%%IDE-I-RESET: IDE Reset\n");
-//#endif
-	      state.ide_status[index]= 0x40;
-	      if (!(state.ide_control[index]&2))
-          {
-  		    pic_interrupt(1,6+index);
-            state.ide_bm_status[index] |= 4;
-          }
-	      break;
-
-	    case 0x00: // nop
-	      state.ide_status[index]= 0x40;
-	      if (!(state.ide_control[index]&2))
-          {
-  		    pic_interrupt(1,6+index);
-            state.ide_bm_status[index] |= 4;
-          }
-	      break;
-        default:
-	      state.ide_status[index] = 0x41;	// ERROR
-	      state.ide_error[index] = 0x20;	// ABORTED
-
-//#ifdef DEBUG_IDE
-	      printf("%%IDE-I-UNKCMND : Unknown IDE Command: ");
-	      for (x=0;x<8;x++) printf("%02x ",state.ide_command[index][x]);
-	      printf("\n");
-//#endif
-	      if (!(state.ide_control[index]&2))
-          {
-  		    pic_interrupt(1,6+index);
-            state.ide_bm_status[index] |= 4;
-          }
-	  }
-	}
-  }
-  else
-  {
-#ifdef DEBUG_IDE
-    if (address==7)
-    {
-      printf("%%IDE-I-NODRIVE : IDE Command for non-existing drive %d.%d: ",index,state.ide_selected[index]);
-      for (x=0;x<8;x++) printf("%02x ",state.ide_command[index][x]);
-        printf("\n");
-    }
-#endif
-    state.ide_status[index] = 0;
-
-  }
-}
-
-/**
- * Read from the IDE controller control interface.
- * Return status when \a address is 2, otherwise return 0.
- *
- * TO DO: this address range is a combination of IDE and floppy ports.
- *        Split it up. (3f0 - 3f4 = floppy, 3f6-3f7 = IDE (??)
- **/
-
-u64 CAliM1543C::ide_control_read(int index, u64 address)
-{
-  u64 data;
-
-  data = 0;
-  switch(address) 
-  {
-  case 0: //3f4 floppy main status register
-    data = 0x80; // floppy ready
-    break;
-  case 1: //3f5 floppy command status register
-    break;
-  case 2: // 3f6: ide status
-
-    //HACK FOR STRANGE ERROR WHEN SAVING/LOADING STATE
-    if (state.ide_status[index]==0xb9)
-      state.ide_status[index] = 0x40;
-    //END HACK
-
-    data = state.ide_status[index];
-    break;
-  default:
-    data = 0;
-  }
-
-  TRC_DEV4("%%IDE-I-READCTRL: read port %d on IDE control %d: 0x%02x\n", (u32)(address), index, data);
-#ifdef DEBUG_IDE
-//  if (address!=2)
-    printf("%%IDE-I-READCTRL: read port %d on IDE control %d: 0x%02x\n", (u32)(address), index, data);
-#endif
-  return data;
-}
-
-/**
- * Write to the IDE controller control interface.
- * Not functional
- **/
-
-void CAliM1543C::ide_control_write(int index, u64 address, u64 data)
-{
-  TRC_DEV4("%%IDE-I-WRITCRTL: write port %d on IDE control %d: 0x%02x\n",  (u32)(address),index, data);
-#ifdef DEBUG_IDE
-  printf("%%IDE-I-WRITCTRL: write port %d on IDE control %d: 0x%02x\n",  (u32)(address),index, data);
-#endif
-
-  switch(address) {
-  case 0: // floppy main status register
-    break;  // its read only
-  case 1: // floppy command status register.
-    break; // Ignored for now.
-  case 2: // command register
-    state.ide_control[index] = (data & 0xff) | 0x08;
-  } 
-}
-
-/**
- * Read from the IDE controller busmaster interface.
- * Always returns 0.
- **/
-
-u64 CAliM1543C::ide_busmaster_read(int index, u64 address)
-{
-  u64 data;
-
-  data = 0;
-  if (address == 2)
-    data = state.ide_bm_status[index];
-
-  TRC_DEV4("%%IDE-I-READBUSM: read port %d on IDE bus master %d: 0x%02x\n", (u32)(address), index, data);
-//#ifdef DEBUG_IDE
-  printf("%%IDE-I-READBUSM: read port %d on IDE bus master %d: 0x%02x\n", (u32)(address), index, data);
-//#endif
-  return data;
-}
-
-/**
- * Write to the IDE controller busmaster interface.
- * Not functional.
- **/
-
-void CAliM1543C::ide_busmaster_write(int index, u64 address, u64 data)
-{
-  TRC_DEV4("%%IDE-I-WRITBUSM: write port %d on IDE bus master %d: 0x%02x\n",  (u32)(address),index, data);
-//#ifdef DEBUG_IDE
-  printf("%%IDE-I-WRITBUSM: write port %d on IDE bus master %d: 0x%02x\n",  (u32)(address),index, data);
-//#endif
-
-  if (address==2)
-    state.ide_bm_status[index] &= ~data;
-}
-
-/**
- * Read from the USB controllers PCI configuration space.
- **/
-
-u64 CAliM1543C::usb_config_read(u64 address, int dsize)
-{
-    
-  u64 data;
-  void * x;
-
-  x = &(state.usb_config_data[address]);
-
-  switch (dsize)
-    {
-    case 8:
-      data = (u64)(*((u8*)x))&0xff;
-      break;
-    case 16:
-      data = (u64)(*((u16*)x))&0xffff;
-      break;
-    case 32:
-      data = (u64)(*((u32*)x))&0xffffffff;
-      break;
-    default:
-      data = (u64)(*((u64*)x));
-      break;
-    }
-  return data;
-
-}
-
-/**
- * Write to the USB controllers PCI configuration space.
- **/
-
-void CAliM1543C::usb_config_write(u64 address, int dsize, u64 data)
-{
-  void * x;
-  void * y;
-
-  x = &(state.usb_config_data[address]);
-  y = &(state.usb_config_mask[address]);
-
-  switch (dsize)
-    {
-    case 8:
-      *((u8*)x) = (*((u8*)x) & ~*((u8*)y)) | ((u8)data & *((u8*)y));
-      break;
-    case 16:
-      *((u16*)x) = (*((u16*)x) & ~*((u16*)y)) | ((u16)data & *((u16*)y));
-      break;
-    case 32:
-      *((u32*)x) = (*((u32*)x) & ~*((u32*)y)) | ((u32)data & *((u32*)y));
-      break;
-    case 64:
-      *((u64*)x) = (*((u64*)x) & ~*((u64*)y)) | ((u64)data & *((u64*)y));
-      break;
-    }
-}
-
-/**
  * Read a byte from the dma controller.
  * Always returns 0.
  **/
@@ -1557,179 +922,13 @@ void CAliM1543C::instant_tick()
   DoClock();
 }
 
-void CAliM1543C::ResetPCI()
-{
-  int i;
-
-  cSystem->RegisterMemory(this, 3, X64(00000801fe003800),0x100);
-
-  for (i=0;i<256;i++) 
-    {
-      state.isa_config_data[i] = 0;
-      state.isa_config_mask[i] = 0;
-    }
-  state.isa_config_data[0x00] = 0xb9;
-  state.isa_config_data[0x01] = 0x10;
-  state.isa_config_data[0x02] = 0x33;
-  state.isa_config_data[0x03] = 0x15;
-  state.isa_config_data[0x04] = 0x0f;
-  state.isa_config_data[0x07] = 0x02;
-  state.isa_config_data[0x08] = 0xc3;
-  state.isa_config_data[0x0a] = 0x01; 
-  state.isa_config_data[0x0b] = 0x06;
-  state.isa_config_data[0x55] = 0x02;
-  state.isa_config_mask[0x40] = 0x7f;
-  state.isa_config_mask[0x41] = 0xff;
-  state.isa_config_mask[0x42] = 0xcf;
-  state.isa_config_mask[0x43] = 0xff;
-  state.isa_config_mask[0x44] = 0xdf;
-  state.isa_config_mask[0x45] = 0xcb;
-  state.isa_config_mask[0x47] = 0xff;
-  state.isa_config_mask[0x48] = 0xff;
-  state.isa_config_mask[0x49] = 0xff;
-  state.isa_config_mask[0x4a] = 0xff;
-  state.isa_config_mask[0x4b] = 0xff;
-  state.isa_config_mask[0x4c] = 0xff;
-  state.isa_config_mask[0x50] = 0xff;
-  state.isa_config_mask[0x51] = 0x8f;
-  state.isa_config_mask[0x52] = 0xff;
-  state.isa_config_mask[0x53] = 0xff;
-  state.isa_config_mask[0x55] = 0xff;
-  state.isa_config_mask[0x56] = 0xff;
-  state.isa_config_mask[0x57] = 0xf0;
-  state.isa_config_mask[0x58] = 0x7f;
-  state.isa_config_mask[0x59] = 0x0d;
-  state.isa_config_mask[0x5a] = 0x0f;
-  state.isa_config_mask[0x5b] = 0x03;
-  // ...
-									
-  cSystem->RegisterMemory(this, 9, X64(00000801fe007800), 0x100);
-  cSystem->RegisterMemory(this,14, X64(00000801fc0001f0), 8);
-  cSystem->RegisterMemory(this,16, X64(00000801fc0003f4), 4);
-  cSystem->RegisterMemory(this,15, X64(00000801fc000170), 8);
-  cSystem->RegisterMemory(this,17, X64(00000801fc000374), 4);
-  cSystem->RegisterMemory(this,18, X64(00000801fc00f000), 8);
-  cSystem->RegisterMemory(this,19, X64(00000801fc00f008), 8);
-
-  for (i=0;i<256;i++)
-    {
-      state.ide_config_data[i] = 0;
-      state.ide_config_mask[i] = 0;
-    }
-  state.ide_config_data[0x00] = 0xb9;	// vendor
-  state.ide_config_data[0x01] = 0x10;
-  state.ide_config_data[0x02] = 0x29;	// device
-  state.ide_config_data[0x03] = 0x52;
-  state.ide_config_data[0x06] = 0x80;	// status
-  state.ide_config_data[0x07] = 0x02;	
-  state.ide_config_data[0x08] = 0xC1;	// revision
-  state.ide_config_data[0x09] = 0xFA;	// class code	
-  state.ide_config_data[0x0a] = 0x01;	
-  state.ide_config_data[0x0b] = 0x01;
-
-  state.ide_config_data[0x10] = 0xF1;	// address I	
-  state.ide_config_data[0x11] = 0x01;
-  state.ide_config_data[0x14] = 0xF5;	// address II	
-  state.ide_config_data[0x15] = 0x03;
-  state.ide_config_data[0x18] = 0x71;	// address III	
-  state.ide_config_data[0x19] = 0x01;
-  state.ide_config_data[0x1c] = 0x75;	// address IV	
-  state.ide_config_data[0x1d] = 0x03;
-  state.ide_config_data[0x20] = 0x01;	// address V	
-  state.ide_config_data[0x21] = 0xF0;
-
-  state.ide_config_data[0x3d] = 0x01;	// interrupt pin	
-  state.ide_config_data[0x3e] = 0x02;	// min_gnt
-  state.ide_config_data[0x3f] = 0x04;	// max_lat	
-  state.ide_config_data[0x4b] = 0x4a;	// udma test
-  state.ide_config_data[0x4e] = 0xba;	// reserved	
-  state.ide_config_data[0x4f] = 0x1a;
-  state.ide_config_data[0x54] = 0x55;	// fifo treshold ch 1	
-  state.ide_config_data[0x55] = 0x55;	// fifo treshold ch 2
-  state.ide_config_data[0x56] = 0x44;	// udma setting ch 1	
-  state.ide_config_data[0x57] = 0x44;	// udma setting ch 2
-  state.ide_config_data[0x78] = 0x21;	// ide clock	
-
-  //
-
-  state.ide_config_mask[0x04] = 0x45;	// command
-  state.ide_config_mask[0x0d] = 0xff;	// latency timer
-  state.ide_config_mask[0x10] = 0xf8;	// address I
-  state.ide_config_mask[0x11] = 0xff;	
-  state.ide_config_mask[0x12] = 0xff;	
-  state.ide_config_mask[0x13] = 0xff;	
-  state.ide_config_mask[0x14] = 0xfc;	// address II
-  state.ide_config_mask[0x15] = 0xff;	
-  state.ide_config_mask[0x16] = 0xff;	
-  state.ide_config_mask[0x17] = 0xff;	
-  state.ide_config_mask[0x18] = 0xf8;	// address III
-  state.ide_config_mask[0x19] = 0xff;	
-  state.ide_config_mask[0x1a] = 0xff;	
-  state.ide_config_mask[0x1b] = 0xff;	
-  state.ide_config_mask[0x1c] = 0xfc;	// address IV
-  state.ide_config_mask[0x1d] = 0xff;	
-  state.ide_config_mask[0x1e] = 0xff;	
-  state.ide_config_mask[0x1f] = 0xff;	
-  state.ide_config_mask[0x20] = 0xf0;	// address V
-  state.ide_config_mask[0x21] = 0xff;	
-  state.ide_config_mask[0x22] = 0xff;	
-  state.ide_config_mask[0x23] = 0xff;	
-
-  state.ide_config_mask[0x3c] = 0xff;	// interrupt
-  state.ide_config_mask[0x11] = 0xff;	
-  state.ide_config_mask[0x12] = 0xff;	
-  state.ide_config_mask[0x13] = 0xff;	
-
-  state.ide_status[0] = 0;
-  state.ide_bm_status[0] = 0;
-  state.ide_reading[0] = false;
-  state.ide_writing[0] = false;
-  state.ide_sectors[0] = 0;
-  state.ide_selected[0] = 0;
-  state.ide_error[0] = 0;
-
-  state.ide_status[1] = 0;
-  state.ide_bm_status[1] = 0;
-  state.ide_reading[1] = false;
-  state.ide_writing[1] = false;
-  state.ide_sectors[1] = 0;
-  state.ide_selected[1] = 0;
-  state.ide_error[1] = 0;
-
-//  cSystem->RegisterMemory(this, 11, X64(00000801fe009800), 0x100);
-  for (i=0;i<256;i++)
-    {
-      state.usb_config_data[i] = 0;
-      state.usb_config_mask[i] = 0;
-    }
-  state.usb_config_data[0x00] = 0xb9;
-  state.usb_config_data[0x01] = 0x10;
-  state.usb_config_data[0x02] = 0x37;
-  state.usb_config_data[0x03] = 0x52;
-  state.usb_config_mask[0x04] = 0x13;
-  state.usb_config_data[0x05] = 0x02;	state.usb_config_mask[0x05] = 0x01;
-  state.usb_config_data[0x06] = 0x80;
-  state.usb_config_data[0x07] = 0x02;
-  state.usb_config_data[0x09] = 0x10;
-  state.usb_config_data[0x0a] = 0x03;
-  state.usb_config_data[0x0b] = 0x0c;
-  state.usb_config_mask[0x0c] = 0x08;
-  state.usb_config_mask[0x0d] = 0xff;
-  state.usb_config_mask[0x11] = 0xf0;
-  state.usb_config_mask[0x12] = 0xff;
-  state.usb_config_mask[0x13] = 0xff;
-  state.usb_config_mask[0x3c] = 0xff;
-  state.usb_config_data[0x3d] = 0x01;	state.usb_config_mask[0x3d] = 0xff;
-  state.usb_config_mask[0x3e] = 0xff;
-  state.usb_config_mask[0x3f] = 0xff;
-}
-
 /**
  * Save state to a Virtual Machine State file.
  **/
 
 void CAliM1543C::SaveState(FILE *f)
 {
+  CPCIDevice::SaveState(f);
   fwrite(&state,sizeof(state),1,f);
 }
 
@@ -1739,14 +938,8 @@ void CAliM1543C::SaveState(FILE *f)
 
 void CAliM1543C::RestoreState(FILE *f)
 {
+  CPCIDevice::SaveState(f);
   fread(&state,sizeof(state),1,f);
-
-  // allocations 
-  ide_config_write(0x10,32,(*((u32*)(&state.ide_config_data[0x10])))&~1);
-  ide_config_write(0x14,32,(*((u32*)(&state.ide_config_data[0x14])))&~1);
-  ide_config_write(0x18,32,(*((u32*)(&state.ide_config_data[0x18])))&~1);
-  ide_config_write(0x1c,32,(*((u32*)(&state.ide_config_data[0x1c])))&~1);
-  ide_config_write(0x20,32,(*((u32*)(&state.ide_config_data[0x20])))&~1);
 }
 
 u8 CAliM1543C::lpt_read(u64 address) {
@@ -2961,3 +2154,5 @@ void CAliM1543C::kbd_clock()
   if(retval&0x02)
     pic_interrupt(1,4);
 }
+
+CAliM1543C * theAli = 0;

@@ -27,6 +27,9 @@
  * \file
  * Contains the code for the emulated Floppy Controller devices.
  *
+ * X-1.9        Camiel Vanderhoeven                             10-DEC-2007
+ *      Use configurator.
+ *
  * X-1.8        Camiel Vanderhoeven                             31-MAR-2007
  *      Added old changelog comments.
  *
@@ -62,7 +65,7 @@
  * Constructor.
  **/
 
-CFloppyController::CFloppyController(CSystem * c, int id) : CSystemComponent(c)
+CFloppyController::CFloppyController(CConfigurator * cfg, CSystem * c, int id) : CSystemComponent(cfg,c)
 {
   c->RegisterMemory(this, 0, X64(00000801fc0003f0) - (0x80 * id), 8);
   iMode = 0;

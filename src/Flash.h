@@ -27,6 +27,9 @@
  * \file 
  * Contains the definitions for the emulated Flash ROM devices.
  *
+ * X-1.8        Camiel Vanderhoeven                             10-DEC-2007
+ *      Use configurator.
+ *
  * X-1.7        Camiel Vanderhoeven                             30-MAR-2007
  *      Added old changelog comments.
  *
@@ -56,6 +59,7 @@
 #define INCLUDED_FLASH_H
 
 #include "SystemComponent.h"
+#include "Configurator.h"
 
 /**
  * Emulated flash memory.
@@ -68,16 +72,18 @@ class CFlash : public CSystemComponent
  public:
   virtual void WriteMem(int index, u64 address, int dsize, u64 data);
   virtual u64 ReadMem(int index, u64 address, int dsize);
-  CFlash(class CSystem * c);
+  CFlash(CConfigurator * cfg, class CSystem * c);
   virtual ~CFlash();
   virtual void SaveState(FILE * f);
   virtual void RestoreState(FILE * f);
-  virtual void SaveStateF(char * fn);
-  virtual void RestoreStateF(char * fn);
+  virtual void SaveStateF();
+  virtual void RestoreStateF();
 
  protected:
   u8 Flash[2*1024*1024];
   int mode;
 };
+
+extern CFlash * theSROM;
 
 #endif // !defined(INCLUDED_FLASH_H)

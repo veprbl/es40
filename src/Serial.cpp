@@ -27,6 +27,9 @@
  * \file
  * Contains the code for the emulated Serial Port devices.
  *
+ * X-1.28       Camiel Vanderhoeven                             10-DEC-2007
+ *      Use configurator.
+ *
  * X-1.27		Camiel Vanderhoeven								10-NOV-2007
  *	    Add possibility to save system state when not in debug mode.
  *
@@ -139,8 +142,6 @@
 
 #define RECV_TICKS 10
 
-extern CAliM1543C * ali;
-
 int  iCounter  = 0;
 
 #define FIFO_SIZE 1024
@@ -151,9 +152,9 @@ int  iCounter  = 0;
  * Constructor.
  **/
 
-CSerial::CSerial(CSystem * c, u16 number) : CSystemComponent(c)
+CSerial::CSerial(CConfigurator * cfg, CSystem * c, u16 number) : CSystemComponent(cfg,c)
 {
-  u16 base = (u16)atoi(c->GetConfig("serial.base","8000"));
+  u16 base = myCfg->get_int_value("port",8000+number);
   char s[1000];
   char s2[200];
   char * argv[20];
@@ -183,7 +184,7 @@ CSerial::CSerial(CSystem * c, u16 number) : CSystemComponent(c)
   }
   
   Address.sin_addr.s_addr=INADDR_ANY;
-  Address.sin_port=htons((u16)(base+number));
+  Address.sin_port=htons((u16)(base));
   Address.sin_family=AF_INET;
 
   int optval = 1;
@@ -191,12 +192,11 @@ CSerial::CSerial(CSystem * c, u16 number) : CSystemComponent(c)
   bind(listenSocket,(struct sockaddr *)&Address,sizeof(Address));
   listen(listenSocket, 1);
 
-  printf("%%SRL-I-WAIT: Waiting for connection on port %d.\n",number+base);
+  printf("%%SRL-I-WAIT: Waiting for connection on port %d.\n",base);
 
 #if !defined(LS_SLAVE)
-  sprintf(s2,"serial%d.action",number);
-  strncpy(s, c->GetConfig(s2,""),999);
-  printf("%%SRL-I-ACTION: Specified %s: %s\n",s2,c->GetConfig(s2,""));
+  strncpy(s, cfg->get_text_value("action",""),999);
+  printf("%%SRL-I-ACTION: Specified : %s\n",s);
 
   if (strcmp(s,""))
   {
@@ -393,7 +393,7 @@ void CSerial::WriteMem(int index, u64 address, int dsize, u64 data)
 	  if (bIER & 0x2)
             {
 	      bIIR = (bIIR>0x02)?bIIR:0x02;
-	      ali->pic_interrupt(0, 4 - iNumber);
+	      theAli->pic_interrupt(0, 4 - iNumber);
             }
         }
       break;
@@ -409,7 +409,7 @@ void CSerial::WriteMem(int index, u64 address, int dsize, u64 data)
 	  if (bIER & 0x2)
             {
 	      bIIR = (bIIR>0x02)?bIIR:0x02;
-	      ali->pic_interrupt(0, 4 - iNumber);
+	      theAli->pic_interrupt(0, 4 - iNumber);
             }
         }
       break;
@@ -447,7 +447,7 @@ void CSerial::receive(const char* data)
 	  if (bIER & 0x1)
 	  {
 	    bIIR = (bIIR>0x04)?bIIR:0x04;
-	    ali->pic_interrupt(0, 4 - iNumber);
+	    theAli->pic_interrupt(0, 4 - iNumber);
       }
     }
 }

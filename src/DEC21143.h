@@ -32,6 +32,9 @@
  * \file 
  * Contains the definitions for the emulated DEC 21143 NIC device.
  *
+ * X-1.8        Camiel Vanderhoeven                             10-DEC-2007
+ *      Use configurator.
+ *
  * X-1.7        Camiel Vanderhoeven                             2-DEC-2007
  *      Receive network data in a separate thread.
  *
@@ -61,16 +64,17 @@
 #if !defined(INCLUDED_DEC21143_H_)
 #define INCLUDED_DEC21143_H
 
-#include "SystemComponent.h"
+#include "PCIDevice.h"
 #include "DEC21143_mii.h"
 #include "DEC21143_tulipreg.h"
 #include <pcap.h>
+#include "Configurator.h"
 
 /**
  * Emulated DEC 21143 NIC device.
  **/
 
-class CDEC21143 : public CSystemComponent  
+class CDEC21143 : public CPCIDevice  
 {
  public:
   virtual void SaveState(FILE * f);
@@ -78,10 +82,10 @@ class CDEC21143 : public CSystemComponent
   void instant_tick();
   //	void interrupt(int number);
   virtual int DoClock();
-  virtual void WriteMem(int index, u64 address, int dsize, u64 data);
+  virtual void WriteMem_Bar(int func, int bar, u32 address, int dsize, u32 data);
+  virtual u32 ReadMem_Bar(int func, int bar, u32 address, int dsize);
 
-  virtual u64 ReadMem(int index, u64 address, int dsize);
-  CDEC21143(class CSystem * c);
+  CDEC21143(CConfigurator * confg, class CSystem * c, int pcibus, int pcidev);
   virtual ~CDEC21143();
   virtual void ResetPCI();
   void ResetNIC();
@@ -95,10 +99,8 @@ class CDEC21143 : public CSystemComponent
   pthread_t receive_process_handle;
 #endif
 
-  u64 config_read(u64 address, int dsize);
-  void config_write(u64 address, int dsize, u64 data);
-  u64 nic_read(u64 address, int dsize);
-  void nic_write(u64 address, int dsize, u64 data);
+  u32 nic_read(u32 address, int dsize);
+  void nic_write(u32 address, int dsize, u32 data);
   void mii_access(uint32_t oldreg, uint32_t idata);
   void srom_access(uint32_t oldreg, uint32_t idata);
 
@@ -107,13 +109,10 @@ class CDEC21143 : public CSystemComponent
 
   pcap_t *fp;
   struct bpf_program fcode;
+
   // The state structure contains all elements that need to be saved to the statefile.
   struct SDEC21143State {
-    
-    /* PCI configuration registers */  
-    u8 config_data[256];
-    u8 config_mask[256];
-
+   
     bool		irq_was_asserted;
 
     /*  Ethernet address, and a network which we are connected to:  */

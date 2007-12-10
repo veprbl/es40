@@ -27,6 +27,9 @@
  * \file
  * Contains the code for the emulated Dual Port Ram and RMC devices.
  *
+ * X-1.11       Camiel Vanderhoeven                             10-DEC-2007
+ *      Use configurator.
+ *
  * X-1.10       Camiel Vanderhoeven                             31-MAR-2007
  *      Added old changelog comments.
  *
@@ -71,8 +74,11 @@ extern CSerial * srl[2];
  * Constructor.
  **/
 
-CDPR::CDPR(CSystem * c) : CSystemComponent(c)
+CDPR::CDPR(CConfigurator * cfg, CSystem * c) : CSystemComponent(cfg,c)
 {
+  if (theDPR)
+    FAILURE("More than one DPR!!\n");
+  theDPR = this;
   u8 i;
 
   c->RegisterMemory(this, 0, X64(0000080110000000),0x100000); // 16KB
@@ -495,19 +501,19 @@ void CDPR::SaveState(FILE * f)
  * Save state to a DPR rom file.
  **/
 
-void CDPR::SaveStateF(char * fn)
+void CDPR::SaveStateF()
 {
   FILE * ff;
-  ff = fopen(fn,"wb");
+  ff = fopen(myCfg->get_text_value("rom.dpr","dpr.rom"),"wb");
   if (ff)
     {
       SaveState(ff);
       fclose(ff);
-      printf("%%DPR-I-SAVEST: DPR state saved to %s\n",fn);
+      printf("%%DPR-I-SAVEST: DPR state saved to %s\n",myCfg->get_text_value("rom.dpr","dpr.rom"));
     }
   else
   {
-    printf("%%DPR-F-NOSAVE: DPR could not be saved to %s\n",fn);
+    printf("%%DPR-F-NOSAVE: DPR could not be saved to %s\n",myCfg->get_text_value("rom.dpr","dpr.rom"));
   }
 }
 
@@ -515,19 +521,19 @@ void CDPR::SaveStateF(char * fn)
  * Restore state from a DPR rom file.
  **/
 
-void CDPR::RestoreStateF(char * fn)
+void CDPR::RestoreStateF()
 {
   FILE * ff;
-  ff = fopen(fn,"rb");
+  ff = fopen(myCfg->get_text_value("rom.dpr","dpr.rom"),"rb");
   if (ff)
     {
       RestoreState(ff);
       fclose(ff);
-      printf("%%DPR-I-RESTST: DPR state restored from %s\n",fn);
+      printf("%%DPR-I-RESTST: DPR state restored from %s\n",myCfg->get_text_value("rom.dpr","dpr.rom"));
     }
   else
   {
-    printf("%%DPR-F-NOREST: DPR could not be restored from %s\n",fn);
+    printf("%%DPR-F-NOREST: DPR could not be restored from %s\n",myCfg->get_text_value("rom.dpr","dpr.rom"));
   }
 }
 
@@ -539,3 +545,5 @@ void CDPR::RestoreState(FILE * f)
 {
   fread(ram,16*1024,1,f);
 }
+
+CDPR * theDPR = 0;

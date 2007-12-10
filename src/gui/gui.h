@@ -26,6 +26,11 @@
  */
 
 /**
+ * Contains the definitions for the bx_gui_c class used for interfacing with
+ * SDL and other device interfaces.
+ *
+ * X-1.3        Camiel Vanderhoeven                             10-DEC-2007
+ *      Use Configurator.
  *
  * X-1.2        Camiel Vanderhoeven                             7-DEC-2007
  *      Code cleanup.
@@ -48,7 +53,6 @@
 #define BOCHSAPI
 
 #include "vga.h" 
-#include "extplugin.h"
 
 typedef struct {
   u16  start_address;
@@ -335,10 +339,9 @@ virtual void graphics_tile_update_in_place(unsigned x, unsigned y,          \
 //   static bx_sdl_gui_c *theGui;
 
 #define IMPLEMENT_GUI_PLUGIN_CODE(gui_name)                           \
-  int lib##gui_name##_LTX_plugin_init(plugin_t *plugin,               \
-          plugintype_t type, int argc, char *argv[]) {                \
-    printf("installing %s module as the Bochs GUI", #gui_name);       \
-    theGui = new bx_##gui_name##_gui_c ();                            \
+  int lib##gui_name##_LTX_plugin_init(CConfigurator * cfg) {                \
+    printf("%%GUI-I-INS: Installing %s module as the ES40 GUI\n", #gui_name);       \
+    theGui = new bx_##gui_name##_gui_c (cfg);                            \
     bx_gui = theGui;                                                  \
     return(0); /* Success */                                          \
   }                                                                   \

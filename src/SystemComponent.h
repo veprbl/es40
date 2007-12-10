@@ -27,6 +27,9 @@
  * \file 
  * Contains definitions for the base class for devices that connect to the chipset.
  *
+ * X-1.10       Camiel Vanderhoeven                             10-DEC-2007
+ *      Use configurator.
+ *
  * X-1.9        Camiel Vanderhoeven                             16-APR-2007
  *      Added ResetPCI()
  *
@@ -72,7 +75,7 @@ class CSystemComponent
   virtual void RestoreState(FILE * f);
   virtual void SaveState(FILE * f);
 
-  CSystemComponent(class CSystem * system);
+  CSystemComponent(class CConfigurator * cfg, class CSystem * system);
   virtual ~CSystemComponent();
 
   //=== abstract ===
@@ -85,6 +88,7 @@ class CSystemComponent
 
  protected: 
   class CSystem * cSystem;
+  class CConfigurator * myCfg;
 };
 
 #endif // !defined(INCLUDED_SYSTEMCOMPONENT_H)

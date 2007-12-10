@@ -26,6 +26,11 @@
  */
 
 /**
+ * Contains the definitions for the bx_keymap_c class used for keyboard
+ * interfacing with SDL and other device interfaces.
+ *
+ * X-1.3        Camiel Vanderhoeven                             10-DEC-2007
+ *      Use Configurator.
  *
  * X-1.2        Camiel Vanderhoeven                             7-DEC-2007
  *      Code cleanup.
@@ -35,6 +40,7 @@
  *
  **/
 
+#include "../Configurator.h"
 /////////////////////////////////////////////////////////////////////////
 //
 // Methods of bx_keymap_c :
@@ -73,7 +79,7 @@ typedef struct {
 
 class bx_keymap_c {
 public:
-  bx_keymap_c(void);
+  bx_keymap_c(CConfigurator * cfg);
   ~bx_keymap_c(void);
 
   void   loadKeymap(u32(*)(const char*));
@@ -86,9 +92,10 @@ public:
 
 private:
   u32 convertStringToBXKey(const char *);
+  CConfigurator * myCfg;
  
   BXKeyEntry *keymapTable;
   u16   keymapCount;
   };
 
-extern bx_keymap_c bx_keymap;
+extern bx_keymap_c * bx_keymap;

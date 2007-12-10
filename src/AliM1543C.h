@@ -27,6 +27,9 @@
  * \file 
  * Contains the definitions for the emulated Ali M1543C chipset devices.
  *
+ * X-1.19       Camiel Vanderhoeven                             10-DEC-2007
+ *      Use configurator; move IDE and USB to their own classes.
+ *
  * X-1.18       Camiel Vanderhoeven                             7-DEC-2007
  *      Add busmaster_status; add pic_edge_level.
  *
@@ -89,8 +92,9 @@
 #if !defined(INCLUDED_ALIM1543C_H_)
 #define INCLUDED_ALIM1543C_H
 
-#include "SystemComponent.h"
+#include "PCIDevice.h"
 #include "gui/gui.h"
+#include "Configurator.h"
 
 #define BX_KBD_ELEMENTS 16
 #define BX_MOUSE_BUFF_SIZE 48
@@ -99,17 +103,6 @@
 #define MOUSE_MODE_STREAM 11
 #define MOUSE_MODE_REMOTE 12
 #define MOUSE_MODE_WRAP   13
-
-/**
- * Disk information structure.
- **/
-
-struct disk_info {
-  FILE *handle;         /**< disk image handle. */
-  char *filename;       /**< disk image filename. */
-  int size;           /**< disk image size in 512-byte blocks */  
-  int mode;           /**< disk image mode. */
-};
 
 /**
  * Emulated ALi M1543C multi-function device.
@@ -125,7 +118,7 @@ struct disk_info {
  *   .
  **/
 
-class CAliM1543C : public CSystemComponent  
+class CAliM1543C : public CPCIDevice
 {
  public:
   virtual void SaveState(FILE * f);
@@ -133,14 +126,12 @@ class CAliM1543C : public CSystemComponent
   void instant_tick();
   //	void interrupt(int number);
   virtual int DoClock();
-  virtual void WriteMem(int index, u64 address, int dsize, u64 data);
+  virtual void WriteMem_Legacy(int index, u32 address, int dsize, u32 data);
+  virtual u32 ReadMem_Legacy(int index, u32 address, int dsize);
 
-  virtual u64 ReadMem(int index, u64 address, int dsize);
-  CAliM1543C(class CSystem * c);
+  CAliM1543C(CConfigurator * cfg, class CSystem * c, int pcibus, int pcidev);
   virtual ~CAliM1543C();
   void pic_interrupt(int index, int intno);
-  FILE * get_ide_disk(int controller, int drive);
-  virtual void ResetPCI();
 
   void kbd_gen_scancode(u32 key);
 
@@ -173,10 +164,6 @@ class CAliM1543C : public CSystemComponent
   u8 toy_read(u64 address);
   void toy_write(u64 address, u8 data);
 
-  // ISA bridge
-  u64 isa_config_read(u64 address, int dsize);
-  void isa_config_write(u64 address, int dsize, u64 data);
-
   // Timer/Counter
   u8 pit_read(u64 address);
   void pit_write(u64 address, u8 data);
@@ -187,20 +174,6 @@ class CAliM1543C : public CSystemComponent
   u8 pic_read_vector();
   u8 pic_read_edge_level(int index);
   void pic_write_edge_level(int index, u8 data);
-
-  // IDE controller
-  u64 ide_config_read(u64 address, int dsize);
-  void ide_config_write(u64 address, int dsize, u64 data);
-  u64 ide_command_read(int channel, u64 address);
-  void ide_command_write(int channel, u64 address, u64 data);
-  u64 ide_control_read(int channel, u64 address);
-  void ide_control_write(int channel, u64 address, u64 data);
-  u64 ide_busmaster_read(int channel, u64 address);
-  void ide_busmaster_write(int channel, u64 address, u64 data);
-
-  // USB host controller
-  u64 usb_config_read(u64 address, int dsize);
-  void usb_config_write(u64 address, int dsize, u64 data);
 
   // DMA controller
   u8 dma_read(int channel, u64 address);
@@ -336,10 +309,6 @@ class CAliM1543C : public CSystemComponent
     u8 toy_stored_data[256];
     u8 toy_access_ports[4];
 
-    // ISA bridge
-    u8 isa_config_data[256];
-    u8 isa_config_mask[256];
-
     // Timer/Counter
     bool pit_enable;
 
@@ -350,36 +319,12 @@ class CAliM1543C : public CSystemComponent
     u8 pic_asserted[2];
     u8 pic_edge_level[2];
 
-    // IDE controller
-    u8 ide_config_data[256];
-    u8 ide_config_mask[256];
-    u8 ide_command[2][8];
-    u8 ide_control[2];
-    u8 ide_status[2];
-    u8 ide_error[2];
-    u16 ide_data[2][256];
-    int ide_data_ptr[2];
-    bool ide_writing[2];
-    bool ide_reading[2];
-    int ide_sectors[2];
-    int ide_selected[2];
-    u8 ide_bm_status[2];
-
-    // USB host controller
-    u8 usb_config_data[256];
-    u8 usb_config_mask[256];
-
     u8 lpt_data;
     u8 lpt_control;
   } state;
 
-  struct disk_info ide_info[2][2];
   FILE *lpt;
 };
 
-inline FILE * CAliM1543C::get_ide_disk(int controller, int drive)
-{
-  return ide_info[controller][drive].handle;
-}
-
+extern CAliM1543C * theAli;
 #endif // !defined(INCLUDED_ALIM1543C_H)

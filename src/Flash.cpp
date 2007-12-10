@@ -27,6 +27,9 @@
  * \file
  * Contains the code for the emulated Flash ROM devices.
  *
+ * X-1.11       Camiel Vanderhoeven                             10-DEC-2007
+ *      Use configurator.
+ *
  * X-1.10       Camiel Vanderhoeven                             31-MAR-2007
  *      Added old changelog comments.
  *
@@ -82,8 +85,11 @@ extern CAlphaCPU * cpu[4];
  * Constructor.
  **/
 
-CFlash::CFlash(CSystem * c) : CSystemComponent(c)
+CFlash::CFlash(CConfigurator * cfg, CSystem * c) : CSystemComponent(cfg,c)
 {
+  if (theSROM)
+    FAILURE("More than one SROM!!\n");
+  theSROM = this;
   c->RegisterMemory(this, 0, X64(0000080100000000),0x8000000); // 2MB
   printf("%%FLS-I-INIT: Flash ROM emulator initialized.\n");
   memset(Flash,0xff,2*1024*1024);
@@ -242,19 +248,19 @@ void CFlash::SaveState(FILE * f)
  * Save state to a flash rom file.
  **/
 
-void CFlash::SaveStateF(char * fn)
+void CFlash::SaveStateF()
 {
   FILE * ff;
-  ff = fopen(fn,"wb");
+  ff = fopen(myCfg->get_text_value("rom.flash","flash.rom"),"wb");
   if (ff)
     {
       SaveState(ff);
       fclose(ff);
-      printf("%%FLS-I-SAVEST: Flash state saved to %s\n",fn);
+      printf("%%FLS-I-SAVEST: Flash state saved to %s\n",myCfg->get_text_value("rom.flash","flash.rom"));
     }
   else
   {
-    printf("%%FLS-F-NOSAVE: Flash could not be saved to %s\n",fn);
+    printf("%%FLS-F-NOSAVE: Flash could not be saved to %s\n",myCfg->get_text_value("rom.flash","flash.rom"));
   }
 }
 
@@ -272,18 +278,20 @@ void CFlash::RestoreState(FILE * f)
  * Restore state from a flash rom file.
  **/
 
-void CFlash::RestoreStateF(char * fn)
+void CFlash::RestoreStateF()
 {
   FILE * ff;
-  ff = fopen(fn,"rb");
+  ff = fopen(myCfg->get_text_value("rom.flash","flash.rom"),"rb");
   if (ff)
     {
       RestoreState(ff);
       fclose(ff);
-      printf("%%FLS-I-RESTST: Flash state restored from %s\n",fn);
+      printf("%%FLS-I-RESTST: Flash state restored from %s\n",myCfg->get_text_value("rom.flash","flash.rom"));
     }
   else
   {
-    printf("%%FLS-F-NOREST: Flash could not be restored from %s\n",fn);
+    printf("%%FLS-F-NOREST: Flash could not be restored from %s\n",myCfg->get_text_value("rom.flash","flash.rom"));
   }
 }
+
+CFlash * theSROM = 0;

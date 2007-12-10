@@ -30,6 +30,9 @@
  * \bug Rounding and trap modes are not used for floating point ops.
  * \bug /V is ignored for integer ops.
  *
+ * X-1.47       Camiel Vanderhoeven                             10-DEC-2007
+ *      Use configurator.
+ *
  * X-1.46       Camiel Vanderhoeven                             2-DEC-2007
  *      Changed the way translation buffers work, the way interrupts work. 
  *
@@ -233,11 +236,8 @@
 #include "cpu_pal.h"
 #include "cpu_debug.h"
 
-#include "Serial.h"
-#include "AliM1543C.h"
-
-extern CSerial * srl[2];
-extern CAliM1543C * ali;
+//#include "Serial.h"
+//#include "AliM1543C.h"
 
 #if defined(IDB)
 
@@ -307,7 +307,7 @@ extern CAliM1543C * ali;
  * Constructor.
  **/
 
-CAlphaCPU::CAlphaCPU(CSystem * system) : CSystemComponent (system)
+CAlphaCPU::CAlphaCPU(CConfigurator * cfg, CSystem * system) : CSystemComponent (cfg,system)
 {
   state.iProcNum = cSystem->RegisterCPU(this);
   cSystem = system;

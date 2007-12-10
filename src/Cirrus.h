@@ -1,7 +1,8 @@
 /* ES40 emulator.
- * Copyright (C) 2007 by Brian Wheeler
+ * Copyright (C) 2007 by the ES40 Emulator Project
  *
- * E-mail : bdwheele@indiana.edu
+ * WWW    : http://sourceforge.net/projects/es40
+ * E-mail : camiel@camicom.com
  * 
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -24,25 +25,15 @@
 
 /**
  * \file
- * Contains the definitions for emulated S3 Trio 64 Video Card device.
+ * Contains the definitions for the emulated Cirrus CL GD-5434 Video Card device.
  *
- * X-1.3        Camiel Vanderhoeven                             10-DEC-2007
- *      Use new base class VGA.
- *
- * X-1.2        Camiel Vanderhoeven/Brian Wheeler               6-DEC-2007
- *      Changed implementation (with thanks to the Bochs project!!)
- *
- * X-1.1        Camiel Vanderhoeven                             1-DEC-2007
+ * X-1.1        Camiel Vanderhoeven                             10-DEC-2007
  *      Initial version in CVS.
- *
- * X-0.0        bdwheele@indiana.edu     
- *      Generated file.
- *
- * \author  Brian Wheeler (bdwheele@indiana.edu)
  **/
 
-#if !defined(INCLUDED_S3Trio64_H_)
-#define INCLUDED_S3Trio64_H_
+
+#if !defined(INCLUDED_Cirrus_H_)
+#define INCLUDED_Cirrus_H_
 
 #include "VGA.h"
 #include "Configurator.h"
@@ -51,16 +42,16 @@
 
 #include "gui/vga.h"
 
+/**
+ * Cirrus Video Card
+ **/
+
 /* video card has 4M of ram */
 #define VIDEO_RAM_SIZE 22
 #define CRTC_MAX 0x57
 #define VGA_BASE 0x3b0
 
-/**
- * S3 Trio 64 Video Card
- **/
-
-class CS3Trio64 : public CVGA
+class CCirrus : public CVGA
 {
   public:
     virtual void SaveState(FILE * f);
@@ -72,8 +63,8 @@ class CS3Trio64 : public CVGA
     virtual void WriteMem_Bar(int func, int bar, u32 address, int dsize, u32 data);
     virtual u32 ReadMem_Bar(int func, int bar, u32 address, int dsize);
 
-    CS3Trio64(CConfigurator * cfg, class CSystem * c, int pcibus, int pcidev);
-    virtual ~CS3Trio64();
+    CCirrus(CConfigurator * cfg, class CSystem * c, int pcibus, int pcidev);
+    virtual ~CCirrus();
 
     void update(void);
 
@@ -129,7 +120,7 @@ private:
     void vga_mem_write(u32 addr, u8 value);
     u8 vga_mem_read(u32 addr);
 
-    struct SS3Trio64State {
+    struct SCirrusState {
 //      u8 disabled;
 
 //      u8 framebuffer[1<<VIDEO_RAM_SIZE];
@@ -297,4 +288,4 @@ private:
     } state;
 };
 
-#endif // !defined(INCLUDED_S3Trio64_H_)
+#endif // !defined(INCLUDED_Cirrus_H_)

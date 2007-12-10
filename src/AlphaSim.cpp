@@ -27,6 +27,9 @@
  * \file
  * Defines the entry point for the application.
  *
+ * X-1.33       Camiel Vanderhoeven                             10-DEC-2007
+ *      Use configurator to read config-file and set up devices.
+ *
  * X-1.32       Camiel Vanderhoeven                             7-DEC-2007
  *      Moved SDL_Init to gui implementation.
  *
@@ -140,41 +143,17 @@
 
 #include "StdAfx.h"
 #include "System.h"
-#include "memory.h"
-#include "AlphaCPU.h"
-#include "Serial.h"
-#include "Port80.h"
-#include "FloppyController.h"
 #include "Flash.h"
-#include "AliM1543C.h"
-#if !defined(NO_NETWORK)
-#include "DEC21143.h"
-#endif
-
-#if defined(USE_CONSOLE)
-#include "S3Trio64.h"
-#include "gui/plugin.h"
-#endif
-
 #include "DPR.h"
+
 #include "TraceEngine.h"
 #include "lockstep.h"
 
-CSystem * systm;
-CAlphaCPU * cpu[4];
-CSerial * srl[2];
-CPort80 * port80;
-CFloppyController * fc[2];
+#include "Configurator.h"
+
 CFlash * srom;
-CAliM1543C * ali = 0;
-#if !defined(NO_NETWORK)
-CDEC21143 * nic = 0;
-#endif
 CDPR * dpr = 0;
 
-#if defined(USE_CONSOLE)
-CS3Trio64 * vga = 0;
-#endif
 
 // "standard" locations for a configuration file.  This
 // will be port specific.
@@ -194,22 +173,22 @@ char *path[]={
 
 int main(int argc, char* argv[])
 {
+  char *filename = 0;
+  FILE *f;
+
   printf("%%SYS-I-INITSTART: System initialization started.\n");
 
 #if defined(IDB) && (defined(LS_MASTER) || defined(LS_SLAVE))
   lockstep_init();
 #endif
-
 #if defined(IDB)
   if ((argc == 2 || argc==3) && argv[1][0] != '@')
 #else
   if (argc == 2)
 #endif
   {
-    systm = new CSystem(argv[1]);
+    filename = argv[1];
   } else {
-    char *filename = 0;
-    FILE *f;
     for(int i = 0 ; path[i] ; i++) {
       filename=path[i];
       f=fopen(path[i],"r");
@@ -221,46 +200,20 @@ int main(int argc, char* argv[])
     }
     if(filename==NULL)
       FAILURE("%%SYS-E-CONFIG:  Configuration file not found.\n");
-    systm = new CSystem(filename);
   }
 
+  char ch1[10000];
+  int ll1;
+  f = fopen(filename,"rb");
+  ll1 = fread(ch1,1,10000,f);
+  CConfigurator * c = new CConfigurator(0,0,0,ch1,ll1);
+  fclose(f);
+
 #if defined(IDB)
-  trc = new CTraceEngine(systm);
+  trc = new CTraceEngine(theSystem);
 #endif
 
-  cpu[0] = new CAlphaCPU(systm);
-
-#if defined(USE_CONSOLE)
-  // Initialize Any external libraries for the console.  We do this early since
-  // devices might need things set up before they're init'd
-
-  PLUG_load_plugin (sdl, PLUGTYPE_OPTIONAL);
-
-  atexit(SDL_Quit);
-#endif // USE_CONSOLE
-
-
-  ali = new CAliM1543C(systm);
-
-  srl[0] = new CSerial(systm, 0);
-  srl[1] = new CSerial(systm, 1);
-  port80 = new CPort80(systm);
-  fc[0] = new CFloppyController(systm, 0);
-  fc[1] = new CFloppyController(systm, 1);
-
-  srom = new CFlash(systm);
-  dpr = new CDPR(systm);
-
-#if !defined(NO_NETWORK)
-  if(!atoi(systm->GetConfig("nic0.disabled","0")))
-    nic = new CDEC21143(systm);
-#endif
-
-#if defined(USE_CONSOLE)
-  vga = new CS3Trio64(systm);
-#endif
-
-  systm->LoadROM();
+  theSystem->LoadROM();
 
   printf("%%SYS-I-INITEND: System initialization complete.\n");
 
@@ -292,8 +245,8 @@ int main(int argc, char* argv[])
   printf("   **======================================================================**\n");
   printf("\n\n");
 
-  srom->RestoreStateF(systm->GetConfig("rom.flash","flash.rom"));
-  dpr->RestoreStateF(systm->GetConfig("rom.dpr","dpr.rom"));
+  theSROM->RestoreStateF();
+  theDPR->RestoreStateF();
 
 #if defined(PROFILE)
   {
@@ -312,11 +265,11 @@ int main(int argc, char* argv[])
     trc->run_script(NULL);
 #else
 
-  if (systm->Run()>0)
+  if (theSystem->Run()>0)
   {
     // save flash and dpr rom only if not terminated with a fatal error
-    srom->SaveStateF(systm->GetConfig("rom.flash","flash.rom"));
-    dpr->SaveStateF(systm->GetConfig("rom.dpr","dpr.rom"));
+    theSROM->SaveStateF();
+    theDPR->SaveStateF();
   }
 #endif
 
@@ -355,7 +308,7 @@ int main(int argc, char* argv[])
   }
 #endif
 
-  delete systm;
+  delete theSystem;
 
   return 0;
 }

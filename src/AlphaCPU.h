@@ -28,6 +28,9 @@
  * \file
  * Contains the definitions for the emulated DecChip 21264CB EV68 Alpha processor.
  *
+ * X-1.28       Camiel Vanderhoeven                             10-DEC-2007
+ *      Use configurator.
+ *
  * X-1.27       Camiel Vanderhoeven                             2-DEC-2007
  *      Changed the way translation buffers work, the way interrupts work,
  *      added vmspal routines. 
@@ -128,6 +131,7 @@
 
 #include "SystemComponent.h"
 #include "System.h"
+#include "Configurator.h"
 
 #define ICACHE_ENTRIES          1024
 #define ICACHE_LINE_SIZE        512 // in dwords
@@ -205,7 +209,7 @@ class CAlphaCPU : public CSystemComponent
 
   void set_PAL_BASE(u64 pb);
   virtual int DoClock();
-  CAlphaCPU(CSystem * system);
+  CAlphaCPU(CConfigurator * cfg, CSystem * system);
   virtual ~CAlphaCPU();
   u64 get_r(int i, bool translate);
   u64 get_f(int i);

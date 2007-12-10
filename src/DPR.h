@@ -27,6 +27,9 @@
  * \file 
  * Contains the definitions for the emulated Dual Port Ram and RMC devices.
  *
+ * X-1.7        Camiel Vanderhoeven                             10-DEC-2007
+ *      Use configurator.
+ *
  * X-1.6        Camiel Vanderhoeven                             30-MAR-2007
  *      Added old changelog comments.
  *
@@ -52,6 +55,7 @@
 #define INCLUDED_DPR_H
 
 #include "SystemComponent.h"
+#include "Configurator.h"
 
 /**
  * Emulated dual-port RAM and management controller.
@@ -60,17 +64,19 @@
 class CDPR : public CSystemComponent  
 {
  public:
-  CDPR(class CSystem * c);
+  CDPR(CConfigurator * cfg, class CSystem * c);
   virtual ~CDPR();
   virtual void WriteMem(int index, u64 address, int dsize, u64 data);
   virtual u64 ReadMem(int index, u64 address, int dsize);
   virtual void SaveState(FILE * f);
   virtual void RestoreState(FILE * f);
-  virtual void SaveStateF(char * fn);
-  virtual void RestoreStateF(char * fn);
+  virtual void SaveStateF();
+  virtual void RestoreStateF();
 
  protected:
   u8 ram[16*1024];
 };
+
+extern CDPR * theDPR;
 
 #endif // !defined(INCLUDED_DPR_H_)

@@ -32,6 +32,9 @@
  * \file 
  * Contains the code for the emulated DEC 21143 NIC device.
  *
+ * X-1.15       Camiel Vanderhoeven                             10-DEC-2007
+ *      Use configurator.
+ *
  * X-1.14       Camiel Vanderhoeven                             6-DEC-2007
  *      Identifies itself as DE-500BA.
  *
@@ -108,11 +111,55 @@ static void * recv_proc(void * lpParam)
   return 0;
 }
 
+u32 dec21143_cfg_data[64] = {
+/*00*/  0x00191011, // CFID: vendor + device
+/*04*/  0x02800000, // CFCS: command + status
+/*08*/  0x02000041, // CFRV: class + revision
+/*0c*/  0x00000000, // CFLT: latency timer + cache line size
+/*10*/  0x00000001, // BAR0: CBIO
+/*14*/  0x00000000, // BAR1: CBMA
+/*18*/  0x00000000, // BAR2: 
+/*1c*/  0x00000000, // BAR3: 
+/*20*/  0x00000000, // BAR4: 
+/*24*/  0x00000000, // BAR5: 
+/*28*/  0x00000000, // CCIC: CardBus
+/*2c*/  0x500b1011, // CSID: subsystem + vendor
+/*30*/  0x00000000, // BAR6: expansion rom base
+/*34*/  0x00000000, // CCAP: capabilities pointer
+/*38*/  0x00000000,
+/*3c*/  0x281401ff, // CFIT: interrupt configuration
+        0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+        0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+        0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+};
+
+u32 dec21143_cfg_mask[64] = {
+/*00*/  0x00000000, // CFID: vendor + device
+/*04*/  0x0000ffff, // CFCS: command + status
+/*08*/  0x00000000, // CFRV: class + revision
+/*0c*/  0x0000ffff, // CFLT: latency timer + cache line size
+/*10*/  0xffffff00, // BAR0
+/*14*/  0xffffff00, // BAR1: CBMA
+/*18*/  0x00000000, // BAR2: 
+/*1c*/  0x00000000, // BAR3: 
+/*20*/  0x00000000, // BAR4: 
+/*24*/  0x00000000, // BAR5: 
+/*28*/  0x00000000, // CCIC: CardBus
+/*2c*/  0x00000000, // CSID: subsystem + vendor
+/*30*/  0x00000000, // BAR6: expansion rom base
+/*34*/  0x00000000, // CCAP: capabilities pointer
+/*38*/  0x00000000,
+/*3c*/  0x000000ff, // CFIT: interrupt configuration
+        0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+        0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+        0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+};
+
 /**
  * Constructor.
  **/
 
-CDEC21143::CDEC21143(CSystem * c): CSystemComponent(c)
+CDEC21143::CDEC21143(CConfigurator * confg, CSystem * c, int pcibus, int pcidev): CPCIDevice(confg,c,pcibus,pcidev)
 {
   pcap_if_t *alldevs, *d;
   u_int inum, i=0;
@@ -121,7 +168,10 @@ CDEC21143::CDEC21143(CSystem * c): CSystemComponent(c)
   int decnet_major;
   int decnet_minor;
 
-  cfg = cSystem->GetConfig("nic0.adapter",NULL);
+  add_function(0,dec21143_cfg_data,dec21143_cfg_mask);
+
+
+  cfg = myCfg->get_text_value("adapter");
 
   if (cfg)
   {
@@ -178,7 +228,7 @@ CDEC21143::CDEC21143(CSystem * c): CSystemComponent(c)
       FAILURE("Error opening adapter\n");
   }
 
-  cfg = cSystem->GetConfig("nic0.decnet","1.1");
+  cfg = myCfg->get_text_value("decnet","1.1");
   decnet_major = atoi(cfg);
   cfg = strchr(cfg,'.')+1;
   decnet_minor = atoi(cfg);
@@ -210,34 +260,27 @@ CDEC21143::~CDEC21143()
 {
 }
 
-u64 CDEC21143::ReadMem(int index, u64 address, int dsize)
+u32 CDEC21143::ReadMem_Bar(int func, int bar, u32 address, int dsize)
 {
-  int channel = 0;
-  switch(index)
-    {
-    case 1:
-      return endian_bits(config_read(address, dsize), dsize);
-    case 2:
-    case 3:
-      return nic_read(address, dsize);
-    }
+  switch(bar)
+  {
+  case 0: // CBIO
+  case 1: // CBMA
+    return nic_read(address, dsize);
+  }
 
   return 0;
 }
 
-void CDEC21143::WriteMem(int index, u64 address, int dsize, u64 data)
+void CDEC21143::WriteMem_Bar(int func, int bar, u32 address, int dsize, u32 data)
 {
-  int channel = 0;
-  switch(index)
-    {
-    case 1:
-      config_write(address, dsize, endian_bits(data, dsize));
-      return;
-    case 2:		// CBIO
-    case 3:		// CBMA
-      nic_write(address, dsize, endian_bits(data, dsize));
-      return;
-    }
+  switch(bar)
+  {
+  case 0:       // CBIO
+  case 1:		// CBMA
+    nic_write(address, dsize, (u32)endian_bits(data, dsize));
+    return;
+  }
 }
 
 int CDEC21143::DoClock()
@@ -259,9 +302,10 @@ int CDEC21143::DoClock()
 
   asserted = (state.reg[CSR_STATUS / 8] & state.reg[CSR_INTEN / 8] & 0x0c01ffff)?true:false;
 
-  if ((asserted != state.irq_was_asserted) && state.config_data[0x3c]!=0xff) {
-    cSystem->interrupt(state.config_data[0x3c], asserted);
-	state.irq_was_asserted = asserted;
+  if (asserted != state.irq_was_asserted)
+  {
+    if (do_pci_interrupt(0, asserted))
+	  state.irq_was_asserted = asserted;
   }
 
   return 0;
@@ -281,11 +325,11 @@ void CDEC21143::receive_process()
   }
 }
 
-u64 CDEC21143::nic_read(u64 address, int dsize)
+u32 CDEC21143::nic_read(u32 address, int dsize)
 {
-  u64 data;
+  u32 data;
 
-    uint32_t oldreg = 0;
+    u32 oldreg = 0;
 	int regnr = (int)(address >> 3);
 
 	if ((address & 7) == 0 && regnr < 32) {
@@ -300,7 +344,7 @@ u64 CDEC21143::nic_read(u64 address, int dsize)
  * Write to the NIC registers.
  **/
 
-void CDEC21143::nic_write(u64 address, int dsize, u64 data)
+void CDEC21143::nic_write(u32 address, int dsize, u32 data)
 {
 	uint32_t oldreg = 0;
 
@@ -970,81 +1014,7 @@ int CDEC21143::dec21143_tx()
 	return 1;
 }
 
-/**
- * Read from the PCI configuration space.
- **/
 
-u64 CDEC21143::config_read(u64 address, int dsize)
-{
-    
-  u64 data;
-  void * x;
-
-  x = &(state.config_data[address]);
-
-  switch (dsize)
-    {
-    case 8:
-      data = (u64)(*((u8*)x))&0xff;
-      break;
-    case 16:
-      data = (u64)(*((u16*)x))&0xffff;
-      break;
-    case 32:
-      data = (u64)(*((u32*)x))&0xffffffff;
-      break;
-    default:
-      data = (u64)(*((u64*)x));
-      break;
-    }
-  return data;
-
-}
-
-/**
- * Write to the PCI configuration space.
- **/
-
-void CDEC21143::config_write(u64 address, int dsize, u64 data)
-{
-  void * x;
-  void * y;
-
-  x = &(state.config_data[address]);
-  y = &(state.config_mask[address]);
-
-  switch (dsize)
-    {
-    case 8:
-      *((u8*)x) = (*((u8*)x) & ~*((u8*)y)) | ((u8)data & *((u8*)y));
-      break;
-    case 16:
-      *((u16*)x) = (*((u16*)x) & ~*((u16*)y)) | ((u16)data & *((u16*)y));
-      break;
-    case 32:
-      *((u32*)x) = (*((u32*)x) & ~*((u32*)y)) | ((u32)data & *((u32*)y));
-      break;
-    case 64:
-      *((u64*)x) = (*((u64*)x) & ~*((u64*)y)) | ((u64)data & *((u64*)y));
-      break;
-    }
-  if (   ((data&0xffffffff)!=0xffffffff) 
-	 && ((data&0xffffffff)!=0x00000000) 
-	 && ( dsize           ==32        ))
-    switch(address)
-      {
-      // CBIO
-      case 0x10:
-  	  cSystem->RegisterMemory(this,2, X64(00000801fc000000) + (endian_32(data)&0x00fffffe), 256);
-//      printf("cbio @ %016" LL "x\n",X64(00000801fc000000) + (endian_32(data)&0x00fffffe));
-	  break;
-      // CBMA
-      case 0x14:
-	  cSystem->RegisterMemory(this,3, X64(0000080000000000) + (endian_32(data)&0xfffffffe), 256);
-//      printf("cbma @ %016" LL "x\n",X64(0000080000000000) + (endian_32(data)&0xfffffffe));
-	  break;
-      }
-}
 void CDEC21143::SetupFilter()
 {
   u8 mac[16][6];
@@ -1126,49 +1096,10 @@ void CDEC21143::SetupFilter()
 //  getchar();
 }
 
+
 void CDEC21143::ResetPCI()
 {
-  int i;
-
-  cSystem->RegisterMemory(this, 1, X64(00000801fe003000),0x100);
-
-  for (i=0;i<256;i++) 
-    {
-      state.config_data[i] = 0;
-      state.config_mask[i] = 0;
-    }
-  state.config_data[0x00] = 0x11; // vendor id 1011h
-  state.config_data[0x01] = 0x10;
-  state.config_data[0x02] = 0x19; // device id 0019h
-  state.config_data[0x03] = 0x00;
-  state.config_data[0x04] = 0x00; // cfcs 02800000h
-    state.config_mask[0x04] = 0xff;
-  state.config_data[0x05] = 0x00;
-    state.config_mask[0x05] = 0xff;
-  state.config_data[0x06] = 0x80;
-  state.config_data[0x07] = 0x02; 
-  state.config_data[0x08] = 0x41; // cfrv 02000041h
-  state.config_data[0x09] = 0x00;
-  state.config_data[0x0a] = 0x00;
-  state.config_data[0x0b] = 0x02;
-  state.config_data[0x10] = 0x01; state.config_mask[0x10] = 0x00; // cbio xxxxxxx1h
-  state.config_data[0x11] = 0x00; state.config_mask[0x11] = 0xff;	
-  state.config_data[0x12] = 0x00; state.config_mask[0x12] = 0xff;
-  state.config_data[0x13] = 0x00; state.config_mask[0x13] = 0xff;
-  state.config_data[0x14] = 0x00; state.config_mask[0x14] = 0x00; // cbma xxxxxxx0h
-  state.config_data[0x15] = 0x00; state.config_mask[0x15] = 0xff;	
-  state.config_data[0x16] = 0x00; state.config_mask[0x16] = 0xff;
-  state.config_data[0x17] = 0x00; state.config_mask[0x17] = 0xff;
-
-  state.config_data[0x2c] = 0x11; // subsys vendor id 1011h
-  state.config_data[0x2d] = 0x10;
-  state.config_data[0x2e] = 0x0b; // subsys device id 500bh
-  state.config_data[0x2f] = 0x50;
-
-  state.config_data[0x3c] = 0xff; state.config_mask[0x3c] = 0xff; // cfit 281401xxh
-  state.config_data[0x3d] = 0x01;	
-  state.config_data[0x3e] = 0x14;
-  state.config_data[0x3f] = 0x28;
+  CPCIDevice::ResetPCI();
 
   ResetNIC();
 }
@@ -1244,6 +1175,8 @@ void CDEC21143::ResetNIC()
 
 void CDEC21143::SaveState(FILE *f)
 {
+  CPCIDevice::SaveState(f);
+
   fwrite(&state,sizeof(state),1,f);
 }
 
@@ -1253,11 +1186,9 @@ void CDEC21143::SaveState(FILE *f)
 
 void CDEC21143::RestoreState(FILE *f)
 {
-  fread(&state,sizeof(state),1,f);
+  CPCIDevice::RestoreState(f);
 
-  // allocations 
-  config_write(0x10,32,(*((u32*)(&state.config_data[0x10])))&~1);
-  config_write(0x14,32,(*((u32*)(&state.config_data[0x14])))&~1);
+  fread(&state,sizeof(state),1,f);
 }
 
 #endif //!defined(NO_NETWORK)

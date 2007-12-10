@@ -26,6 +26,11 @@
  */
 
 /**
+ * Contains the code for the bx_sdl_gui_c class used for interfacing with
+ * SDL.
+ *
+ * X-1.4        Camiel Vanderhoeven                             10-DEC-2007
+ *      Use Configurator.
  *
  * X-1.3        Camiel Vanderhoeven                             7-DEC-2007
  *      Made keyboard messages conditional.
@@ -41,13 +46,10 @@
 #include "StdAfx.h"
 #include "gui.h" 
 #include "keymap.h"
-#include "../S3Trio64.h"
+#include "../VGA.h"
 #include "../System.h"
 #include "../AliM1543C.h"
-
-extern CS3Trio64 * vga;
-extern CSystem * systm;
-extern CAliM1543C * ali;
+#include "../Configurator.h"
 
 #define _MULTI_THREAD
 
@@ -67,9 +69,11 @@ extern CAliM1543C * ali;
 
 class bx_sdl_gui_c : public bx_gui_c {
 public:
-  bx_sdl_gui_c (void);
+  bx_sdl_gui_c (CConfigurator * cfg);
   DECLARE_GUI_VIRTUAL_METHODS()
   DECLARE_GUI_NEW_VIRTUAL_METHODS()
+private:
+  CConfigurator * myCfg;
 };
 
 // declare one instance of the gui object and call macro to insert the
@@ -108,8 +112,10 @@ bool just_warped = false;
 #define SWAP32(X)    SDL_Swap32(X)
 #endif
 
-bx_sdl_gui_c::bx_sdl_gui_c ()
+bx_sdl_gui_c::bx_sdl_gui_c (CConfigurator * cfg)
 {
+  myCfg = cfg;
+  bx_keymap = new bx_keymap_c(cfg);
 }
 
 #ifdef __MORPHOS__
@@ -165,12 +171,12 @@ void bx_sdl_gui_c::specific_init(
   SDL_WarpMouse(half_res_x, half_res_y);
 
   // load keymap for sdl
-  if (atoi(systm->GetConfig("keyboard.use_mapping","0")))
+  if (myCfg->get_bool_value("keyboard.use_mapping",false))
   {
-    bx_keymap.loadKeymap(convertStringToSDLKey);
+    bx_keymap->loadKeymap(convertStringToSDLKey);
   }
 //  if (SIM->get_param_bool(BXPN_KBD_USEMAPPING)->get()) {
-//    bx_keymap.loadKeymap(convertStringToSDLKey);
+//    bx_keymap->loadKeymap(convertStringToSDLKey);
 //  }
 
   // parse sdl specific options
@@ -218,7 +224,7 @@ void bx_sdl_gui_c::text_update(
   }
   for (i=0; i<16; i++)
   {
-    text_palette[i] = palette[vga->get_actl_palette_idx(i)];
+    text_palette[i] = palette[theVGA->get_actl_palette_idx(i)];
   }
   if((tm_info.h_panning != h_panning) || (tm_info.v_panning != v_panning))
   {
@@ -766,7 +772,7 @@ void bx_sdl_gui_c::handle_events(void)
 
 	// convert sym->bochs code
 	if( sdl_event.key.keysym.sym > SDLK_LAST ) break;
-    if (!atoi(systm->GetConfig("keyboard.use_mapping","0")))
+    if (!myCfg->get_bool_value("keyboard.use_mapping",false))
     //    if (!SIM->get_param_bool(BXPN_KBD_USEMAPPING)->get())
     {
 	  key_event = sdl_sym_to_bx_key (sdl_event.key.keysym.sym);
@@ -775,7 +781,7 @@ void bx_sdl_gui_c::handle_events(void)
 #endif
 	} else {
 	  /* use mapping */
-	  BXKeyEntry *entry = bx_keymap.findHostKey (sdl_event.key.keysym.sym);
+	  BXKeyEntry *entry = bx_keymap->findHostKey (sdl_event.key.keysym.sym);
 	  if (!entry) {
 	    BX_ERROR(( "host key %d (0x%x) not mapped!", 
 		  (unsigned) sdl_event.key.keysym.sym,
@@ -785,9 +791,9 @@ void bx_sdl_gui_c::handle_events(void)
 	  key_event = entry->baseKey;
 	}
 	if( key_event == BX_KEY_UNHANDLED ) break;
-	ali->kbd_gen_scancode( key_event );
+	theAli->kbd_gen_scancode( key_event );
     if ((key_event == BX_KEY_NUM_LOCK) || (key_event == BX_KEY_CAPS_LOCK)) {
-	  ali->kbd_gen_scancode( key_event | BX_KEY_RELEASED );
+	  theAli->kbd_gen_scancode( key_event | BX_KEY_RELEASED );
     }
 	break;
 
@@ -798,13 +804,13 @@ void bx_sdl_gui_c::handle_events(void)
 	    && (sdl_event.key.keysym.sym < SDLK_LAST ))
 	{
 	  // convert sym->bochs code
-      if (!atoi(systm->GetConfig("keyboard.use_mapping","0"))) 
+      if (!myCfg->get_bool_value("keyboard.use_mapping",false)) 
       {
           //if (!SIM->get_param_bool(BXPN_KBD_USEMAPPING)->get()) {
             key_event = sdl_sym_to_bx_key (sdl_event.key.keysym.sym);
           } else {
             /* use mapping */
-            BXKeyEntry *entry = bx_keymap.findHostKey (sdl_event.key.keysym.sym);
+            BXKeyEntry *entry = bx_keymap->findHostKey (sdl_event.key.keysym.sym);
             if (!entry) {
               BX_ERROR(( "host key %d (0x%x) not mapped!", 
 		    (unsigned) sdl_event.key.keysym.sym,
@@ -815,9 +821,9 @@ void bx_sdl_gui_c::handle_events(void)
           }
 	  if( key_event == BX_KEY_UNHANDLED ) break;
           if ((key_event == BX_KEY_NUM_LOCK) || (key_event == BX_KEY_CAPS_LOCK)) {
-            ali->kbd_gen_scancode( key_event );
+            theAli->kbd_gen_scancode( key_event );
           }
-	  ali->kbd_gen_scancode( key_event | BX_KEY_RELEASED );
+	  theAli->kbd_gen_scancode( key_event | BX_KEY_RELEASED );
 	}
 	break;
 

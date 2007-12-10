@@ -26,6 +26,11 @@
  */
 
 /**
+ * Contains the code for the bx_keymap_c class used for keyboard
+ * interfacing with SDL and other device interfaces.
+ *
+ * X-1.3        Camiel Vanderhoeven                             10-DEC-2007
+ *      Use Configurator.
  *
  * X-1.2        Camiel Vanderhoeven                             7-DEC-2007
  *      Code cleanup.
@@ -39,8 +44,6 @@
 #include "gui.h"
 #include "keymap.h"
 #include "../System.h"
-
-extern CSystem * systm;
 
 char *bx_key_symbol[BX_KEY_NBKEYS] = {
   "BX_KEY_CTRL_L",         "BX_KEY_SHIFT_L",        "BX_KEY_F1",
@@ -85,12 +88,13 @@ char *bx_key_symbol[BX_KEY_NBKEYS] = {
   "BX_KEY_POWER_POWER",    "BX_KEY_POWER_WAKE",
 };
 
-bx_keymap_c bx_keymap;
+bx_keymap_c * bx_keymap;
 
-bx_keymap_c::bx_keymap_c(void)
+bx_keymap_c::bx_keymap_c(CConfigurator * cfg)
 {
     keymapCount = 0;
     keymapTable = (BXKeyEntry *)NULL;
+    myCfg = cfg;
 }
 
 bx_keymap_c::~bx_keymap_c(void)
@@ -104,9 +108,9 @@ bx_keymap_c::~bx_keymap_c(void)
 
 void bx_keymap_c::loadKeymap(u32 stringToSymbol(const char*))
 {
-  if (atoi(systm->GetConfig("keyboard.use_mapping","0")))
+  if (myCfg->get_bool_value("keyboard.use_mapping",false))
   {
-    loadKeymap(stringToSymbol, systm->GetConfig("keyboard.map","keys.map"));
+    loadKeymap(stringToSymbol, myCfg->get_text_value("keyboard.map","keys.map"));
   }
 //  if (SIM->get_param_bool(BXPN_KBD_USEMAPPING)->get()) {
 //    loadKeymap(stringToSymbol, SIM->get_param_string(BXPN_KBD_KEYMAP)->getptr());

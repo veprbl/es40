@@ -27,6 +27,9 @@
  * \file 
  * Contains the definitions for the emulated Port 80 device.
  *
+ * X-1.7        Camiel Vanderhoeven                             10-DEC-2007
+ *      Use configurator.
+ *
  * X-1.6        Camiel Vanderhoeven                             30-MAR-2007
  *      Added old changelog comments.
  *
@@ -52,6 +55,7 @@
 #define INCLUDED_PORT80_H
 
 #include "SystemComponent.h"
+#include "Configurator.h"
 
 /**
  * Emulated port 80.
@@ -65,7 +69,7 @@ class CPort80 : public CSystemComponent
 {
  public:
 
-  CPort80(class CSystem * c);
+  CPort80(CConfigurator * cfg, class CSystem * c);
   virtual ~CPort80();
   virtual u64 ReadMem(int index, u64 address, int dsize);
   virtual void WriteMem(int index, u64 address, int dsize, u64 data);

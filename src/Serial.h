@@ -27,6 +27,9 @@
  * \file 
  * Contains the definitions for the emulated Serial Port devices.
  *
+ * X-1.10       Camiel Vanderhoeven                             10-DEC-2007
+ *      Use configurator.
+ *
  * X-1.9        Camiel Vanderhoeven                             30-MAR-2007
  *      Added old changelog comments.
  *
@@ -63,6 +66,7 @@
 #define INCLUDED_SERIAL_H
 
 #include "SystemComponent.h"
+#include "Configurator.h"
 
 /**
  * Emulated serial port.
@@ -75,7 +79,7 @@ class CSerial : public CSystemComponent
   void write(char * s);
   void WriteMem(int index, u64 address, int dsize, u64 data);
   u64 ReadMem(int index, u64 address, int dsize);
-  CSerial(CSystem * c, u16 number);
+  CSerial(CConfigurator * cfg, CSystem * c, u16 number);
   virtual ~CSerial();
   void receive(const char* data);
   int DoClock();
