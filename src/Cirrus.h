@@ -27,6 +27,9 @@
  * \file
  * Contains the definitions for the emulated Cirrus CL GD-5434 Video Card device.
  *
+ * X-1.3        Camiel Vabderhoeven                             11-DEC-2007
+ *      Don't claim IO addresses 3d0..3d3, 3d6..3d9 and 3db..3df.
+ *
  * X-1.2        Camiel Vabderhoeven                             11-DEC-2007
  *      Don't claim IO addresses 3b0..3b3, 3b6..3b9 and 3bb.
  *
@@ -73,13 +76,13 @@ class CCirrus : public CVGA
     virtual u8 get_actl_palette_idx(u8 index);
 
 private:
-    u64 mem_read(u64 address, int dsize);
-    void mem_write(u64 address, int dsize, u64 data);
+    u32 mem_read(u32 address, int dsize);
+    void mem_write(u32 address, int dsize, u32 data);
 
-    u64 io_read(u64 address, int dsize);
-    void io_write(u64 address, int dsize, u64 data);
+    u32 io_read(u32 address, int dsize);
+    void io_write(u32 address, int dsize, u32 data);
 
-    void io_write_b(u64 address, u8 data);
+    void io_write_b(u32 address, u8 data);
 
     void write_b_3c0(u8 data);
     void write_b_3c2(u8 data);
@@ -107,11 +110,11 @@ private:
     u8 read_b_3da();
 
 
-    u64 legacy_read(u64 address, int dsize);
-    void legacy_write(u64 address, int dsize, u64 data);
+    u32 legacy_read(u32 address, int dsize);
+    void legacy_write(u32 address, int dsize, u32 data);
 
-    u64 rom_read(u64 address, int dsize);
-    void rom_write(u64 address, int dsize, u64 data);
+    u32 rom_read(u32 address, int dsize);
+    void rom_write(u32 address, int dsize, u32 data);
 
     void redraw_area(unsigned x0, unsigned y0, unsigned width, unsigned height);
     void determine_screen_dimensions(unsigned *piHeight, unsigned *piWidth);
