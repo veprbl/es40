@@ -27,6 +27,9 @@
  * \file
  * Contains the code for the emulated Ali M1543C IDE chipset part.
  *
+ * X-1.3        Camiel Vanderhoeven                             11-DEC-2007
+ *      Cleanup.
+ *
  * X-1.2        Camiel Vanderhoeven                             11-DEC-2007
  *      More complete IDE implementation allows NetBSD to recognize disks.
  *
@@ -290,17 +293,6 @@ u32 CAliM1543C_ide::ide_command_read(int index, u32 address, int dsize)
 {
   u32 data;
 
-//  data = state.ide_command[index][address];
-
-//  if (!(ide_info[index][state.ide_selected[index]].handle))
-//  {
-//    // nonexistent drive
-//    if (address)
-//      return 0xff;
-//    else
-//      return 0xffff;
-//  }
-
   switch (address)
   {
   case 0:
@@ -372,17 +364,7 @@ u32 CAliM1543C_ide::ide_command_read(int index, u32 address, int dsize)
          | (SEL_PER_DRIVE(index).head_no  & 0x0f       );
     break;
   case 7:
-      //
-      // HACK FOR STRANGE ERROR WHEN SAVING/LOADING STATE
-      //
-//      if (state.ide_status[index]==0xb9)
-//        state.ide_status[index] = 0x40;
-      //
-      //
       data = get_status(index);
-
-      // end pic interrupt ??
-
       break;
     }
   TRC_DEV4("%%ALI-I-READIDECMD: read port %d on IDE command %d: 0x%02x\n", (u32)(address), index, data);
@@ -404,10 +386,6 @@ void CAliM1543C_ide::ide_command_write(int index, u32 address, int dsize, u32 da
     printf("%%ALI-I-WRITEIDECMD: write port %d on IDE command %d: 0x%02x\n",  (u32)(address),index, data);
 #endif
 
-//  state.ide_command[index][address]=(u8)data;
-	
-//  state.ide_selected[index] = (state.ide_command[index][6]>>4)&1;
-
   switch(address)
   {
   case 0:
@@ -427,9 +405,7 @@ void CAliM1543C_ide::ide_command_write(int index, u32 address, int dsize, u32 da
       {
         SEL_STATUS(index).busy = false;
         SEL_STATUS(index).drive_ready = true;
-//        SEL_STATUS(index).write_fault = false;
         SEL_STATUS(index).seek_complete = true;
-//        SEL_STATUS(index).corrected_data = false;
         SEL_STATUS(index).err = false;
         state.ide_data_ptr[index] = 0;
   	    fwrite(&(state.ide_data[index][0]),1,512,SEL_INFO(index).handle);
@@ -496,16 +472,14 @@ void CAliM1543C_ide::ide_command_write(int index, u32 address, int dsize, u32 da
     case 0x00: // nop
         SEL_STATUS(index).drive_ready = true;
         SEL_STATUS(index).drq = false;
-      //state.ide_status[index]= 0x40;
         raise_interrupt(index);
       break;
+
     case 0x08: // reset drive (DRST)
 //#ifdef DEBUG_IDE
       printf("%%IDE-I-RESET: IDE Reset\n");
 //#endif
       command_aborted(index,0x08);
-      //state.ide_status[index]= 0x40;
-      //raise_interrupt(index);
       break;
 
     case 0x10: // CALIBRATE DRIVE
@@ -569,7 +543,6 @@ void CAliM1543C_ide::ide_command_write(int index, u32 address, int dsize, u32 da
       SEL_STATUS(index).drive_ready = true;
       SEL_STATUS(index).seek_complete = true;
       SEL_STATUS(index).drq = true;
-//      SEL_STATUS(index).corrected_data = false;
       raise_interrupt(index);
       break;
 
@@ -607,7 +580,6 @@ void CAliM1543C_ide::ide_command_write(int index, u32 address, int dsize, u32 da
       SEL_STATUS(index).drive_ready = true;
       SEL_STATUS(index).seek_complete = true;
       SEL_STATUS(index).drq = true;
-//      SEL_STATUS(index).corrected_data = false;
       break;
 
 	case 0x91:			// SET TRANSLATION
@@ -663,10 +635,8 @@ void CAliM1543C_ide::ide_command_write(int index, u32 address, int dsize, u32 da
 
       SEL_STATUS(index).busy = false;
       SEL_STATUS(index).drive_ready = true;
-//      SEL_STATUS(index).write_fault = false;
       SEL_STATUS(index).drq = true;
       SEL_STATUS(index).seek_complete = true;
-//      SEL_STATUS(index).corrected_data = false;
 
       identify_drive(index);
 
@@ -677,62 +647,6 @@ void CAliM1543C_ide::ide_command_write(int index, u32 address, int dsize, u32 da
       exit(1);
     }
   }
-//
-//
-//  if (SEL_INFO(index).handle)
-//    {
-//      // drive is present
-//      //state.ide_status[index] = 0x40;
-//      //state.ide_error[index] = 0;
-//
-//      if (address==0 && state.ide_writing[index])
-//      {
-//        state.ide_data[index][state.ide_data_ptr[index]] = endian_16((u16)data);
-//        state.ide_data_ptr[index]++;
-//        if (state.ide_data_ptr[index]==256)
-//	{
-//	  fwrite(&(state.ide_data[index][0]),1,512,ide_info[index][state.ide_selected[index]].handle);
-//	  state.ide_sectors[index]--;
-//	  state.ide_data_ptr[index] = 0;
-//      raise_interrupt(index);
-//	}
-//	if (state.ide_sectors[index])
-//	  state.ide_status[index] = 0x48;
-//	else	      
-//	  state.ide_writing[index] = false;
-//      }
-//      else if (address==7)	// command
-//	{
-//	  switch (data)
-//	    {
-//
-//
-//        default:
-//	      state.ide_status[index] = 0x41;	// ERROR
-//	      state.ide_error[index] = 0x20;	// ABORTED
-//
-////#ifdef DEBUG_IDE
-//	      printf("%%IDE-I-UNKCMND : Unknown IDE Command: ");
-//	      for (x=0;x<8;x++) printf("%02x ",state.ide_command[index][x]);
-//	      printf("\n");
-////#endif
-//          raise_interrupt(index);
-//	  }
-//	}
-//  }
-//  else
-//  {
-//#ifdef DEBUG_IDE
-//    if (address==7)
-//    {
-//      printf("%%IDE-I-NODRIVE : IDE Command for non-existing drive %d.%d: ",index,state.ide_selected[index]);
-//      for (x=0;x<8;x++) printf("%02x ",state.ide_command[index][x]);
-//        printf("\n");
-//    }
-//#endif
-//    state.ide_status[index] = 0;
-//
-//  }
 }
 
 /**
@@ -781,18 +695,14 @@ void CAliM1543C_ide::ide_control_write(int index, u32 address, u32 data)
     
     state.ide_status[index][0].busy = true;
     state.ide_status[index][0].drive_ready = false;
-//      state.ide_status[index][0].write_fault = false;
     state.ide_status[index][0].seek_complete = true;
     state.ide_status[index][0].drq = false;
-//      state.ide_status[index][0].corrected_data = false;
     state.ide_status[index][0].err = false;
     state.ide_status[index][0].current_command = 0;
     state.ide_status[index][1].busy = true;
     state.ide_status[index][1].drive_ready = false;
-//      state.ide_status[index][1].write_fault = false;
     state.ide_status[index][1].seek_complete = true;
     state.ide_status[index][1].drq = false;
-//      state.ide_status[index][1].corrected_data = false;
     state.ide_status[index][1].err = false;
     state.ide_status[index][1].current_command = 0;
 
@@ -874,17 +784,11 @@ void CAliM1543C_ide::ide_busmaster_write(int index, u32 address, u32 data)
 
 void CAliM1543C_ide::raise_interrupt(int index)
 {
-	//BX_DEBUG(("raise_interrupt called, disable_irq = %02x", BX_SELECTED_CONTROLLER(index).control.disable_irq));
-	if (!state.ide_control[index].disable_irq) 
-    {
-       //BX_DEBUG(("Raising interrupt %d {%s}", irq, BX_SELECTED_TYPE_STRING(index)));
-      state.ide_bm_status[index] |= 0x04;
-      theAli->pic_interrupt(1, 6+index);
-    }
-//    else {
-//          if (bx_dbg.disk || (BX_SELECTED_IS_CD(index) && bx_dbg.cdrom))
-//              BX_INFO(("Interrupt masked {%s}", BX_SELECTED_TYPE_STRING(index)));
-//      }
+  if (!state.ide_control[index].disable_irq) 
+  {
+    state.ide_bm_status[index] |= 0x04;
+    theAli->pic_interrupt(1, 6+index);
+  }
 }
 
 
@@ -909,14 +813,12 @@ void CAliM1543C_ide::ResetPCI()
     for (j=0;j<2;j++)
     {
       state.ide_status[i][j].busy = false;
-//      state.ide_status[i][j].corrected_data = false;
       state.ide_status[i][j].drive_ready = false;
       state.ide_status[i][j].drq = false;
       state.ide_status[i][j].err = false;
       state.ide_status[i][j].index_pulse = false;
       state.ide_status[i][j].index_pulse_count = 0;
       state.ide_status[i][j].seek_complete = false;
-//      state.ide_status[i][j].write_fault = false;
     }
   }
 }
@@ -951,10 +853,8 @@ u8 CAliM1543C_ide::get_status(int index)
 
   data = (SEL_STATUS(index).busy           ? 0x80 : 0x00)
        | (SEL_STATUS(index).drive_ready    ? 0x40 : 0x00)
-//       | (SEL_STATUS(index).write_fault    ? 0x20 : 0x00)
        | (SEL_STATUS(index).seek_complete  ? 0x10 : 0x00)
        | (SEL_STATUS(index).drq            ? 0x08 : 0x00)
-//       | (SEL_STATUS(index).corrected_data ? 0x04 : 0x00)
        | (SEL_STATUS(index).index_pulse    ? 0x02 : 0x00)
        | (SEL_STATUS(index).err            ? 0x01 : 0x00);
   SEL_STATUS(index).index_pulse_count++;
@@ -1061,7 +961,6 @@ void CAliM1543C_ide::command_aborted(int index, u8 command)
   SEL_STATUS(index).drive_ready = true;
   SEL_STATUS(index).err = true;
   SEL_STATUS(index).drq = false;
-//  SEL_STATUS(index).corrected_data = false;
 
   state.ide_error[index] = 0x04; // command ABORTED
   state.ide_data_ptr[index] = 0;
