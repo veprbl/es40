@@ -27,6 +27,9 @@
  * \file
  * Contains the definitions for the emulated Cirrus CL GD-5434 Video Card device.
  *
+ * X-1.2        Camiel Vabderhoeven                             11-DEC-2007
+ *      Don't claim IO addresses 3b0..3b3, 3b6..3b9 and 3bb.
+ *
  * X-1.1        Camiel Vanderhoeven                             10-DEC-2007
  *      Initial version in CVS.
  **/
@@ -49,7 +52,6 @@
 /* video card has 4M of ram */
 #define VIDEO_RAM_SIZE 22
 #define CRTC_MAX 0x57
-#define VGA_BASE 0x3b0
 
 class CCirrus : public CVGA
 {

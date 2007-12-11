@@ -27,6 +27,9 @@
  * \file
  * Contains the code for the emulated Cirrus CL GD-5434 Video Card device.
  *
+ * X-1.4        Camiel Vabderhoeven                             11-DEC-2007
+ *      Don't claim IO addresses 3b0..3b3, 3b6..3b9 and 3bb.
+ *
  * X-1.3        Brian Wheeler                                   10-DEC-2007
  *      Made refresh function name unique.
  *
@@ -165,8 +168,9 @@ CCirrus::CCirrus(CConfigurator * cfg, CSystem * c, int pcibus, int pcidev): CVGA
 
     c->RegisterClock(this, true);
 
-    /* the VGA I/O ports are at 3b0 -> 3bb and 3c0 -> 3cf */
-    add_legacy_io(1,0x3b0,12);
+    /* the VGA I/O ports are at 3b4, 3b5, 3ba and 3c0 -> 3cf */
+    add_legacy_io(1,0x3b4,2);
+    add_legacy_io(3,0x3ba,2);
     add_legacy_io(2,0x3c0,32);
 
     /* we listen for messages from outer space (a.k.a. VGA bios) at port 500. */
@@ -385,9 +389,11 @@ u32 CCirrus::ReadMem_Legacy(int index, u32 address, int dsize)
   switch(index)
     {
     case 1: /* io ports */
-      return endian_bits(io_read(address, dsize), dsize);
+      return endian_bits(io_read(address+0x3b4, dsize), dsize);
     case 2: /* io ports */
-      return endian_bits(io_read(address+0x10, dsize), dsize);
+      return endian_bits(io_read(address+0x3c0, dsize), dsize);
+    case 3: /* io ports */
+      return endian_bits(io_read(address+0x3ba, dsize), dsize);
     case 4: /* legacy memory */
       return endian_bits(legacy_read(address, dsize), dsize);
     case 5: /* rom */
@@ -402,10 +408,13 @@ void CCirrus::WriteMem_Legacy(int index, u32 address, int dsize, u32 data)
   switch(index)
     {
     case 1:  /* io port */
-      io_write(address,dsize,endian_bits(data,dsize));
+      io_write(address+0x3b4,dsize,endian_bits(data,dsize));
       return;
     case 2:  /* io port */
-      io_write(address+0x10,dsize,endian_bits(data,dsize));
+      io_write(address+0x3c0,dsize,endian_bits(data,dsize));
+      return;
+    case 3:  /* io port */
+      io_write(address+0x3ba,dsize,endian_bits(data,dsize));
       return;
     case 4:  /* legacy memory */
       legacy_write(address,dsize,endian_bits(data,dsize));
@@ -514,17 +523,17 @@ u64 CCirrus::legacy_read(u64 address, int dsize)
   switch (dsize)
     {
     case 64:
-      data |= (u64)vga_mem_read(address + 0xA0004) << 32;// (u64)(*((u8*)x))&0xff;
-      data |= (u64)vga_mem_read(address + 0xA0005) << 40;// (u64)(*((u8*)x))&0xff;
-      data |= (u64)vga_mem_read(address + 0xA0006) << 48;// (u64)(*((u8*)x))&0xff;
-      data |= (u64)vga_mem_read(address + 0xA0007) << 56;// (u64)(*((u8*)x))&0xff;
+      data |= (u64)vga_mem_read((u32)address + 0xA0004) << 32;// (u64)(*((u8*)x))&0xff;
+      data |= (u64)vga_mem_read((u32)address + 0xA0005) << 40;// (u64)(*((u8*)x))&0xff;
+      data |= (u64)vga_mem_read((u32)address + 0xA0006) << 48;// (u64)(*((u8*)x))&0xff;
+      data |= (u64)vga_mem_read((u32)address + 0xA0007) << 56;// (u64)(*((u8*)x))&0xff;
     case 32:
-      data |= (u64)vga_mem_read(address + 0xA0002) << 16;// (u64)(*((u8*)x))&0xff;
-      data |= (u64)vga_mem_read(address + 0xA0003) << 24;// (u64)(*((u8*)x))&0xff;
+      data |= (u64)vga_mem_read((u32)address + 0xA0002) << 16;// (u64)(*((u8*)x))&0xff;
+      data |= (u64)vga_mem_read((u32)address + 0xA0003) << 24;// (u64)(*((u8*)x))&0xff;
     case 16:
-      data |= (u64)vga_mem_read(address + 0xA0001) << 8;// (u64)(*((u8*)x))&0xff;
+      data |= (u64)vga_mem_read((u32)address + 0xA0001) << 8;// (u64)(*((u8*)x))&0xff;
     case 8:
-      data |= (u64)vga_mem_read(address + 0xA0000);// (u64)(*((u8*)x))&0xff;
+      data |= (u64)vga_mem_read((u32)address + 0xA0000);// (u64)(*((u8*)x))&0xff;
     }
 //  //printf("S3 legacy read: %" LL "x, %d, %" LL "x   \n", address, dsize, data);
   return data;
@@ -538,17 +547,17 @@ void CCirrus::legacy_write(u64 address, int dsize, u64 data)
 //  //printf("S3 legacy write: %" LL "x, %d, %" LL "x   \n", address, dsize, data);
   switch(dsize) {
   case 64:
-    vga_mem_write(address+0xA0004, (u8)(data>>32));
-    vga_mem_write(address+0xA0005, (u8)(data>>40));
-    vga_mem_write(address+0xA0006, (u8)(data>>48));
-    vga_mem_write(address+0xA0007, (u8)(data>>56));
+    vga_mem_write((u32)address+0xA0004, (u8)(data>>32));
+    vga_mem_write((u32)address+0xA0005, (u8)(data>>40));
+    vga_mem_write((u32)address+0xA0006, (u8)(data>>48));
+    vga_mem_write((u32)address+0xA0007, (u8)(data>>56));
   case 32:
-    vga_mem_write(address+0xA0002, (u8)(data>>16));
-    vga_mem_write(address+0xA0003, (u8)(data>>24));
+    vga_mem_write((u32)address+0xA0002, (u8)(data>>16));
+    vga_mem_write((u32)address+0xA0003, (u8)(data>>24));
   case 16:
-    vga_mem_write(address+0xA0001, (u8)(data>>8));
+    vga_mem_write((u32)address+0xA0001, (u8)(data>>8));
   case 8:
-    vga_mem_write(address+0xA0000, (u8)(data));
+    vga_mem_write((u32)address+0xA0000, (u8)(data));
   }
 }
 
@@ -604,7 +613,7 @@ u64 CCirrus::io_read(u64 address, int dsize)
     exit(1);
   }
 
-  switch(address+VGA_BASE) {
+  switch(address) {
     case 0x3c0:
         data = read_b_3c0();
         break;
@@ -684,7 +693,7 @@ u64 CCirrus::io_read(u64 address, int dsize)
   //  state.reg_3c0_mode = 0;
   //  break;
   default:
-    printf("%%VGA-W-PORT: Unhandled port %x read\n",address+VGA_BASE);
+    printf("%%VGA-W-PORT: Unhandled port %x read\n",address);
     exit(1);
   }
 
@@ -716,7 +725,7 @@ void CCirrus::io_write(u64 address, int dsize, u64 data)
 
 void CCirrus::io_write_b(u64 address, u8 data)
 {
-  switch(address+VGA_BASE) {
+  switch(address) {
 
     case 0x3c0:
         write_b_3c0(data);
@@ -758,7 +767,7 @@ void CCirrus::io_write_b(u64 address, u8 data)
       break;
 
   default:
-    printf("%%VGA-W-PORT: Unhandled port %x write\n",address+VGA_BASE);
+    printf("%%VGA-W-PORT: Unhandled port %x write\n",address);
     exit(1);
   }
 }
