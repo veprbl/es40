@@ -27,6 +27,9 @@
  * \file
  * Contains the code for the emulated Ali M1543C IDE chipset part.
  *
+ * X-1.4        Camiel Vanderhoeven                             11-DEC-2007
+ *      Removed last references to ide_command[][].
+ *
  * X-1.3        Camiel Vanderhoeven                             11-DEC-2007
  *      Cleanup.
  *
@@ -529,7 +532,7 @@ void CAliM1543C_ide::ide_command_write(int index, u32 address, int dsize, u32 da
         state.ide_sectors[index] = 256;
       else
         state.ide_sectors[index] = SEL_PER_DRIVE(index).sector_count;
-      TRC_DEV5("%%IDE-I-READSECT: Read  %3d sectors @ IDE %d.%d LBA %8d\n",state.ide_command[index][2]?state.ide_command[index][2]:256,index,state.ide_selected[index],lba);
+      TRC_DEV5("%%IDE-I-READSECT: Read  %3d sectors @ IDE %d.%d LBA %8d\n",SEL_PER_DRIVE(index).sector_count,index,state.ide_selected[index],lba);
 #ifdef DEBUG_IDE
       printf("%%IDE-I-READSECT: Read  %3d sectors @ IDE %d.%d LBA %8d\n",SEL_PER_DRIVE(index).sector_count,index,state.ide_selected[index],lba);
 #endif
@@ -567,7 +570,7 @@ void CAliM1543C_ide::ide_command_write(int index, u32 address, int dsize, u32 da
         state.ide_sectors[index] = 256;
       else
         state.ide_sectors[index] = SEL_PER_DRIVE(index).sector_count;
-      TRC_DEV5("%%IDE-I-READSECT: Read  %3d sectors @ IDE %d.%d LBA %8d\n",state.ide_command[index][2]?state.ide_command[index][2]:256,index,state.ide_selected[index],lba);
+      TRC_DEV5("%%IDE-I-READSECT: Read  %3d sectors @ IDE %d.%d LBA %8d\n",SEL_PER_DRIVE(index).sector_count,index,state.ide_selected[index],lba);
 #ifdef DEBUG_IDE
       printf("%%IDE-I-WRITSECT: Write  %3d sectors @ IDE %d.%d LBA %8d\n",SEL_PER_DRIVE(index).sector_count,index,state.ide_selected[index],lba);
 #endif
