@@ -27,6 +27,9 @@
  * \file
  * Contains the definitions for the emulated Ali M1543C IDE chipset part.
  *
+ * X-1.4        Camiel Vanderhoeven                             11-DEC-2007
+ *      Cleanup.
+ *
  * X-1.3        Camiel Vanderhoeven                             11-DEC-2007
  *      More complete IDE implementation allows NetBSD to recognize disks.
  *
@@ -110,7 +113,6 @@ class CAliM1543C_ide : public CPCIDevice
 
 // The state structure contains all elements that need to be saved to the statefile.
   struct SAliM1543C_ideState {
-//    u8 ide_command[2][8];
 
     struct {
       bool disable_irq;
@@ -120,10 +122,8 @@ class CAliM1543C_ide : public CPCIDevice
     struct {
       bool busy;
       bool drive_ready;
-      //bool write_fault;
       bool seek_complete;
       bool drq;
-      //bool corrected_data;
       bool err;
       bool index_pulse;
       int index_pulse_count;
@@ -140,7 +140,6 @@ class CAliM1543C_ide : public CPCIDevice
     } ide_per_drive[2][2];
     
     bool ide_reset_in_progress[2];
-    //u8 ide_current_command[2];
     u8 ide_error[2];
     u16 ide_data[2][256];
     int ide_data_ptr[2];
