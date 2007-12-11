@@ -27,8 +27,11 @@
  * \file 
  * Contains the code for the emulated Ali M1543C chipset devices.
  *
+ * X-1.40       Brian Wheeler                                   11-DEC-2007
+ *      Improved timer logic (again).
+ *
  * X-1.39       Brian Wheeler                                   10-DEC-2007
- *      Improved timer logic.             
+ *      Improved timer logic.
  *
  * X-1.38       Camiel Vanderhoeven                             10-DEC-2007
  *      Added config item for vga_console.
@@ -337,10 +340,16 @@ CAliM1543C::CAliM1543C(CConfigurator * cfg, CSystem * c, int pcibus, int pcidev)
   state.toy_stored_data[0x17] = myCfg->get_bool_value("vga_console")?1:0;
 
   ResetPCI();
-									
+
+  // PIT Setup
   add_legacy_io(6,0x40,4);
+  for (i=0;i<3;i++)
+  {
+    state.pit_status[i]=0x40; // invalid/null counter
+    state.pit_counter[i] = 0;
+  }
+
   c->RegisterClock(this, true);
-  state.pit_enable = false;
 
   add_legacy_io(7,0x20,2);
   add_legacy_io(8,0xa0,2);
@@ -522,6 +531,7 @@ void CAliM1543C::kbd_gen_scancode(u32 key)
  */
 u8 CAliM1543C::reg_61_read()
 {
+#if 0
   static long read_count = 0;
   if(!(state.reg_61 & 0x20)) {
     if (read_count % 1500 == 0)
@@ -530,6 +540,10 @@ u8 CAliM1543C::reg_61_read()
     state.reg_61 &= ~0x20;
   }
   read_count++;
+#else
+  state.reg_61 &= ~0x20;
+  state.reg_61 |= (state.pit_status[2] & 0x80) >> 2;
+#endif
   return state.reg_61;
 }
 
@@ -707,8 +721,34 @@ void CAliM1543C::toy_write(u64 address, u8 data)
     }
 }
 
+/* Here's the PIT Traffic during SRM and Linux Startup 
+   SRM
+   PIT Write:  3, 36  = counter 0, load lsb + msb, mode 3
+   PIT Write:  0, 00  
+   PIT Write:  0, 00  = 65536 = 18.2 Hz = timer interrupt.
+   PIT Write:  3, 54  = counter 1, msb only, mode 2
+   PIT Write:  1, 12  = 0x1200 = memory refresh?
+   PIT Write:  3, b6  = counter 2, load lsb + msb, mode 3
+   PIT Write:  3, 00  
+   PIT Write:  0, 00  
+   PIT Write:  0, 00  
+   
+   
+   Linux Startup
+   PIT Write:  3, b0  = counter 2, load lsb+msb, mode 0
+   PIT Write:  2, a4  
+   PIT Write:  2, ec  = eca4
+   PIT Write:  3, 36  = counter 0, load lsb+msb, mode 3
+   PIT Write:  0, 00  
+   PIT Write:  0, 00  = 65536
+   PIT Write:  3, b6  = counter 2, load lsb+msb, mode 3
+   PIT Write:  2, 31  
+   PIT Write:  2, 13  = 1331
+*/
+
 u8 CAliM1543C::pit_read(u64 address)
 {
+  printf("PIT Read: %02" LL "x \n",address);
   u8 data;
   data = 0;
   return data;
@@ -716,9 +756,86 @@ u8 CAliM1543C::pit_read(u64 address)
 
 void CAliM1543C::pit_write(u64 address, u8 data)
 {
+  printf("PIT Write: %02" LL "x, %02x \n",address,data);
+  if(address==3) { // control
+    if(data != 0) {
+      state.pit_status[address]=data; // last command seen.
+      if((data & 0xc0)>>6 != 3) {
+	state.pit_status[(data & 0xc0)>>6]=data & 0x3f;
+	state.pit_mode[(data & 0xc0)>>6]=(data & 0x30) >> 4;
+      } else { // readback command 8254 only
+	state.pit_status[address]=0xc0;  // bogus :)
+      }
+    }
+  } else { // a counter
+    switch(state.pit_mode[address]) {
+    case 0:
+      break;
+    case 1:
+    case 3:
+      state.pit_counter[address] = (state.pit_counter[address] & 0xff) | data<<8;
+      state.pit_counter[address + PIT_OFFSET_MAX]=state.pit_counter[address];
+      if(state.pit_mode[address]==3) {
+	state.pit_mode[address]=2;
+      } else
+	state.pit_status[address] &= ~0xc0; // no longer high, counter valid.
+      break;
+    case 2:
+      state.pit_counter[address] = (state.pit_counter[address] & 0xff00) | data;
 
-  state.pit_enable = true;
+      // two bytes were written with 0x00, so its really 0x10000
+      if((state.pit_status[address] & 0x30) >> 4==3 && state.pit_counter[address]==0) {
+	state.pit_counter[address]=65536;
+      }
+      state.pit_counter[address + PIT_OFFSET_MAX]=state.pit_counter[address];
+      state.pit_status[address] &= ~0xc0; // no longer high, counter valid.
+      break;
+    }
+  }
 }
+
+#define PIT_FACTOR 5000
+#define PIT_DEC(p) p=(p<PIT_FACTOR?0:p-PIT_FACTOR);
+void CAliM1543C::pit_clock() {
+ /* Handle the PIT interrupt 
+     counter 0 is the 18.2Hz time counter.
+     counter 1 is the ram refresh, we don't care.
+     counter 2 is the speaker and/or generic timer */
+  int i;
+  for(i=0;i<3;i++) {
+    // decrement the counter.
+    if(state.pit_status[i] & 0x40 == 1)
+      continue;
+    PIT_DEC(state.pit_counter[i]);
+    switch((state.pit_status[i] & 0x0e)>>1) {
+    case 0: // interrupt at terminal
+      if(!state.pit_counter[i]) {
+	state.pit_status[i] |= 0xc0;  // out pin high, no count set.
+      }
+      break;
+    case 3: // square wave generator
+      if(!state.pit_counter[i]) {
+	if(state.pit_status[i] & 0x80) {
+	  state.pit_status[i] &= ~0x80; // lower output;
+	} else {
+	  state.pit_status[i] |= 0x80; // raise output
+	  if(i==0) {
+	    pic_interrupt(0,0); // counter 0 is tied to irq 0.
+	    //printf("Generating timer interrupt.\n");
+	  }
+	}
+	state.pit_counter[i]=state.pit_counter[i+PIT_OFFSET_MAX];
+      }
+      // decrement again, since we want a half-wide square wave.
+      PIT_DEC(state.pit_counter[i]);
+      break;
+    default:
+      break;  // we don't care to handle it.
+    }
+  }
+}
+
+#define PIT_RATIO 1
 
 int CAliM1543C::DoClock()
 {
@@ -731,11 +848,18 @@ int CAliM1543C::DoClock()
   if(state.toy_stored_data[0x0b] & 0x40 &&
      interrupt_factor++ > 10000) {
     //printf("Issuing RTC Interrupt\n");
-    pic_interrupt(0,8);
+    pic_interrupt(1,0);
     state.toy_stored_data[0x0c] |= 0xf0; // mark that the interrupt has happened.
     interrupt_factor=0;
   }
 #endif
+
+  static int pit_counter = 0;
+  if(pit_counter++ >= PIT_RATIO)
+  {
+    pit_counter = 0;
+    pit_clock();
+  }
 
   return 0;
 }

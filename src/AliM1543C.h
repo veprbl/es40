@@ -27,6 +27,9 @@
  * \file 
  * Contains the definitions for the emulated Ali M1543C chipset devices.
  *
+ * X-1.20       Brian Wheeler                                   11-DEC-2007
+ *      Improved timer logic (again).
+ *
  * X-1.19       Camiel Vanderhoeven                             10-DEC-2007
  *      Use configurator; move IDE and USB to their own classes.
  *
@@ -167,6 +170,7 @@ class CAliM1543C : public CPCIDevice
   // Timer/Counter
   u8 pit_read(u64 address);
   void pit_write(u64 address, u8 data);
+  void pit_clock();
 
   // interrupt controller
   u8 pic_read(int index, u64 address);
@@ -310,7 +314,11 @@ class CAliM1543C : public CPCIDevice
     u8 toy_access_ports[4];
 
     // Timer/Counter
-    bool pit_enable;
+    u32 pit_counter[9];
+#define PIT_OFFSET_LATCH 3
+#define PIT_OFFSET_MAX 6
+    u8 pit_status[4];
+    u8 pit_mode[4];
 
     // interrupt controller
     int pic_mode[2];
