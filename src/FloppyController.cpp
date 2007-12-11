@@ -1,7 +1,7 @@
 /* ES40 emulator.
- * Copyright (C) 2007 by Camiel Vanderhoeven
+ * Copyright (C) 2007 by the ES40 Emulator Project
  *
- * Website: www.camicom.com
+ * WWW    : http://sourceforge.net/projects/es40
  * E-mail : camiel@camicom.com
  * 
  * This program is free software; you can redistribute it and/or
@@ -26,6 +26,9 @@
 /** 
  * \file
  * Contains the code for the emulated Floppy Controller devices.
+ *
+ * X-1.10       Camiel Vanderhoeven                             11-DEC-2007
+ *      Don't claim IO port 3f6 as this is in use by the IDE controller.
  *
  * X-1.9        Camiel Vanderhoeven                             10-DEC-2007
  *      Use configurator.
@@ -67,7 +70,8 @@
 
 CFloppyController::CFloppyController(CConfigurator * cfg, CSystem * c, int id) : CSystemComponent(cfg,c)
 {
-  c->RegisterMemory(this, 0, X64(00000801fc0003f0) - (0x80 * id), 8);
+  c->RegisterMemory(this, 0, X64(00000801fc0003f0) - (0x80 * id), 6);
+  c->RegisterMemory(this, 1, X64(00000801fc0003f7) - (0x80 * id), 1);
   iMode = 0;
   iID = id;
   iActiveRegister = 0;
@@ -130,6 +134,9 @@ CFloppyController::~CFloppyController()
 
 void CFloppyController::WriteMem(int index, u64 address, int dsize, u64 data)
 {
+  if (index==1)
+    address += 7;
+
   switch (address)
     {
     case 0:
@@ -171,6 +178,9 @@ void CFloppyController::WriteMem(int index, u64 address, int dsize, u64 data)
 
 u64 CFloppyController::ReadMem(int index, u64 address, int dsize)
 {
+  if (index==1)
+    address += 7;
+
   switch (address)
     {
     case 1:
@@ -178,14 +188,16 @@ u64 CFloppyController::ReadMem(int index, u64 address, int dsize)
 	{
 	  if (iActiveRegister < 0x2a)
 	    return (u64)(iRegisters[iActiveRegister]);
-	  //			else
-	  //				printf("Unknown floppy register: %02x\n",iActiveRegister);
 	}
-      //		else
-      //			printf("Unknown read access on floppy port %d\n",(u32)address);
-      break;
-      //	default:
-      //		printf("Unknown read access on floppy port %d\n",(u32)address);
+    break;
+  case 4: //3f4 floppy main status register
+    return 0x80; // floppy ready
+    break;
+  case 5: //3f5 floppy command status register
+    return 0;
+    break;
+  default:
+	printf("Unknown read access on floppy port %d\n",(u32)address);
     }
 
   return 0;

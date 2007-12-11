@@ -27,6 +27,9 @@
  * \file
  * Contains the definitions for the emulated Ali M1543C IDE chipset part.
  *
+ * X-1.3        Camiel Vanderhoeven                             11-DEC-2007
+ *      More complete IDE implementation allows NetBSD to recognize disks.
+ *
  * X-1.2        Brian Wheeler                                   10-DEC-2007
  *      Fixed include case.
  *
@@ -51,6 +54,10 @@ struct disk_info {
   char *filename;       /**< disk image filename. */
   int size;           /**< disk image size in 512-byte blocks */  
   int mode;           /**< disk image mode. */
+
+  int cylinders;
+  int heads;
+  int sectors;
 };
 
 /**
@@ -88,23 +95,55 @@ class CAliM1543C_ide : public CPCIDevice
  private:
 
   // IDE controller
-  u32 ide_command_read(int channel, u32 address);
-  void ide_command_write(int channel, u32 address, u32 data);
+  u32 ide_command_read(int channel, u32 address, int dsize);
+  void ide_command_write(int channel, u32 address, int dsize, u32 data);
   u32 ide_control_read(int channel, u32 address);
   void ide_control_write(int channel, u32 address, u32 data);
   u32 ide_busmaster_read(int channel, u32 address);
   void ide_busmaster_write(int channel, u32 address, u32 data);
 
-  // The state structure contains all elements that need to be saved to the statefile.
+  void raise_interrupt(int channel);
+  void set_signature(int channel, int id);
+  u8 get_status(int index);
+  void command_aborted(int index, u8 command);
+  void identify_drive(int index);
+
+// The state structure contains all elements that need to be saved to the statefile.
   struct SAliM1543C_ideState {
-    u8 ide_command[2][8];
-    u8 ide_control[2];
-    u8 ide_status[2];
+//    u8 ide_command[2][8];
+
+    struct {
+      bool disable_irq;
+      bool reset;
+    } ide_control[2];
+
+    struct {
+      bool busy;
+      bool drive_ready;
+      //bool write_fault;
+      bool seek_complete;
+      bool drq;
+      //bool corrected_data;
+      bool err;
+      bool index_pulse;
+      int index_pulse_count;
+      u8 current_command;
+
+    } ide_status[2][2];
+
+    struct {
+      int head_no;
+      int sector_count;
+      int sector_no;
+      int cylinder_no;
+      bool lba_mode;
+    } ide_per_drive[2][2];
+    
+    bool ide_reset_in_progress[2];
+    //u8 ide_current_command[2];
     u8 ide_error[2];
     u16 ide_data[2][256];
     int ide_data_ptr[2];
-    bool ide_writing[2];
-    bool ide_reading[2];
     int ide_sectors[2];
     int ide_selected[2];
     u8 ide_bm_status[2];
