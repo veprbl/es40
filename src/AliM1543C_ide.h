@@ -27,6 +27,9 @@
  * \file
  * Contains the definitions for the emulated Ali M1543C IDE chipset part.
  *
+ * X-1.5        Camiel Vanderhoeven                             12-DEC-2007
+ *      Use disk controller base class.
+ *
  * X-1.4        Camiel Vanderhoeven                             11-DEC-2007
  *      Cleanup.
  *
@@ -44,24 +47,11 @@
 #if !defined(INCLUDED_ALIM1543C_IDE_H_)
 #define INCLUDED_ALIM1543C_IDE_H_
 
-#include "PCIDevice.h"
-#include "gui/gui.h"
+#include "DiskController.h"
+//#include "gui/gui.h"
 #include "Configurator.h"
 
-/**
- * Disk information structure.
- **/
-
-struct disk_info {
-  FILE *handle;         /**< disk image handle. */
-  char *filename;       /**< disk image filename. */
-  int size;           /**< disk image size in 512-byte blocks */  
-  int mode;           /**< disk image mode. */
-
-  int cylinders;
-  int heads;
-  int sectors;
-};
+#define MAX_MULTIPLE_SECTORS 16
 
 /**
  * Emulated ALi M1543C multi-function device.
@@ -77,7 +67,7 @@ struct disk_info {
  *   .
  **/
 
-class CAliM1543C_ide : public CPCIDevice  
+class CAliM1543C_ide : public CDiskController  
 {
  public:
   virtual void SaveState(FILE * f);
@@ -92,7 +82,7 @@ class CAliM1543C_ide : public CPCIDevice
 
   CAliM1543C_ide(CConfigurator * cfg, class CSystem * c, int pcibus, int pcidev);
   virtual ~CAliM1543C_ide();
-  FILE * get_ide_disk(int controller, int drive);
+//  FILE * get_ide_disk(int controller, int drive);
   virtual void ResetPCI();
 
  private:
@@ -136,6 +126,7 @@ class CAliM1543C_ide : public CPCIDevice
       int sector_count;
       int sector_no;
       int cylinder_no;
+      int features;
       bool lba_mode;
     } ide_per_drive[2][2];
     
@@ -148,13 +139,8 @@ class CAliM1543C_ide : public CPCIDevice
     u8 ide_bm_status[2];
   } state;
 
-  struct disk_info ide_info[2][2];
+//  struct disk_info ide_info[2][2];
 };
-
-inline FILE * CAliM1543C_ide::get_ide_disk(int controller, int drive)
-{
-  return ide_info[controller][drive].handle;
-}
 
 extern CAliM1543C_ide * theAliIDE;
 #endif // !defined(INCLUDED_ALIM1543C_IDE_H)

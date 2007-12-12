@@ -27,6 +27,9 @@
  * \file
  * Contains the code for the emulated Ali M1543C IDE chipset part.
  *
+ * X-1.5        Camiel Vanderhoeven                             12-DEC-2007
+ *      Use disk controller base class.
+ *
  * X-1.4        Camiel Vanderhoeven                             11-DEC-2007
  *      Removed last references to ide_command[][].
  *
@@ -51,6 +54,7 @@
 #include "gui/keymap.h"
 
 #include "AliM1543C.h"
+#include "Disk.h"
 
 #ifdef DEBUG_PIC
 bool pic_messages = false;
@@ -108,14 +112,15 @@ u32 ide_cfg_mask[64] = {
 };
 
 #define SEL_STATUS(a) state.ide_status[a][state.ide_selected[a]]
-#define SEL_INFO(a) ide_info[a][state.ide_selected[a]]
+#define SEL_DISK(a) get_disk(a,state.ide_selected[a])
 #define SEL_PER_DRIVE(a) state.ide_per_drive[a][state.ide_selected[a]]
 
 /**
  * Constructor.
  **/
 
-CAliM1543C_ide::CAliM1543C_ide(CConfigurator * cfg, CSystem * c, int pcibus, int pcidev): CPCIDevice(cfg,c,pcibus,pcidev)
+CAliM1543C_ide::CAliM1543C_ide(CConfigurator * cfg, CSystem * c, int pcibus, int pcidev) 
+  : CDiskController(cfg,c,pcibus,pcidev,2,2)
 {
   if (theAliIDE != 0)
     FAILURE("More than one AliIDE!!\n");
@@ -129,52 +134,7 @@ CAliM1543C_ide::CAliM1543C_ide(CConfigurator * cfg, CSystem * c, int pcibus, int
   add_legacy_io(17, 0x376, 1);
   add_legacy_io(18, 0xf000, 8);
   add_legacy_io(19, 0xf008, 8);
-
-  int i;
-  char buffer[64];
-  char * filename;
-  char *p;
   
-  for(i=0;i<4;i++) {
-    int C = i/2;
-    int D = i%2;
-
-    ide_info[C][D].handle = NULL;
-    ide_info[C][D].filename = NULL;
-
-    ide_info[C][D].cylinders = 3000;
-    ide_info[C][D].heads = 14;    
-    ide_info[C][D].sectors = 63;
-
-    sprintf(buffer,"disk.%d",i);
-    filename=cfg->get_text_value(buffer,NULL);
-    if (filename)
-    {
-      if(*filename == '+') {
-	filename++;
-	ide_info[C][D].handle=fopen(filename,"rb+");
-	ide_info[C][D].mode=1;
-      } else {
-	ide_info[C][D].handle=fopen(filename,"rb");
-	ide_info[C][D].mode=0;
-      }
-
-      if(ide_info[C][D].handle != NULL) {
-        printf("%%IDE-I-MOUNT: Device '%s' mounted on IDE %d\n",filename,i);
-        CHECK_ALLOCATION(p=(char *)malloc(strlen(filename)+1));
-        strcpy(p,filename);
-        ide_info[C][D].filename=p;
-
-	fseek(ide_info[C][D].handle,0,SEEK_END);
-	ide_info[C][D].size=ftell(ide_info[C][D].handle)/512;
-	printf("-IDE-I-SIZE: %d blocks available.\n",ide_info[C][D].size);
-
-      } else {
-          printf("%%IDE-E-MOUNT: Cannot mount '%s'\n",filename);
-      }
-    }
-  }
-
   ResetPCI();
 
   printf("%%ALI-I-INIT: ALi M1543C chipset emulator initialized.\n");
@@ -334,7 +294,7 @@ u32 CAliM1543C_ide::ide_command_read(int index, u32 address, int dsize)
         else
         {
           SEL_STATUS(index).drq = true;
-          fread(&(state.ide_data[index][0]),1,512,SEL_INFO(index).handle);
+          SEL_DISK(index)->read_blocks(&(state.ide_data[index][0]),1);
           raise_interrupt(index);
         }
       }
@@ -411,7 +371,7 @@ void CAliM1543C_ide::ide_command_write(int index, u32 address, int dsize, u32 da
         SEL_STATUS(index).seek_complete = true;
         SEL_STATUS(index).err = false;
         state.ide_data_ptr[index] = 0;
-  	    fwrite(&(state.ide_data[index][0]),1,512,SEL_INFO(index).handle);
+        SEL_DISK(index)->write_blocks(&(state.ide_data[index][0]),1);
 	    state.ide_sectors[index]--;
 	    state.ide_data_ptr[index] = 0;
 
@@ -427,6 +387,8 @@ void CAliM1543C_ide::ide_command_write(int index, u32 address, int dsize, u32 da
     }
     break;
   case 1:
+    state.ide_per_drive[index][0].features = data;
+    state.ide_per_drive[index][1].features = data;
     // ignore precompensation
     break;
   case 2:
@@ -453,7 +415,7 @@ void CAliM1543C_ide::ide_command_write(int index, u32 address, int dsize, u32 da
     state.ide_per_drive[index][1].lba_mode = (data >> 6) & 1;
     break;
   case 7:
-    if (state.ide_selected[index] && !SEL_INFO(index).handle)
+    if (state.ide_selected[index] && !SEL_DISK(index))
       // ignore command for non-existing slave.
       break;
 
@@ -487,7 +449,7 @@ void CAliM1543C_ide::ide_command_write(int index, u32 address, int dsize, u32 da
 
     case 0x10: // CALIBRATE DRIVE
 
-      if (!SEL_INFO(index).handle) {
+      if (!SEL_DISK(index)) {
         state.ide_error[index] = 0x02; // Track 0 not found
         SEL_STATUS(index).busy = false;
         SEL_STATUS(index).drive_ready = true;
@@ -512,7 +474,7 @@ void CAliM1543C_ide::ide_command_write(int index, u32 address, int dsize, u32 da
 
     case 0x20: // read sector, with retries
     case 0x21: // read sector, without retries
-      if (!SEL_INFO(index).handle)
+      if (!SEL_DISK(index))
       {
         printf("Read from non-existing disk!\n");
         exit(1);
@@ -538,8 +500,8 @@ void CAliM1543C_ide::ide_command_write(int index, u32 address, int dsize, u32 da
 #endif
       SEL_STATUS(index).current_command = data;
 
-      fseek(ide_info[index][state.ide_selected[index]].handle,lba*512,0);
-      fread(&(state.ide_data[index][0]),1,512,ide_info[index][state.ide_selected[index]].handle);
+      SEL_DISK(index)->seek_block(lba);
+      SEL_DISK(index)->read_blocks(&(state.ide_data[index][0]),1);
 	  state.ide_data_ptr[index] = 0;
       state.ide_error[index] = 0;
       SEL_STATUS(index).busy = false;
@@ -550,7 +512,7 @@ void CAliM1543C_ide::ide_command_write(int index, u32 address, int dsize, u32 da
       break;
 
     case 0x30: // write sectors, with retries
-      if (!SEL_INFO(index).handle)
+      if (!SEL_DISK(index))
       {
         printf("Write to non-existing disk!\n");
         exit(1);
@@ -576,7 +538,7 @@ void CAliM1543C_ide::ide_command_write(int index, u32 address, int dsize, u32 da
 #endif
       SEL_STATUS(index).current_command = data;
 
-      fseek(ide_info[index][state.ide_selected[index]].handle,lba*512,0);
+      SEL_DISK(index)->seek_block(lba);
       state.ide_data_ptr[index] = 0;
       state.ide_error[index] = 0;
       SEL_STATUS(index).busy = false;
@@ -589,7 +551,7 @@ void CAliM1543C_ide::ide_command_write(int index, u32 address, int dsize, u32 da
 //#ifdef DEBUG_IDE
       printf("%%IDE-I-SETTRANS: Set IDE translation\n");
 //#endif
-      if (!SEL_INFO(index).handle)
+      if (!SEL_DISK(index))
       {
         printf("init drive params: ide%d.%d not present\n",index,state.ide_selected[index]);
         SEL_STATUS(index).busy = false;
@@ -601,6 +563,27 @@ void CAliM1543C_ide::ide_command_write(int index, u32 address, int dsize, u32 da
       SEL_STATUS(index).busy = false;
       SEL_STATUS(index).drive_ready = true;
       SEL_STATUS(index).drq = false;
+      break;
+
+    case 0xc6: // SET MULTIPLE MODE
+      if (SEL_DISK(index)->cdrom())
+      {
+        printf("set multiple mode issued to non-disk\n");
+        command_aborted(index, data);
+      } 
+      else if ((SEL_PER_DRIVE(index).sector_count > MAX_MULTIPLE_SECTORS) ||
+          ((SEL_PER_DRIVE(index).sector_count & (SEL_PER_DRIVE(index).sector_count - 1)) != 0) ||
+          (SEL_PER_DRIVE(index).sector_count == 0)) 
+      {
+        command_aborted(index, data);
+      } else {
+        printf("set multiple mode: sectors=%d", SEL_PER_DRIVE(index).sector_count);
+        //SEL_STATUS(index).multiple_sectors = SEL_PER_DRIVE(index).sector_count;
+        SEL_STATUS(index).busy = false;
+        SEL_STATUS(index).drive_ready = true;
+        SEL_STATUS(index).drq = false;
+        raise_interrupt(index);
+      }
       break;
 
     // power management & flush cache stubs
@@ -626,7 +609,7 @@ void CAliM1543C_ide::ide_command_write(int index, u32 address, int dsize, u32 da
 //#ifdef DEBUG_IDE
 	  printf("%%IDE-I-IDENTIFY: Identify IDE disk %d.%d   \n",index,state.ide_selected[index]);
 //#endif
-      if (!SEL_INFO(index).handle)
+      if (!SEL_DISK(index))
       {
         printf("Disk ^%d.%d not present, aborting.\n",index,state.ide_selected[index]);
         command_aborted(index,data);
@@ -645,6 +628,68 @@ void CAliM1543C_ide::ide_command_write(int index, u32 address, int dsize, u32 da
 
       raise_interrupt(index);
       break;
+
+    case 0xef: // SET FEATURES
+      switch(SEL_PER_DRIVE(index).features) 
+      {
+      case 0x03: // Set Transfer Mode
+        {
+          u8 type = SEL_PER_DRIVE(index).sector_count >> 3;
+          u8 mode = SEL_PER_DRIVE(index).sector_count & 0x07;
+          switch (type) 
+          {
+            case 0x00: // PIO default
+            case 0x01: // PIO mode
+              printf("ide%d.%d: set transfer mode to PIO", index, state.ide_selected[index]);
+              //SEL_STATUS(index).mdma_mode = 0x00;
+              //SEL_STATUS(index).udma_mode = 0x00;
+              SEL_STATUS(index).drive_ready = true;
+              SEL_STATUS(index).seek_complete = true;
+              raise_interrupt(index);
+              break;
+            case 0x04: // MDMA mode
+              printf("ide%d.%d: set transfer mode to MDMA%d", index, state.ide_selected[index],mode);
+              //SEL_STATUS(index).mdma_mode = 1 << mode;
+              //SEL_STATUS(index).udma_mode = 0x00;
+              SEL_STATUS(index).drive_ready = true;
+              SEL_STATUS(index).seek_complete = true;
+              raise_interrupt(index);
+              break;
+            case 0x08: // UDMA mode
+              printf("ide%d.%d: set transfer mode to UDMA%d", index, state.ide_selected[index],mode);
+              //SEL_STATUS(index).mdma_mode = 0x00;
+              //SEL_STATUS(index).udma_mode = 1 << mode;
+              SEL_STATUS(index).drive_ready = true;
+              SEL_STATUS(index).seek_complete = true;
+              raise_interrupt(index);
+              break;
+            default:
+              printf("ide%d.%d: set transfer mode to UNKNOWN %02x-%02x", index, state.ide_selected[index],type,mode);
+              raise_interrupt(index);
+              command_aborted(index, data);
+            }
+            break;
+          }
+        case 0x02: // Enable and
+        case 0x82: //  Disable write cache.
+        case 0xAA: // Enable and
+        case 0x55: //  Disable look-ahead cache.
+        case 0xCC: // Enable and
+        case 0x66: //  Disable reverting to power-on default
+          printf("ide%d.%d: SET FEATURES subcommand 0x%02x not supported, but returning success",
+          index,state.ide_selected[index],SEL_PER_DRIVE(index).features);
+          SEL_STATUS(index).drive_ready = true;
+          SEL_STATUS(index).seek_complete = true;
+          raise_interrupt(index);
+          break;
+
+        default:
+          printf("ide%d.%d: SET FEATURES with unknown subcommand: 0x%02x",
+            index,state.ide_selected[index],SEL_PER_DRIVE(index).features);
+          command_aborted(index, data);
+      }
+      break;
+
     default:
       printf("Unknown command: %02x!\n",data);
       exit(1);
@@ -689,8 +734,8 @@ void CAliM1543C_ide::ide_control_write(int index, u32 address, u32 data)
 //#endif
 
   prev_reset = state.ide_control[index].reset;
-  state.ide_control[index].reset       = data & 0x04;
-  state.ide_control[index].disable_irq = data & 0x02;
+  state.ide_control[index].reset       = (data>>2) & 1;
+  state.ide_control[index].disable_irq = (data>>1) & 1;
 
   if (!prev_reset && state.ide_control[index].reset)
   {
@@ -735,15 +780,15 @@ void CAliM1543C_ide::set_signature(int index, int id)
   state.ide_per_drive[index][id].head_no       = 0;
   state.ide_per_drive[index][id].sector_count  = 1;
   state.ide_per_drive[index][id].sector_no     = 1;
-  if (ide_info[index][id].handle)
+  if (get_disk(index,id))
   {
-//    if (ide_info[index][id].mode == 1)
-//    {
+    if (!get_disk(index,id)->cdrom())
+    {
       state.ide_per_drive[index][id].cylinder_no = 0;
       state.ide_selected[index] = 0;
-//    } else {
-//      state.ide_per_drive[index][id].cylinder_no = 0xeb14;
-//    } 
+    } else {
+      state.ide_per_drive[index][id].cylinder_no = 0xeb14;
+    } 
   } else {
     state.ide_per_drive[index][id].cylinder_no = 0xffff;
   }
@@ -851,7 +896,7 @@ u8 CAliM1543C_ide::get_status(int index)
 {
   u8 data;
 
-  if (!SEL_INFO(index).handle)
+  if (!SEL_DISK(index))
     return 0;
 
   data = (SEL_STATUS(index).busy           ? 0x80 : 0x00)
@@ -875,30 +920,32 @@ void CAliM1543C_ide::identify_drive(int index)
 {
   char serial_number[21];
   char model_number[41];
+  char rev_number[9];
   int i,l;
 
   state.ide_data_ptr[index] = 0;
 
   state.ide_data[index][0] = 0x0040;	// flags
   
-  if (SEL_INFO(index).cylinders > 16383)
+  if (SEL_DISK(index)->get_cylinders() > 16383)
     state.ide_data[index][1] = 16383;	// cylinders
   else
-    state.ide_data[index][1] = SEL_INFO(index).cylinders;	// cylinders
+    state.ide_data[index][1] = SEL_DISK(index)->get_cylinders();	// cylinders
 
   state.ide_data[index][2] = 0xc837;	// specific configuration (ATA-4 specs)
 
-  state.ide_data[index][3] = SEL_INFO(index).heads;		// heads
-  state.ide_data[index][4] = 512 * SEL_INFO(index).sectors;	// bytes per track
+  state.ide_data[index][3] = SEL_DISK(index)->get_heads();		// heads
+  state.ide_data[index][4] = 512 * SEL_DISK(index)->get_sectors();	// bytes per track
   state.ide_data[index][5] = 512;		// bytes per sector
-  state.ide_data[index][6] = SEL_INFO(index).sectors;		// sectors per track
+  state.ide_data[index][6] = SEL_DISK(index)->get_sectors();		// sectors per track
   state.ide_data[index][7] = 0;		// spec. bytes
   state.ide_data[index][8] = 0;		// spec. bytes
   state.ide_data[index][9] = 0;		// unique vendor status words
 
-  strcpy(serial_number,"ES40HD000           ");
-  serial_number[7] = index + 49;
-  serial_number[8] = state.ide_selected[index] + 49;
+  strcpy(serial_number,"                    ");
+  i = strlen(SEL_DISK(index)->get_serial());
+  i = (i > 20)? 20 : i;
+  memcpy(model_number,SEL_DISK(index)->get_serial(),i);
   for (i=0;i<10;i++)
     state.ide_data[index][10+i] = (serial_number[i*2] << 8) |
       serial_number[i*2 + 1];
@@ -906,16 +953,20 @@ void CAliM1543C_ide::identify_drive(int index)
   state.ide_data[index][20] = 1;		// single ported, single buffer
   state.ide_data[index][21] = 512;  	// buffer size
   state.ide_data[index][22] = 4;		// ecc bytes
-  state.ide_data[index][23] = 0x2020;	// firmware revision
-  state.ide_data[index][24] = 0x2020;
-  state.ide_data[index][25] = 0x2020;
-  state.ide_data[index][26] = 0x2020;
+
+  strcpy(rev_number,"        ");
+  i = strlen(SEL_DISK(index)->get_rev());
+  i = (i > 8)? 8 : i;
+  memcpy(model_number,SEL_DISK(index)->get_rev(),i);
+  for (i=0;i<4;i++)
+    state.ide_data[index][23+i] = (rev_number[i*2] << 8) |
+      rev_number[i*2 + 1];
 
   strcpy(model_number,"                                        ");
   // clear the name
-  l = strlen(SEL_INFO(index).filename);
-  l = (l > 40)? 40 : l;
-  memcpy(model_number,SEL_INFO(index).filename,l);
+  i = strlen(SEL_DISK(index)->get_model());
+  i = (i > 40)? 40 : i;
+  memcpy(model_number,SEL_DISK(index)->get_model(),i);
   for(i=0;i<20;i++) 
     state.ide_data[index][i+27]= (model_number[i*2] << 8) | model_number[i*2+1];
 
@@ -927,15 +978,15 @@ void CAliM1543C_ide::identify_drive(int index)
   state.ide_data[index][52] = 0x200;		// cycle time
   state.ide_data[index][53] = 7;			// field_valid
 
-  state.ide_data[index][54] = SEL_INFO(index).cylinders;		// cylinders
-  state.ide_data[index][55] = SEL_INFO(index).heads;		// heads
-  state.ide_data[index][56] = SEL_INFO(index).sectors;		// sectors
+  state.ide_data[index][54] = SEL_DISK(index)->get_cylinders();		// cylinders
+  state.ide_data[index][55] = SEL_DISK(index)->get_heads();		// heads
+  state.ide_data[index][56] = SEL_DISK(index)->get_sectors();		// sectors
 
-  state.ide_data[index][57] = SEL_INFO(index).size & 0xFFFF;	// total_sectors
-  state.ide_data[index][58] = SEL_INFO(index).size >> 16;	// ""
+  state.ide_data[index][57] = (SEL_DISK(index)->get_chs_size() >> 0)  & 0xFFFF;	// total_sectors
+  state.ide_data[index][58] = (SEL_DISK(index)->get_chs_size() >> 16) & 0xFFFF;	// ""
   state.ide_data[index][59] = 0;							// multiple sector count
-  state.ide_data[index][60] = SEL_INFO(index).size & 0xFFFF;	// LBA capacity
-  state.ide_data[index][61] = SEL_INFO(index).size >> 16;	// ""
+  state.ide_data[index][60] = (SEL_DISK(index)->get_lba_size() >> 0)  & 0xFFFF;	// LBA capacity
+  state.ide_data[index][61] = (SEL_DISK(index)->get_lba_size() >> 16) & 0xFFFF;	// ""
   
   state.ide_data[index][62] = 0;
   state.ide_data[index][63] = 0;

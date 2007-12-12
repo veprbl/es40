@@ -27,6 +27,9 @@
  * \file
  * Contains the definitions for the configuration file interpreter.
  *
+ * X-1.2        Camiel Vanderhoeven                             12-DEC-2007
+ *      Add support for file- and RAM-disk.
+ *
  * X-1.1        Camiel Vanderhoeven                             10-DEC-2007
  *      Initial version in CVS.
  **/
@@ -37,7 +40,24 @@
 #define CFG_MAX_CHILDREN  25
 #define CFG_MAX_VALUES    50
 
-typedef enum {c_none,c_tsunami,c_ev68cb,c_ali,c_ali_ide,c_ali_usb,c_serial,c_s3,c_cirrus,c_dec21143,c_file,c_sdl} classid;
+typedef enum {c_none,
+              // chipsets
+              c_tsunami,
+              // system devices
+              c_ev68cb,
+              c_serial,
+              // pci devices
+              c_ali,
+              c_ali_ide,
+              c_ali_usb,
+              c_s3,
+              c_cirrus,
+              c_dec21143,
+              // disk devices
+              c_file,
+              c_ramdisk,
+              // gui's
+              c_sdl} classid;
 
 class CConfigurator
 {
@@ -63,6 +83,7 @@ public:
 
   char * get_myName() { return myName; };
   char * get_myValue() { return myValue; };
+  CConfigurator * get_myParent() { return pParent; };
 
   void initialize();
 

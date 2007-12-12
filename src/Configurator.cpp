@@ -27,6 +27,9 @@
  * \file
  * Contains the code for the configuration file interpreter.
  *
+ * X-1.3        Camiel Vanderhoeven                             12-DEC-2007
+ *      Add support for file- and RAM-disk.
+ *
  * X-1.2        Brian Wheeler                                   10-DEC-2007
  *      Better error reporting.
  *
@@ -44,6 +47,8 @@
 #include "AliM1543C.h"
 #include "AliM1543C_ide.h"
 #include "AliM1543C_usb.h"
+#include "DiskFile.h"
+#include "DiskRam.h"
 #include "Port80.h"
 #if defined(USE_CONSOLE)
 #include "S3Trio64.h"
@@ -395,6 +400,7 @@ classinfo classes[] =
   {"cirrus",  c_cirrus,  IS_PCI},
   {"dec21143",c_dec21143,IS_PCI},
   {"file",    c_file,    IS_DISK},
+  {"ramdisk", c_ramdisk, IS_DISK},
   {"sdl",     c_sdl,     IS_GUI},
   {0,c_none,0}
 };
@@ -405,6 +411,8 @@ void CConfigurator::initialize()
   int i = 0;
   int pcibus = 0;
   int pcidev = 0;
+  int idedev = 0;
+  int idebus = 0;
   int number;
   char * pt;
 
@@ -449,6 +457,31 @@ void CConfigurator::initialize()
     pcidev = atoi(pt);
   }
 
+  if (myFlags & IS_DISK)
+  {
+    if (strncmp(myName,"disk",4))
+    {
+      printf("Error: name of Disk device %s should be disk<channel>.<device>, %s found.\n",myValue,myName);
+      exit(1);
+    }
+    if (!(pParent->get_flags() & HAS_DISK))
+    {
+      printf("Error: parent of disk device %s(%s) should be a disk controller.\n",myName,myValue);
+      exit(1);
+    }
+
+    pt = &myName[4];
+    idebus = atoi(pt);
+    pt = strchr(pt,'.');
+    if (!pt)
+    {
+      printf("Error: name of Disk device %s should be disk<controller>.<device>, %s found.\n",myValue,myName);
+      exit(1);
+    }
+    pt++;
+    idedev = atoi(pt);
+  }
+
   switch(myClassId)
   {
   case c_tsunami:
@@ -478,6 +511,12 @@ void CConfigurator::initialize()
     break;
   case c_dec21143:
     myDevice = new CDEC21143(this,(CSystem *)pParent->get_device(),pcibus,pcidev);
+    break;
+  case c_file:
+    myDevice = new CDiskFile(this,(CDiskController *)pParent->get_device(),idebus,idedev);
+    break;
+  case c_ramdisk:
+    myDevice = new CDiskRam(this,(CDiskController *)pParent->get_device(),idebus,idedev);
     break;
   case c_serial:
     if (pParent->get_flags() & IS_CHIPSET)

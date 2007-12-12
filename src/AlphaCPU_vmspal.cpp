@@ -29,6 +29,9 @@
  * DecChip 21264CB EV68 Alpha processor. Based on disassembly of original VMS
  * PALcode, HRM, and OpenVMS AXP Internals and Data Structures.
  *
+ * X-1.3        Camiel Vanderhoeven                             12-DEC-2007
+ *      Use disk base class for direct IDE access.
+ *
  * X-1.2        Camiel Vanderhoeven                             10-DEC-2007
  *      Use configurator.
  *
@@ -43,6 +46,7 @@
 
 #include "Serial.h"
 #include "AliM1543C_ide.h"
+#include "Disk.h"
 
 /***********************************************************
  *                                                         *
@@ -1635,7 +1639,10 @@ int CAlphaCPU::vmspal_int_read_ide()
   ldl(controller+0x21c,controller);
   controller = (controller&0x80)?0:1;
 
-  fseek(theAliIDE->get_ide_disk((u32)controller,(u32)drive),(long)filepos,0);
+//  FILE * h = ((CDiskFile *)(theAliIDE->get_disk(controller,drive)))->get_handle();
+
+  theAliIDE->get_disk(controller,drive)->seek_byte(filepos);
+//fseek(theAliIDE->get_ide_disk((u32)controller,(u32)drive),(long)filepos,0);
 
   r0 = 0;
 
@@ -1646,7 +1653,9 @@ int CAlphaCPU::vmspal_int_read_ide()
     else
       try_b = (long)bytes;
     virt2phys(virt,&phys,ACCESS_WRITE,NULL,0);
-    ok_b  = fread(cSystem->PtrToMem(phys),1,try_b,theAliIDE->get_ide_disk((u32)controller,(u32)drive));
+    ok_b  = theAliIDE->get_disk(controller,drive)->read_bytes(cSystem->PtrToMem(phys),try_b);
+    //ok_b = fread(cSystem->PtrToMem(phys),1,try_b,h);
+    filepos += ok_b;
     r0    += ok_b;
     virt  += ok_b;
     bytes -=ok_b;
@@ -1654,7 +1663,7 @@ int CAlphaCPU::vmspal_int_read_ide()
       break;
   }
 
-  stq(filepos_a,ftell(theAliIDE->get_ide_disk((u32)controller,(u32)drive)));
+  stq(filepos_a, filepos); //theAliIDE->get_disk(controller,drive)->tell_bytes());
 
   TRC_DEV5("%%SRM-I-READIDE : Read  %3" LL "d sectors @ IDE %d.%d @ LBA %8d\n",r18*r17/512,(u32)controller,(u32)drive,(long)(filepos/512));
   return 0;
