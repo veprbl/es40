@@ -27,6 +27,9 @@
  * \file
  * Contains the code for the configuration file interpreter.
  *
+ * X-1.4        Camiel Vanderhoeven                             14-DEC-2007
+ *      Add support for Symbios SCSI controller.
+ *
  * X-1.3        Camiel Vanderhoeven                             12-DEC-2007
  *      Add support for file- and RAM-disk.
  *
@@ -58,6 +61,7 @@
 #if defined(USE_NETWORK)
 #include "DEC21143.h"
 #endif
+#include "Sym53C895.h"
 
 CConfigurator::CConfigurator(class CConfigurator * parent, char * name, char * value, char * text, int textlen)
 {
@@ -399,6 +403,7 @@ classinfo classes[] =
   {"s3",      c_s3,      IS_PCI},
   {"cirrus",  c_cirrus,  IS_PCI},
   {"dec21143",c_dec21143,IS_PCI},
+  {"sym53c895", c_sym53c895, IS_PCI | HAS_DISK},
   {"file",    c_file,    IS_DISK},
   {"ramdisk", c_ramdisk, IS_DISK},
   {"sdl",     c_sdl,     IS_GUI},
@@ -511,6 +516,9 @@ void CConfigurator::initialize()
     break;
   case c_dec21143:
     myDevice = new CDEC21143(this,(CSystem *)pParent->get_device(),pcibus,pcidev);
+    break;
+  case c_sym53c895:
+    myDevice = new CSym53C895(this,(CSystem *)pParent->get_device(),pcibus,pcidev);
     break;
   case c_file:
     myDevice = new CDiskFile(this,(CDiskController *)pParent->get_device(),idebus,idedev);

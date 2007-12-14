@@ -27,6 +27,9 @@
  * \file
  * Contains the code for the emulated Ali M1543C IDE chipset part.
  *
+ * X-1.6        Camiel Vanderhoeven                             14-DEC-2007
+ *      Commented out printing each IDE command.
+ *
  * X-1.5        Camiel Vanderhoeven                             12-DEC-2007
  *      Use disk controller base class.
  *
@@ -430,7 +433,7 @@ void CAliM1543C_ide::ide_command_write(int index, u32 address, int dsize, u32 da
     if ( (data & 0xf0) == 0x10 )
       data = 0x10;
 
-    printf("IDE Command %02x\n",data);
+//    printf("IDE Command %02x\n",data);
 
     switch (data)
     {

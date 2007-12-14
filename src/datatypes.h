@@ -27,6 +27,9 @@
  * \file
  * Contains the datatype definitions for use with Microsoft Visual C++ and Linux.
  *
+ * X-1.14       Camiel Vanderhoeven                             14-DEC-2007
+ *      Added sext_32.
+ *
  * X-1.13       Camiel Vanderhoeven                             2-DEC-2007
  *      Added various bitmask operations as inline functions.
  *
@@ -241,6 +244,17 @@ inline u32 extend_bit_32(u32 x, int hibit, int lobit, int srcbit)
 inline bool test_bit_32(u32 x, int bit)
 {
   return (x & (1<<bit))?true:false;
+}
+
+inline u32 sext_32(u32 x, int bit)
+{
+   if (x & (1<<(bit-1)))
+   {
+     u32 r = 0xffffffff;
+      r   &= ~((1<<(bit))-1);
+    return x|r;
+   }
+   return x & ((1<<(bit))-1);;
 }
 
 #endif //INCLUDED_DATATYPES_H

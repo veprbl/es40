@@ -27,6 +27,9 @@
  * \file 
  * Contains the code for the emulated Typhoon Chipset devices.
  *
+ * X-1.39       Camiel Vanderhoeven                             14-DEC-2007
+ *      Commented out SRM IDE READ replacement; doesn't work with SCSI!
+ *
  * X-1.38       Camiel Vanderhoeven                             10-DEC-2007
  *      Added get_cpu
  *
@@ -1061,9 +1064,11 @@ int CSystem::LoadROM()
   WriteMem(X64(8bc94),32,0xe7e00000);       // memory test (00)
 #endif
 
+
+  // THIS SRM REPLACEMENT IS INCOMPATIBLE WITH SCSI!!
 #if !defined(SRM_NO_IDE)
-  WriteMem(X64(b66c0),32,0x00123401);       // SRM_READ_IDE_DISK
-  WriteMem(X64(b66c4),32,0x6bfa8001);       // JMP r31, r26
+//  WriteMem(X64(b66c0),32,0x00123401);       // SRM_READ_IDE_DISK
+//  WriteMem(X64(b66c4),32,0x6bfa8001);       // JMP r31, r26
 #endif
 
   printf("%%SYS-I-ROMLOADED: ROM Image loaded successfully!\n");

@@ -27,6 +27,9 @@
  * \file
  * Contains the definitions for the configuration file interpreter.
  *
+ * X-1.3        Camiel Vanderhoeven                             14-DEC-2007
+ *      Add support for Symbios SCSI controller.
+ *
  * X-1.2        Camiel Vanderhoeven                             12-DEC-2007
  *      Add support for file- and RAM-disk.
  *
@@ -53,6 +56,7 @@ typedef enum {c_none,
               c_s3,
               c_cirrus,
               c_dec21143,
+              c_sym53c895,
               // disk devices
               c_file,
               c_ramdisk,

@@ -27,6 +27,9 @@
  * \file
  * Contains code to use a RAM disk.
  *
+ * X-1.2        Camiel Vanderhoeven                             14-DEC-2007
+ *      Free memory malloc'ed at destruction.
+ *
  * X-1.1        Camiel Vanderhoeven                             12-DEC-2007
  *      Initial version in CVS.
  **/
@@ -44,7 +47,7 @@ CDiskRam::CDiskRam(CConfigurator * cfg, CDiskController * c, int idebus, int ide
 
   if (!ramdisk)
   {
-    printf("%s: Could not allocate %d MB!\n",devid_string,lba_size/2);
+    printf("%s: Could not allocate %d MB!\n",devid_string,lba_size/2*1024);
     exit(1);
   }
 
@@ -66,6 +69,12 @@ CDiskRam::CDiskRam(CConfigurator * cfg, CDiskController * c, int idebus, int ide
 
 CDiskRam::~CDiskRam(void)
 {
+  if (ramdisk)
+  {
+    printf("%s: RAMDISK freed.\n",devid_string);
+    free(ramdisk);
+    ramdisk = 0;
+  }
 }
 
 bool CDiskRam::seek_block(long lba)

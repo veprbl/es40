@@ -27,6 +27,9 @@
  * \file
  * Contains definitions for the disk controller base class.
  *
+ * X-1.2        Camiel Vanderhoeven                             14-DEC-2007
+ *      Delete children upon destruction.
+ *
  * X-1.1        Camiel Vanderhoeven                             12-DEC-2007
  *      Initial version in CVS.
  **/
@@ -43,12 +46,20 @@ CDiskController::CDiskController(CConfigurator * cfg, CSystem * c, int pcibus, i
 
   disks = (CDisk**) malloc(num_bus*num_dev*sizeof(void*));
 
-  for (i=0;i<num_bus*num_dev;i++) 
-    disks[i] = 0;
+
 }
 
 CDiskController::~CDiskController(void)
 {
+  int i;
+  for (i=0;i<num_bus*num_dev;i++) 
+  {
+    if (disks[i])
+    {
+      delete disks[i];
+      disks[i] = 0;
+    }
+  }
 }
 
 bool CDiskController::register_disk(class CDisk * dsk, int bus, int dev)
