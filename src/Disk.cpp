@@ -27,11 +27,14 @@
  * \file
  * Contains code for the disk base class.
  *
+ * X-1.2        Brian Wheeler                                   16-DEC-2007
+ *      Fixed case of StdAfx.h.
+ *
  * X-1.1        Camiel Vanderhoeven                             12-DEC-2007
  *      Initial version in CVS.
  **/
 
-#include "stdAfx.h" 
+#include "StdAfx.h" 
 #include "Disk.h"
 #include "Configurator.h"
 
