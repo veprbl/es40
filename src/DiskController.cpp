@@ -27,6 +27,9 @@
  * \file
  * Contains definitions for the disk controller base class.
  *
+ * X-1.4        Brian Wheeler                                   16-DEC-2007
+ *      Added newline at end of file.
+ *
  * X-1.3        Camiel Vanderhoeven                             16-DEC-2007
  *      Include Disk.h, so children's destructors can be called.
  *
