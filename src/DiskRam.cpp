@@ -27,6 +27,9 @@
  * \file
  * Contains code to use a RAM disk.
  *
+ * X-1.3        Brian Wheeler                                   16-DEC-2007
+ *      Fixed case of StdAfx.h.
+ *
  * X-1.2        Camiel Vanderhoeven                             14-DEC-2007
  *      Free memory malloc'ed at destruction.
  *
@@ -34,7 +37,7 @@
  *      Initial version in CVS.
  **/
 
-#include "stdAfx.h" 
+#include "StdAfx.h" 
 #include "DiskRam.h"
 #include "Configurator.h"
 
