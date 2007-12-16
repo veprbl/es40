@@ -1,8 +1,8 @@
 ################################################################################
 # ES40 emulator.
-# Copyright (C) 2007 by Camiel Vanderhoeven
+# Copyright (C) 2007 by the ES40 Emulator Project
 #
-# Website: www.camicom.com
+# Website: http://sourceforge.net/projects/es40
 # E-mail : camiel@camicom.com
 # 
 # This program is free software; you can redistribute it and/or
@@ -26,6 +26,9 @@
 ################################################################################
 # 
 # Makefile for GNU Linux. (And possibly many UNIX'es).
+#
+# X-1.13		Brian Wheeler      				16-DEC-2007
+#	Added SCSI support.
 #
 # X-1.11		Camiel Vanderhoeven				18-NOV-2007
 #	Added linker option to include libpcap.
@@ -82,32 +85,37 @@ LD = g++
 DEPEND = makedepend $(CFLAGS)
 
 OBJS =  AliM1543C.o \
-	AliM1543C_ide.o \
-	AliM1543C_usb.o \
+	  AliM1543C_ide.o \
+	  AliM1543C_usb.o \
         AlphaCPU.o \
-	AlphaCPU_vmspal.o \
+	  AlphaCPU_vmspal.o \
         AlphaSim.o \
-	Cirrus.o \
-	Configurator.o \
+	  Cirrus.o \
+	  Configurator.o \
         DEC21143.o \
+        Disk.o \
+        DiskController.o \
+        DiskFile.o \
+        DiskRam.o \
         DPR.o \
         es40_debug.o \
         Flash.o \
         FloppyController.o \
-	lockstep.o \
-	PCIDevice.o \
+  	  lockstep.o \
+	  PCIDevice.o \
         Port80.o \
-	S3Trio64.o \
-	Serial.o \
+	  S3Trio64.o \
+	  Serial.o \
         StdAfx.o \
+        Sym53C895.o \
         SystemComponent.o \
         System.o \
         TraceEngine.o \
-	VGA.o \
-	gui/gui.o \
-	gui/keymap.o \
-	gui/scancodes.o \
-	gui/sdl.o
+	  VGA.o \
+	  gui/gui.o \
+	  gui/keymap.o \
+	  gui/scancodes.o \
+	  gui/sdl.o
 
 IDB_OBJS = $(subst .o,.do,$(OBJS))
 LSM_OBJS = $(subst .o,.mao,$(OBJS))
@@ -127,7 +135,9 @@ LSS_OBJS = $(subst .o,.slo,$(OBJS))
 .cpp.slo:
 	$(CC) $(CFLAGS) $(LSS_CFLAGS) -c $< -o $@
 
-all: es40 es40_idb es40_lsm es40_lss
+all: es40
+
+debug: es40_idb es40_lsm es40_lss
 
 es40:   $(OBJS)
 	$(LD) $(LDFLAGS) -o es40 $(OBJS)
