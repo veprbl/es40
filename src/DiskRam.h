@@ -27,6 +27,9 @@
  * \file
  * Contains definitions to use a RAM disk.
  *
+ * X-1.2        Brian Wheeler                                   16-DEC-2007
+ *      Corrected some weird uses of size_t...
+ *
  * X-1.1        Camiel Vanderhoeven                             12-DEC-2007
  *      Initial version in CVS.
  **/
@@ -42,9 +45,9 @@ public:
   CDiskRam(CConfigurator * cfg, CDiskController * c, int idebus, int idedev);
   ~CDiskRam(void);
 
-  virtual bool seek_block(long size_t);
-  virtual size_t read_blocks(void * dest, u32 size_t);
-  virtual size_t write_blocks(void * src, u32 size_t);
+  virtual bool seek_block(long block);
+  virtual size_t read_blocks(void * dest, size_t blocks);
+  virtual size_t write_blocks(void * src, size_t blocks);
 
   virtual bool seek_byte(long byte);
   virtual size_t read_bytes(void * dest, size_t bytes);
