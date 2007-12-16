@@ -1,7 +1,7 @@
 /* ES40 emulator.
- * Copyright (C) 2007 by Camiel Vanderhoeven
+ * Copyright (C) 2007 by the ES40 Emulator Project
  *
- * Website: www.camicom.com
+ * WWW    : http://sourceforge.net/projects/es40
  * E-mail : camiel@camicom.com
  * 
  * This program is free software; you can redistribute it and/or
@@ -26,6 +26,9 @@
 /** 
  * \file
  * Contains the code for the emulated Serial Port devices.
+ *
+ * X-1.30       Camiel Vanderhoeven                             16-DEC-2007
+ *      Added menu option to load state.
  *
  * X-1.29       Brian Wheeler                                   10-DEC-2007
  *      Better exec handling.
@@ -520,6 +523,7 @@ int CSerial::DoClock() {
 	    write("     1. Exit emulator gracefully\r\n");
 	    write("     2. Abort emulator (no changes saved)\r\n");
         write("     3. Save state to autosave.axp and continue\r\n");
+        write("     4. Load state from autosave.axp and continue\r\n");
 #endif
 	    for (;;)
 	    {
@@ -551,6 +555,11 @@ int CSerial::DoClock() {
           case '3':
             write("%SRL-I-SAVESTATE: Saving state to autosave.axp.\r\n");
             cSystem->SaveState("autosave.axp");
+	        write("%SRL-I-CONTINUE: continuing emulation.\r\n");
+	        return 0;
+          case '4':
+            write("%SRL-I-LOADSTATE: Loading state from autosave.axp.\r\n");
+            cSystem->RestoreState("autosave.axp");
 	        write("%SRL-I-CONTINUE: continuing emulation.\r\n");
 	        return 0;
 	      }

@@ -27,6 +27,9 @@
  * \file
  * Contains definitions for the disk controller base class.
  *
+ * X-1.3        Camiel Vanderhoeven                             16-DEC-2007
+ *      Include Disk.h, so children's destructors can be called.
+ *
  * X-1.2        Camiel Vanderhoeven                             14-DEC-2007
  *      Delete children upon destruction.
  *
@@ -36,6 +39,7 @@
 
 #include "StdAfx.h"
 #include "DiskController.h"
+#include "Disk.h"
 
 CDiskController::CDiskController(CConfigurator * cfg, CSystem * c, int pcibus, int pcidev, int num_busses, int num_devices) : CPCIDevice(cfg,c,pcibus,pcidev)
 {

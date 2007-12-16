@@ -27,6 +27,9 @@
  * \file
  * Contains the code for the emulated Symbios SCSI controller.
  *
+ * X-1.2        Camiel Vanderhoeven                             16-DEC-2007
+ *      Changed register structure.
+ *
  * X-1.1        Camiel Vanderhoeven                             14-DEC-2007
  *      Initial version in CVS.
  **/
@@ -36,8 +39,192 @@
 #include "System.h"
 #include "Disk.h"
 
-#define PT state.per_target[state.target]
-#define PTD get_disk(0,state.target)
+#define R_SCNTL0      0x00
+#define R_SCNTL0_TRG        0x01
+#define R_SCNTL0_START      0x20
+#define   SCNTL0_MASK       0xFB
+
+#define R_SCNTL1      0x01
+#define R_SCNTL1_CON        0x10
+#define R_SCNTL1_IARB       0x02
+
+#define R_SCNTL2      0x02
+#define R_SCNTL2_WSR        0x01
+#define   SCNTL2_MASK       0xF2
+#define   SCNTL2_W1C        0x09
+
+#define R_SCNTL3      0x03
+#define R_SCNTL3_EWS        0x08
+
+#define R_SCID        0x04
+#define R_SCID_ID           0x0F
+#define   SCID_MASK         0x6F
+
+#define R_SXFER       0x05
+
+#define R_SDID        0x06
+#define R_SDID_ID           0x0F
+#define   SDID_MASK         0x0F
+
+#define R_GPREG       0x07
+#define   GPREG_MASK        0x1F
+
+#define R_SFBR        0x08
+
+#define R_SOCL        0x09
+#define R_SOCL_ACK          0x40
+#define R_SOCL_ATN          0x20
+
+#define R_DSTAT       0x0C
+#define R_DSTAT_MDPE        0x40
+#define R_DSTAT_BF          0x20
+#define R_DSTAT_ABRT        0x10
+#define R_DSTAT_SSI         0x08
+#define R_DSTAT_SIR         0x04
+#define R_DSTAT_IID         0x01
+#define   DSTAT_RC          0x7D
+#define   DSTAT_FATAL       0x7D
+
+#define R_SSTAT0      0x0D
+#define R_SSTAT1      0x0E
+#define R_SSTAT2      0x0F
+
+#define R_DSA         0x10
+
+#define R_ISTAT       0x14
+#define R_ISTAT_ABRT        0x80
+#define R_ISTAT_SRST        0x40
+#define R_ISTAT_SIGP        0x20
+#define R_ISTAT_SEM         0x10
+#define R_ISTAT_CON         0x08
+#define R_ISTAT_INTF        0x04
+#define R_ISTAT_SIP         0x02
+#define R_ISTAT_DIP         0x01
+#define   ISTAT_MASK        0xF0
+#define   ISTAT_W1C         0x04
+
+#define R_CTEST0      0x18
+#define R_CTEST1      0x19
+
+#define R_CTEST2      0x1A
+#define R_CTEST2_DDIR       0x80
+#define R_CTEST2_SIGP       0x40
+#define R_CTEST2_CIO        0x20
+#define R_CTEST2_CM         0x10
+#define R_CTEST2_SRTCH      0x08
+#define   CTEST2_MASK       0x08
+
+#define R_CTEST3      0x1B
+#define R_CTEST3_REV        0xf0
+#define R_CTEST3_FLF        0x08
+#define R_CTEST3_CLF        0x04
+#define R_CTEST3_FM         0x02
+#define   CTEST3_MASK       0x0B
+
+#define R_TEMP        0x1C
+#define R_CTEST4      0x21
+
+#define R_CTEST5      0x22
+#define R_CTEST5_ADCK       0x80
+#define R_CTEST5_BBCK       0x40
+#define   CTEST5_MASK       0x3F
+
+#define R_DBC         0x24
+#define R_DCMD        0x27
+#define R_DNAD        0x28
+#define R_DSP         0x2C
+#define R_DSPS        0x30
+#define R_SCRATCHA    0x34
+
+#define R_DMODE       0x38
+#define R_DMODE_MAN         0x01
+
+#define R_DIEN        0x39
+#define   DIEN_MASK         0x7D
+
+#define R_SBR         0x3A
+
+#define R_DCNTL       0x3B
+#define R_DCNTL_SSM         0x10
+#define R_DCNTL_STD         0x04
+#define R_DCNTL_IRQD        0x02
+#define R_DCNTL_COM         0x01
+#define   DCNTL_MASK        0xFB 
+
+#define R_ADDER       0x3C
+#define R_SIEN0       0x40
+#define R_SIEN1       0x41
+
+#define   SIEN1_MASK        0x17
+
+#define R_SIST0       0x42
+#define   SIST0_RC          0xFF
+
+#define R_SIST1       0x43
+#define   SIST1_RC          0x17
+
+#define R_GPCNTL      0x47
+#define R_STIME0      0x48
+#define R_STIME1      0x49
+#define   STIME1_MASK       0x7F
+
+#define R_RESPID      0x4A
+
+#define R_STEST0      0x4C
+#define R_STEST1      0x4D
+#define   STEST1_MASK       0xCC
+
+#define R_STEST2      0x4E
+#define R_STEST2_SCE        0x80
+#define R_STEST2_ROF        0x40
+#define R_STEST2_DIF        0x20
+#define R_STEST2_SLB        0x10
+#define R_STEST2_SZM        0x08
+#define R_STEST2_AWS        0x04
+#define R_STEST2_EXT        0x02
+#define R_STEST2_LOW        0x01
+#define   STEST2_MASK       0xBF
+
+#define R_STEST3      0x4F
+#define R_STEST3_TE         0x80
+#define R_STEST3_STR        0x40
+#define R_STEST3_HSC        0x20
+#define R_STEST3_DSI        0x10
+#define R_STEST3_S16        0x08
+#define R_STEST3_TTM        0x04
+#define R_STEST3_CSF        0x02
+#define R_STEST3_STW        0x01
+#define   STEST3_MASK       0xFF
+
+#define R_STEST4      0x52
+
+#define R_SBDL        0x58
+#define R_SCRATCHB    0x5C
+#define R_SCRATCHC    0x60
+
+#define R8(a)  state.regs.reg8[R_##a]
+#define R16(a) state.regs.reg16[R_##a/2]
+#define R32(a) state.regs.reg32[R_##a/4]
+
+// test bit in register
+#define TB_R8(a,b) ((R8(a) & R_##a##_##b) == R_##a##_##b)
+//set bit in register
+#define SB_R8(a,b,c) R8(a) = (R8(a) & ~R_##a##_##b) | (c ? R_##a##_##b : 0)
+// write with mask
+#define WRM_R8(a,b)     R8(a) = (R8(a) & ~a##_MASK)            | ((b) & a##_MASK)
+// write with mask and write-1-to-clear
+#define WRMW1C_R8(a,b)  R8(a) = (R8(a) & ~a##_MASK & ~a##_W1C) | ((b) & a##_MASK) | (R8(a) & ~(b) & a##_W1C)
+
+#define RDCLR_R8(a) R8(a) &= ~a##_RC
+
+#define GET_DEST()  (R8(SDID) & R_SCID_ID)
+#define SET_DEST(a) R8(SDID) = (a) & R_SCID_ID
+
+#define GET_DBC() (R32(DBC) & 0x00ffffff)
+#define SET_DBC(a) R32(DBC) = (R32(DBC) & 0xff000000) | ((a) & 0x00ffffff)
+
+#define PT state.per_target[GET_DEST()]
+#define PTD get_disk(0,GET_DEST())
 
 u32 sym_cfg_data[64] = {
 /*00*/  0x000c1000, // CFID: vendor + device
@@ -97,8 +284,12 @@ CSym53C895::CSym53C895(CConfigurator * cfg, CSystem * c, int pcibus, int pcidev)
   c->RegisterClock(this, true);
 
   state.executing = false;
+  state.irq_asserted = false;
+  memset(state.regs.reg32,0,sizeof(state.regs.reg32));
+  R8(CTEST3) = (u8)(pci_state.config_data[0][2]<<4) & R_CTEST3_REV; // Chip rev.
+  R8(STEST4) = 0xC0 | 0x20; // LVD SCSI, Freq. Locked
 
-  printf("%%SYM-I-INIT: Symbios 53c895 emulator initialized.\n");
+  printf("%%SYM-I-INIT: Symbios 53c895 emulator initialized. STEST4 = %02x.\n",R8(STEST4));
 }
 
 CSym53C895::~CSym53C895()
@@ -133,151 +324,146 @@ void CSym53C895::WriteMem_Bar(int func,int bar, u32 address, int dsize, u32 data
     case 0:
     case 1:
       address &= 0x7f;
-      if ((address>=0x34 && address <=0x37) || address>=0x5c)
-      {
-        // scratch
-        if (address<0x5c)
-          address -= 0x34;
-        else
-          address -= 0x58;
-
-        p = (u8*)state.scratch + address;
-        switch(dsize)
-        {
-        case 8:
-          *((u8 *) p) = (u8) data;
-          break;
-        case 16:
-          *((u16 *) p) = (u16) data;
-          break;
-        case 32:
-          *((u32 *) p) = (u32) data;
-          break;
-        }
-        break;
-      }
       switch(dsize)
       {
       case 8:
+        if (address>=R_SCRATCHC)
+        {
+          state.regs.reg8[address] = (u8)data;
+          break;
+        }
         switch (address)
         {
-        case 0x00:
+        // SIMPLE CASES: JUST WRITE
+        case R_SXFER:   // 05
+        case R_DSA:     // 10
+        case R_DSA+1:   // 11
+        case R_DSA+2:   // 12
+        case R_DSA+3:   // 13
+        case R_CTEST0:  // 18
+        case R_TEMP:    // 1C
+        case R_TEMP+1:  // 1D
+        case R_TEMP+2:  // 1E
+        case R_TEMP+3:  // 1F
+        case R_DSP:     // 2C
+        case R_DSP+1:   // 2D
+        case R_DSP+2:   // 2E
+        case R_DSPS:    // 30
+        case R_DSPS+1:  // 31
+        case R_DSPS+2:  // 32
+        case R_DSPS+3:  // 33
+        case R_SCRATCHA:// 34
+        case R_SCRATCHA+1:// 35
+        case R_SCRATCHA+2:// 36
+        case R_SCRATCHA+3:// 37
+        case R_DMODE:   // 38
+        case R_GPCNTL:  // 47
+        case R_STIME0:  // 48
+        case R_RESPID:  // 4A
+        case R_RESPID+1:// 4B
+        case R_STEST0:  // 4C
+        case R_SCRATCHB:// 5C
+        case R_SCRATCHB+1:// 5D
+        case R_SCRATCHB+2:// 5E
+        case R_SCRATCHB+3:// 5F
+          state.regs.reg8[address] = (u8)data;
+          break;
+
+        case R_SCNTL0:  // 00
+          // side effects: start arbitration bit
           write_b_scntl0((u8)data);
           break;
-        case 0x01:
+        case R_SCNTL1:  //01
+          // side effects: start immediate arbitration bit
           write_b_scntl1((u8)data);
           break;
-        case 0x02:
-          write_b_scntl2((u8)data);
+        case R_SCNTL2:  //02
+          WRMW1C_R8(SCNTL2,(u8)data);
           break;
-        case 0x03:
+        case R_SCNTL3:  //03
+          // side effects: clearing EWS
           write_b_scntl3((u8)data);
           break;
-        case 0x04:
-          write_b_scid((u8)data);
+        case R_SCID:    // 04
+          WRM_R8(SCID,(u8)data);
           break;
-        case 0x05:
-          write_b_sxfer((u8)data);
+        case R_SDID:    // 06
+          WRM_R8(SDID,(u8)data);
           break;
-        case 0x07:
-          write_b_gpreg((u8)data);
+        case R_GPREG:   // 07
+          WRM_R8(GPREG,(u8)data);
           break;
-        case 0x10:
-          state.dsa = (state.dsa & 0xffffff00) | (data & 0xff);
-          break;
-        case 0x11:
-          state.dsa = (state.dsa & 0xffff00ff) | ((data<<8) & 0xff00);
-          break;
-        case 0x12:
-          state.dsa = (state.dsa & 0xff00ffff) | ((data<<16) & 0xff0000);
-          break;
-        case 0x13:
-          state.dsa = (state.dsa & 0x00ffffff) | ((data<<24) & 0xff000000);
-          break;
-        case 0x14:
+        case R_ISTAT:  // 14
           write_b_istat((u8)data);
           break;
-        case 0x1b:
+        case R_CTEST2: // 1A
+          WRM_R8(CTEST2,(u8)data);
+          break;
+        case R_CTEST3: // 1B
           write_b_ctest3((u8)data);
           break;
-        case 0x21:
+        case R_CTEST4:  // 21
           write_b_ctest4((u8)data);
           break;
-        case 0x22:
+        case R_CTEST5:  // 22
           write_b_ctest5((u8)data);
           break;
-        case 0x38:
-          write_b_dmode((u8)data);
+        case R_DSP+3:   // 2F
+          state.regs.reg8[address] = (u8)data;
+          post_dsp_write();
           break;
-        case 0x39:
-          write_b_dien((u8)data);
+        case R_DIEN:    // 39
+          WRM_R8(DIEN,(u8)data);
+          eval_interrupts();
           break;
-        case 0x3b:
+        case R_DCNTL: // 3B
           write_b_dcntl((u8)data);
           break;
-        case 0x40:
-          write_b_sien0((u8)data);
+        case R_SIEN0:    // 40
+          R8(SIEN0) = (u8)data;
+          eval_interrupts();
           break;
-        case 0x41:
-          write_b_sien1((u8)data);
+        case R_SIEN1:    // 41
+          WRM_R8(SIEN1,(u8)data);
+          eval_interrupts();
           break;
-        case 0x47:
-          write_b_gpcntl((u8)data);
+        case R_STIME1:  // 49
+          WRM_R8(STIME1,(u8)data);
           break;
-        case 0x48:
-          write_b_stime0((u8)data);
+        case R_STEST1:  // 4D
+          WRM_R8(STEST1,(u8)data);
           break;
-        case 0x49:
-          write_b_stime1((u8)data);
-          break;
-        case 0x4a:
-          write_b_respid0((u8)data);
-          break;
-        case 0x4b:
-          write_b_respid1((u8)data);
-          break;
-        case 0x4d:
-          write_b_stest1((u8)data);
-          break;
-        case 0x4e:
+        case R_STEST2:  // 4E
           write_b_stest2((u8)data);
           break;
-        case 0x4f:
+        case R_STEST3:  // 4F
           write_b_stest3((u8)data);
           break;
+
+        case R_DSTAT:   // 0C
+        case R_SSTAT0:  // 0D
+        case R_SSTAT1:  // 0E
+        case R_SSTAT2:  // 0F
+          printf("SYM: Write to read-only memory at %02x. FreeBSD driver cache test.\n" ,address,data);
+          break;
         default:
-          printf("SYM: Attempt to write %d bits to memory at %02x with %08x\n", dsize, address,data);
+          printf("SYM: Write 8 bits to unknown memory at %02x with %08x.\n",address,data);
           exit(1);
         }
         break;
       case 16:
-        WriteMem_Bar(0,1,address,8,data & 0xff);
+        WriteMem_Bar(0,1,address+0,8,(data>>0) & 0xff);
         WriteMem_Bar(0,1,address+1,8,(data>>8) & 0xff);
         break;
       case 32:
-        switch (address)
-        {
-        case 0x0c: // dstat, sstat0..sstat2
-          printf("SYM: Attempt to write 32-bits at 0x0c: FreeBSD driver quirk.\n");
-          break;
-        case 0x10:
-          write_d_dsa(data);
-          break;
-        case 0x2c:
-          write_d_dsp(data);
-          break;
-        case 0x30:
-          write_d_dsps(data);
-          break;
-        default:
-          printf("SYM: Attempt to write %d bits to memory at %02x with %08x\n", dsize, address,data);
-          exit(1);
-        }
+        WriteMem_Bar(0,1,address+0,8,(data>> 0) & 0xff);
+        WriteMem_Bar(0,1,address+1,8,(data>> 8) & 0xff);
+        WriteMem_Bar(0,1,address+2,8,(data>>16) & 0xff);
+        WriteMem_Bar(0,1,address+3,8,(data>>24) & 0xff);
         break;
       }
       break;
     case 2:
-      printf("SYM: Attempt to write %d bits to ram at %04x with %08x\n", dsize, address,data);
       p = (u8*)state.ram + address;
       switch(dsize)
       {
@@ -294,6 +480,12 @@ void CSym53C895::WriteMem_Bar(int func,int bar, u32 address, int dsize, u32 data
       break;
   }
 
+  if (R8(STEST4)==0)
+  {
+    printf("STEST4 0 after write 8 bits to unknown memory at %02x with %08x.\n",address,data);
+    getchar();
+  }
+
 }
 
 u32 CSym53C895::ReadMem_Bar(int func,int bar, u32 address, int dsize)
@@ -306,154 +498,115 @@ u32 CSym53C895::ReadMem_Bar(int func,int bar, u32 address, int dsize)
     case 0:
     case 1:
       address &= 0x7f;
-      if ((address>=0x34 && address <=0x37) || address>=0x5c)
-      {
-        // scratch
-        if (address<0x5c)
-          address -= 0x34;
-        else
-          address -= 0x58;
-
-        if (address>=0 && address<=7 && state.ctest.srtch)
-          p = (u8*)&(pci_state.config_data[0][5]) + address; // memory registers BAR / RAM BAR
-        else
-          p = (u8*)state.scratch + address;
-        switch(dsize)
-        {
-        case 8:
-          data = *((u8 *) p);
-          break;
-        case 16:
-          data = *((u16 *) p);
-          break;
-        case 32:
-          data = *((u32 *) p);
-          break;
-        }
-        break;
-      }
       switch(dsize)
       {
       case 8:
+        if (address>=R_SCRATCHC)
+        {
+            data = state.regs.reg8[address];
+            break;
+        }
         switch(address)
         {
-        case 0x00:
-          data = read_b_scntl0();
+        case R_SCNTL0:  // 00
+        case R_SCNTL1:  // 01
+        case R_SCNTL2:  // 02
+        case R_SCNTL3:  // 03
+        case R_SCID:    // 04
+        case R_SXFER:   // 05
+        case R_SDID:    // 06
+        case R_GPREG:   // 07
+        case R_SFBR:    // 08
+        case R_SSTAT0:  // 0D
+        case R_SSTAT1:  // 0E
+        case R_SSTAT2:  // 0F
+        case R_DSA:     // 10
+        case R_DSA+1:   // 11
+        case R_DSA+2:   // 12
+        case R_DSA+3:   // 13
+        case R_ISTAT:   // 14
+        case R_CTEST0:  // 18
+        case R_CTEST1:  // 19
+        case R_CTEST3:  // 1B
+        case R_TEMP:    // 1C
+        case R_TEMP+1:  // 1D
+        case R_TEMP+2:  // 1E
+        case R_TEMP+3:  // 1F
+        case R_CTEST4:  // 21
+        case R_CTEST5:  // 22
+        case R_DSP:     // 2C
+        case R_DSP+1:   // 2D
+        case R_DSP+2:   // 2E
+        case R_DSP+3:   // 2F
+        case R_DSPS:    // 30
+        case R_DSPS+1:  // 31
+        case R_DSPS+2:  // 32
+        case R_DSPS+3:  // 33
+        case R_DMODE:   // 38
+        case R_DIEN:    // 39
+        case R_DCNTL:   // 3B
+        case R_SIEN0:   // 40
+        case R_SIEN1:   // 41
+        case R_GPCNTL:  // 47
+        case R_STIME0:  // 48
+        case R_STIME1:  // 49
+        case R_RESPID:  // 4A
+        case R_RESPID+1:// 4B
+        case R_STEST0:  // 4C
+        case R_STEST1:  // 4D
+        case R_STEST2:  // 4E
+        case R_STEST3:  // 4F
+        case R_STEST4:  // 52
+        case R_SBDL:    // 58
+        case R_SBDL+1:  // 59
+          data = state.regs.reg8[address];
           break;
-        case 0x01:
-          data = read_b_scntl1();
-          break;
-        case 0x02:
-          data = read_b_scntl2();
-          break;
-        case 0x03:
-          data = read_b_scntl3();
-          break;
-        case 0x04:
-          data = read_b_scid();
-          break;
-        case 0x05:
-          data = read_b_sxfer();
-          break;
-        case 0x07:
-          data = read_b_gpreg();
-          break;
-        case 0x0c:
+
+        case R_DSTAT:   // 0C
           data = read_b_dstat();
           break;
-        case 0x14:
-          data = read_b_istat();
+
+        case R_CTEST2:  // 1A
+          data = read_b_ctest2();
           break;
-        case 0x1b:
-          data = read_b_ctest3();
+
+        case R_SCRATCHA:    // 34
+        case R_SCRATCHA+1:  // 35
+        case R_SCRATCHA+2:  // 36
+        case R_SCRATCHA+3:  // 37
+          data = read_b_scratcha(address-R_SCRATCHA);
           break;
-        case 0x21:
-          data = read_b_ctest4();
+
+        case R_SIST0:   // 42
+        case R_SIST1:   // 43
+          data = read_b_sist(address-R_SIST0);
           break;
-        case 0x22:
-          data = read_b_ctest5();
+
+        case R_SCRATCHB:    // 5C
+        case R_SCRATCHB+1:  // 5D
+        case R_SCRATCHB+2:  // 5E
+        case R_SCRATCHB+3:  // 5F
+          data = read_b_scratchb(address-R_SCRATCHB);
           break;
-        case 0x38:
-          data = read_b_dmode();
-          break;
-        case 0x39:
-          data = read_b_dien();
-          break;
-        case 0x3b:
-          data = read_b_dcntl();
-          break;
-        case 0x40:
-          data = read_b_sien0();
-          break;
-        case 0x41:
-          data = read_b_sien1();
-          break;
-        case 0x42:
-          data = read_b_sist0();
-          break;
-        case 0x43:
-          data = read_b_sist1();
-          break;
-        case 0x47:
-          data = read_b_gpcntl();
-          break;
-        case 0x48:
-          data = read_b_stime0();
-          break;
-        case 0x49:
-          data = read_b_stime1();
-          break;
-        case 0x4a:
-          data = read_b_respid0();
-          break;
-        case 0x4b:
-          data = read_b_respid1();
-          break;
-        case 0x4d:
-          data = read_b_stest1();
-          break;
-        case 0x4e:
-          data = read_b_stest2();
-          break;
-        case 0x4f:
-          data = read_b_stest3();
-          break;
-        case 0x52:
-          data = read_b_stest4();
-          break;
+
         default:
           printf("SYM: Attempt to read %d bits from memory at %02x\n", dsize, address);
           exit(1);
         }
         break;
       case 16:
-        data = (ReadMem_Bar(0,1,address,8) & 0xff) | ((ReadMem_Bar(0,1,address+1,8)<<8) & 0xff00);
+        data  = (ReadMem_Bar(0,1,address+0,8)<<0) & 0x00ff;
+        data |= (ReadMem_Bar(0,1,address+1,8)<<8) & 0xff00;
         break;
       case 32:
-        switch (address)
-        {
-        case 0x0c: // dstat, sstat0..sstat2
-          printf("SYM: Attempt to read 32-bits at 0x0c: FreeBSD driver quirk.\n");
-          data = ((ReadMem_Bar(0,1,address,  8)<< 0) & 0x000000ff) 
-               | ((ReadMem_Bar(0,1,address+1,8)<< 8) & 0x0000ff00)
-               | ((ReadMem_Bar(0,1,address+2,8)<<16) & 0x00ff0000)
-               | ((ReadMem_Bar(0,1,address+3,8)<<24) & 0xff000000);
-          break;
-        case 0x10:
-          return read_d_dsa();
-        case 0x2c:
-          return read_d_dsp();
-        case 0x30:
-          return read_d_dsps();
-        default:
-          printf("SYM: Attempt to read %d bits from memory at %02x\n", dsize, address);
-          exit(1);
-        }
-      break;
+        data  = (ReadMem_Bar(0,1,address+0,8)<< 0) & 0x000000ff;
+        data |= (ReadMem_Bar(0,1,address+1,8)<< 8) & 0x0000ff00;
+        data |= (ReadMem_Bar(0,1,address+2,8)<<16) & 0x00ff0000;
+        data |= (ReadMem_Bar(0,1,address+3,8)<<24) & 0xff000000;
+        break;
       }
       break;
     case 2:
-      printf("SYM: Attempt to read %d bits from ram at %04x\n", dsize, address);
       p = (u8*)state.ram + address;
       switch(dsize)
       {
@@ -485,590 +638,215 @@ void CSym53C895::config_write_custom(int func, u32 address, int dsize, u32 old_d
     WriteMem_Bar(func,1,address-0x80,dsize,data);
 }
 
-
-u8 CSym53C895::read_b_scntl0()
-{
-  return (state.scntl.arb << 6)
-       | (state.scntl.start ? 0x20 : 0x00)
-       | (state.scntl.watn  ? 0x10 : 0x00)
-       | (state.scntl.epc   ? 0x08 : 0x00)
-       | (state.scntl.aap   ? 0x02 : 0x00)
-       | (state.scntl.trg   ? 0x01 : 0x00);
-}
-
 void CSym53C895::write_b_scntl0(u8 value)
 {
-  bool old_start = state.scntl.start;
+  bool old_start = TB_R8(SCNTL0,START);
 
-  state.scntl.arb = (value>>6) & 3;
-  state.scntl.start = (value>>5) & 1;
-  state.scntl.watn = (value>>4) & 1;
-  state.scntl.epc = (value>>3) & 1;
-  state.scntl.aap = (value>>1) & 1;
-  state.scntl.trg = (value>>0) & 1;
+  WRM_R8(SCNTL0,value);
 
-  if (state.scntl.start && !old_start)
+  if (TB_R8(SCNTL0,START) && !old_start)
+  {
     printf("SYM: Don't know how to start arbitration sequence.\n");
-}
+    exit(1);
+  }
 
-u8 CSym53C895::read_b_scntl1()
-{
-  return (state.scntl.exc ? 0x80 : 0x00)
-       | (state.scntl.adb ? 0x40 : 0x00)
-       | (state.scntl.dhp ? 0x20 : 0x00)
-       | (state.scntl.con ? 0x10 : 0x00)
-       | (state.scntl.rst ? 0x08 : 0x00)
-       | (state.scntl.aesp ? 0x04 : 0x00)
-       | (state.scntl.iarb? 0x02 : 0x00)
-       | (state.scntl.sst ? 0x01 : 0x00);
+  if (TB_R8(SCNTL0,TRG))
+  {
+    printf("SYM: Don't know how to operate in target mode.\n");
+    exit(1);
+  }
 }
 
 void CSym53C895::write_b_scntl1(u8 value)
 {
-  bool old_iarb = state.scntl.iarb;
-  bool old_con = state.scntl.con;
+  bool old_iarb = TB_R8(SCNTL1,IARB);
+  bool old_con = TB_R8(SCNTL1,CON);
 
-  state.scntl.exc = (value>>7) & 1;
-  state.scntl.adb = (value>>6) & 1;
-  state.scntl.dhp = (value>>5) & 1;
-  state.scntl.con = (value>>4) & 1;
-  state.scntl.rst = (value>>3) & 1;
-  state.scntl.aesp = (value>>2) & 1;
-  state.scntl.iarb = (value>>1) & 1;
-  state.scntl.sst = (value>>0) & 1;
+  R8(SCNTL1) = value;
 
-  if (state.scntl.con != old_con)
+  if (TB_R8(SCNTL1,CON) != old_con)
     printf("SYM: Don't know how to forcibly connect or disconnect\n");
 
-  if (state.scntl.iarb && !old_iarb)
+  if (TB_R8(SCNTL1,IARB) && !old_iarb)
+  {
     printf("SYM: Don't know how to start immediate arbitration sequence.\n");
-
-}
-
-u8 CSym53C895::read_b_scntl2()
-{
-  return (state.scntl.sdu ? 0x80 : 0x00)
-       | (state.scntl.chm ? 0x40 : 0x00)
-       | (state.scntl.slpmd ? 0x20 : 0x00)
-       | (state.scntl.slphben ? 0x10 : 0x00)
-       | (state.scntl.wss ? 0x08 : 0x00)
-       | (state.scntl.vue0 ? 0x04 : 0x00)
-       | (state.scntl.vue1 ? 0x02 : 0x00)
-       | (state.scntl.wsr ? 0x01 : 0x00);
-}
-
-void CSym53C895::write_b_scntl2(u8 value)
-{
-  state.scntl.slpmd = (value>>5) & 1;
-  state.scntl.slphben = (value>>4) & 1;
-  if ((value>>3)&1) 
-    state.scntl.wss = false;
-  state.scntl.vue1 = (value>>1) & 1;
-  if ((value>>0)&1) 
-    state.scntl.wsr = false;
-}
-
-u8 CSym53C895::read_b_scntl3()
-{
-  return (state.scntl.ultra ? 0x80 : 0x00)
-       | (state.scntl.scf << 4)
-       | (state.scntl.ews ? 0x08: 0x00)
-       | state.scntl.ccf;
+    exit(1);
+  }
 }
 
 void CSym53C895::write_b_scntl3(u8 value)
 {
-  state.scntl.ultra = (value>>7) & 1;
-  state.scntl.scf = (value>>4) & 7;
-  state.scntl.ews = (value>>3) & 1;
-  state.scntl.ccf = (value>>0) & 7;
-}
+  R8(SCNTL3) = value;
 
-u8 CSym53C895::read_b_scid()
-{
-  return (state.scntl.rre ? 0x40 : 0x00)
-       | (state.scntl.sre ? 0x20 : 0x00)
-       | state.scntl.my_scsi_id;
-}
-
-void CSym53C895::write_b_scid(u8 value)
-{
-  int old_scsi_id = state.scntl.my_scsi_id;
-  state.scntl.rre = (value>>6) & 1;
-  state.scntl.sre = (value>>5) & 1;
-  state.scntl.my_scsi_id = value & 0x0f;
-  if (state.scntl.my_scsi_id != old_scsi_id)
-    printf("SYM: SCSI id set to %d.\n",state.scntl.my_scsi_id);
-}
-
-u8 CSym53C895::read_b_sxfer()
-{
-  return (state.sxfer.tp << 6)
-    | state.sxfer.mo;
-}
-
-void CSym53C895::write_b_sxfer(u8 value)
-{
-  state.sxfer.tp = (value>>6) & 3;
-  state.sxfer.mo = (value>>0) & 0x3f;
-}
-
-
-u8 CSym53C895::read_b_istat()
-{
-  return (state.istat.abrt ? 0x80 : 0x00)
-       | (state.istat.srst ? 0x40 : 0x00)
-       | (state.istat.sigp ? 0x20 : 0x00)
-       | (state.istat.sem  ? 0x10 : 0x00)
-       | (state.istat.con  ? 0x08 : 0x00)
-       | (state.istat.intf ? 0x04 : 0x00)
-       | (state.istat.sip  ? 0x02 : 0x00)
-       | (state.istat.dip  ? 0x01 : 0x00);
+  if (!TB_R8(SCNTL3,EWS))
+    SB_R8(SCNTL2,WSR,false);
 }
 
 void CSym53C895::write_b_istat(u8 value)
 {
-  bool old_abrt = state.istat.abrt;
-  bool old_srst = state.istat.srst;
+  bool old_srst = TB_R8(ISTAT,SRST);
 
-  state.istat.abrt = (value>>7) & 1;
-  state.istat.srst = (value>>6) & 1;
-  state.istat.sigp = (value>>5) & 1;
-  state.istat.sem  = (value>>4) & 1;
+  WRMW1C_R8(ISTAT, value);
 
-  if ((value>>2)&1) state.istat.intf = false;
+  if (TB_R8(ISTAT,ABRT))
+  {
+    printf("SYM: Aborting on request.\n");
+    set_interrupt(R_DSTAT,R_DSTAT_ABRT);
+  }
 
-  if (state.istat.abrt && !old_abrt)
-    printf("SYM: Don't know how to initiate an abort yet!\n");
-
-  if (state.istat.srst && !old_srst)
+  if (TB_R8(ISTAT,ABRT) && !old_srst)
     printf("SYM: Don't know how to initiate a reset yet!\n");
+
+  eval_interrupts();
 }
 
-u8 CSym53C895::read_b_ctest3()
+u8 CSym53C895::read_b_ctest2()
 {
-  return ((pci_state.config_data[0][2] << 4) & 0xf0) //chip rev level
-    | (state.ctest.flf ? 0x08: 0x00)
-    | (state.ctest.fm ? 0x02: 0x00)
-    | (state.ctest.wrie ? 0x01: 0x00);
+  SB_R8(CTEST2, CIO,  pci_state.config_data[0][4]!=0);
+  SB_R8(CTEST2, CM,   pci_state.config_data[0][5]!=0);
+  SB_R8(CTEST2, SIGP, TB_R8(ISTAT, SIGP));
+  SB_R8(ISTAT,  SIGP, false);
+
+  return R8(CTEST2);
 }
 
 void CSym53C895::write_b_ctest3(u8 value)
 {
-  state.ctest.flf = (value>>3) & 1;
-  state.ctest.fm = (value>>1) & 1;
-  state.ctest.wrie =  (value>>0) & 1;
+  WRM_R8(CTEST3, value);
 
-  if (state.ctest.flf)
+  if ((value>>3) & 1)
     printf("SYM: Don't know how to flush DMA FIFO\n");
 
   if ((value>>2) & 1)
     printf("SYM: Don't know how to clear DMA FIFO\n");
-}
 
-u8 CSym53C895::read_b_ctest4()
-{
-  return (state.ctest.bdis ? 0x80 : 0x00)
-    | (state.ctest.zmod? 0x40: 0x00)
-    | (state.ctest.zsd? 0x20: 0x00)
-    | (state.ctest.srtm? 0x10: 0x00)
-    | (state.ctest.mpee? 0x08: 0x00)
-    | state.ctest.fbl;
+  if ((value>>1) & 1)
+  {
+    printf("SYM: Don't know how to handle FM mode\n");
+    exit(1);
+  }
 }
 
 void CSym53C895::write_b_ctest4(u8 value)
 {
-  state.ctest.bdis = (value>>7) & 1;
-  state.ctest.zmod = (value>>6) & 1;
-  state.ctest.zsd =  (value>>5) & 1;
-  state.ctest.srtm = (value>>4) & 1;
-  state.ctest.mpee = (value>>3) & 1;
-  state.ctest.fbl =  (value>>0) & 7;
+  R8(CTEST4) = value;
 
-  if (state.ctest.srtm)
-    printf("SYM: Shadow Register Test Mode not supported\n");
+  if ((value>>4) & 1)
+  {
+    printf("SYM: Don't know how to handle SRTM mode\n");
+    exit(1);
+  }
 }
 
-u8 CSym53C895::read_b_ctest5()
-{
-  return (state.dma.dfs ? 0x20 : 0x00)
-    | (state.ctest.masr ? 0x10 : 0x00)
-    | (state.dma.ddir ? 0x08 : 0x00)
-    | (state.dma.bl & 0x04)
-    | ((state.dma.bo >> 8) & 0x03);
-}
 
 void CSym53C895::write_b_ctest5(u8 value)
 {
+  WRM_R8(CTEST5,value);
+
   if ((value>>7) & 1)
     printf("SYM: Don't know how to do Clock Address increment.\n");
   if ((value>>6) & 1)
     printf("SYM: Don't know how to do Clock Byte Counter decrement.\n");
-  state.dma.dfs = (value>>5) & 1;
-  if ((value>>3) & 1)
-    state.dma.ddir = (value>>4) & 1;
-
-  state.dma.bl = (state.dma.bl & 0x03) | (value & 0x04);
-  state.dma.bo = (state.dma.bo & 0xff) | ((value<<8) & 0x300);
-}
-
-u8 CSym53C895::read_b_dmode()
-{
-  return ((state.dma.bl << 6) & 0xc0)
-    | (state.dma.siom ? 0x20 : 0x00)
-    | (state.dma.diom ? 0x10 : 0x00)
-    | (state.dma.erl ? 0x08 : 0x00)
-    | (state.dma.ermp ? 0x04 : 0x00)
-    | (state.dma.bof ? 0x02 : 0x00)
-    | (state.dma.man ? 0x01 : 0x00);
-}
-
-void CSym53C895::write_b_dmode(u8 value)
-{
-  state.dma.bl = (state.dma.bl & 0x04) | ((value>>6) & 0x03);
-  state.dma.siom = (value>>5) & 1;
-  state.dma.diom = (value>>4) & 1;
-  state.dma.erl = (value>>3) & 1;
-  state.dma.ermp = (value>>2) & 1;
-  state.dma.bof = (value>>1) & 1;
-  state.dma.man = (value>>0) & 1;
-}
-
-u8 CSym53C895::read_b_dien()
-{
-  return (state.dien.mdpe ? 0x40 : 0x00)
-    | (state.dien.bf ? 0x20 : 0x00)
-    | (state.dien.abrt ? 0x10 : 0x00)
-    | (state.dien.ssi ? 0x08 : 0x00)
-    | (state.dien.sir ? 0x04 : 0x00)
-    | (state.dien.iid ? 0x01 : 0x00);
-}
-
-void CSym53C895::write_b_dien(u8 value)
-{
-  state.dien.mdpe = (value>>6) & 1;
-  state.dien.bf = (value>>5) & 1;
-  state.dien.abrt = (value>>4) & 1;
-  state.dien.ssi = (value>>3) & 1;
-  state.dien.sir = (value>>2) & 1;
-  state.dien.iid = (value>>0) & 1;
 }
 
 u8 CSym53C895::read_b_dstat()
 {
-  u8 retval = (state.dstat.dfe ? 0x80 : 0x00)
-    |  (state.dstat.mdpe ? 0x40 : 0x00)
-    | (state.dstat.bf ? 0x20 : 0x00)
-    | (state.dstat.abrt ? 0x10 : 0x00)
-    | (state.dstat.ssi ? 0x08 : 0x00)
-    | (state.dstat.sir ? 0x04 : 0x00)
-    | (state.dstat.iid ? 0x01 : 0x00);
+  u8 retval = R8(DSTAT);
 
-  state.dstat.mdpe = false;
-  state.dstat.bf = false;
-  state.dstat.abrt = false;
-  state.dstat.ssi = false;
-  state.dstat.sir = false;
-  state.dstat.iid = false;
+  RDCLR_R8(DSTAT);
 
-  state.istat.dip = false;
+  R8(DSTAT) |= state.dstat_stack;
 
-  // end any interrupts pending...
-  do_pci_interrupt(0, false);
+  state.dstat_stack = 0;
+
+  printf("Read DSTAT --> eval int\n");
+  eval_interrupts();
+
+  printf("Read DSTAT <-- eval int; retval: %02x; dstat: %02x.\n",retval,R8(DSTAT));
 
   return retval;
 }
 
-u8 CSym53C895::read_b_dcntl()
+u8 CSym53C895::read_b_sist(int id)
 {
-  return (state.dma.clse ? 0x80 : 0x00)
-    | (state.dma.pff ? 0x40 : 0x00)
-    | (state.dma.pfen ? 0x20 : 0x00)
-    | (state.dma.ssm ? 0x10 : 0x00)
-    | (state.dma.irqm ? 0x08 : 0x00)
-    | (state.dma.irqd ? 0x02 : 0x00)
-    | (state.dma.com ? 0x01 : 0x00);
+  u8 retval = state.regs.reg8[R_SIST0+id];
+
+  if (id)
+    RDCLR_R8(SIST1);
+  else
+    RDCLR_R8(SIST0);
+
+  if (!R8(SIST0) && !R8(SIST1))
+  {
+     R8(SIST0) |= state.sist0_stack;
+     R8(SIST1) |= state.sist1_stack;
+     state.sist0_stack = 0;
+     state.sist1_stack = 0;
+  }
+  eval_interrupts();
+
+  return retval;
 }
+
 
 void CSym53C895::write_b_dcntl(u8 value)
 {
-  state.dma.clse = (value>>7) & 1;
-  state.dma.pff = (value>>6) & 1;
-  state.dma.pfen = (value>>5) & 1;
-  state.dma.ssm = (value>>4) & 1;
-  state.dma.irqm = (value>>3) & 1;
+  WRM_R8(DCNTL,value);
 
   // start operation
-  if ((value>>2) & 1)
+  if (value & R_DCNTL_STD)
     state.executing = true;
 
-  state.dma.irqd = (value>>1) & 1;
-  state.dma.com = (value>>0) & 1;
+  //IRQD bit...
+  eval_interrupts();
 }
 
-u8 CSym53C895::read_b_sien0()
+u8 CSym53C895::read_b_scratcha(int reg)
 {
-  u8 retval;
-  retval = (state.sien.ma ? 0x80 : 0x00)
-    | (state.sien.cmp ? 0x40 : 0x00)
-    | (state.sien.sel ? 0x20 : 0x00)
-    | (state.sien.rsl ? 0x10 : 0x00)
-    | (state.sien.sge ? 0x08 : 0x00)
-    | (state.sien.udc ? 0x04 : 0x00)
-    | (state.sien.rst ? 0x02 : 0x00)
-    | (state.sien.par ? 0x01 : 0x00);
-  return retval;
+  if (TB_R8(CTEST2,SRTCH))
+  {
+    printf("SYM: SCRATCHA from PCI\n");
+    return (pci_state.config_data[0][4]>>(reg*8)) & 0xff;
+  }
+  else
+    return state.regs.reg8[R_SCRATCHA+reg];
 }
 
-void CSym53C895::write_b_sien0(u8 value)
+u8 CSym53C895::read_b_scratchb(int reg)
 {
-  state.sien.ma = (value>>7) & 1;
-  state.sien.cmp = (value>>6) & 1;
-  state.sien.sel = (value>>5) & 1;
-  state.sien.rsl = (value>>4) & 1;
-  state.sien.sge = (value>>3) & 1;
-  state.sien.udc = (value>>2) & 1;
-  state.sien.rst = (value>>1) & 1;
-  state.sien.par = (value>>0) & 1;
-}
-
-u8 CSym53C895::read_b_sien1()
-{
-  u8 retval;
-  retval = (state.sien.sbmc ? 0x10 : 0x00)
-    | (state.sien.sto ? 0x04 : 0x00)
-    | (state.sien.gen ? 0x02 : 0x00)
-    | (state.sien.hth ? 0x01 : 0x00);
-  return retval;
-}
-
-void CSym53C895::write_b_sien1(u8 value)
-{
-  state.sien.sbmc = (value>>4) & 1;
-  state.sien.sto = (value>>2) & 1;
-  state.sien.gen = (value>>1) & 1;
-  state.sien.hth = (value>>0) & 1;
-}
-
-u8 CSym53C895::read_b_sist0()
-{
-  u8 retval;
-  retval = (state.sist.ma ? 0x80 : 0x00)
-    | (state.sist.cmp ? 0x40 : 0x00)
-    | (state.sist.sel ? 0x20 : 0x00)
-    | (state.sist.rsl ? 0x10 : 0x00)
-    | (state.sist.sge ? 0x08 : 0x00)
-    | (state.sist.udc ? 0x04 : 0x00)
-    | (state.sist.rst ? 0x02 : 0x00)
-    | (state.sist.par ? 0x01 : 0x00);
-
-  state.sist.ma = false;
-  state.sist.cmp = false;
-  state.sist.sel = false;
-  state.sist.rsl = false;
-  state.sist.sge = false;
-  state.sist.udc = false;
-  state.sist.rst = false;
-  state.sist.par = false;
-
-  return retval;
-}
-
-u8 CSym53C895::read_b_sist1()
-{
-  u8 retval;
-  retval = (state.sist.sbmc ? 0x10 : 0x00)
-    | (state.sist.sto ? 0x04 : 0x00)
-    | (state.sist.gen ? 0x02 : 0x00)
-    | (state.sist.hth ? 0x01 : 0x00);
-
-  state.sist.sbmc = false;
-  state.sist.sto = false;
-  state.sist.gen = false;
-  state.sist.hth = false;
-
-  return retval;
-}
-
-u8 CSym53C895::read_b_stest1()
-{
-  return (state.stest.sclk ? 0x80 : 0x00)
-    | (state.stest.siso ? 0x40 : 0x00)
-    | (state.stest.qen ? 0x08 : 0x00)
-    | (state.stest.qsel ? 0x04 : 0x00);
-}
-
-void CSym53C895::write_b_stest1(u8 value)
-{
-  state.stest.sclk = (value>>7) & 1;
-  state.stest.siso = (value>>6) & 1;
-  state.stest.qen = (value>>3) & 1;
-  state.stest.qsel = (value>>2) & 1;
-}
-
-u8 CSym53C895::read_b_stest2()
-{
-  return (state.stest.sce ? 0x80 : 0x00)
-    | (state.stest.dif ? 0x20 : 0x00)
-    | (state.stest.slb ? 0x10 : 0x00)
-    | (state.stest.szm ? 0x08 : 0x00)
-    | (state.stest.aws ? 0x04 : 0x00)
-    | (state.stest.ext ? 0x02 : 0x00)
-    | (state.stest.low ? 0x01 : 0x00);
+  if (TB_R8(CTEST2,SRTCH))
+  {
+    printf("SYM: SCRATCHB from PCI\n");
+    return (pci_state.config_data[0][5]>>(reg*8)) & 0xff;
+  }
+  else
+    return state.regs.reg8[R_SCRATCHB+reg];
 }
 
 void CSym53C895::write_b_stest2(u8 value)
 {
-  state.stest.sce = (value>>7) & 1;
-  state.stest.dif = (value>>5) & 1;
-  state.stest.slb = (value>>4) & 1;
-  state.stest.szm = (value>>3) & 1;
-  state.stest.aws = (value>>2) & 1;
-  state.stest.ext = (value>>1) & 1;
-  state.stest.low = (value>>0) & 1;
+  WRM_R8(STEST2,value);
 
-  if ((value>>6) & 1)
+  if (value & R_STEST2_ROF)
     printf("SYM: Don't know how to reset SCSI offset!\n");
 
-  if (state.stest.low)
+  if (TB_R8(STEST2,LOW))
   {
     printf("SYM: I don't like LOW level mode!\n");
     exit(1);
   }
 }
 
-u8 CSym53C895::read_b_stest3()
-{
-  return (state.stest.te ? 0x80 : 0x00)
-    | (state.stest.str ? 0x40 : 0x00)
-    | (state.stest.hsc ? 0x20 : 0x00)
-    | (state.stest.dsi ? 0x10 : 0x00)
-    | (state.stest.s16 ? 0x08 : 0x00)
-    | (state.stest.ttm ? 0x04 : 0x00)
-    | (state.stest.stw ? 0x01 : 0x00);
-}
-
 void CSym53C895::write_b_stest3(u8 value)
 {
-  state.stest.te = (value>>7) & 1;
-  state.stest.str = (value>>6) & 1;
-  state.stest.hsc = (value>>5) & 1;
-  state.stest.dsi = (value>>4) & 1;
-  state.stest.s16 = (value>>3) & 1;
-  state.stest.ttm = (value>>2) & 1;
-  if ((value>>1) & 1)
+  WRM_R8(STEST3,value);
+  if (value & R_STEST3_CSF)
     printf("SYM: Don't know how to clear the SCSI fifo.\n");
-  state.stest.stw = (value>>0) & 1;
 }
 
-u8 CSym53C895::read_b_stest4()
+void CSym53C895::post_dsp_write()
 {
-  return 0xe0; //LVD SCSI, Freq. Lock
-}
-
-u8 CSym53C895::read_b_respid0()
-{
-  return state.scntl.response_id & 0xff;
-}
-
-void CSym53C895::write_b_respid0(u8 value)
-{
-  state.scntl.response_id = (state.scntl.response_id & 0xff00) | (value & 0xff);
-}
-
-u8 CSym53C895::read_b_respid1()
-{
-  return (state.scntl.response_id>>8) & 0xff;
-}
-
-void CSym53C895::write_b_respid1(u8 value)
-{
-  state.scntl.response_id = (state.scntl.response_id & 0xff) | ((value<<8) & 0xff00);
-}
-
-u8 CSym53C895::read_b_stime0()
-{
-  return (state.stime.hth << 4)
-    | state.stime.sel;
-}
-
-void CSym53C895::write_b_stime0(u8 value)
-{
-  state.stime.hth = (value>>4) & 0x0f;
-  state.stime.sel = (value>>0) & 0x0f;
-}
-
-u8 CSym53C895::read_b_stime1()
-{
-  return (state.stime.hthba ? 0x40 : 0x00)
-    | (state.stime.gensf ? 0x20 : 0x00)
-    | (state.stime.hthsf ? 0x10 : 0x00)
-    | state.stime.gen;
-}
-
-
-void CSym53C895::write_b_stime1(u8 value)
-{
-  state.stime.hthba = (value>>6) & 1;
-  state.stime.gensf = (value>>5) & 1;
-  state.stime.hthsf = (value>>4) & 1;
-  state.stime.gen = (value>>0) & 0x0f;
-}
-
-u8 CSym53C895::read_b_gpreg()
-{
-  return state.gp.gpio & 0x1f;
-}
-
-void CSym53C895::write_b_gpreg(u8 value)
-{
-  state.gp.gpio = value & 0x1f;
-}
-
-u8 CSym53C895::read_b_gpcntl()
-{
-  return (state.gp.me ? 0x80 : 0x00)
-    | (state.gp.fe ? 0x40 : 0x00)
-    | (state.gp.gpio_en & 0x1f);
-
-}
-
-void CSym53C895::write_b_gpcntl(u8 value)
-{
-  state.gp.me = (value>>7) & 1;
-  state.gp.fe = (value>>6) & 1;
-  state.gp.gpio_en = value & 0x1f;
-}
-
-u32 CSym53C895::read_d_dsa()
-{
-  return state.dsa;
-}
-
-void CSym53C895::write_d_dsa(u32 value)
-{
-  state.dsa = value;
-}
-
-u32 CSym53C895::read_d_dsps()
-{
-  return state.dsps;
-}
-
-void CSym53C895::write_d_dsps(u32 value)
-{
-  state.dsps = value;
-}
-
-u32 CSym53C895::read_d_dsp()
-{
-  return state.dsp;
-}
-
-void CSym53C895::write_d_dsp(u32 value)
-{
-  state.dsp = value;
-  if (!state.dma.man)
+  if (!TB_R8(DMODE,MAN))
     state.executing = true;
 }
 
@@ -1083,43 +861,39 @@ int CSym53C895::DoClock()
   {
 
     // single step mode
-    if (state.dma.ssm)
+    if (TB_R8(DCNTL,SSM))
     {
       printf("SYM: Single step...\n");
-      state.istat.dip = true;
-      state.dstat.ssi = true;
-      do_pci_interrupt(0,true);
+      set_interrupt(R_DSTAT,R_DSTAT_SSI);
     }
 
-    printf("SYM: EXECUTING SCRIPT\n");
-    printf("SYM: INS @ %x, %x   \n",state.dsp, state.dsp+4);
+    //printf("SYM: EXECUTING SCRIPT\n");
+    //printf("SYM: INS @ %x, %x   \n",R32(DSP), R32(DSP)+4);
 
-    cmda0 = cSystem->PCI_Phys(myPCIBus, state.dsp);
-    cmda1 = cSystem->PCI_Phys(myPCIBus, state.dsp + 4);
+    cmda0 = cSystem->PCI_Phys(myPCIBus, R32(DSP));
+    cmda1 = cSystem->PCI_Phys(myPCIBus, R32(DSP) + 4);
 
-    state.dsp += 8;
+    R32(DSP) += 8;
 
-    printf("SYM: INS @ %" LL "x, %" LL "x   \n",cmda0, cmda1);
+    //printf("SYM: INS @ %" LL "x, %" LL "x   \n",cmda0, cmda1);
 
-    state.dbc = cSystem->ReadMem(cmda0,32);
-    state.dcmd = (state.dbc>>24) & 0xff;
-    state.dbc &= 0xffffff;
-    state.dsps = cSystem->ReadMem(cmda1,32);
+    R32(DBC) = cSystem->ReadMem(cmda0,32);  // loads both DBC and DCMD
+    R32(DSPS) = cSystem->ReadMem(cmda1,32);
 
-    printf("SYM: INS = %x, %x, %x   \n",state.dcmd, state.dbc, state.dsps);
+    //printf("SYM: INS = %x, %x, %x   \n",R8(DCMD), GET_DBC(), R32(DSPS));
 
-    optype = (state.dcmd>>6) & 3;
+    optype = (R8(DCMD)>>6) & 3;
     switch(optype)
     {
     case 0:
       {
-        bool indirect = (state.dcmd>>5) & 1;
-        bool table_indirect = (state.dcmd>>4) & 1;
-        int opcode = (state.dcmd>>3) & 1;
-        int scsi_phase = (state.dcmd>>0) & 7;
+        bool indirect = (R8(DCMD)>>5) & 1;
+        bool table_indirect = (R8(DCMD)>>4) & 1;
+        int opcode = (R8(DCMD)>>3) & 1;
+        int scsi_phase = (R8(DCMD)>>0) & 7;
         printf("SYM: INS = Block Move (i %d, t %d, opc %d, phase %d\n",indirect,table_indirect,opcode,scsi_phase);
 
-        state.dnad = state.dsps;
+        R32(DNAD) = R32(DSPS);
         if (state.phase == scsi_phase)
         {
           printf("SYM: Ready for transfer.\n");
@@ -1130,7 +904,7 @@ int CSym53C895::DoClock()
           int i;
           if (table_indirect)
           {
-            u32 add = state.dsa + sext_32(state.dsps,24);
+            u32 add = R32(DSA) + sext_32(R32(DSPS),24);
 
             cmda0 = cSystem->PCI_Phys(myPCIBus,add);
             cmda1 = cSystem->PCI_Phys(myPCIBus,add+4);
@@ -1146,50 +920,54 @@ int CSym53C895::DoClock()
           }
           else
           {
-            start = state.dsps;
-            count = state.dbc;
+            start = R32(DSPS);
+            count = GET_DBC();
           }
-          state.dnad = start;
+          R32(DNAD) = start;
           if (state.phase == 0 && PT.dato_to_disk)
           {
-            cmda0 = cSystem->PCI_Phys(myPCIBus,state.dnad);
+            cmda0 = cSystem->PCI_Phys(myPCIBus,R32(DNAD));
             void * dptr = cSystem->PtrToMem(cmda0);
             PTD->write_blocks(dptr,PT.dato_len);
             PT.dato_len = 0;
-            state.dnad +=(PT.dato_len*512);
+            R32(DNAD) +=(PT.dato_len*512);
           }
           else if (state.phase == 1 && PT.dati_off_disk)
           {
-            cmda0 = cSystem->PCI_Phys(myPCIBus,state.dnad);
+            cmda0 = cSystem->PCI_Phys(myPCIBus,R32(DNAD));
             void * dptr = cSystem->PtrToMem(cmda0);
             PTD->read_blocks(dptr,PT.dati_len);
             PT.dati_len = 0;
-            state.dnad +=(PT.dati_len*512);
+            R32(DNAD) +=(PT.dati_len*512);
           }
           else
           {
+            printf("SYM: ");
             for (i=0;i<count;i++)
             {
               u8 dat;
-              cmda0 = cSystem->PCI_Phys(myPCIBus,state.dnad++);
+              cmda0 = cSystem->PCI_Phys(myPCIBus,R32(DNAD)++);
               if (state.phase>=0)
               {
                 if (state.phase & 1)
                 {
                   dat = byte_from_target();
-                  printf("SYM: Reading byte %02x\n",dat);
-                  printf("SYM: Writing byte to system @ %" LL "x\n",cmda0);
+                  printf("%02x ",dat);
+//                  printf("SYM: Reading byte %02x\n",dat);
+//                  printf("SYM: Writing byte to system @ %" LL "x\n",cmda0);
                   cSystem->WriteMem(cmda0,8,dat);
                 }
                 else
                 {
-                  printf("SYM: Reading a byte from system at %x\n",cmda0);
+//                  printf("SYM: Reading a byte from system at %x\n",cmda0);
                   dat = cSystem->ReadMem(cmda0,8);
-                  printf("SYM: Writing byte %02x\n",dat);
+                  printf("%02x ",dat);
+//                  printf("SYM: Writing byte %02x\n",dat);
                   byte_to_target(dat);
                 }
               }
             }
+            printf("\n");
           }
           end_xfer();
           return 0;
@@ -1198,18 +976,26 @@ int CSym53C895::DoClock()
       break;
     case 1:
       {
-        int opcode = (state.dcmd>>3) & 7;
+        int opcode = (R8(DCMD)>>3) & 7;
 
         if (opcode < 5)
         {
-          bool relative = (state.dcmd>>2) & 1;
-          bool table_indirect = (state.dcmd>>1) & 1;
-          bool atn = (state.dcmd>>0) & 1;
-          int destination = (state.dbc>>16) & 0x0f;
-          bool sc_carry = (state.dbc>>10) & 1;
-          bool sc_target = (state.dbc>>9) & 1;
-          bool sc_ack = (state.dbc>>6) & 1;
-          bool sc_atn = (state.dbc>>3) & 1;
+          bool relative = (R8(DCMD)>>2) & 1;
+          bool table_indirect = (R8(DCMD)>>1) & 1;
+          bool atn = (R8(DCMD)>>0) & 1;
+          int destination = (GET_DBC()>>16) & 0x0f;
+          bool sc_carry = (GET_DBC()>>10) & 1;
+          bool sc_target = (GET_DBC()>>9) & 1;
+          bool sc_ack = (GET_DBC()>>6) & 1;
+          bool sc_atn = (GET_DBC()>>3) & 1;
+
+          //HACK?? DOCS UNCLEAR: TRY-THIS
+          R32(DNAD) = R32(DSPS);
+
+          u32 dest_addr = R32(DNAD);
+
+          if (relative)
+            dest_addr = R32(DSP) + sext_32(R32(DNAD),24);
 
           printf("SYM: INS = I/O (opc %d, r %d, t %d, a %d, dest %d, sc %d%d%d%d\n"
             ,opcode,relative,table_indirect,atn,destination,sc_carry,sc_target,sc_ack,sc_atn);
@@ -1226,18 +1012,29 @@ int CSym53C895::DoClock()
             // maybe we need to do more??
             state.phase = -1;
             return 0;
+
+          case 2:
+            printf("SYM: OPC = Wait_Reselect\n");
+            //reselect never happens for now...
+            if (TB_R8(ISTAT,SIGP))
+              R32(DSP) = dest_addr;
+            else
+              // back to here...
+              R32(DSP) -= 8;
+            return 0;
+
           case 3:
             printf("SYM: OPC = Set %s%s%s%s\n",sc_carry?"carry ":"",sc_target?"target ":"",sc_ack?"ack ":"",sc_atn?"atn ":"");
-            if (sc_ack) state.socl.ack = true;
-            if (sc_atn) state.socl.atn = true;
-            if (sc_target) state.scntl.trg = true;
+            if (sc_ack) SB_R8(SOCL,ACK,true);
+            if (sc_atn) SB_R8(SOCL,ATN,true);
+            if (sc_target) SB_R8(SCNTL0,TRG,true);
             if (sc_carry) state.alu.carry = true;
             return 0;
           case 4:
             printf("SYM: OPC = Clear %s%s%s%s\n",sc_carry?"carry ":"",sc_target?"target ":"",sc_ack?"ack ":"",sc_atn?"atn ":"");
-            if (sc_ack) state.socl.ack = false;
-            if (sc_atn) state.socl.atn = false;
-            if (sc_target) state.scntl.trg = false;
+            if (sc_ack) SB_R8(SOCL,ACK,false);
+            if (sc_atn) SB_R8(SOCL,ATN,false);
+            if (sc_target) SB_R8(SCNTL0,TRG,false);
             if (sc_carry) state.alu.carry = false;
             return 0;
 
@@ -1246,23 +1043,23 @@ int CSym53C895::DoClock()
         }
         else
         {
-          int oper = (state.dcmd>>0) & 7;
-          bool use_data8_sfbr = (state.dbc>>23) & 1;
-          int reg_address = ((state.dbc>>16) & 0x7f); //| (state.dbc & 0x80); // manual is unclear about bit 7.
-          u8 imm_data = (state.dbc>>8) & 0xff;
+          int oper = (R8(DCMD)>>0) & 7;
+          bool use_data8_sfbr = (GET_DBC()>>23) & 1;
+          int reg_address = ((GET_DBC()>>16) & 0x7f); //| (GET_DBC() & 0x80); // manual is unclear about bit 7.
+          u8 imm_data = (GET_DBC()>>8) & 0xff;
           u8 op_data;
 
           printf("SYM: INS = R/W (opc %d, oper %d, use %d, add %d, imm %02x\n"
             ,opcode,oper,use_data8_sfbr,reg_address,imm_data);
 
           if (use_data8_sfbr)
-            imm_data = state.sfbr;
+            imm_data = R8(SFBR);
 
           if (oper!=0)
           {
             if (opcode==5)
             {
-              op_data = state.sfbr;
+              op_data = R8(SFBR);
               printf("SYM: sfbr (%02x) ",op_data);
             }
             else
@@ -1315,7 +1112,7 @@ int CSym53C895::DoClock()
           if (opcode==6)
           {
             printf("-> sfbr.\n");
-            state.sfbr = op_data = state.sfbr;
+            R8(SFBR) = op_data;
           }
           else
           {
@@ -1330,26 +1127,25 @@ int CSym53C895::DoClock()
       break;
     case 2:
       {
-        int opcode = (state.dcmd>>3) & 7;
-        int scsi_phase = (state.dcmd>>0) & 7;
-        bool relative = (state.dbc>>23) & 1;
-        bool carry_test = (state.dbc>>21) & 1;
-        bool interrupt_fly = (state.dbc>>20) & 1;
-        bool jump_if = (state.dbc>>19) & 1;
-        bool cmp_data = (state.dbc>>18) & 1;
-        bool cmp_phase = (state.dbc>>17) & 1;
+        int opcode = (R8(DCMD)>>3) & 7;
+        int scsi_phase = (R8(DCMD)>>0) & 7;
+        bool relative = (GET_DBC()>>23) & 1;
+        bool carry_test = (GET_DBC()>>21) & 1;
+        bool interrupt_fly = (GET_DBC()>>20) & 1;
+        bool jump_if = (GET_DBC()>>19) & 1;
+        bool cmp_data = (GET_DBC()>>18) & 1;
+        bool cmp_phase = (GET_DBC()>>17) & 1;
         // wait_valid can be safely ignored, phases are always valid in this ideal world...
-        // bool wait_valid = (state.dbc>>16) & 1;
-        int cmp_mask = (state.dbc>>8) & 0xff;
-        int cmp_dat = (state.dbc>>0) & 0xff;
+        // bool wait_valid = (GET_DBC()>>16) & 1;
+        int cmp_mask = (GET_DBC()>>8) & 0xff;
+        int cmp_dat = (GET_DBC()>>0) & 0xff;
+
+        u32 dest_addr = R32(DSPS);
 
         bool do_it;
 
         if (relative)
-        {
-          printf("SYM: Don't understand relative transfer control yet!\n");
-          exit(1);
-        }
+          dest_addr = R32(DSP) + sext_32(R32(DSPS),24);
 
         printf("SYM: if (");
         if (carry_test)
@@ -1363,7 +1159,7 @@ int CSym53C895::DoClock()
           if (cmp_data)
           {
             printf("((data & 0x%02x) %s 0x%02x)", (~cmp_mask) & 0xff, jump_if?"==":"!=", cmp_dat &~cmp_mask);
-            if (((state.sfbr & ~cmp_mask)==(cmp_dat & ~cmp_mask)) != jump_if)
+            if (((R8(SFBR) & ~cmp_mask)==(cmp_dat & ~cmp_mask)) != jump_if)
               do_it = false;
             if (cmp_phase)
               printf(" && ");
@@ -1386,30 +1182,30 @@ int CSym53C895::DoClock()
         switch(opcode)
         {
         case 0:
-          printf("jump %x\n",state.dsps);
+          printf("jump %x\n",R32(DSPS));
           if (do_it)
           {
             printf("SYM: Jumping...\n");
-            state.dsp = state.dsps;
+            R32(DSP) = dest_addr;
           }
           return 0;
           break;
         case 1:
-          printf("call %d\n",state.dsps);
+          printf("call %d\n",R32(DSPS));
           if (do_it)
           {
             printf("SYM: Calling...\n");
-            state.temp = state.dsp;
-            state.dsp = state.dsps;
+            R32(TEMP) = R32(DSP);
+            R32(DSP) = dest_addr;
           }
           return 0;
           break;
         case 2:
-          printf("return %d\n",state.dsps);
+          printf("return %d\n",R32(DSPS));
           if (do_it)
           {
             printf("SYM: Returning...\n");
-            state.dsp = state.temp;
+            R32(DSP) = R32(TEMP);
           }
           return 0;
           break;
@@ -1422,14 +1218,11 @@ int CSym53C895::DoClock()
             if (!interrupt_fly)
             {
               state.executing = false;
-              state.dstat.sir = true;
-              state.istat.dip = true;
-              do_pci_interrupt(0,true);
+              set_interrupt(R_DSTAT,R_DSTAT_SIR);
             }
             else
             {
-              state.istat.intf = true;
-              do_pci_interrupt(0,true);
+              set_interrupt(R_ISTAT,R_ISTAT_INTF);
             }
           }
           return 0;
@@ -1441,7 +1234,49 @@ int CSym53C895::DoClock()
       }
     case 3:
       {
+        bool is_load = (R8(DCMD)>>0) & 1;
+        bool no_flush = (R8(DCMD)>>1) & 1;
+        bool dsa_relative = (R8(DCMD)>>4) & 1;
+        int regaddr = (GET_DBC()>>16) & 0x7f;
+        int byte_count = (GET_DBC()>>0) & 7;
+        u32 memaddr;
+
+        if (dsa_relative)
+          memaddr = R32(DSA) + sext_32(R32(DSPS),24);
+        else
+          memaddr = R32(DSPS);
+
+        if (is_load)
+        {
+          printf("SYM: Load reg%02x", regaddr);
+          if(byte_count>1)
+            printf("..%02x", regaddr+byte_count-1);
+          printf("from %x.\n",memaddr);
+          for (int i=0; i<byte_count;i++)
+          {
+            u64 ma = cSystem->PCI_Phys(myPCIBus,memaddr+i);
+            u8 dat = cSystem->ReadMem(ma,8);
+            printf("SYM: %02x -> reg%02x\n",dat,regaddr+i);
+            WriteMem_Bar(0,1,regaddr+i,8,dat);
+          }
+        }
+        else
+        {
+          printf("SYM: Store reg%02x", regaddr);
+          if(byte_count>1)
+            printf("..%02x", regaddr+byte_count-1);
+          printf("to %x.\n",memaddr);
+          for (int i=0; i<byte_count;i++)
+          {
+            u64 ma = cSystem->PCI_Phys(myPCIBus,memaddr+i);
+            u8 dat = ReadMem_Bar(0,1,regaddr+i,8);
+            printf("SYM: %02x <- reg%02x\n",dat,regaddr+i);
+            cSystem->WriteMem(ma,8,dat);
+          }
+        }
+        return 0;
       }
+      break;
     }
     return 1;
   }
@@ -1451,7 +1286,7 @@ int CSym53C895::DoClock()
 
 void CSym53C895::select_target(int target)
 {
-  state.target = target;
+  SET_DEST(target);
   if (PTD)
   {
     state.phase = 6; // message out
@@ -1550,7 +1385,7 @@ u8 CSym53C895::byte_from_target()
     printf("byte requested in phase %d\n",state.phase);
    // exit(1);
   }
-  state.sfbr = retval;
+  R8(SFBR) = retval;
   return retval;
 }
 
@@ -1662,7 +1497,7 @@ int CSym53C895::do_command()
   int pagecode;
   long ofs;
 
-  printf("SYM.%d: %d-byte command ",state.target,PT.cmd_len);
+  printf("SYM.%d: %d-byte command ",GET_DEST(),PT.cmd_len);
   for (int x=0;x<PT.cmd_len;x++) printf("%02x ",PT.cmd[x]);
   printf("\n");
 
@@ -1672,7 +1507,7 @@ int CSym53C895::do_command()
   switch(PT.cmd[0])
   {
   case SCSICMD_TEST_UNIT_READY:
-    printf("SYM.%d: TEST UNIT READY.\n",state.target);
+    printf("SYM.%d: TEST UNIT READY.\n",GET_DEST());
     if (PT.cmd_len != 6)
 	  printf("Weird cmd_len=%d.\n", PT.cmd_len);
 	if (PT.cmd[1] != 0x00) 
@@ -1689,7 +1524,7 @@ int CSym53C895::do_command()
     break;
 
   case SCSICMD_INQUIRY:
-    printf("SYM.%d: INQUIRY.\n",state.target);
+    printf("SYM.%d: INQUIRY.\n",GET_DEST());
     if (PT.cmd_len != 6)
 	  printf("Weird cmd_len=%d.\n", PT.cmd_len);
 	if (PT.cmd[1] != 0x00) 
@@ -1735,7 +1570,7 @@ int CSym53C895::do_command()
 
   case SCSICMD_MODE_SENSE:
   case SCSICMD_MODE_SENSE10:	
-    printf("SYM.%d: MODE SENSE.\n",state.target);
+    printf("SYM.%d: MODE SENSE.\n",GET_DEST());
 	q = 4; retlen = PT.cmd[4];
 	switch (PT.cmd_len) {
 	case 6:	break;
@@ -1856,7 +1691,7 @@ int CSym53C895::do_command()
     if (PT.dato_len==0)
       return 2;
 
-    printf("SYM.%d: MODE SELECT.\n",state.target);
+    printf("SYM.%d: MODE SELECT.\n",GET_DEST());
 
     printf("SYM: MODE SELECT ignored. Data: ");
     for(int x= 0; x<PT.dato_len; x++) printf("%02x ",PT.dato[x]);
@@ -1874,7 +1709,7 @@ int CSym53C895::do_command()
 
   case SCSIBLOCKCMD_READ_CAPACITY:
 	debug("READ_CAPACITY");
-    printf("SYM.%d: READ CAPACITY.\n",state.target);
+    printf("SYM.%d: READ CAPACITY.\n",GET_DEST());
     if (PT.cmd_len != 10)
 	  printf("Weird cmd_len=%d.\n", PT.cmd_len);
 	if (PT.cmd[8] & 1) 
@@ -1905,7 +1740,7 @@ int CSym53C895::do_command()
 
   case SCSICMD_READ:
   case SCSICMD_READ_10:
-    printf("SYM.%d: READ.\n",state.target);
+    printf("SYM.%d: READ.\n",GET_DEST());
     if (PT.cmd[0] == SCSICMD_READ)
     {
       if (PT.cmd_len != 6)
@@ -1957,7 +1792,7 @@ int CSym53C895::do_command()
     PT.dati_len = retlen;
     PT.dati_off_disk = true;
 
-	printf("SYM.%d READ  ofs=%d size=%d\n", state.target, ofs, retlen);
+	printf("SYM.%d READ  ofs=%d size=%d\n", GET_DEST(), ofs, retlen);
 
 	break;
 
@@ -1965,8 +1800,82 @@ int CSym53C895::do_command()
     printf("SYM: Unknown SCSI command 0x%02x.\n",PT.cmd[0]);
     exit(1);
 
+  }
+  return 0;
+}
 
+void CSym53C895::set_interrupt(int reg, u8 interrupt)
+{
+  printf("set interrupt %02x, %02x.\n",reg,interrupt);
+
+  switch(reg)
+  {
+  case R_DSTAT:
+    if (TB_R8(ISTAT,DIP) || TB_R8(ISTAT,SIP))
+    {
+      state.dstat_stack |= interrupt;
+      printf("DSTAT stacked.\n");
+    }
+    else
+    {
+      R8(DSTAT) |= interrupt;
+      printf("DSTAT.\n");
+    }
+    break;
+  case R_ISTAT:
+    printf("ISTAT.\n");
+    R8(ISTAT) |= interrupt;
+    break;
+  default:
+    printf("set_interrupt reg %02x!!\n",reg);
+    exit(1);
   }
 
-  return 0;
+  printf("--> eval int\n");
+  eval_interrupts();
+  printf("<-- eval_int\n");
+}
+
+void CSym53C895::eval_interrupts()
+{
+  bool will_assert = false;
+  bool will_halt = false;
+
+  if (R8(DSTAT) & DSTAT_FATAL)
+  {
+    will_halt = true;
+    printf("  will halt(DSTAT).\n");
+    SB_R8(ISTAT,DIP,true);
+    if (R8(DSTAT) & R8(DIEN) & DSTAT_FATAL)
+    {
+      will_assert = true;
+      printf("  will assert(DSTAT).\n");
+    }
+  }
+  else
+    SB_R8(ISTAT,DIP,false);
+
+  // WARNING: SCSI interrupts not checked yet!!
+
+  if (TB_R8(ISTAT,INTF))
+  {
+    will_assert = true;
+    printf("  will assert(INTF).\n");
+  }
+
+  if (TB_R8(DCNTL,IRQD))
+  {
+    will_assert = false;
+    printf("  won't assert(IRQD).\n");
+  }
+
+  if (will_halt)
+    state.executing = false;
+
+  if (will_assert != state.irq_asserted)
+  {
+    printf("  doing...%d\n",will_assert);
+    do_pci_interrupt(0,will_assert);
+    state.irq_asserted = will_assert;
+  }
 }
