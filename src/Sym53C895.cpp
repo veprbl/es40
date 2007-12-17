@@ -27,6 +27,9 @@
  * \file
  * Contains the code for the emulated Symbios SCSI controller.
  *
+ * X-1.3        Camiel Vanderhoeven                             17-DEC-2007
+ *      SaveState file format 2.1
+ *
  * X-1.2        Camiel Vanderhoeven                             16-DEC-2007
  *      Changed register structure.
  *
@@ -46,6 +49,7 @@
 
 #define R_SCNTL1      0x01
 #define R_SCNTL1_CON        0x10
+#define R_SCNTL1_RST        0x08
 #define R_SCNTL1_IARB       0x02
 
 #define R_SCNTL2      0x02
@@ -75,6 +79,17 @@
 #define R_SOCL_ACK          0x40
 #define R_SOCL_ATN          0x20
 
+#define R_SBCL        0x0B
+#define R_SBCL_REQ          0x80
+#define R_SBCL_ACK          0x40
+#define R_SBCL_BSY          0x20
+#define R_SBCL_SEL          0x10
+#define R_SBCL_ATN          0x08
+#define R_SBCL_MSG          0x04
+#define R_SBCL_CD           0x02
+#define R_SBCL_IO           0x01
+#define R_SBCL_PHASE        0x07
+
 #define R_DSTAT       0x0C
 #define R_DSTAT_MDPE        0x40
 #define R_DSTAT_BF          0x20
@@ -86,7 +101,12 @@
 #define   DSTAT_FATAL       0x7D
 
 #define R_SSTAT0      0x0D
+#define R_SSTAT0_RST        0x02
+#define R_SSTAT0_SDP0       0x01
+
 #define R_SSTAT1      0x0E
+#define R_SSTAT1_SDP1       0x01
+
 #define R_SSTAT2      0x0F
 
 #define R_DSA         0x10
@@ -284,6 +304,7 @@ CSym53C895::CSym53C895(CConfigurator * cfg, CSystem * c, int pcibus, int pcidev)
   c->RegisterClock(this, true);
 
   state.executing = false;
+  state.wait_reselect = false;
   state.irq_asserted = false;
   memset(state.regs.reg32,0,sizeof(state.regs.reg32));
   R8(CTEST3) = (u8)(pci_state.config_data[0][2]<<4) & R_CTEST3_REV; // Chip rev.
@@ -295,24 +316,90 @@ CSym53C895::CSym53C895(CConfigurator * cfg, CSystem * c, int pcibus, int pcidev)
 CSym53C895::~CSym53C895()
 {
 }
+
+static u32 sym_magic1 = 0x53C895CC;
+static u32 sym_magic2 = 0xCC53C895;
+
 /**
  * Save state to a Virtual Machine State file.
  **/
 
-void CSym53C895::SaveState(FILE *f)
+int CSym53C895::SaveState(FILE *f)
 {
-  CPCIDevice::SaveState(f);
+  long ss = sizeof(state);
+  int res;
+
+  if (res = CPCIDevice::SaveState(f))
+    return res;
+
+  fwrite(&sym_magic1,sizeof(u32),1,f);
+  fwrite(&ss,sizeof(long),1,f);
   fwrite(&state,sizeof(state),1,f);
+  fwrite(&sym_magic2,sizeof(u32),1,f);
+  printf("%s: %d bytes saved.\n",devid_string,ss);
+  return 0;
 }
 
 /**
  * Restore state from a Virtual Machine State file.
  **/
 
-void CSym53C895::RestoreState(FILE *f)
+int CSym53C895::RestoreState(FILE *f)
 {
-  CPCIDevice::SaveState(f);
+  long ss;
+  u32 m1;
+  u32 m2;
+  int res;
+  size_t r;
+
+  if (res = CPCIDevice::RestoreState(f))
+    return res;
+
+  r = fread(&m1,sizeof(u32),1,f);
+  if (r!=1)
+  {
+    printf("%s: unexpected end of file!\n",devid_string);
+    return -1;
+  }
+  if (m1 != sym_magic1)
+  {
+    printf("%s: MAGIC 1 does not match!\n",devid_string);
+    return -1;
+  }
+
+  fread(&ss,sizeof(long),1,f);
+  if (r!=1)
+  {
+    printf("%s: unexpected end of file!\n",devid_string);
+    return -1;
+  }
+  if (ss != sizeof(state))
+  {
+    printf("%s: STRUCT SIZE does not match!\n",devid_string);
+    return -1;
+  }
+
   fread(&state,sizeof(state),1,f);
+  if (r!=1)
+  {
+    printf("%s: unexpected end of file!\n",devid_string);
+    return -1;
+  }
+
+  r = fread(&m2,sizeof(u32),1,f);
+  if (r!=1)
+  {
+    printf("%s: unexpected end of file!\n",devid_string);
+    return -1;
+  }
+  if (m2 != sym_magic2)
+  {
+    printf("%s: MAGIC 1 does not match!\n",devid_string);
+    return -1;
+  }
+
+  printf("%s: %d bytes restored.\n",devid_string,ss);
+  return 0;
 }
 
 void CSym53C895::WriteMem_Bar(int func,int bar, u32 address, int dsize, u32 data)
@@ -517,6 +604,7 @@ u32 CSym53C895::ReadMem_Bar(int func,int bar, u32 address, int dsize)
         case R_SDID:    // 06
         case R_GPREG:   // 07
         case R_SFBR:    // 08
+        case R_SBCL:    // 0B
         case R_SSTAT0:  // 0D
         case R_SSTAT1:  // 0E
         case R_SSTAT2:  // 0F
@@ -661,11 +749,24 @@ void CSym53C895::write_b_scntl1(u8 value)
 {
   bool old_iarb = TB_R8(SCNTL1,IARB);
   bool old_con = TB_R8(SCNTL1,CON);
+  bool old_rst = TB_R8(SCNTL1,RST);
 
   R8(SCNTL1) = value;
 
   if (TB_R8(SCNTL1,CON) != old_con)
     printf("SYM: Don't know how to forcibly connect or disconnect\n");
+
+  if (TB_R8(SCNTL1,RST) != old_rst)
+  {
+    SB_R8(SSTAT0,SDP0,false);
+    SB_R8(SSTAT1,SDP1,false);
+    R16(SBDL)=0;
+    R8(SBCL)=0;
+
+    SB_R8(SSTAT0,RST,!old_rst);
+
+    printf("SYM: %s SCSI bus reset.\n",old_rst?"end":"start");
+  }
 
   if (TB_R8(SCNTL1,IARB) && !old_iarb)
   {
@@ -696,6 +797,16 @@ void CSym53C895::write_b_istat(u8 value)
 
   if (TB_R8(ISTAT,ABRT) && !old_srst)
     printf("SYM: Don't know how to initiate a reset yet!\n");
+
+  if (TB_R8(ISTAT,SIGP))
+  {
+    if (state.wait_reselect)
+    {
+      R32(DSP) = state.wait_jump;
+      state.wait_reselect = false;
+      state.executing = true;
+    }
+  }
 
   eval_interrupts();
 }
@@ -1019,8 +1130,11 @@ int CSym53C895::DoClock()
             if (TB_R8(ISTAT,SIGP))
               R32(DSP) = dest_addr;
             else
-              // back to here...
-              R32(DSP) -= 8;
+            {
+              state.wait_reselect = true;
+              state.wait_jump = dest_addr;
+              state.executing = false;
+            }
             return 0;
 
           case 3:
@@ -1215,15 +1329,10 @@ int CSym53C895::DoClock()
           {
             printf("SYM: Interrupting...\n");
 
-            if (!interrupt_fly)
-            {
-              state.executing = false;
-              set_interrupt(R_DSTAT,R_DSTAT_SIR);
-            }
-            else
-            {
+            if (interrupt_fly)
               set_interrupt(R_ISTAT,R_ISTAT_INTF);
-            }
+            else
+              set_interrupt(R_DSTAT,R_DSTAT_SIR);
           }
           return 0;
           break;

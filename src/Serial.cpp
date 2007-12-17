@@ -27,6 +27,9 @@
  * \file
  * Contains the code for the emulated Serial Port devices.
  *
+ * X-1.31       Camiel Vanderhoeven                             17-DEC-2007
+ *      SaveState file format 2.1
+ *
  * X-1.30       Camiel Vanderhoeven                             16-DEC-2007
  *      Added menu option to load state.
  *
@@ -261,7 +264,7 @@ CSerial::CSerial(CConfigurator * cfg, CSystem * c, u16 number) : CSystemComponen
     connectSocket = accept(listenSocket,(struct sockaddr*)&Address,&nAddressSize);
   }
 
-  serial_cycles = 0;
+  state.serial_cycles = 0;
 
   // Send some control characters to the telnet client to handle 
   // character-at-a-time mode.  
@@ -307,15 +310,15 @@ CSerial::CSerial(CConfigurator * cfg, CSystem * c, u16 number) : CSystemComponen
   printf("%%SRL-I-INIT: Serial Interface %d emulator initialized.\n",number);
   printf("%%SRL-I-ADDRESS: Serial Interface %d on telnet port %d.\n",number,number+base);
 
-  iNumber = number;
+  state.iNumber = number;
 
-  rcvW = 0;
-  rcvR = 0;
+  state.rcvW = 0;
+  state.rcvR = 0;
 
-  bLCR = 0x00;
-  bLSR = 0x60; // THRE, TSRE
-  bMSR = 0x30; // CTS, DSR
-  bIIR = 0x01; // no interrupt
+  state.bLCR = 0x00;
+  state.bLSR = 0x60; // THRE, TSRE
+  state.bMSR = 0x30; // CTS, DSR
+  state.bIIR = 0x01; // no interrupt
 }
 
 /**
@@ -333,59 +336,59 @@ u64 CSerial::ReadMem(int index, u64 address, int dsize)
   switch (address)
     {
     case 0:						// data buffer
-      if (bLCR & 0x80)
+      if (state.bLCR & 0x80)
         {
-	  return bBRB_LSB;
+	  return state.bBRB_LSB;
         }
       else
         {
-	  if (rcvR != rcvW)
+	  if (state.rcvR != state.rcvW)
 	    {   
-	      bRDR = rcvBuffer[rcvR];
-	      rcvR++;
-	      if (rcvR == FIFO_SIZE)
-		    rcvR = 0;
-		  TRC_DEV4("Read character %02x (%c) on serial port %d\n",bRDR,printable(bRDR),iNumber);
+	      state.bRDR = state.rcvBuffer[state.rcvR];
+	      state.rcvR++;
+	      if (state.rcvR == FIFO_SIZE)
+		    state.rcvR = 0;
+		  TRC_DEV4("Read character %02x (%c) on serial port %d\n",state.bRDR,printable(state.bRDR),state.iNumber);
 #if defined(DEBUG_SERIAL)
-		  printf("Read character %02x (%c) on serial port %d\n",bRDR,printable(bRDR),iNumber);
+		  printf("Read character %02x (%c) on serial port %d\n",state.bRDR,printable(state.bRDR),state.iNumber);
 #endif
 	    }
 	  else
             {
-	      TRC_DEV2("Read past FIFO on serial port %d\n",iNumber);
+	      TRC_DEV2("Read past FIFO on serial port %d\n",state.iNumber);
 #if defined(DEBUG_SERIAL)
-		  printf("Read past FIFO on serial port %d\n",iNumber);
+		  printf("Read past FIFO on serial port %d\n",state.iNumber);
 #endif
             }
-	  return bRDR;
+	  return state.bRDR;
         }
     case 1:
-      if (bLCR & 0x80)
+      if (state.bLCR & 0x80)
         {
-	  return bBRB_MSB;
+	  return state.bBRB_MSB;
         }
       else
         {
-	  return bIER;
+	  return state.bIER;
         }
     case 2:						//interrupt cause
-      d = bIIR;
-      bIIR = 0x01;
+      d = state.bIIR;
+      state.bIIR = 0x01;
       return d;
     case 3:
-      return bLCR;
+      return state.bLCR;
     case 4:
-      return bMCR;
+      return state.bMCR;
     case 5:						//serialization state
-      if (rcvR != rcvW)
-	bLSR = 0x61; // THRE, TSRE, RxRD
+      if (state.rcvR != state.rcvW)
+	state.bLSR = 0x61; // THRE, TSRE, RxRD
       else
-	bLSR = 0x60; // THRE, TSRE
-      return bLSR;
+	state.bLSR = 0x60; // THRE, TSRE
+      return state.bLSR;
     case 6:
-      return bMSR;
+      return state.bMSR;
     default:
-      return bSPR;
+      return state.bSPR;
     }
 }
 
@@ -398,52 +401,52 @@ void CSerial::WriteMem(int index, u64 address, int dsize, u64 data)
   switch (address)
     {
     case 0:						// data buffer
-      if (bLCR & 0x80)
+      if (state.bLCR & 0x80)
         {
-	  bBRB_LSB = d;
+	  state.bBRB_LSB = d;
         }
       else
         {
 	  sprintf(s,"%c",d);
 	  write(s);
-	  TRC_DEV4("Write character %02x (%c) on serial port %d\n",d,printable(d),iNumber);
+	  TRC_DEV4("Write character %02x (%c) on serial port %d\n",d,printable(d),state.iNumber);
 #if defined(DEBUG_SERIAL)
-		  printf("Write character %02x (%c) on serial port %d\n",d,printable(d),iNumber);
+		  printf("Write character %02x (%c) on serial port %d\n",d,printable(d),state.iNumber);
 #endif
-	  if (bIER & 0x2)
+	  if (state.bIER & 0x2)
             {
-	      bIIR = (bIIR>0x02)?bIIR:0x02;
-	      theAli->pic_interrupt(0, 4 - iNumber);
+	      state.bIIR = (state.bIIR>0x02)?state.bIIR:0x02;
+	      theAli->pic_interrupt(0, 4 - state.iNumber);
             }
         }
       break;
     case 1:
-      if (bLCR & 0x80)
+      if (state.bLCR & 0x80)
         {
-	  bBRB_MSB = d;
+	  state.bBRB_MSB = d;
         }
       else
         {
-	  bIER = d;
-	  bIIR = 0x01;
-	  if (bIER & 0x2)
+	  state.bIER = d;
+	  state.bIIR = 0x01;
+	  if (state.bIER & 0x2)
             {
-	      bIIR = (bIIR>0x02)?bIIR:0x02;
-	      theAli->pic_interrupt(0, 4 - iNumber);
+	      state.bIIR = (state.bIIR>0x02)?state.bIIR:0x02;
+	      theAli->pic_interrupt(0, 4 - state.iNumber);
             }
         }
       break;
     case 2:			
-      bFCR = d;
+      state.bFCR = d;
       break;
     case 3:
-      bLCR = d;
+      state.bLCR = d;
       break;
     case 4:
-      bMCR = d;
+      state.bMCR = d;
       break;
     default:
-      bSPR = d;
+      state.bSPR = d;
     }
 }
 
@@ -460,14 +463,14 @@ void CSerial::receive(const char* data)
 
 	while (*x)
 	{
-	  rcvBuffer[rcvW++] = *x;
-	  if (rcvW == FIFO_SIZE)
-	    rcvW = 0;
+	  state.rcvBuffer[state.rcvW++] = *x;
+	  if (state.rcvW == FIFO_SIZE)
+	    state.rcvW = 0;
 	  x++;
-	  if (bIER & 0x1)
+	  if (state.bIER & 0x1)
 	  {
-	    bIIR = (bIIR>0x04)?bIIR:0x04;
-	    theAli->pic_interrupt(0, 4 - iNumber);
+	    state.bIIR = (state.bIIR>0x04)?state.bIIR:0x04;
+	    theAli->pic_interrupt(0, 4 - state.iNumber);
       }
     }
 }
@@ -480,8 +483,8 @@ int CSerial::DoClock() {
   ssize_t size;
   struct timeval tv;
 
-  serial_cycles++;
-  if(serial_cycles >= RECV_TICKS) {
+  state.serial_cycles++;
+  if(state.serial_cycles >= RECV_TICKS) {
     FD_ZERO(&readset);
     FD_SET(connectSocket,&readset);
     tv.tv_sec=0;
@@ -578,7 +581,84 @@ int CSerial::DoClock() {
       *c=0; // null terminate it.
       this->receive((const char*)&cbuffer);
     }
-    serial_cycles=0;
+    state.serial_cycles=0;
   }
+  return 0;
+}
+
+static u32 srl_magic1 = 0x5A15A15A;
+static u32 srl_magic2 = 0x1A51A51A;
+
+/**
+ * Save state to a Virtual Machine State file.
+ **/
+
+int CSerial::SaveState(FILE *f)
+{
+  long ss = sizeof(state);
+
+  fwrite(&srl_magic1,sizeof(u32),1,f);
+  fwrite(&ss,sizeof(long),1,f);
+  fwrite(&state,sizeof(state),1,f);
+  fwrite(&srl_magic2,sizeof(u32),1,f);
+  printf("%s: %d bytes saved.\n",devid_string,ss);
+  return 0;
+}
+
+/**
+ * Restore state from a Virtual Machine State file.
+ **/
+
+int CSerial::RestoreState(FILE *f)
+{
+  long ss;
+  u32 m1;
+  u32 m2;
+  size_t r;
+
+  r = fread(&m1,sizeof(u32),1,f);
+  if (r!=1)
+  {
+    printf("%s: unexpected end of file!\n",devid_string);
+    return -1;
+  }
+  if (m1 != srl_magic1)
+  {
+    printf("%s: MAGIC 1 does not match!\n",devid_string);
+    return -1;
+  }
+
+  fread(&ss,sizeof(long),1,f);
+  if (r!=1)
+  {
+    printf("%s: unexpected end of file!\n",devid_string);
+    return -1;
+  }
+  if (ss != sizeof(state))
+  {
+    printf("%s: STRUCT SIZE does not match!\n",devid_string);
+    return -1;
+  }
+
+  fread(&state,sizeof(state),1,f);
+  if (r!=1)
+  {
+    printf("%s: unexpected end of file!\n",devid_string);
+    return -1;
+  }
+
+  r = fread(&m2,sizeof(u32),1,f);
+  if (r!=1)
+  {
+    printf("%s: unexpected end of file!\n",devid_string);
+    return -1;
+  }
+  if (m2 != srl_magic2)
+  {
+    printf("%s: MAGIC 1 does not match!\n",devid_string);
+    return -1;
+  }
+
+  printf("%s: %d bytes restored.\n",devid_string,ss);
   return 0;
 }

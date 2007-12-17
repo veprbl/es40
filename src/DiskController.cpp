@@ -27,6 +27,9 @@
  * \file
  * Contains definitions for the disk controller base class.
  *
+ * X-1.5        Camiel Vanderhoeven                             17-DEC-2007
+ *      Removed excessive whitespace.
+ *
  * X-1.4        Brian Wheeler                                   16-DEC-2007
  *      Added newline at end of file.
  *
@@ -52,8 +55,6 @@ CDiskController::CDiskController(CConfigurator * cfg, CSystem * c, int pcibus, i
   num_dev = num_devices;
 
   disks = (CDisk**) malloc(num_bus*num_dev*sizeof(void*));
-
-
 }
 
 CDiskController::~CDiskController(void)

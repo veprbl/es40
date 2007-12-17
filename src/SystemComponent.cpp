@@ -1,7 +1,7 @@
 /* ES40 emulator.
- * Copyright (C) 2007 by Camiel Vanderhoeven
+ * Copyright (C) 2007 by the ES40 Emulator Project
  *
- * Website: www.camicom.com
+ * WWW    : http://sourceforge.net/projects/es40
  * E-mail : camiel@camicom.com
  * 
  * This program is free software; you can redistribute it and/or
@@ -26,6 +26,9 @@
 /**
  * \file 
  * Contains code for the base class for devices that connect to the chipset.
+ *
+ * X-1.9        Camiel Vanderhoeven                             17-DEC-2007
+ *      SaveState file format 2.1
  *
  * X-1.8        Camiel Vanderhoeven                             10-DEC-2007
  *      Use configurator.
@@ -64,9 +67,18 @@
 
 CSystemComponent::CSystemComponent(CConfigurator * cfg, CSystem * system)
 {
+  char * a;
+  char * b;
+
   system->RegisterComponent(this);
   cSystem = system;
   myCfg = cfg;
+
+  a = myCfg->get_myName();
+  b = myCfg->get_myValue();
+
+  devid_string = (char*) malloc(strlen(a)+strlen(b)+3);
+  sprintf(devid_string,"%s(%s)",a,b);
 }
 
 /**
@@ -76,22 +88,4 @@ CSystemComponent::CSystemComponent(CConfigurator * cfg, CSystem * system)
 CSystemComponent::~CSystemComponent()
 {
 
-}
-
-/**
- * Save state to a Virtual Machine State file.
- **/
-
-void CSystemComponent::SaveState(FILE *f)
-{
-  
-}
-
-/**
- * Restore state from a Virtual Machine State file.
- **/
-
-void CSystemComponent::RestoreState(FILE *f)
-{
-  
 }

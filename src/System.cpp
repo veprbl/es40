@@ -27,6 +27,9 @@
  * \file 
  * Contains the code for the emulated Typhoon Chipset devices.
  *
+ * X-1.40       Camiel Vanderhoeven                             17-DEC-2007
+ *      SaveState file format 2.1
+ *
  * X-1.39       Camiel Vanderhoeven                             14-DEC-2007
  *      Commented out SRM IDE READ replacement; doesn't work with SCSI!
  *
@@ -367,16 +370,11 @@ int CSystem::RegisterMemory(CSystemComponent *component, int index, u64 base, u6
   return 0;
 }
 
-
-
 int got_sigint = 0;
 void sigint_handler (int signum) 
 {
   got_sigint=1;
 }
-
-
-
 
 int CSystem::Run()
 {
@@ -1159,7 +1157,7 @@ void CSystem::SaveState(char *fn)
     {
       temp_32 = 0xa1fae540;     // MAGIC NUMBER (ALFAES40 ==> A1FAE540 )
       fwrite(&temp_32,sizeof(u32),1,f);
-      temp_32 = 0x00010001;     // File Format Version 1.1
+      temp_32 = 0x00020001;     // File Format Version 2.1
       fwrite(&temp_32,sizeof(u32),1,f);
 
       // memory
@@ -1195,7 +1193,7 @@ void CSystem::SaveState(char *fn)
       //
 
       for (i=0;i<iNumComponents;i++)
-	acComponents[i]->SaveState(f);
+	    acComponents[i]->SaveState(f);
       fclose(f);
     }
 }
@@ -1229,7 +1227,7 @@ void CSystem::RestoreState(char *fn)
 
   fread(&temp_32,sizeof(u32),1,f);
   
-  if (temp_32 != 0x00010001)     // File Format Version 1.1
+  if (temp_32 != 0x00020001)     // File Format Version 2.1
   {
     printf("%%SYS-I-VERSION: State file %s is a different version.\n",fn);
     return;
@@ -1257,7 +1255,10 @@ void CSystem::RestoreState(char *fn)
   //
 
   for (i=0;i<iNumComponents;i++)
-    acComponents[i]->RestoreState(f);
+  {
+   if (acComponents[i]->RestoreState(f))
+     exit(1);
+  }
   fclose(f);
 }
 

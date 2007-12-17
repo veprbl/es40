@@ -27,6 +27,9 @@
  * \file 
  * Contains the definitions for the emulated Flash ROM devices.
  *
+ * X-1.10        Camiel Vanderhoeven                             17-DEC-2007
+ *      SaveState file format 2.1
+ *
  * X-1.9        Camiel Vanderhoeven                             10-DEC-2007
  *      Changes to make the TraceEngine work again after recent changes.
  *
@@ -77,16 +80,19 @@ class CFlash : public CSystemComponent
   virtual u64 ReadMem(int index, u64 address, int dsize);
   CFlash(CConfigurator * cfg, class CSystem * c);
   virtual ~CFlash();
-  virtual void SaveState(FILE * f);
-  virtual void RestoreState(FILE * f);
+  virtual int SaveState(FILE * f);
+  virtual int RestoreState(FILE * f);
   void SaveStateF();
   void RestoreStateF();
   void SaveStateF(char * fn);
   void RestoreStateF(char * fn);
 
  protected:
-  u8 Flash[2*1024*1024];
-  int mode;
+  struct
+  {
+    u8 Flash[2*1024*1024];
+    int mode;
+  } state;
 };
 
 extern CFlash * theSROM;

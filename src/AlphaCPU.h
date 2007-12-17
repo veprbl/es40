@@ -1,7 +1,7 @@
 /* ES40 emulator.
- * Copyright (C) 2007 by Camiel Vanderhoeven
+ * Copyright (C) 2007 by the ES40 Emulator Project
  *
- * Website: www.camicom.com
+ * WWW    : http://sourceforge.net/projects/es40
  * E-mail : camiel@camicom.com
  * 
  * This program is free software; you can redistribute it and/or
@@ -27,6 +27,9 @@
 /**
  * \file
  * Contains the definitions for the emulated DecChip 21264CB EV68 Alpha processor.
+ *
+ * X-1.29       Camiel Vanderhoeven                             17-DEC-2007
+ *      SaveState file format 2.1
  *
  * X-1.28       Camiel Vanderhoeven                             10-DEC-2007
  *      Use configurator.
@@ -201,8 +204,8 @@ class CAlphaCPU : public CSystemComponent
 {
  public:
   void flush_icache_asm();
-  virtual void SaveState(FILE * f);
-  virtual void RestoreState(FILE * f);
+  virtual int SaveState(FILE * f);
+  virtual int RestoreState(FILE * f);
   void irq_h(int number, bool assert);
   int get_cpuid();
   void flush_icache();

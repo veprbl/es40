@@ -1,7 +1,7 @@
 /* ES40 emulator.
- * Copyright (C) 2007 by Camiel Vanderhoeven
+ * Copyright (C) 2007 by the ES40 Emulator Project
  *
- * Website: www.camicom.com
+ * WWW    : http://sourceforge.net/projects/es40
  * E-mail : camiel@camicom.com
  * 
  * This program is free software; you can redistribute it and/or
@@ -26,6 +26,9 @@
 /** 
  * \file
  * Contains the code for the emulated Port 80 device.
+ *
+ * X-1.10       Camiel Vanderhoeven                             17-DEC-2007
+ *      SaveState file format 2.1
  *
  * X-1.9        Camiel Vanderhoeven                             10-DEC-2007
  *      Use configurator.
@@ -68,7 +71,7 @@
 CPort80::CPort80(CConfigurator * cfg, CSystem * c) : CSystemComponent(cfg,c)
 {
   c->RegisterMemory(this, 0, X64(00000801fc000080),1);
-  p80 = 0;
+  state.p80 = 0;
 }
 
 /**
@@ -87,7 +90,7 @@ CPort80::~CPort80()
 
 u64 CPort80::ReadMem(int index, u64 address, int dsize)
 {
-  return p80;
+  return state.p80;
 }
 
 /**
@@ -96,5 +99,82 @@ u64 CPort80::ReadMem(int index, u64 address, int dsize)
 
 void CPort80::WriteMem(int index, u64 address, int dsize, u64 data)
 {
-  p80 = (u8)data;
+  state.p80 = (u8)data;
+}
+
+static u32 p80_magic1 = 0x80FFAA80;
+static u32 p80_magic2 = 0xAA8080FF;
+
+/**
+ * Save state to a Virtual Machine State file.
+ **/
+
+int CPort80::SaveState(FILE *f)
+{
+  long ss = sizeof(state);
+
+  fwrite(&p80_magic1,sizeof(u32),1,f);
+  fwrite(&ss,sizeof(long),1,f);
+  fwrite(&state,sizeof(state),1,f);
+  fwrite(&p80_magic2,sizeof(u32),1,f);
+  printf("%s: %d bytes saved.\n",devid_string,ss);
+  return 0;
+}
+
+/**
+ * Restore state from a Virtual Machine State file.
+ **/
+
+int CPort80::RestoreState(FILE *f)
+{
+  long ss;
+  u32 m1;
+  u32 m2;
+  size_t r;
+
+  r = fread(&m1,sizeof(u32),1,f);
+  if (r!=1)
+  {
+    printf("%s: unexpected end of file!\n",devid_string);
+    return -1;
+  }
+  if (m1 != p80_magic1)
+  {
+    printf("%s: MAGIC 1 does not match!\n",devid_string);
+    return -1;
+  }
+
+  fread(&ss,sizeof(long),1,f);
+  if (r!=1)
+  {
+    printf("%s: unexpected end of file!\n",devid_string);
+    return -1;
+  }
+  if (ss != sizeof(state))
+  {
+    printf("%s: STRUCT SIZE does not match!\n",devid_string);
+    return -1;
+  }
+
+  fread(&state,sizeof(state),1,f);
+  if (r!=1)
+  {
+    printf("%s: unexpected end of file!\n",devid_string);
+    return -1;
+  }
+
+  r = fread(&m2,sizeof(u32),1,f);
+  if (r!=1)
+  {
+    printf("%s: unexpected end of file!\n",devid_string);
+    return -1;
+  }
+  if (m2 != p80_magic2)
+  {
+    printf("%s: MAGIC 1 does not match!\n",devid_string);
+    return -1;
+  }
+
+  printf("%s: %d bytes restored.\n",devid_string,ss);
+  return 0;
 }

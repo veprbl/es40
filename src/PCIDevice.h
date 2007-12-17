@@ -27,6 +27,9 @@
  * \file
  * Contains the definitions for the PCI Device base class.
  *
+ * X-1.2        Camiel Vanderhoeven                             17-DEC-2007
+ *      SaveState file format 2.1
+ *
  * X-1.1        Camiel Vanderhoeven                             10-DEC-2007
  *      Initial version in CVS.
  **/
@@ -47,8 +50,8 @@ class CPCIDevice :
 public:
   CPCIDevice(class CConfigurator * cfg, class CSystem * c, int pcibus, int pcidev);
   ~CPCIDevice(void);
-  virtual void SaveState(FILE * f);
-  virtual void RestoreState(FILE * f);
+  virtual int SaveState(FILE * f);
+  virtual int RestoreState(FILE * f);
   virtual void ResetPCI();
   virtual u64 ReadMem(int index, u64 address, int dsize);
   virtual void WriteMem(int index, u64 address, int dsize, u64 data);

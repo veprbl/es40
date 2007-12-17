@@ -27,6 +27,9 @@
  * \file
  * Contains the definitions for the emulated Ali M1543C IDE chipset part.
  *
+ * X-1.6        Camiel Vanderhoeven                             17-DEC-2007
+ *      SaveState file format 2.1
+ *
  * X-1.5        Camiel Vanderhoeven                             12-DEC-2007
  *      Use disk controller base class.
  *
@@ -70,8 +73,8 @@
 class CAliM1543C_ide : public CDiskController  
 {
  public:
-  virtual void SaveState(FILE * f);
-  virtual void RestoreState(FILE * f);
+  virtual int SaveState(FILE * f);
+  virtual int RestoreState(FILE * f);
 
   virtual void WriteMem_Legacy(int index, u32 address, int dsize, u32 data);
   virtual u32 ReadMem_Legacy(int index, u32 address, int dsize);

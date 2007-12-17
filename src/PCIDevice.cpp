@@ -27,6 +27,9 @@
  * \file
  * Contains the code for the PCI device class.
  *
+ * X-1.5        Camiel Vanderhoeven                             17-DEC-2007
+ *      SaveState file format 2.1
+ *
  * X-1.4        Camiel Vanderhoeven                             10-DEC-2007
  *      Translate a 64-bit PCI access into 2 32-bit accesses.
  *
@@ -348,14 +351,81 @@ bool CPCIDevice::do_pci_interrupt(int func, bool asserted)
     return false;
 }
 
-void CPCIDevice::SaveState(FILE *f)
+static u32 pci_magic1 = 0xC1095A78;
+static u32 pci_magic2 = 0x87A5901C;
+
+/**
+ * Save state to a Virtual Machine State file.
+ **/
+
+int CPCIDevice::SaveState(FILE *f)
 {
+  long ss = sizeof(pci_state);
+
+  fwrite(&pci_magic1,sizeof(u32),1,f);
+  fwrite(&ss,sizeof(long),1,f);
   fwrite(&pci_state,sizeof(pci_state),1,f);
+  fwrite(&pci_magic2,sizeof(u32),1,f);
+  printf("%s: %d PCI bytes saved.\n",devid_string,ss);
+  return 0;
 }
 
-void CPCIDevice::RestoreState(FILE *f)
+/**
+ * Restore state from a Virtual Machine State file.
+ **/
+
+int CPCIDevice::RestoreState(FILE *f)
 {
+  long ss;
+  u32 m1;
+  u32 m2;
+  size_t r;
+
+  r = fread(&m1,sizeof(u32),1,f);
+  if (r!=1)
+  {
+    printf("%s: unexpected end of file!\n",devid_string);
+    return -1;
+  }
+  if (m1 != pci_magic1)
+  {
+    printf("%s: PCI MAGIC 1 does not match!\n",devid_string);
+    return -1;
+  }
+
+  fread(&ss,sizeof(long),1,f);
+  if (r!=1)
+  {
+    printf("%s: unexpected end of file!\n",devid_string);
+    return -1;
+  }
+  if (ss != sizeof(pci_state))
+  {
+    printf("%s: PCI STRUCT SIZE does not match!\n",devid_string);
+    return -1;
+  }
+
   fread(&pci_state,sizeof(pci_state),1,f);
+  if (r!=1)
+  {
+    printf("%s: unexpected end of file!\n",devid_string);
+    return -1;
+  }
+
+  r = fread(&m2,sizeof(u32),1,f);
+  if (r!=1)
+  {
+    printf("%s: unexpected end of file!\n",devid_string);
+    return -1;
+  }
+  if (m2 != pci_magic2)
+  {
+    printf("%s: PCI MAGIC 1 does not match!\n",devid_string);
+    return -1;
+  }
+
+  printf("%s: %d PCI bytes restored.\n",devid_string,ss);
+  return 0;
 }
 
 u32 CPCIDevice::ReadMem_Legacy(int index, u32 address, int dsize) 

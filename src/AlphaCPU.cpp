@@ -1,7 +1,7 @@
 /* ES40 emulator.
- * Copyright (C) 2007 by Camiel Vanderhoeven
+ * Copyright (C) 2007 by the ES40 Emulator Project
  *
- * Website: www.camicom.com
+ * WWW    : http://sourceforge.net/projects/es40
  * E-mail : camiel@camicom.com
  * 
  * This program is free software; you can redistribute it and/or
@@ -29,6 +29,9 @@
  *
  * \bug Rounding and trap modes are not used for floating point ops.
  * \bug /V is ignored for integer ops.
+ *
+ * X-1.48       Camiel Vanderhoeven                             17-DEC-2007
+ *      SaveState file format 2.1
  *
  * X-1.47       Camiel Vanderhoeven                             10-DEC-2007
  *      Use configurator.
@@ -575,9 +578,11 @@ int CAlphaCPU::DoClock()
   {
     if (DO_ACTION)
     {
+#if 0
       if (state.pc>X64(600000))
 	state.cc+=X64(1654321);
       else
+#endif
 	state.cc+=83;
     }
   }
@@ -994,28 +999,81 @@ void CAlphaCPU::listing(u64 from, u64 to, u64 mark)
 }
 #endif
 
+static u32 cpu_magic1 = 0x2126468C;
+static u32 cpu_magic2 = 0xC8646212;
+
 /**
  * Save state to a Virtual Machine State file.
  **/
 
-void CAlphaCPU::SaveState(FILE *f)
+int CAlphaCPU::SaveState(FILE *f)
 {
+  long ss = sizeof(state);
+
+  fwrite(&cpu_magic1,sizeof(u32),1,f);
+  fwrite(&ss,sizeof(long),1,f);
   fwrite(&state,sizeof(state),1,f);
-  
-//  itb->SaveState(f);
-//  dtb->SaveState(f);
+  fwrite(&cpu_magic2,sizeof(u32),1,f);
+  printf("%s: %d bytes saved.\n",devid_string,ss);
+  return 0;
 }
 
 /**
  * Restore state from a Virtual Machine State file.
  **/
 
-void CAlphaCPU::RestoreState(FILE *f)
+int CAlphaCPU::RestoreState(FILE *f)
 {
-  fread(&state,sizeof(state),1,f);
+  long ss;
+  u32 m1;
+  u32 m2;
+  size_t r;
 
-//  itb->RestoreState(f);
-//  dtb->RestoreState(f);
+  r = fread(&m1,sizeof(u32),1,f);
+  if (r!=1)
+  {
+    printf("%s: unexpected end of file!\n",devid_string);
+    return -1;
+  }
+  if (m1 != cpu_magic1)
+  {
+    printf("%s: MAGIC 1 does not match!\n",devid_string);
+    return -1;
+  }
+
+  fread(&ss,sizeof(long),1,f);
+  if (r!=1)
+  {
+    printf("%s: unexpected end of file!\n",devid_string);
+    return -1;
+  }
+  if (ss != sizeof(state))
+  {
+    printf("%s: STRUCT SIZE does not match!\n",devid_string);
+    return -1;
+  }
+
+  fread(&state,sizeof(state),1,f);
+  if (r!=1)
+  {
+    printf("%s: unexpected end of file!\n",devid_string);
+    return -1;
+  }
+
+  r = fread(&m2,sizeof(u32),1,f);
+  if (r!=1)
+  {
+    printf("%s: unexpected end of file!\n",devid_string);
+    return -1;
+  }
+  if (m2 != cpu_magic2)
+  {
+    printf("%s: MAGIC 1 does not match!\n",devid_string);
+    return -1;
+  }
+
+  printf("%s: %d bytes restored.\n",devid_string,ss);
+  return 0;
 }
 
 int CAlphaCPU::FindTBEntry(u64 virt, int flags)

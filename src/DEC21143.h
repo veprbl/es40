@@ -32,6 +32,9 @@
  * \file 
  * Contains the definitions for the emulated DEC 21143 NIC device.
  *
+ * X-1.9        Camiel Vanderhoeven                             17-DEC-2007
+ *      SaveState file format 2.1
+ *
  * X-1.8        Camiel Vanderhoeven                             10-DEC-2007
  *      Use configurator.
  *
@@ -77,8 +80,8 @@
 class CDEC21143 : public CPCIDevice  
 {
  public:
-  virtual void SaveState(FILE * f);
-  virtual void RestoreState(FILE * f);
+  virtual int SaveState(FILE * f);
+  virtual int RestoreState(FILE * f);
   void instant_tick();
   //	void interrupt(int number);
   virtual int DoClock();

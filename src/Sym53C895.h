@@ -27,6 +27,9 @@
  * \file
  * Contains the definitions for the emulated Symbios SCSI controller.
  *
+ * X-1.3        Camiel Vanderhoeven                             17-DEC-2007
+ *      SaveState file format 2.1
+ *
  * X-1.2        Camiel Vanderhoeven                             16-DEC-2007
  *      Changed register structure.
  *
@@ -43,8 +46,8 @@
 class CSym53C895 : public CDiskController  
 {
  public:
-  virtual void SaveState(FILE * f);
-  virtual void RestoreState(FILE * f);
+  virtual int SaveState(FILE * f);
+  virtual int RestoreState(FILE * f);
   virtual int DoClock();
 
   virtual void WriteMem_Bar(int func,int bar, u32 address, int dsize, u32 data);
@@ -102,6 +105,9 @@ class CSym53C895 : public CDiskController
     u8 ram[4096];
 
     bool executing;
+
+    bool wait_reselect;
+    u32 wait_jump;
 
     u8 dstat_stack;
     u8 sist0_stack;

@@ -27,6 +27,9 @@
  * \file
  * Contains the code for the emulated Ali M1543C IDE chipset part.
  *
+ * X-1.7        Camiel Vanderhoeven                             17-DEC-2007
+ *      SaveState file format 2.1
+ *
  * X-1.6        Camiel Vanderhoeven                             14-DEC-2007
  *      Commented out printing each IDE command.
  *
@@ -443,11 +446,14 @@ void CAliM1543C_ide::ide_command_write(int index, u32 address, int dsize, u32 da
         raise_interrupt(index);
       break;
 
-    case 0x08: // reset drive (DRST)
+    case 0x08: // reset drive (DRST) (ATAPI)
+    case 0xa0: // packet send
+    case 0xa1: // identify packet device (ATAPI)
+    case 0xa2: // service
 //#ifdef DEBUG_IDE
-      printf("%%IDE-I-RESET: IDE Reset\n");
+      printf("%%IDE-I-ATAPI: ATAPI command.\n");
 //#endif
-      command_aborted(index,0x08);
+      command_aborted(index,data);
       break;
 
     case 0x10: // CALIBRATE DRIVE
@@ -694,7 +700,7 @@ void CAliM1543C_ide::ide_command_write(int index, u32 address, int dsize, u32 da
       break;
 
     default:
-      printf("Unknown command: %02x!\n",data);
+      printf("IDE: Unknown command: %02x!\n",data);
       exit(1);
     }
   }
@@ -874,26 +880,90 @@ void CAliM1543C_ide::ResetPCI()
   }
 }
 
+static u32 ide_magic1 = 0xB222654D;
+static u32 ide_magic2 = 0xD456222B;
+
 /**
  * Save state to a Virtual Machine State file.
  **/
 
-void CAliM1543C_ide::SaveState(FILE *f)
+int CAliM1543C_ide::SaveState(FILE *f)
 {
-  CPCIDevice::SaveState(f);
+  long ss = sizeof(state);
+  int res;
+
+  if (res = CPCIDevice::SaveState(f))
+    return res;
+
+  fwrite(&ide_magic1,sizeof(u32),1,f);
+  fwrite(&ss,sizeof(long),1,f);
   fwrite(&state,sizeof(state),1,f);
+  fwrite(&ide_magic2,sizeof(u32),1,f);
+  printf("%s: %d bytes saved.\n",devid_string,ss);
+  return 0;
 }
 
 /**
  * Restore state from a Virtual Machine State file.
  **/
 
-void CAliM1543C_ide::RestoreState(FILE *f)
+int CAliM1543C_ide::RestoreState(FILE *f)
 {
-  CPCIDevice::SaveState(f);
-  fread(&state,sizeof(state),1,f);
-}
+  long ss;
+  u32 m1;
+  u32 m2;
+  int res;
+  size_t r;
 
+  if (res = CPCIDevice::RestoreState(f))
+    return res;
+
+  r = fread(&m1,sizeof(u32),1,f);
+  if (r!=1)
+  {
+    printf("%s: unexpected end of file!\n",devid_string);
+    return -1;
+  }
+  if (m1 != ide_magic1)
+  {
+    printf("%s: MAGIC 1 does not match!\n",devid_string);
+    return -1;
+  }
+
+  fread(&ss,sizeof(long),1,f);
+  if (r!=1)
+  {
+    printf("%s: unexpected end of file!\n",devid_string);
+    return -1;
+  }
+  if (ss != sizeof(state))
+  {
+    printf("%s: STRUCT SIZE does not match!\n",devid_string);
+    return -1;
+  }
+
+  fread(&state,sizeof(state),1,f);
+  if (r!=1)
+  {
+    printf("%s: unexpected end of file!\n",devid_string);
+    return -1;
+  }
+
+  r = fread(&m2,sizeof(u32),1,f);
+  if (r!=1)
+  {
+    printf("%s: unexpected end of file!\n",devid_string);
+    return -1;
+  }
+  if (m2 != ide_magic2)
+  {
+    printf("%s: MAGIC 1 does not match!\n",devid_string);
+    return -1;
+  }
+
+  printf("%s: %d bytes restored.\n",devid_string,ss);
+  return 0;
+}
 
 u8 CAliM1543C_ide::get_status(int index)
 {
@@ -924,7 +994,7 @@ void CAliM1543C_ide::identify_drive(int index)
   char serial_number[21];
   char model_number[41];
   char rev_number[9];
-  int i,l;
+  size_t i;
 
   state.ide_data_ptr[index] = 0;
 
@@ -933,14 +1003,14 @@ void CAliM1543C_ide::identify_drive(int index)
   if (SEL_DISK(index)->get_cylinders() > 16383)
     state.ide_data[index][1] = 16383;	// cylinders
   else
-    state.ide_data[index][1] = SEL_DISK(index)->get_cylinders();	// cylinders
+    state.ide_data[index][1] = (u16)(SEL_DISK(index)->get_cylinders());	// cylinders
 
   state.ide_data[index][2] = 0xc837;	// specific configuration (ATA-4 specs)
 
-  state.ide_data[index][3] = SEL_DISK(index)->get_heads();		// heads
-  state.ide_data[index][4] = 512 * SEL_DISK(index)->get_sectors();	// bytes per track
+  state.ide_data[index][3] = (u16)(SEL_DISK(index)->get_heads());		// heads
+  state.ide_data[index][4] = (u16)(512 * SEL_DISK(index)->get_sectors());	// bytes per track
   state.ide_data[index][5] = 512;		// bytes per sector
-  state.ide_data[index][6] = SEL_DISK(index)->get_sectors();		// sectors per track
+  state.ide_data[index][6] = (u16)(SEL_DISK(index)->get_sectors());		// sectors per track
   state.ide_data[index][7] = 0;		// spec. bytes
   state.ide_data[index][8] = 0;		// spec. bytes
   state.ide_data[index][9] = 0;		// unique vendor status words
@@ -981,15 +1051,15 @@ void CAliM1543C_ide::identify_drive(int index)
   state.ide_data[index][52] = 0x200;		// cycle time
   state.ide_data[index][53] = 7;			// field_valid
 
-  state.ide_data[index][54] = SEL_DISK(index)->get_cylinders();		// cylinders
-  state.ide_data[index][55] = SEL_DISK(index)->get_heads();		// heads
-  state.ide_data[index][56] = SEL_DISK(index)->get_sectors();		// sectors
+  state.ide_data[index][54] = (u16)(SEL_DISK(index)->get_cylinders());		// cylinders
+  state.ide_data[index][55] = (u16)(SEL_DISK(index)->get_heads());		// heads
+  state.ide_data[index][56] = (u16)(SEL_DISK(index)->get_sectors());		// sectors
 
-  state.ide_data[index][57] = (SEL_DISK(index)->get_chs_size() >> 0)  & 0xFFFF;	// total_sectors
-  state.ide_data[index][58] = (SEL_DISK(index)->get_chs_size() >> 16) & 0xFFFF;	// ""
+  state.ide_data[index][57] = (u16)(SEL_DISK(index)->get_chs_size() >> 0)  & 0xFFFF;	// total_sectors
+  state.ide_data[index][58] = (u16)(SEL_DISK(index)->get_chs_size() >> 16) & 0xFFFF;	// ""
   state.ide_data[index][59] = 0;							// multiple sector count
-  state.ide_data[index][60] = (SEL_DISK(index)->get_lba_size() >> 0)  & 0xFFFF;	// LBA capacity
-  state.ide_data[index][61] = (SEL_DISK(index)->get_lba_size() >> 16) & 0xFFFF;	// ""
+  state.ide_data[index][60] = (u16)(SEL_DISK(index)->get_lba_size() >> 0)  & 0xFFFF;	// LBA capacity
+  state.ide_data[index][61] = (u16)(SEL_DISK(index)->get_lba_size() >> 16) & 0xFFFF;	// ""
   
   state.ide_data[index][62] = 0;
   state.ide_data[index][63] = 0;

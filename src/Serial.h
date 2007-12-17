@@ -1,7 +1,7 @@
 /* ES40 emulator.
- * Copyright (C) 2007 by Camiel Vanderhoeven
+ * Copyright (C) 2007 by the ES40 Emulator Project
  *
- * Website: www.camicom.com
+ * WWW    : http://sourceforge.net/projects/es40
  * E-mail : camiel@camicom.com
  * 
  * This program is free software; you can redistribute it and/or
@@ -26,6 +26,9 @@
 /**
  * \file 
  * Contains the definitions for the emulated Serial Port devices.
+ *
+ * X-1.11       Camiel Vanderhoeven                             17-DEC-2007
+ *      SaveState file format 2.1
  *
  * X-1.10       Camiel Vanderhoeven                             10-DEC-2007
  *      Use configurator.
@@ -83,30 +86,34 @@ class CSerial : public CSystemComponent
   virtual ~CSerial();
   void receive(const char* data);
   int DoClock();
+  virtual int SaveState(FILE * f);
+  virtual int RestoreState(FILE * f);
 
  private:
-  u8 bTHR;
-  u8 bRDR;
-  u8 bBRB_LSB;
-  u8 bBRB_MSB;
-  u8 bIER;
-  u8 bIIR;
-  u8 bFCR;
-  u8 bLCR;
-  u8 bMCR;
-  u8 bLSR;
-  u8 bMSR;
-  u8 bSPR;
+  struct {
+    u8 bTHR;
+    u8 bRDR;
+    u8 bBRB_LSB;
+    u8 bBRB_MSB;
+    u8 bIER;
+    u8 bIIR;
+    u8 bFCR;
+    u8 bLCR;
+    u8 bMCR;
+    u8 bLSR;
+    u8 bMSR;
+    u8 bSPR;
+    int serial_cycles;
+    char rcvBuffer[1024];
+    int rcvW;
+    int rcvR;
+    int iNumber;
+  } state;
   int listenSocket;
   int connectSocket;
 #if defined(IDB) && defined(LS_MASTER) 
   int throughSocket;
 #endif
-  int serial_cycles;
-  char rcvBuffer[1024];
-  int rcvW;
-  int rcvR;
-  int iNumber;
 };
 
 #endif // !defined(INCLUDED_SERIAL_H)

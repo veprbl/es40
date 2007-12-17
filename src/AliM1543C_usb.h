@@ -27,6 +27,9 @@
  * \file
  * Contains the definitions for the emulated Ali M1543C USB chipset part.
  *
+ * X-1.2        Camiel Vanderhoeven                             17-DEC-2007
+ *      SaveState file format 2.1
+ *
  * X-1.1        Camiel Vanderhoeven                             10-DEC-2007
  *      Initial version in CVS; this part was split off from the CAliM1543C
  *      class.
@@ -42,8 +45,8 @@
 class CAliM1543C_usb : public CPCIDevice  
 {
  public:
-  virtual void SaveState(FILE * f);
-  virtual void RestoreState(FILE * f);
+  virtual int SaveState(FILE * f);
+  virtual int RestoreState(FILE * f);
 
   CAliM1543C_usb(CConfigurator * cfg, class CSystem * c, int pcibus, int pcidev);
   virtual ~CAliM1543C_usb();

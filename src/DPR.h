@@ -27,6 +27,9 @@
  * \file 
  * Contains the definitions for the emulated Dual Port Ram and RMC devices.
  *
+ * X-1.9        Camiel Vanderhoeven                             17-DEC-2007
+ *      SaveState file format 2.1
+ *
  * X-1.8        Camiel Vanderhoeven                             10-DEC-2007
  *      Changes to make the TraceEngine work again after recent changes.
  *
@@ -71,15 +74,17 @@ class CDPR : public CSystemComponent
   virtual ~CDPR();
   virtual void WriteMem(int index, u64 address, int dsize, u64 data);
   virtual u64 ReadMem(int index, u64 address, int dsize);
-  virtual void SaveState(FILE * f);
-  virtual void RestoreState(FILE * f);
+  virtual int SaveState(FILE * f);
+  virtual int RestoreState(FILE * f);
   void SaveStateF();
   void RestoreStateF();
   void SaveStateF(char * fn);
   void RestoreStateF(char * fn);
 
  protected:
-  u8 ram[16*1024];
+  struct {
+    u8 ram[16*1024];
+  } state;
 };
 
 extern CDPR * theDPR;

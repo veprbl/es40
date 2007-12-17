@@ -1,7 +1,7 @@
 /* ES40 emulator.
- * Copyright (C) 2007 by Camiel Vanderhoeven
+ * Copyright (C) 2007 by the ES40 Emulator Project
  *
- * Website: www.camicom.com
+ * WWW    : http://sourceforge.net/projects/es40
  * E-mail : camiel@camicom.com
  * 
  * This program is free software; you can redistribute it and/or
@@ -26,6 +26,9 @@
 /**
  * \file 
  * Contains definitions for the base class for devices that connect to the chipset.
+ *
+ * X-1.11       Camiel Vanderhoeven                             17-DEC-2007
+ *      SaveState file format 2.1
  *
  * X-1.10       Camiel Vanderhoeven                             10-DEC-2007
  *      Use configurator.
@@ -72,8 +75,8 @@
 class CSystemComponent  
 {
  public:
-  virtual void RestoreState(FILE * f);
-  virtual void SaveState(FILE * f);
+  virtual int RestoreState(FILE * f) = 0;
+  virtual int SaveState(FILE * f) = 0;
 
   CSystemComponent(class CConfigurator * cfg, class CSystem * system);
   virtual ~CSystemComponent();
@@ -81,12 +84,13 @@ class CSystemComponent
   //=== abstract ===
   virtual u64 ReadMem(int index, u64 address, int dsize) {return 0;};
   virtual void WriteMem(int index, u64 address, int dsize, u64 data) {};
-  virtual u8 ReadTIG(int index, int address) {return 0;};
-  virtual void WriteTIG(int index, int address, u8 data) {};
+//  virtual u8 ReadTIG(int index, int address) {return 0;};
+//  virtual void WriteTIG(int index, int address, u8 data) {};
   virtual int DoClock() {return 0;};
   virtual void ResetPCI() {};
 
  protected: 
+  char * devid_string;
   class CSystem * cSystem;
   class CConfigurator * myCfg;
 };

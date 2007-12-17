@@ -26,6 +26,9 @@
  * \file
  * Contains the definitions for emulated S3 Trio 64 Video Card device.
  *
+ * X-1.5        Camiel Vanderhoeven                             17-DEC-2007
+ *      SaveState file format 2.1
+ *
  * X-1.4        Brian Wheeler                                   10-DEC-2007
  *      Added SDL.h.
  *
@@ -66,8 +69,8 @@
 class CS3Trio64 : public CVGA
 {
   public:
-    virtual void SaveState(FILE * f);
-    virtual void RestoreState(FILE * f);
+    virtual int SaveState(FILE * f);
+    virtual int RestoreState(FILE * f);
     virtual int DoClock();
     virtual void WriteMem_Legacy(int index, u32 address, int dsize, u32 data);
     virtual u32 ReadMem_Legacy(int index, u32 address, int dsize);

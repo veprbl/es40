@@ -1,7 +1,7 @@
 /* ES40 emulator.
- * Copyright (C) 2007 by Camiel Vanderhoeven
+ * Copyright (C) 2007 by the ES40 Emulator Project
  *
- * Website: www.camicom.com
+ * WWW    : http://sourceforge.net/projects/es40
  * E-mail : camiel@camicom.com
  * 
  * This program is free software; you can redistribute it and/or
@@ -26,6 +26,9 @@
 /**
  * \file 
  * Contains the definitions for the emulated Port 80 device.
+ *
+ * X-1.8        Camiel Vanderhoeven                             17-DEC-2007
+ *      SaveState file format 2.1
  *
  * X-1.7        Camiel Vanderhoeven                             10-DEC-2007
  *      Use configurator.
@@ -73,9 +76,13 @@ class CPort80 : public CSystemComponent
   virtual ~CPort80();
   virtual u64 ReadMem(int index, u64 address, int dsize);
   virtual void WriteMem(int index, u64 address, int dsize, u64 data);
+  virtual int SaveState(FILE * f);
+  virtual int RestoreState(FILE * f);
 
  protected:
-  u8 p80;	/**< Last value written.*/
+  struct {
+    u8 p80;	/**< Last value written.*/
+  } state;
 };
 
 #endif // !defined(INCLUDED_PORT80_H)

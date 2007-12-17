@@ -27,6 +27,9 @@
  * \file
  * Contains the code for the emulated Cirrus CL GD-5434 Video Card device.
  *
+ * X-1.6        Camiel Vanderhoeven                             17-DEC-2007
+ *      SaveState file format 2.1
+ *
  * X-1.5        Camiel Vabderhoeven                             11-DEC-2007
  *      Don't claim IO addresses 3d0..3d3, 3d6..3d9 and 3db..3df.
  *
@@ -481,26 +484,90 @@ int CCirrus::DoClock()
   return 0;
 }
 
+static u32 cirrus_magic1 = 0xC1AA4500;
+static u32 cirrus_magic2 = 0x0054AA1C;
+
 /**
  * Save state to a Virtual Machine State file.
  **/
 
-void CCirrus::SaveState(FILE *f)
+int CCirrus::SaveState(FILE *f)
 {
-  CPCIDevice::SaveState(f);
+  long ss = sizeof(state);
+  int res;
+
+  if (res = CPCIDevice::SaveState(f))
+    return res;
+
+  fwrite(&cirrus_magic1,sizeof(u32),1,f);
+  fwrite(&ss,sizeof(long),1,f);
   fwrite(&state,sizeof(state),1,f);
+  fwrite(&cirrus_magic2,sizeof(u32),1,f);
+  printf("%s: %d bytes saved.\n",devid_string,ss);
+  return 0;
 }
 
 /**
  * Restore state from a Virtual Machine State file.
  **/
 
-void CCirrus::RestoreState(FILE *f)
+int CCirrus::RestoreState(FILE *f)
 {
-  CPCIDevice::RestoreState(f);
-  fread(&state,sizeof(state),1,f);
-}
+  long ss;
+  u32 m1;
+  u32 m2;
+  int res;
+  size_t r;
 
+  if (res = CPCIDevice::RestoreState(f))
+    return res;
+
+  r = fread(&m1,sizeof(u32),1,f);
+  if (r!=1)
+  {
+    printf("%s: unexpected end of file!\n",devid_string);
+    return -1;
+  }
+  if (m1 != cirrus_magic1)
+  {
+    printf("%s: MAGIC 1 does not match!\n",devid_string);
+    return -1;
+  }
+
+  fread(&ss,sizeof(long),1,f);
+  if (r!=1)
+  {
+    printf("%s: unexpected end of file!\n",devid_string);
+    return -1;
+  }
+  if (ss != sizeof(state))
+  {
+    printf("%s: STRUCT SIZE does not match!\n",devid_string);
+    return -1;
+  }
+
+  fread(&state,sizeof(state),1,f);
+  if (r!=1)
+  {
+    printf("%s: unexpected end of file!\n",devid_string);
+    return -1;
+  }
+
+  r = fread(&m2,sizeof(u32),1,f);
+  if (r!=1)
+  {
+    printf("%s: unexpected end of file!\n",devid_string);
+    return -1;
+  }
+  if (m2 != cirrus_magic2)
+  {
+    printf("%s: MAGIC 1 does not match!\n",devid_string);
+    return -1;
+  }
+
+  printf("%s: %d bytes restored.\n",devid_string,ss);
+  return 0;
+}
 
 /**
  * Read from Framebuffer

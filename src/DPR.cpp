@@ -27,6 +27,9 @@
  * \file
  * Contains the code for the emulated Dual Port Ram and RMC devices.
  *
+ * X-1.13       Camiel Vanderhoeven                             17-DEC-2007
+ *      SaveState file format 2.1
+ *
  * X-1.12       Camiel Vanderhoeven                             10-DEC-2007
  *      Changes to make the TraceEngine work again after recent changes.
  *
@@ -86,129 +89,129 @@ CDPR::CDPR(CConfigurator * cfg, CSystem * c) : CSystemComponent(cfg,c)
 
   c->RegisterMemory(this, 0, X64(0000080110000000),0x100000); // 16KB
   printf("%%DPR-I-INIT: Dual-Port RAM emulator initialized.\n");
-  memset(ram,0,16*1024);
+  memset(state.ram,0,16*1024);
   //
-  ram[0x3401] = 1;	// SROM valid
+  state.ram[0x3401] = 1;	// SROM valid
 
-  ram[0] = 1;		// EV6 BIST
-  ram[1] = 0x80;	// SROM status
-  ram[2] = 1;		// STR status
-  ram[3] = 1;		// CSC status
-  ram[4] = 1;		// Pchip0 status
-  ram[5] = 1;		// Pchip1 status
-  ram[6] = 1;		// DIMx status
-  ram[7] = 1;		// TIG bus status
-  ram[8] = 0xdd;	// DPR test started
-  ram[9] = 1;		// DPR status
-  ram[10] = 0xff;	// CPU speed status
-  ram[11] = 833%256;	//speed
-  ram[12] = 833/256;	//speed
+  state.ram[0] = 1;		// EV6 BIST
+  state.ram[1] = 0x80;	// SROM status
+  state.ram[2] = 1;		// STR status
+  state.ram[3] = 1;		// CSC status
+  state.ram[4] = 1;		// Pchip0 status
+  state.ram[5] = 1;		// Pchip1 status
+  state.ram[6] = 1;		// DIMx status
+  state.ram[7] = 1;		// TIG bus status
+  state.ram[8] = 0xdd;	// DPR test started
+  state.ram[9] = 1;		// DPR status
+  state.ram[10] = 0xff;	// CPU speed status
+  state.ram[11] = 833%256;	//speed
+  state.ram[12] = 833/256;	//speed
   // powerup time BCD:
-  ram[16] = 0x08; // uur
-  ram[17] = 0x30; // min
-  ram[18] = 0x00; // sec
-  ram[19] = 0x01; // dag
-  ram[20] = 0x02; // maand
-  ram[21] = 0x07; // jaar
-  ram[0x16] = 0;	// no error
-  ram[0x1e] = 0x80; // CPU SROM sync moet 0x80 zijn; anders --> cpu0 startup failure
-  ram[0x1f] = 8;	// cach size in MB
+  state.ram[16] = 0x08; // uur
+  state.ram[17] = 0x30; // min
+  state.ram[18] = 0x00; // sec
+  state.ram[19] = 0x01; // dag
+  state.ram[20] = 0x02; // maand
+  state.ram[21] = 0x07; // jaar
+  state.ram[0x16] = 0;	// no error
+  state.ram[0x1e] = 0x80; // CPU SROM sync moet 0x80 zijn; anders --> cpu0 startup failure
+  state.ram[0x1f] = 8;	// cach size in MB
 
-  ram[0xda] = 0xaa; // TIG load
+  state.ram[0xda] = 0xaa; // TIG load
 
   // DIMM config
-  ram[0x80] = 0xf0;	// twice-split 8 dimms array 0
-  ram[0x81] = 0x01;	// 64 MB
-  //	ram[0x82] = 0xf1;	// twice-split 8 dimms array 1
-  //	ram[0x83] = 0x01;	// 64 MB
-  //	ram[0x84] = 0xf2;	// twice-split 8 dimms array 2
-  //	ram[0x85] = 0x01;	// 64 MB
-  //	ram[0x86] = 0xf3;	// twice-split 8 dimms array 3
-  //	ram[0x87] = 0x01;	// 64 MB
+  state.ram[0x80] = 0xf0;	// twice-split 8 dimms array 0
+  state.ram[0x81] = 0x01;	// 64 MB
+  //	state.ram[0x82] = 0xf1;	// twice-split 8 dimms array 1
+  //	state.ram[0x83] = 0x01;	// 64 MB
+  //	state.ram[0x84] = 0xf2;	// twice-split 8 dimms array 2
+  //	state.ram[0x85] = 0x01;	// 64 MB
+  //	state.ram[0x86] = 0xf3;	// twice-split 8 dimms array 3
+  //	state.ram[0x87] = 0x01;	// 64 MB
 
   // powerup failure bits
-  ram[0x88] = 0; // each bit is one DIMM on MMB0
-  ram[0x89] = 0x00; // MMB1
-  ram[0x8a] = 0x00; // MMB2
-  ram[0x8b] = 0x00; // MMB3
+  state.ram[0x88] = 0; // each bit is one DIMM on MMB0
+  state.ram[0x89] = 0x00; // MMB1
+  state.ram[0x8a] = 0x00; // MMB2
+  state.ram[0x8b] = 0x00; // MMB3
   // misconfigured DIMM bits
-  ram[0x8c] = 0; // each bit is one DIMM on MMB0
-  ram[0x8d] = 0; // MMB1
-  ram[0x8e] = 0; // MMB2
-  ram[0x8f] = 0; // MMB3
+  state.ram[0x8c] = 0; // each bit is one DIMM on MMB0
+  state.ram[0x8d] = 0; // MMB1
+  state.ram[0x8e] = 0; // MMB2
+  state.ram[0x8f] = 0; // MMB3
 
-  ram[0x90] = 0xff; // psu / vterm present
-  ram[0x91] = 0xff; // psu ok bits
-  ram[0x92] = 0x07; // ac inputs valid
-  ram[0x93] = 0x50; // cpu 0 temp in BCD
-  ram[0x94] = 0x50; // cpu 1 temp in BCD
-  ram[0x95] = 0x50; // cpu 2 temp in BCD
-  ram[0x96] = 0x50; // cpu 3 temp in BCD
-  ram[0x97] = 0x36; // pci 0 temp in BCD
-  ram[0x98] = 0x36; // pci 1 temp in BCD
-  ram[0x99] = 0x36; // pci 2 temp in BCD
-  ram[0x9a] = 0x8b; // fan 0 speed
-  ram[0x9b] = 0x8b; // fan 1 speed
-  ram[0x9c] = 0x8b; // fan 2 speed
-  ram[0x9d] = 0x8b; // fan 3 speed
-  ram[0x9e] = 0x8b; // fan 4 speed
-  ram[0x9f] = 0x8b; // fan 5 speed
+  state.ram[0x90] = 0xff; // psu / vterm present
+  state.ram[0x91] = 0xff; // psu ok bits
+  state.ram[0x92] = 0x07; // ac inputs valid
+  state.ram[0x93] = 0x50; // cpu 0 temp in BCD
+  state.ram[0x94] = 0x50; // cpu 1 temp in BCD
+  state.ram[0x95] = 0x50; // cpu 2 temp in BCD
+  state.ram[0x96] = 0x50; // cpu 3 temp in BCD
+  state.ram[0x97] = 0x36; // pci 0 temp in BCD
+  state.ram[0x98] = 0x36; // pci 1 temp in BCD
+  state.ram[0x99] = 0x36; // pci 2 temp in BCD
+  state.ram[0x9a] = 0x8b; // fan 0 speed
+  state.ram[0x9b] = 0x8b; // fan 1 speed
+  state.ram[0x9c] = 0x8b; // fan 2 speed
+  state.ram[0x9d] = 0x8b; // fan 3 speed
+  state.ram[0x9e] = 0x8b; // fan 4 speed
+  state.ram[0x9f] = 0x8b; // fan 5 speed
 	
   // vector 680 info (various faults)
   for (i=0xa0;i<0xaa;i++)
-    ram[i] = 0;
+    state.ram[i] = 0;
 
-  ram[0xaa] = 0x00;	// fans good
+  state.ram[0xaa] = 0x00;	// fans good
   // RMC read failure DIMM bits
-  ram[0xab] = 0; // each bit is one DIMM on MMB0
-  ram[0xac] = 0xff; // MMB1
-  ram[0xad] = 0xff; // MMB2
-  ram[0xae] = 0xff; // MMB3
+  state.ram[0xab] = 0; // each bit is one DIMM on MMB0
+  state.ram[0xac] = 0xff; // MMB1
+  state.ram[0xad] = 0xff; // MMB2
+  state.ram[0xae] = 0xff; // MMB3
 
-  ram[0xaf] = 0x0e; // all MMB I2C's read + CPU 0
-  ram[0xb0] = 0x00; // PCI i2c read
-  ram[0xb1] = 0x00; // mainboard i2c read
-  ram[0xb2] = 0x00; // psu's and scsi backplanes i2c read
+  state.ram[0xaf] = 0x0e; // all MMB I2C's read + CPU 0
+  state.ram[0xb0] = 0x00; // PCI i2c read
+  state.ram[0xb1] = 0x00; // mainboard i2c read
+  state.ram[0xb2] = 0x00; // psu's and scsi backplanes i2c read
 
-  ram[0xba] = 0xba; // i2c finished
+  state.ram[0xba] = 0xba; // i2c finished
 
-  ram[0xbb] = 0x00;	// rmc error
-  ram[0xbc] = 0x00;	//rmc flash update error status
+  state.ram[0xbb] = 0x00;	// rmc error
+  state.ram[0xbc] = 0x00;	//rmc flash update error status
 
   // 680 fatal registers
-  ram[0xbd] = 0x07;	// ac inputs valid
-  ram[0xbe] = 0;		// faults
-  ram[0xbf] = 0;		// faults
+  state.ram[0xbd] = 0x07;	// ac inputs valid
+  state.ram[0xbe] = 0;		// faults
+  state.ram[0xbf] = 0;		// faults
 
-  ram[0xda] = 0xaa;	// tig load success
+  state.ram[0xda] = 0xaa;	// tig load success
 
   // Power-supplies
-  ram[0xdb] = 0xf4;	// PS0 id
-  ram[0xdc] = 0x45;	// 3.3v current
-  ram[0xdd] = 0x51;	// 5.0v current
-  ram[0xde] = 0x37;	// 12v current
-  ram[0xdf] = 0x8b;	// fan speed
-  ram[0xe0] = 0xd6;	// ac voltage (230v)
-  ram[0xe1] = 0x49;	// internal temp. (56 C)
-  ram[0xe2] = 0x4b;	// inlet temp. (20 C)
+  state.ram[0xdb] = 0xf4;	// PS0 id
+  state.ram[0xdc] = 0x45;	// 3.3v current
+  state.ram[0xdd] = 0x51;	// 5.0v current
+  state.ram[0xde] = 0x37;	// 12v current
+  state.ram[0xdf] = 0x8b;	// fan speed
+  state.ram[0xe0] = 0xd6;	// ac voltage (230v)
+  state.ram[0xe1] = 0x49;	// internal temp. (56 C)
+  state.ram[0xe2] = 0x4b;	// inlet temp. (20 C)
 	
-  ram[0xe4] = 0xf5;	// PS1 id
-  ram[0xe5] = 0x45;	// 3.3v current
-  ram[0xe6] = 0x51;	// 5.0v current
-  ram[0xe7] = 0x37;	// 12v current
-  ram[0xe8] = 0x8b;	// fan speed
-  ram[0xe9] = 0xd6;	// ac voltage (230v)
-  ram[0xea] = 0x49;	// internal temp. (56 C)
-  ram[0xeb] = 0x4b;	// inlet temp. (20 C)
+  state.ram[0xe4] = 0xf5;	// PS1 id
+  state.ram[0xe5] = 0x45;	// 3.3v current
+  state.ram[0xe6] = 0x51;	// 5.0v current
+  state.ram[0xe7] = 0x37;	// 12v current
+  state.ram[0xe8] = 0x8b;	// fan speed
+  state.ram[0xe9] = 0xd6;	// ac voltage (230v)
+  state.ram[0xea] = 0x49;	// internal temp. (56 C)
+  state.ram[0xeb] = 0x4b;	// inlet temp. (20 C)
 	
-  ram[0xed] = 0xf6;	// PS2 id
-  ram[0xee] = 0x45;	// 3.3v current
-  ram[0xef] = 0x51;	// 5.0v current
-  ram[0xf0] = 0x37;	// 12v current
-  ram[0xf1] = 0x8b;	// fan speed
-  ram[0xf2] = 0xd6;	// ac voltage (230v)
-  ram[0xf3] = 0x49;	// internal temp. (56 C)
-  ram[0xf4] = 0x4b;	// inlet temp. (20 C)
+  state.ram[0xed] = 0xf6;	// PS2 id
+  state.ram[0xee] = 0x45;	// 3.3v current
+  state.ram[0xef] = 0x51;	// 5.0v current
+  state.ram[0xf0] = 0x37;	// 12v current
+  state.ram[0xf1] = 0x8b;	// fan speed
+  state.ram[0xf2] = 0xd6;	// ac voltage (230v)
+  state.ram[0xf3] = 0x49;	// internal temp. (56 C)
+  state.ram[0xf4] = 0x4b;	// inlet temp. (20 C)
 
   // EEROMs
   /*
@@ -270,33 +273,33 @@ CDPR::CDPR(CConfigurator * cfg, CSystem * c) : CSystemComponent(cfg,c)
   */
 
   //	3000:3008	SROM Version (ASCII string)
-  ram[0x3000] = 'V';
-  ram[0x3001] = '2';
-  ram[0x3002] = '.';
-  ram[0x3003] = '2';
-  ram[0x3004] = '2';
-  ram[0x3005] = 'G';
-  ram[0x3006] = 0;
-  ram[0x3007] = 0;
-  ram[0x3008] = 0;
+  state.ram[0x3000] = 'V';
+  state.ram[0x3001] = '2';
+  state.ram[0x3002] = '.';
+  state.ram[0x3003] = '2';
+  state.ram[0x3004] = '2';
+  state.ram[0x3005] = 'G';
+  state.ram[0x3006] = 0;
+  state.ram[0x3007] = 0;
+  state.ram[0x3008] = 0;
   //	3009:300B	RMC Rev Level of RMC first byte is letter Rev [x/t/v] second 2 bytes are major/minor.
   //				This is the rev level of the RMC on-chip code.
-  ram[0x3009] = 'V';
-  ram[0x300a] = 0x01;
-  ram[0x300b] = 0x00;
+  state.ram[0x3009] = 'V';
+  state.ram[0x300a] = 0x01;
+  state.ram[0x300b] = 0x00;
   //	300C:300E	RMC Rev Level of RMC first byte is letter Rev [x/t/v] second 2 bytes are major/minor.
   //				This is the rev level of the RMC flash code.
-  ram[0x300c] = 'V';
-  ram[0x300d] = 0x01;
-  ram[0x300e] = 0x00;
+  state.ram[0x300c] = 'V';
+  state.ram[0x300d] = 0x01;
+  state.ram[0x300e] = 0x00;
   //	300F:3010 300F RMC Revision Field of the DPR Structure
 
   //	3400 SROM Size of Bcache in MB
-  ram[0x3400] = 8;
+  state.ram[0x3400] = 8;
   //3401 SROM Flash SROM is valid flag; 8 = valid,0 = invalid
-  ram[0x3401] = 1;
+  state.ram[0x3401] = 1;
   //3402 SROM System's errors determined by SROM
-  ram[0x3402] = 0;
+  state.ram[0x3402] = 0;
   //3410:3417 SROM/SRM Jump to address for CPU0
   //3418 SROM/SRM Waiting to jump to flag for CPU0
   //3419 SROM Shadow of value written to EV6 DC_CTL register.
@@ -313,7 +316,7 @@ CDPR::CDPR(CConfigurator * cfg, CSystem * c) : CSystemComponent(cfg,c)
   //	34B0:34B7 SROM Repeat for Array 2 of Array 0 34A0:34A7
   //	34B8:34CF SROM Repeat for Array 3 of Array 0 34A0:34A7
   for (i=0;i<0x20;i++)
-    ram[0x34a0+i] = i;
+    state.ram[0x34a0+i] = i;
 
   //	34C0:34FF	Used as scratch area for SROM
   //	3500:35FF	Used as the dedicated buffer in which SRM writes OCP or FRU EEROM data. 
@@ -338,7 +341,7 @@ u64 CDPR::ReadMem(int index, u64 address, int dsize)
   u64 data = 0;
   int a = (int)(address>>6);
 
-  data = ram[a];
+  data = state.ram[a];
 
   TRC_DEV3("%%DPR-I-READ: Dual-Port RAM read @ 0x%08x: 0x%02x\n",a,(u32)(data&0xff));
   return data;
@@ -366,13 +369,13 @@ void CDPR::WriteMem(int index, u64 address, int dsize, u64 data)
   // 03:	write to OCP
   // F0:	update RMC flash
 	
-  ram[a] = (char)data;
+  state.ram[a] = (char)data;
   switch (a)
     {
     case 0xff:
       // command
-      ram[0xfd] = ram[0xff];
-      switch (ram[0xfe])
+      state.ram[0xfd] = state.ram[0xff];
+      switch (state.ram[0xfe])
 	{
 	case 1:
 	  /*
@@ -425,7 +428,7 @@ void CDPR::WriteMem(int index, u64 address, int dsize, u64 data)
 	    3c00: SCSI1 */
 			
 	  // FRU-Write
-	  switch(ram[0xfb])
+	  switch(state.ram[0xfb])
 	    {
 	    case 1:
 	    case 2:
@@ -450,54 +453,44 @@ void CDPR::WriteMem(int index, u64 address, int dsize, u64 data)
 	    case 0x3d:
 	    case 0x3e:
 	    case 0x3f:
-	      for(i=0;i<ram[0xf9]+1;i++)
+	      for(i=0;i<state.ram[0xf9]+1;i++)
 		{
-		  ram[ram[0xfb]*0x100 + ram[0xfa] + i] = ram[0x3500 + ram[0xfa] + i];			
-		  TRC_DEV4("%%DPR-I-FRU: FRU data %02x @ FRU %02x set to %02x\n",ram[0xfa]+i,ram[0xfb],ram[0x3500 + ram[0xfa]+i]);
+		  state.ram[state.ram[0xfb]*0x100 + state.ram[0xfa] + i] = state.ram[0x3500 + state.ram[0xfa] + i];			
+		  TRC_DEV4("%%DPR-I-FRU: FRU data %02x @ FRU %02x set to %02x\n",state.ram[0xfa]+i,state.ram[0xfb],state.ram[0x3500 + state.ram[0xfa]+i]);
 		}
-	      ram[0xfc] = 0;
+	      state.ram[0xfc] = 0;
 	      break;
 	    default:
-	      TRC_DEV2("%%DPR-I-RMC: RMC Command given: %02x\r\n",ram[0xfe]);
-	      TRC_DEV4("%%DPR-I-RMC: f9:%02x fb-fa:%02x%02x\r\n",ram[0xf9],ram[0xfb],ram[0xfa]);
-	      ram[0xfc] = 0x80;
+	      TRC_DEV2("%%DPR-I-RMC: RMC Command given: %02x\r\n",state.ram[0xfe]);
+	      TRC_DEV4("%%DPR-I-RMC: f9:%02x fb-fa:%02x%02x\r\n",state.ram[0xf9],state.ram[0xfb],state.ram[0xfa]);
+	      state.ram[0xfc] = 0x80;
 	    }
 	  break;
 	case 2:
-	  ram[0xfc] = 0;
+	  state.ram[0xfc] = 0;
 	  break;
 	case 3:
 	  // OCP-Write
 	  sprintf(trcbuffer,"%%%%DPR-I-OCP: OCP Text set to \"0123456789abcdef\"\r\n");
-	  memcpy(trcbuffer+29,&(ram[0x3500]),16);
+	  memcpy(trcbuffer+29,&(state.ram[0x3500]),16);
 	  //			srl[0]->write(trcbuffer);
 	  TRC_DEV(trcbuffer);
-	  ram[0xfc] = 0;
+	  state.ram[0xfc] = 0;
 	  break;
 	case 0xf0:
-	  ram[0xfc] = 0;
+	  state.ram[0xfc] = 0;
 	default:
-	  TRC_DEV2("%%DPR-I-RMC: RMC Command given: %02x\r\n",ram[0xfe]);
-	  TRC_DEV4("%%DPR-I-RMC: f9:%02x fb-fa:%02x%02x\r\n",ram[0xf9],ram[0xfb],ram[0xfa]);
-	  ram[0xfc] = 0x81;
+	  TRC_DEV2("%%DPR-I-RMC: RMC Command given: %02x\r\n",state.ram[0xfe]);
+	  TRC_DEV4("%%DPR-I-RMC: f9:%02x fb-fa:%02x%02x\r\n",state.ram[0xf9],state.ram[0xfb],state.ram[0xfa]);
+	  state.ram[0xfc] = 0x81;
 	}
       break;
     case 0xfd:
       // end of command
-      ram[0xff] = ram[0xfd];
+      state.ram[0xff] = state.ram[0xfd];
     }
 
   return;
-}
-
-
-/**
- * Save state to a Virtual Machine State file.
- **/
-
-void CDPR::SaveState(FILE * f)
-{
-  fwrite(ram,16*1024,1,f);
 }
 
 /**
@@ -549,6 +542,82 @@ void CDPR::RestoreStateF(char * fn)
   }
 }
 
+static u32 dpr_magic1 = 0x18A7B92D;
+static u32 dpr_magic2 = 0xD29B7A81;
+
+/**
+ * Save state to a Virtual Machine State file.
+ **/
+
+int CDPR::SaveState(FILE *f)
+{
+  long ss = sizeof(state);
+
+  fwrite(&dpr_magic1,sizeof(u32),1,f);
+  fwrite(&ss,sizeof(long),1,f);
+  fwrite(&state,sizeof(state),1,f);
+  fwrite(&dpr_magic2,sizeof(u32),1,f);
+  printf("%s: %d bytes saved.\n","dpr",ss);
+  return 0;
+}
+
+/**
+ * Restore state from a Virtual Machine State file.
+ **/
+
+int CDPR::RestoreState(FILE *f)
+{
+  long ss;
+  u32 m1;
+  u32 m2;
+  size_t r;
+
+  r = fread(&m1,sizeof(u32),1,f);
+  if (r!=1)
+  {
+    printf("%s: unexpected end of file!\n","dpr");
+    return -1;
+  }
+  if (m1 != dpr_magic1)
+  {
+    printf("%s: MAGIC 1 does not match!\n","dpr");
+    return -1;
+  }
+
+  fread(&ss,sizeof(long),1,f);
+  if (r!=1)
+  {
+    printf("%s: unexpected end of file!\n","dpr");
+    return -1;
+  }
+  if (ss != sizeof(state))
+  {
+    printf("%s: STRUCT SIZE does not match!\n","dpr");
+    return -1;
+  }
+
+  fread(&state,sizeof(state),1,f);
+  if (r!=1)
+  {
+    printf("%s: unexpected end of file!\n","dpr");
+    return -1;
+  }
+
+  r = fread(&m2,sizeof(u32),1,f);
+  if (r!=1)
+  {
+    printf("%s: unexpected end of file!\n","dpr");
+    return -1;
+  }
+  if (m2 != dpr_magic2)
+  {
+    printf("%s: MAGIC 1 does not match!\n","dpr");
+    return -1;
+  }
+
+  printf("%s: %d bytes restored.\n","dpr",ss);
+  return 0;
+}
 
 /**
  * Restore state from the default DPR rom file.
@@ -557,15 +626,6 @@ void CDPR::RestoreStateF(char * fn)
 void CDPR::RestoreStateF()
 {
   RestoreStateF(myCfg->get_text_value("rom.dpr","dpr.rom"));
-}
-
-/**
- * Restore state from a Virtual Machine State file.
- **/
-
-void CDPR::RestoreState(FILE * f)
-{
-  fread(ram,16*1024,1,f);
 }
 
 CDPR * theDPR = 0;

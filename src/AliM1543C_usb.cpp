@@ -27,6 +27,9 @@
  * \file
  * Contains the code for the emulated Ali M1543C IDE chipset part.
  *
+ * X-1.2        Camiel Vanderhoeven                             17-DEC-2007
+ *      SaveState file format 2.1
+ *
  * X-1.1        Camiel Vanderhoeven                             10-DEC-2007
  *      Initial version in CVS; this part was split off from the CAliM1543C
  *      class.
@@ -99,22 +102,87 @@ CAliM1543C_usb::~CAliM1543C_usb()
 {
 }
 
+static u32 usb_magic1 = 0x9000432B;
+static u32 usb_magic2 = 0xB2340009;
+
 /**
  * Save state to a Virtual Machine State file.
  **/
 
-void CAliM1543C_usb::SaveState(FILE *f)
+int CAliM1543C_usb::SaveState(FILE *f)
 {
-  CPCIDevice::SaveState(f);
+  long ss = sizeof(state);
+  int res;
+
+  if (res = CPCIDevice::SaveState(f))
+    return res;
+
+  fwrite(&usb_magic1,sizeof(u32),1,f);
+  fwrite(&ss,sizeof(long),1,f);
   fwrite(&state,sizeof(state),1,f);
+  fwrite(&usb_magic2,sizeof(u32),1,f);
+  printf("%s: %d bytes saved.\n",devid_string,ss);
+  return 0;
 }
 
 /**
  * Restore state from a Virtual Machine State file.
  **/
 
-void CAliM1543C_usb::RestoreState(FILE *f)
+int CAliM1543C_usb::RestoreState(FILE *f)
 {
-  CPCIDevice::SaveState(f);
+  long ss;
+  u32 m1;
+  u32 m2;
+  int res;
+  size_t r;
+
+  if (res = CPCIDevice::RestoreState(f))
+    return res;
+
+  r = fread(&m1,sizeof(u32),1,f);
+  if (r!=1)
+  {
+    printf("%s: unexpected end of file!\n",devid_string);
+    return -1;
+  }
+  if (m1 != usb_magic1)
+  {
+    printf("%s: MAGIC 1 does not match!\n",devid_string);
+    return -1;
+  }
+
+  fread(&ss,sizeof(long),1,f);
+  if (r!=1)
+  {
+    printf("%s: unexpected end of file!\n",devid_string);
+    return -1;
+  }
+  if (ss != sizeof(state))
+  {
+    printf("%s: STRUCT SIZE does not match!\n",devid_string);
+    return -1;
+  }
+
   fread(&state,sizeof(state),1,f);
+  if (r!=1)
+  {
+    printf("%s: unexpected end of file!\n",devid_string);
+    return -1;
+  }
+
+  r = fread(&m2,sizeof(u32),1,f);
+  if (r!=1)
+  {
+    printf("%s: unexpected end of file!\n",devid_string);
+    return -1;
+  }
+  if (m2 != usb_magic2)
+  {
+    printf("%s: MAGIC 1 does not match!\n",devid_string);
+    return -1;
+  }
+
+  printf("%s: %d bytes restored.\n",devid_string,ss);
+  return 0;
 }

@@ -27,6 +27,9 @@
  * \file
  * Contains the code for the emulated Flash ROM devices.
  *
+ * X-1.13       Camiel Vanderhoeven                             17-DEC-2007
+ *      SaveState file format 2.1
+ *
  * X-1.12       Camiel Vanderhoeven                             10-DEC-2007
  *      Changes to make the TraceEngine work again after recent changes.
  *
@@ -95,8 +98,8 @@ CFlash::CFlash(CConfigurator * cfg, CSystem * c) : CSystemComponent(cfg,c)
   theSROM = this;
   c->RegisterMemory(this, 0, X64(0000080100000000),0x8000000); // 2MB
   printf("%%FLS-I-INIT: Flash ROM emulator initialized.\n");
-  memset(Flash,0xff,2*1024*1024);
-  mode = MODE_READ;
+  memset(state.Flash,0xff,2*1024*1024);
+  state.mode = MODE_READ;
 }
 
 /**
@@ -119,7 +122,7 @@ u64 CFlash::ReadMem(int index, u64 address, int dsize)
   u64 data = 0;
   int a = (int)(address>>6);
 
-  switch (mode)
+  switch (state.mode)
     {
     case MODE_AUTOSEL:
       switch (a)
@@ -136,14 +139,14 @@ u64 CFlash::ReadMem(int index, u64 address, int dsize)
       break;
     case MODE_CONFIRM_0:
       data = 0x80;
-      mode = MODE_READ;
+      state.mode = MODE_READ;
       break;
     case MODE_CONFIRM_1:
       data = 0x80;
-      mode = MODE_CONFIRM_0;
+      state.mode = MODE_CONFIRM_0;
       break;
     default:
-      data = Flash[a];
+      data = state.Flash[a];
     }
 
   return data;
@@ -158,93 +161,82 @@ void CFlash::WriteMem(int index, u64 address, int dsize, u64 data)
   int a = (int)(address>>6);
 
 
-  switch(mode)
+  switch(state.mode)
     {
     case MODE_READ:
     case MODE_AUTOSEL:
       if ((a == 0x5555) && (data==0xaa))
 	{
-	  mode = MODE_STEP1;
+	  state.mode = MODE_STEP1;
 	  return;
 	}
-      mode = MODE_READ;
+      state.mode = MODE_READ;
       return;
     case MODE_STEP1:
       if ((a == 0x2aaa) && (data==0x55))
 	{
-	  mode = MODE_STEP2;
+	  state.mode = MODE_STEP2;
 	  return;
 	}
-      mode = MODE_READ;
+      state.mode = MODE_READ;
       return;
     case MODE_STEP2:
       if (a != 0x5555)
 	{
-	  mode = MODE_READ;
+	  state.mode = MODE_READ;
 	  return;
 	}
       switch (data)
 	{
 	case 0x90:
-	  mode = MODE_AUTOSEL;
+	  state.mode = MODE_AUTOSEL;
 	  return;
 	case 0xa0:
-	  mode = MODE_PROGRAM;
+	  state.mode = MODE_PROGRAM;
 	  return;
 	case 0x80:
-	  mode = MODE_ERASE_STEP3;
+	  state.mode = MODE_ERASE_STEP3;
 	  return;
 	}
-      mode = MODE_READ;
+      state.mode = MODE_READ;
       return;
     case MODE_ERASE_STEP3:
       if ((a == 0x5555) && (data==0xaa))
 	{
-	  mode = MODE_ERASE_STEP4;
+	  state.mode = MODE_ERASE_STEP4;
 	  return;
 	}
-      mode = MODE_READ;
+      state.mode = MODE_READ;
       return;
     case MODE_ERASE_STEP4:
       if ((a == 0x2aaa) && (data==0x55))
 	{
-	  mode = MODE_ERASE_STEP5;
+	  state.mode = MODE_ERASE_STEP5;
 	  return;
 	}
-      mode = MODE_READ;
+      state.mode = MODE_READ;
       return;
     case MODE_ERASE_STEP5:
       if ((a == 0x5555) && (data==0x10))
 	{
-	  memset(Flash, 0xff, 1<<21);
-	  mode = MODE_CONFIRM_1;
+	  memset(state.Flash, 0xff, 1<<21);
+	  state.mode = MODE_CONFIRM_1;
 	  return;
 	}
       if (data==0x30)
 	{
-	  memset(&Flash[(a>>16)<<16], 0xff, 1<<16);
-	  mode = MODE_CONFIRM_1;
+	  memset(&state.Flash[(a>>16)<<16], 0xff, 1<<16);
+	  state.mode = MODE_CONFIRM_1;
 	  return;
 	}
-      mode = MODE_READ;
+      state.mode = MODE_READ;
       return;
     }
 	
 
   // we must now be in mode program...
-  Flash[a] = (u8)data;
-  mode = MODE_READ;
-}
-
-
-/**
- * Save state to a Virtual Machine State file.
- **/
-
-void CFlash::SaveState(FILE * f)
-{
-  fwrite(Flash,2*1024*1024,1,f);
-  fwrite(&mode,sizeof(int),1,f);
+  state.Flash[a] = (u8)data;
+  state.mode = MODE_READ;
 }
 
 /**
@@ -277,16 +269,6 @@ void CFlash::SaveStateF()
 }
 
 /**
- * Restore state from a Virtual Machine state file.
- **/
-
-void CFlash::RestoreState(FILE * f)
-{
-  fread(Flash,2*1024*1024,1,f);
-  fread(&mode,sizeof(int),1,f);
-}
-
-/**
  * Restore state from a flash rom file.
  **/
 
@@ -313,6 +295,82 @@ void CFlash::RestoreStateF(char * fn)
 void CFlash::RestoreStateF()
 {
   RestoreStateF(myCfg->get_text_value("rom.flash","flash.rom"));
+}
+
+static u32 flash_magic1 = 0xFF3E3FF3;
+static u32 flash_magic2 = 0x3FF3E3FF;
+
+/**
+ * Save state to a Virtual Machine State file.
+ **/
+
+int CFlash::SaveState(FILE *f)
+{
+  long ss = sizeof(state);
+  fwrite(&flash_magic1,sizeof(u32),1,f);
+  fwrite(&ss,sizeof(long),1,f);
+  fwrite(&state,sizeof(state),1,f);
+  fwrite(&flash_magic2,sizeof(u32),1,f);
+  printf("flash: %d bytes saved.\n",ss);
+  return 0;
+}
+
+/**
+ * Restore state from a Virtual Machine State file.
+ **/
+
+int CFlash::RestoreState(FILE *f)
+{
+  long ss;
+  u32 m1;
+  u32 m2;
+  size_t r;
+
+  r = fread(&m1,sizeof(u32),1,f);
+  if (r!=1)
+  {
+    printf("flash: unexpected end of file!\n");
+    return -1;
+  }
+  if (m1 != flash_magic1)
+  {
+    printf("flash: MAGIC 1 does not match!\n");
+    return -1;
+  }
+
+  fread(&ss,sizeof(long),1,f);
+  if (r!=1)
+  {
+    printf("flash: unexpected end of file!\n");
+    return -1;
+  }
+  if (ss != sizeof(state))
+  {
+    printf("flash: STRUCT SIZE does not match!\n");
+    return -1;
+  }
+
+  fread(&state,sizeof(state),1,f);
+  if (r!=1)
+  {
+    printf("flash: unexpected end of file!\n");
+    return -1;
+  }
+
+  r = fread(&m2,sizeof(u32),1,f);
+  if (r!=1)
+  {
+    printf("flash: unexpected end of file!\n");
+    return -1;
+  }
+  if (m2 != flash_magic2)
+  {
+    printf("flash: MAGIC 1 does not match!\n");
+    return -1;
+  }
+
+  printf("flash: %d bytes restored.\n",ss);
+  return 0;
 }
 
 CFlash * theSROM = 0;

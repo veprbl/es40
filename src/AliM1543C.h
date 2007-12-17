@@ -1,7 +1,7 @@
 /* ES40 emulator.
- * Copyright (C) 2007 by Camiel Vanderhoeven
+ * Copyright (C) 2007 by the ES40 Emulator Project
  *
- * Website: www.camicom.com
+ * WWW    : http://sourceforge.net/projects/es40
  * E-mail : camiel@camicom.com
  * 
  * This program is free software; you can redistribute it and/or
@@ -26,6 +26,9 @@
 /**
  * \file 
  * Contains the definitions for the emulated Ali M1543C chipset devices.
+ *
+ * X-1.21       Camiel Vanderhoeven                             17-DEC-2007
+ *      SaveState file format 2.1
  *
  * X-1.20       Brian Wheeler                                   11-DEC-2007
  *      Improved timer logic (again).
@@ -124,8 +127,8 @@
 class CAliM1543C : public CPCIDevice
 {
  public:
-  virtual void SaveState(FILE * f);
-  virtual void RestoreState(FILE * f);
+  virtual int SaveState(FILE * f);
+  virtual int RestoreState(FILE * f);
   void instant_tick();
   //	void interrupt(int number);
   virtual int DoClock();

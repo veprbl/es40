@@ -27,6 +27,9 @@
  * \file
  * Contains the definitions for the emulated Cirrus CL GD-5434 Video Card device.
  *
+ * X-1.4        Camiel Vanderhoeven                             17-DEC-2007
+ *      SaveState file format 2.1
+ *
  * X-1.3        Camiel Vabderhoeven                             11-DEC-2007
  *      Don't claim IO addresses 3d0..3d3, 3d6..3d9 and 3db..3df.
  *
@@ -59,8 +62,8 @@
 class CCirrus : public CVGA
 {
   public:
-    virtual void SaveState(FILE * f);
-    virtual void RestoreState(FILE * f);
+    virtual int SaveState(FILE * f);
+    virtual int RestoreState(FILE * f);
     virtual int DoClock();
     virtual void WriteMem_Legacy(int index, u32 address, int dsize, u32 data);
     virtual u32 ReadMem_Legacy(int index, u32 address, int dsize);
