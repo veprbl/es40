@@ -27,6 +27,9 @@
  * \file
  * Contains the definitions for the emulated Symbios SCSI controller.
  *
+ * X-1.4        Camiel Vanderhoeven                             17-DEC-2007
+ *      Added general timer.
+ *
  * X-1.3        Camiel Vanderhoeven                             17-DEC-2007
  *      SaveState file format 2.1
  *
@@ -86,6 +89,7 @@ class CSym53C895 : public CDiskController
   int do_command();
   void eval_interrupts();
   void set_interrupt(int reg, u8 interrupt);
+  void chip_reset();
 
 // The state structure contains all elements that need to be saved to the statefile.
   struct SSym53C895State {
@@ -112,6 +116,8 @@ class CSym53C895 : public CDiskController
     u8 dstat_stack;
     u8 sist0_stack;
     u8 sist1_stack;
+
+    u8 gen_timer;
 
     int phase;
 
