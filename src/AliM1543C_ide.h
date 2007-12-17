@@ -27,6 +27,9 @@
  * \file
  * Contains the definitions for the emulated Ali M1543C IDE chipset part.
  *
+ * X-1.7         Brian wheeler                                   17-DEC-2007
+ *      Delayed IDE interrupts. (NetBSD requirement)
+ *
  * X-1.6        Camiel Vanderhoeven                             17-DEC-2007
  *      SaveState file format 2.1
  *
@@ -82,6 +85,7 @@ class CAliM1543C_ide : public CDiskController
   virtual void WriteMem_Bar(int func,int bar, u32 address, int dsize, u32 data);
   virtual u32 ReadMem_Bar(int func,int bar, u32 address, int dsize);
 
+  virtual int  DoClock();
 
   CAliM1543C_ide(CConfigurator * cfg, class CSystem * c, int pcibus, int pcidev);
   virtual ~CAliM1543C_ide();
@@ -95,8 +99,8 @@ class CAliM1543C_ide : public CDiskController
   void ide_command_write(int channel, u32 address, int dsize, u32 data);
   u32 ide_control_read(int channel, u32 address);
   void ide_control_write(int channel, u32 address, u32 data);
-  u32 ide_busmaster_read(int channel, u32 address);
-  void ide_busmaster_write(int channel, u32 address, u32 data);
+  u32 ide_busmaster_read(int channel, u32 address, int dsize);
+  void ide_busmaster_write(int channel, u32 address, u32 data, int dsize);
 
   void raise_interrupt(int channel);
   void set_signature(int channel, int id);
@@ -110,6 +114,7 @@ class CAliM1543C_ide : public CDiskController
     struct {
       bool disable_irq;
       bool reset;
+      bool irq_ready;
     } ide_control[2];
 
     struct {
@@ -121,7 +126,6 @@ class CAliM1543C_ide : public CDiskController
       bool index_pulse;
       int index_pulse_count;
       u8 current_command;
-
     } ide_status[2][2];
 
     struct {
@@ -140,6 +144,12 @@ class CAliM1543C_ide : public CDiskController
     int ide_sectors[2];
     int ide_selected[2];
     u8 ide_bm_status[2];
+
+    // Bus Mastering
+    u8 busmaster[2][8];
+
+
+
   } state;
 
 //  struct disk_info ide_info[2][2];

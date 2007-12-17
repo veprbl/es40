@@ -27,6 +27,9 @@
  * \file
  * Contains the code for the emulated Ali M1543C IDE chipset part.
  *
+ * X-1.8         Brian wheeler                                   17-DEC-2007
+ *      Delayed IDE interrupts. (NetBSD requirement)
+ *
  * X-1.7        Camiel Vanderhoeven                             17-DEC-2007
  *      SaveState file format 2.1
  *
@@ -63,7 +66,7 @@
 #include "Disk.h"
 
 #ifdef DEBUG_PIC
-bool pic_messages = false;
+extern bool pic_messages;
 #endif
 
 u32 ide_cfg_data[64] = {
@@ -132,6 +135,9 @@ CAliM1543C_ide::CAliM1543C_ide(CConfigurator * cfg, CSystem * c, int pcibus, int
     FAILURE("More than one AliIDE!!\n");
   theAliIDE = this;
 
+  c->RegisterClock(this,true);
+
+
   add_function(0,ide_cfg_data, ide_cfg_mask);
 
   add_legacy_io(14, 0x1f0, 8);
@@ -150,6 +156,21 @@ CAliM1543C_ide::CAliM1543C_ide(CConfigurator * cfg, CSystem * c, int pcibus, int
 CAliM1543C_ide::~CAliM1543C_ide()
 {
 }
+
+int CAliM1543C_ide::DoClock() 
+{
+  // check for any pending interrupts from the ide drives.
+  for(int i=0;i<2;i++) {
+    if(state.ide_control[i].irq_ready) {
+      // issue the interrupt.
+      state.busmaster[i][2] |= 0x04;
+      theAli->pic_interrupt(1, 6+i);
+      state.ide_control[i].irq_ready=false;
+    }
+  }
+  return 0;
+}
+
 
 u32 CAliM1543C_ide::ReadMem_Legacy(int index, u32 address, int dsize)
 {
@@ -173,7 +194,7 @@ u32 CAliM1543C_ide::ReadMem_Legacy(int index, u32 address, int dsize)
       channel = 1;
     case 18:
     case 25:
-      return ide_busmaster_read(channel,address);
+      return ide_busmaster_read(channel,address,dsize);
     }
 
   return 0;
@@ -205,7 +226,7 @@ void CAliM1543C_ide::WriteMem_Legacy(int index, u32 address, int dsize, u32 data
       channel = 1;
     case 18:
     case 25:
-      ide_busmaster_write(channel,address, data);
+      ide_busmaster_write(channel,address, data,dsize);
       return;
     }
 }
@@ -226,9 +247,9 @@ u32 CAliM1543C_ide::ReadMem_Bar(int func, int bar, u32 address, int dsize)
       return ide_control_read(channel,address);
     case 4:
       if (address <8)
-        return ide_busmaster_read(0,address);
+        return ide_busmaster_read(0,address,dsize);
       else
-        return ide_busmaster_read(1,address-8);
+        return ide_busmaster_read(1,address-8,dsize);
     }
 
   return 0;
@@ -251,9 +272,9 @@ void CAliM1543C_ide::WriteMem_Bar(int func, int bar, u32 address, int dsize, u32
       return;
     case 4:
       if (address <8)
-        return ide_busmaster_write(0,address,data);
+        return ide_busmaster_write(0,address,data,dsize);
       else
-        return ide_busmaster_write(1,address-8,data);
+        return ide_busmaster_write(1,address-8,data,dsize);
       return;
     }
 }
@@ -351,7 +372,7 @@ void CAliM1543C_ide::ide_command_write(int index, u32 address, int dsize, u32 da
   TRC_DEV4("%%ALI-I-WRITEIDECMD: write port %d on IDE command %d: 0x%02x\n",  (u32)(address),index, data);
 
 #ifdef DEBUG_IDE
-  if (address)
+  //if (address)
     printf("%%ALI-I-WRITEIDECMD: write port %d on IDE command %d: 0x%02x\n",  (u32)(address),index, data);
 #endif
 
@@ -723,7 +744,8 @@ u32 CAliM1543C_ide::ide_control_read(int index, u32 address)
   TRC_DEV4("%%IDE-I-READCTRL: read port %d on IDE control %d: 0x%02x\n", (u32)(address), index, data);
 #ifdef DEBUG_IDE
 //  if (address!=2)
-    printf("%%IDE-I-READCTRL: read port %d on IDE control %d: 0x%02x\n", (u32)(address), index, data);
+  if(address==0) 
+    printf("%%IDE-I-READCTRL: alternate status at port %d on IDE control %d: 0x%02x\n", (u32)(address), index, data);
 #endif
   return data;
 }
@@ -808,18 +830,21 @@ void CAliM1543C_ide::set_signature(int index, int id)
  * Always returns 0.
  **/
 
-u32 CAliM1543C_ide::ide_busmaster_read(int index, u32 address)
+u32 CAliM1543C_ide::ide_busmaster_read(int index, u32 address, int dsize)
 {
   u32 data;
-
+  switch(dsize) {
+  case 8:
+    data = state.busmaster[index][address];
+    break;
+  case 32:
+    data = *(u32 *)(&state.busmaster[index][address]);
+    break;
+  default:
   data = 0;
-  if (address == 2)
-    data = state.ide_bm_status[index];
-
-  TRC_DEV4("%%IDE-I-READBUSM: read port %d on IDE bus master %d: 0x%02x\n", (u32)(address), index, data);
-//#ifdef DEBUG_IDE
+    break;
+  }
   printf("%%IDE-I-READBUSM: read port %d on IDE bus master %d: 0x%02x\n", (u32)(address), index, data);
-//#endif
   return data;
 }
 
@@ -828,23 +853,50 @@ u32 CAliM1543C_ide::ide_busmaster_read(int index, u32 address)
  * Not functional.
  **/
 
-void CAliM1543C_ide::ide_busmaster_write(int index, u32 address, u32 data)
+void CAliM1543C_ide::ide_busmaster_write(int index, u32 address, u32 data, int desize)
 {
   TRC_DEV4("%%IDE-I-WRITBUSM: write port %d on IDE bus master %d: 0x%02x\n",  (u32)(address),index, data);
 //#ifdef DEBUG_IDE
   printf("%%IDE-I-WRITBUSM: write port %d on IDE bus master %d: 0x%02x\n",  (u32)(address),index, data);
 //#endif
 
-  if (address==2)
-    state.ide_bm_status[index] &= ~data;
+  switch(address) {
+  case 0: // command register
+    // bit 3:  direction: 0=read 1=write
+    // bit 0: start/stop: 1 = start, 0 stop
+    // physical region descriptor:
+    // dword 0 = physical address
+    // dword 1 =
+    //   bit 31 = eot
+    //   bit 15-0 = count
+
+    break;
+  case 2: // status 
+    state.busmaster[index][2] = data & 0xff;
+    // bit 7 = always 0 for us
+    // bit 6 = drive 1 dma capable.
+    // bit 5 = drive 0 dma capable.
+    // bit 4,3 = reserved
+    if(data & 0x04) // interrupt 
+      state.busmaster[index][2] &= ~0x04;
+    if(data & 0x02) // error
+      state.busmaster[index][2] &= ~0x02;
+    // bit 1 = busmaster active.
+    break;
+  case 4: // descriptor table pointer register
+    printf("%%IDE-I-DPR: Write to PRD: %x.\n",(u32) data);
+    *(u32 *)(&state.busmaster[index][4]) = (u32)data;
+    break;
+  default:
+    break;
+  }
 }
 
 void CAliM1543C_ide::raise_interrupt(int index)
 {
   if (!state.ide_control[index].disable_irq) 
   {
-    state.ide_bm_status[index] |= 0x04;
-    theAli->pic_interrupt(1, 6+index);
+    state.ide_control[index].irq_ready=true;
   }
 }
 

@@ -27,6 +27,9 @@
  * \file
  * Contains code to use a RAM disk.
  *
+ * X-1.4         Brian wheeler                                   17-DEC-2007
+ *      Changed last cylinder number.
+ *
  * X-1.3        Brian Wheeler                                   16-DEC-2007
  *      Fixed case of StdAfx.h.
  *
@@ -62,8 +65,8 @@ CDiskRam::CDiskRam(CConfigurator * cfg, CDiskController * c, int idebus, int ide
   cylinders = (lba_size/sectors/heads);
 
   long chs_size = sectors*cylinders*heads;
-  if (chs_size>lba_size)
-    cylinders--;
+  if (chs_size<lba_size)
+    cylinders++;
 
   model_number=myCfg->get_text_value("model_number","ES40RAMDISK");
 

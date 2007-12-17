@@ -27,6 +27,9 @@
  * \file 
  * Contains the definitions for the emulated Ali M1543C chipset devices.
  *
+ * X-1.22        Brian wheeler                                   17-DEC-2007
+ *      Better DMA support.      
+ *
  * X-1.21       Camiel Vanderhoeven                             17-DEC-2007
  *      SaveState file format 2.1
  *
@@ -138,6 +141,7 @@ class CAliM1543C : public CPCIDevice
   CAliM1543C(CConfigurator * cfg, class CSystem * c, int pcibus, int pcidev);
   virtual ~CAliM1543C();
   void pic_interrupt(int index, int intno);
+  void pic_deassert(int index, int intno);
 
   void kbd_gen_scancode(u32 key);
 
@@ -329,6 +333,26 @@ class CAliM1543C : public CPCIDevice
     u8 pic_mask[2];
     u8 pic_asserted[2];
     u8 pic_edge_level[2];
+
+    // DMA Controller
+    struct dmaStruct {
+      bool lobyte;
+      u16 current;
+      u16 base;
+      u16 pagebase;
+      u16 count;
+    } dma_channel[8];
+
+    struct dmacontrollerStruct {
+      u8 status;
+      u8 command;
+      u8 writereq;
+      u8 mask;
+      u8 mode;
+
+    } dma_controller[2];
+
+
 
     u8 lpt_data;
     u8 lpt_control;
