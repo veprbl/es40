@@ -30,6 +30,9 @@
  * point registers, and to convert them to/from the host's native floating point 
  * format when required.
  *
+ * X-1.13       Camiel Vanderhoeven                             18-DEC-2007
+ *      Removed some messages.
+ *
  * X-1.12       Camiel Vanderhoeven                             18-DEC-2007
  *      Conversion to/from IEEE through a union on IEEE-machined.
  *
@@ -142,7 +145,6 @@ inline double s2host(u64 val)
 #if defined(FLOAT_IS_IEEE)
   if (sizeof(double)==8)
   {
-    printf("IEEE double = 8.\n");
     union {
       u64 a;
       double b;
@@ -173,9 +175,9 @@ inline double s2host(u64 val)
     }
   }
 
-//#if defined(DEBUG_FP_CONVERSION)
+#if defined(DEBUG_FP_CONVERSION)
   printf("s/t->host: %016" LL "x -> %f   \n",val,res);
-//#endif
+#endif
 
   return res;
 }
@@ -365,7 +367,6 @@ inline u64 host2s(double val)
 #if defined(FLOAT_IS_IEEE)
   if (sizeof(float)==4)
   {
-    printf("IEEE float = 4.\n");
     union {
       u32 a;
       float b;
@@ -417,10 +418,9 @@ inline u64 host2s(double val)
       (((u64)e << 52) & X64(7ff0000000000000)) |
       (f              & X64(000fffffe0000000));
 
-//#if defined(DEBUG_FP_CONVERSION)
+#if defined(DEBUG_FP_CONVERSION)
   printf("host->s: %f -> %016" LL "x   \n",val,f);
-//#endif
-
+#endif
 
   return f;
 }
@@ -436,7 +436,6 @@ inline u64 host2t(double val)
 #if defined(FLOAT_IS_IEEE)
   if (sizeof(double)==8)
   {
-    printf("IEEE double = 8.\n");
     union {
       u64 a;
       double b;
@@ -484,9 +483,9 @@ inline u64 host2t(double val)
         (f              & X64(000fffffffffffff));
   }
 
-//#if defined(DEBUG_FP_CONVERSION)
+#if defined(DEBUG_FP_CONVERSION)
   printf("host->t: %f -> %016" LL "x   \n",val,f);
-//#endif
+#endif
 
   return f;
 }
