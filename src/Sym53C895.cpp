@@ -27,6 +27,9 @@
  * \file
  * Contains the code for the emulated Symbios SCSI controller.
  *
+ * X-1.8         Camiel Vanderhoeven                             18-DEC-2007
+ *      Fixed silly mis-interpretation of "add-with-carry".
+ *
  * X-1.7         Camiel Vanderhoeven                             18-DEC-2007
  *      Byte-sized transfers for SCSI controller.
  *
@@ -1276,6 +1279,8 @@ int CSym53C895::DoClock()
             }
           }
 
+          u16 tmp16;
+
           switch(oper)
           {
           case 0:
@@ -1283,7 +1288,9 @@ int CSym53C895::DoClock()
             //printf("SYM: %02x ",imm_data);
             break;
           case 1:
-            op_data <<= 1;
+            tmp16 = (op_data << 1) + (state.alu.carry?1:0);
+            state.alu.carry = (tmp16>>8) & 1;
+            op_data = tmp16 & 0xff;
             //printf("<< 1 = %02x ",op_data);
             break;
           case 2:
@@ -1299,20 +1306,22 @@ int CSym53C895::DoClock()
             //printf("& %02x = %02x ",imm_data,op_data);
             break;
           case 5:
-            op_data >>= 1;
+            tmp16 = (op_data >> 1) + (state.alu.carry?0x80:0x00);
+            state.alu.carry = op_data & 1;
+            op_data = tmp16 & 0xff;
             //printf(">> 1 = %02x ",op_data);
             break;
           case 6:
-            op_data += imm_data;
-            //printf("+ %02x = %02x ",imm_data,op_data);
+            tmp16 = op_data + imm_data;
+            state.alu.carry = (tmp16>0xff);
+            op_data = tmp16 & 0xff;
+            //printf("+ %02x = %02x (carry %d) ",imm_data,op_data,state.alu.carry);
             break;
           case 7:
-            if ((u16)op_data + (u16)imm_data > 0xff)
-              state.alu.carry = true;
-            else
-              state.alu.carry = false;
-            op_data += imm_data;
-            //printf("+ %02x = %02x (carry %d) ",imm_data,op_data,state.alu.carry);
+            tmp16 = op_data + imm_data + (state.alu.carry?1:0);
+            state.alu.carry = (tmp16>0xff);
+            op_data = tmp16 & 0xff;
+            //printf("+ %02x (w/carry) = %02x (carry %d) ",imm_data,op_data,state.alu.carry);
             break;
           }
 
@@ -2142,7 +2151,7 @@ int CSym53C895::do_command()
     PT.dato_to_disk = true;
 
 	printf("SYM.%d WRITE  ofs=%d size=%d\n", GET_DEST(), ofs, retlen);
-    getchar();
+    //getchar();
 	break;
 
   case SCSICMD_SYNCHRONIZE_CACHE:
