@@ -27,6 +27,9 @@
  * \file
  * Contains the code for the emulated Symbios SCSI controller.
  *
+ * X-1.7         Camiel Vanderhoeven                             18-DEC-2007
+ *      Byte-sized transfers for SCSI controller.
+ *
  * X-1.6        Camiel Vanderhoeven                             18-DEC-2007
  *      Removed some messages.
  *
@@ -1055,7 +1058,7 @@ int CSym53C895::DoClock()
         bool table_indirect = (R8(DCMD)>>4) & 1;
         int opcode = (R8(DCMD)>>3) & 1;
         int scsi_phase = (R8(DCMD)>>0) & 7;
-        //printf("SYM: INS = Block Move (i %d, t %d, opc %d, phase %d\n",indirect,table_indirect,opcode,scsi_phase);
+        printf("SYM: INS = Block Move (i %d, t %d, opc %d, phase %d\n",indirect,table_indirect,opcode,scsi_phase);
 
         if (state.phase < 0)
         {
@@ -1065,7 +1068,6 @@ int CSym53C895::DoClock()
           return 0;
         }
 
-        R32(DNAD) = R32(DSPS);
         if (state.phase == scsi_phase)
         {
           //printf("SYM: Ready for transfer.\n");
@@ -1078,12 +1080,13 @@ int CSym53C895::DoClock()
           {
             u32 add = R32(DSA) + sext_32(R32(DSPS),24);
 
+            printf("SYM: Reading table at DSA(%08x)+DSPS(%08x) = %08x.\n",R32(DSA),R32(DSPS),add);
+
             cmda0 = cSystem->PCI_Phys(myPCIBus,add);
             cmda1 = cSystem->PCI_Phys(myPCIBus,add+4);
-            //printf("SYM: Reading table from system at %" LL "x, % "LL "x\n",cmda0,cmda1);
-            count = cSystem->ReadMem(cmda0,32);
+            count = cSystem->ReadMem(cmda0,32) & 0x00ffffff;
             start = cSystem->ReadMem(cmda1,32);
-            //printf("SYM: Start/count %x, %x\n",start,count);
+            printf("SYM: Start/count %x, %x\n",start,count);
           }
           else if (indirect)
           {
@@ -1094,29 +1097,43 @@ int CSym53C895::DoClock()
           {
             start = R32(DSPS);
             count = GET_DBC();
+            printf("SYM: Start/count %x, %x\n",start,count);
           }
           R32(DNAD) = start;
+          SET_DBC(count); // page 5-32
+          if (count==0)
+          {
+            printf("SYM: Count equals zero!\n");
+            set_interrupt(R_DSTAT,R_DSTAT_IID); // page 5-32
+            return 0;
+          }
           if (state.phase == 0 && PT.dato_to_disk)
           {
             printf("SYM.%d PHASE %d: write %d bytes (%d blocks) to disk.\n",GET_DEST(),state.phase,count,count/512);
-            if (count &511)
-              exit(1);
+            if (count>PT.dato_len)
+            {
+              printf("SYM: attempt to write more bytes than expected.\n");
+              count = PT.dato_len;
+            }
             cmda0 = cSystem->PCI_Phys(myPCIBus,R32(DNAD));
             void * dptr = cSystem->PtrToMem(cmda0);
-            PTD->write_blocks(dptr,count/512);
-            PT.dato_len -= count/512;
+            PTD->write_bytes(dptr,count);
+            PT.dato_len -= count;
             R32(DNAD) +=count;
+
+            if (!PT.dato_len)
+              end_xfer();
           }
           else if (state.phase == 1 && PT.dati_off_disk)
           {
             printf("SYM.%d PHASE %d: read %d bytes (%d blocks) from disk.\n",GET_DEST(),state.phase,count,count/512);
-            if (count &511)
-              exit(1);
             cmda0 = cSystem->PCI_Phys(myPCIBus,R32(DNAD));
             void * dptr = cSystem->PtrToMem(cmda0);
-            PTD->read_blocks(dptr,count/512);
-            PT.dati_len -= count/512;
+            PTD->read_bytes(dptr,count);
+            PT.dati_len -= count;
             R32(DNAD) +=count;
+            if (!PT.dati_len)
+              end_xfer();
           }
           else
           {
@@ -1146,8 +1163,8 @@ int CSym53C895::DoClock()
               }
             }
             printf("\n");
+            end_xfer();
           }
-          end_xfer();
           return 0;
         }
       }
@@ -1475,8 +1492,19 @@ int CSym53C895::DoClock()
         }
         else
         {
-          printf("SYM: Memory Move.\n");
-          return 1;
+          // memory move
+          cmda0 = cSystem->PCI_Phys(myPCIBus, R32(DSP));
+          R32(DSP) += 4;
+          u32 temp_shadow = cSystem->ReadMem(cmda0,32);
+          printf("SYM: Memory Move %06x bytes from %08x to %08x.\n",GET_DBC(),R32(DSPS),temp_shadow);
+          cmda0 = cSystem->PCI_Phys(myPCIBus, R32(DSPS));
+          cmda1 = cSystem->PCI_Phys(myPCIBus, temp_shadow);
+
+          int num_bytes = GET_DBC();
+          while(num_bytes--)
+            cSystem->WriteMem(cmda1++,8,cSystem->ReadMem(cmda0++,8));
+          
+          return 0;
         }
       }
       break;
@@ -1610,7 +1638,7 @@ void CSym53C895::end_xfer()
 
   case 2: // command;
     res = do_command();
-    if (res == 2)
+    if (res == 2 || PT.dato_to_disk)
       newphase = 0; // data out
     else if (PT.dati_len)
       newphase = 1; // data in
@@ -2053,10 +2081,68 @@ int CSym53C895::do_command()
 
 	/*  Return data:  */
     PTD->seek_block(ofs);
-    PT.dati_len = retlen;
+    PT.dati_len = retlen * 512;
     PT.dati_off_disk = true;
 
 	printf("SYM.%d READ  ofs=%d size=%d\n", GET_DEST(), ofs, retlen);
+    //getchar();
+	break;
+
+  case SCSICMD_WRITE:
+  case SCSICMD_WRITE_10:
+    printf("SYM.%d: WRITE.\n",GET_DEST());
+    if (PT.cmd[0] == SCSICMD_WRITE)
+    {
+      if (PT.cmd_len != 6)
+	    printf("Weird cmd_len=%d.\n", PT.cmd_len);
+	  /*
+	   *  bits 4..0 of cmd[1], and cmd[2] and cmd[3]
+	   *  hold the logical block address.
+	   *
+	   *  cmd[4] holds the number of logical blocks
+	   *  to transfer. (Special case if the value is
+	   *  0, actually means 256.)
+	   */
+	  ofs = ((PT.cmd[1] & 0x1f) << 16) + (PT.cmd[2] << 8) + PT.cmd[3];
+	  retlen = PT.cmd[4];
+	  if (retlen == 0)
+		retlen = 256;
+	} 
+    else 
+    {
+      if (PT.cmd_len != 10)
+	    printf("Weird cmd_len=%d.\n", PT.cmd_len);
+	  /*
+	   *  cmd[2..5] hold the logical block address.
+	   *  cmd[7..8] holds the number of logical
+	   *  blocks to transfer. (NOTE: If the value is
+	   *  0, this means 0, not 65536. :-)
+	   */
+	  ofs = (PT.cmd[2] << 24) + (PT.cmd[3] << 16) + (PT.cmd[4] << 8) + PT.cmd[5];
+      retlen = (PT.cmd[7] << 8) + PT.cmd[8];
+	}
+
+    PT.stat_len = 1;
+    PT.stat[0] = 0;
+    PT.stat_ptr = 0;
+    PT.msgi_len = 1;
+    PT.msgi[0] = 0;
+    PT.msgi_ptr = 0;
+
+    /* Within bounds? */
+    if ((ofs+retlen) > PTD->get_lba_size())
+    {
+      PT.stat[0] = 0x02; // check condition
+      break;
+    }
+
+	/*  Return data:  */
+    PTD->seek_block(ofs);
+    PT.dato_len = retlen * 512;
+    PT.dato_to_disk = true;
+
+	printf("SYM.%d WRITE  ofs=%d size=%d\n", GET_DEST(), ofs, retlen);
+    getchar();
 	break;
 
   case SCSICMD_SYNCHRONIZE_CACHE:

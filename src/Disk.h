@@ -27,6 +27,9 @@
  * \file
  * Contains definitions for the disk base class.
  *
+ * X-1.2         Camiel Vanderhoeven                             18-DEC-2007
+ *      Byte-sized transfers for SCSI controller.
+ *
  * X-1.1        Camiel Vanderhoeven                             12-DEC-2007
  *      Initial version in CVS.
  **/
@@ -80,7 +83,6 @@ protected:
 
   long lba_size; 
   long byte_size;
-  long lba_pos;
   long byte_pos;
   long cylinders;
   long heads;

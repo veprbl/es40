@@ -27,6 +27,9 @@
  * \file
  * Contains code to use a RAM disk.
  *
+ * X-1.5         Camiel Vanderhoeven                             18-DEC-2007
+ *      Byte-sized transfers for SCSI controller.
+ *
  * X-1.4         Brian wheeler                                   17-DEC-2007
  *      Changed last cylinder number.
  *
@@ -57,7 +60,6 @@ CDiskRam::CDiskRam(CConfigurator * cfg, CDiskController * c, int idebus, int ide
     exit(1);
   }
 
-  lba_pos = 0;
   byte_pos = 0;
 
   sectors = 32;
@@ -91,20 +93,20 @@ bool CDiskRam::seek_block(long lba)
     exit(1);
   }
 
-  lba_pos = lba;
+  byte_pos = lba*512;
   return true;
 }
 
 size_t CDiskRam::read_blocks(void *dest, size_t blocks)
 {
-  if (lba_pos >=lba_size)
+  if (byte_pos >=byte_size)
     return 0;
 
-  while (lba_pos + blocks >= lba_size)
+  while (byte_pos + (blocks*512) >= byte_size)
     blocks--;
 
-  memcpy(dest,&(((char*)ramdisk)[lba_pos*512]),blocks);
-  lba_pos += blocks;
+  memcpy(dest,&(((char*)ramdisk)[byte_pos]),blocks*512);
+  byte_pos += blocks*512;
   return blocks;
 }
 
@@ -113,14 +115,14 @@ size_t CDiskRam::write_blocks(void * src, size_t blocks)
   if (read_only)
     return 0;
 
-  if (lba_pos >=lba_size)
+  if (byte_pos >=byte_size)
     return 0;
 
-  while (lba_pos + blocks >= lba_size)
+  while (byte_pos + (blocks*512) >= byte_size)
     blocks--;
 
-  memcpy(&(((char*)ramdisk)[lba_pos*512]),src,blocks);
-  lba_pos += blocks;
+  memcpy(&(((char*)ramdisk)[byte_pos]),src,blocks*512);
+  byte_pos += blocks*512;
   return blocks;
 
 }

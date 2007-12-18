@@ -27,6 +27,9 @@
  * \file
  * Contains code to use a file as a disk image.
  *
+ * X-1.4         Camiel Vanderhoeven                             18-DEC-2007
+ *      Byte-sized transfers for SCSI controller.
+ *
  * X-1.3         Brian wheeler                                   17-DEC-2007
  *      Changed last cylinder number.
  *
@@ -66,7 +69,7 @@ CDiskFile::CDiskFile(CConfigurator * cfg, CDiskController * c, int idebus, int i
   lba_size=ftell(handle)/512;
   byte_size = lba_size * 512;
   fseek(handle,0,0);
-  lba_pos = 0;
+  byte_pos = ftell(handle);
 
   sectors = 32;
   heads = 8;
@@ -94,8 +97,8 @@ bool CDiskFile::seek_block(long lba)
   }
 
   fseek(handle,lba*512,0);
+  byte_pos = ftell(handle);
 
-  lba_pos = lba;
   return true;
 }
 
@@ -103,7 +106,7 @@ size_t CDiskFile::read_blocks(void *dest, size_t blocks)
 {
   size_t r;
   r = fread(dest,512,blocks,handle);
-  lba_pos += r;
+  byte_pos = ftell(handle);
   return r;
 }
 
@@ -114,7 +117,7 @@ size_t CDiskFile::write_blocks(void * src, size_t blocks)
 
   size_t r;
   r = fwrite(src,512,blocks,handle);
-  lba_pos += r;
+  byte_pos = ftell(handle);
   return r;
 }
 
@@ -127,8 +130,8 @@ bool CDiskFile::seek_byte(long byte)
   }
 
   fseek(handle,byte,0);
+  byte_pos = ftell(handle);
 
-  byte_pos = byte;
   return true;
 }
 
@@ -136,7 +139,7 @@ size_t CDiskFile::read_bytes(void *dest, size_t bytes)
 {
   size_t r;
   r = fread(dest,1,bytes,handle);
-  byte_pos += r;
+  byte_pos = ftell(handle);
   return r;
 }
 
@@ -147,6 +150,6 @@ size_t CDiskFile::write_bytes(void * src, size_t bytes)
 
   size_t r;
   r = fwrite(src,1,bytes,handle);
-  byte_pos += r;
+  byte_pos = ftell(handle);
   return r;
 }
