@@ -27,6 +27,9 @@
  * \file
  * Contains the code for the emulated Symbios SCSI controller.
  *
+ * X-1.5        Camiel Vanderhoeven                             18-DEC-2007
+ *      Selection timeout occurs after the phase is checked the first time.
+ *
  * X-1.4        Camiel Vanderhoeven                             17-DEC-2007
  *      Added general timer.
  *
@@ -540,7 +543,7 @@ void CSym53C895::WriteMem_Bar(int func,int bar, u32 address, int dsize, u32 data
           break;
         case R_STIME1:  // 49
           WRM_R8(STIME1,(u8)data);
-          state.gen_timer = (R8(STIME1) & R_STIME1_GEN) * 20;
+          state.gen_timer = (R8(STIME1) & R_STIME1_GEN) * 30;
           break;
         case R_STEST1:  // 4D
           WRM_R8(STEST1,(u8)data);
@@ -591,13 +594,6 @@ void CSym53C895::WriteMem_Bar(int func,int bar, u32 address, int dsize, u32 data
       }
       break;
   }
-
-  if (R8(STEST4)==0)
-  {
-    printf("STEST4 0 after write 8 bits to unknown memory at %02x with %08x.\n",address,data);
-    getchar();
-  }
-
 }
 
 u32 CSym53C895::ReadMem_Bar(int func,int bar, u32 address, int dsize)
@@ -814,6 +810,8 @@ void CSym53C895::write_b_scntl3(u8 value)
 void CSym53C895::write_b_istat(u8 value)
 {
   bool old_srst = TB_R8(ISTAT,SRST);
+  bool old_sem  = TB_R8(ISTAT,SEM);
+  bool old_sigp = TB_R8(ISTAT,SIGP);
 
   WRMW1C_R8(ISTAT, value);
 
@@ -828,6 +826,12 @@ void CSym53C895::write_b_istat(u8 value)
     printf("SYM: Resetting on request.\n");
     chip_reset();
   }
+
+  if (TB_R8(ISTAT,SEM) && !old_sem)
+    printf("SYM: SEM %s.\n",old_sem?"reset":"set");
+
+  if (TB_R8(ISTAT,SIGP) && !old_sigp)
+    printf("SYM: SIGP %s.\n",old_sigp?"reset":"set");
 
   if (TB_R8(ISTAT,SIGP))
   {
@@ -848,6 +852,7 @@ u8 CSym53C895::read_b_ctest2()
   SB_R8(CTEST2, CM,   pci_state.config_data[0][5]!=0);
   SB_R8(CTEST2, SIGP, TB_R8(ISTAT, SIGP));
   SB_R8(ISTAT,  SIGP, false);
+  printf("SYM: SIGP cleared by CTEST2 read.\n");
 
   return R8(CTEST2);
 }
@@ -1043,6 +1048,14 @@ int CSym53C895::DoClock()
         int scsi_phase = (R8(DCMD)>>0) & 7;
         printf("SYM: INS = Block Move (i %d, t %d, opc %d, phase %d\n",indirect,table_indirect,opcode,scsi_phase);
 
+        if (state.phase < 0)
+        {
+          // selection timeout...?
+          printf("Phase check... selection time-out!\n");
+          set_interrupt(R_SIST1,R_SIST1_STO); // select time-out
+          return 0;
+        }
+
         R32(DNAD) = R32(DSPS);
         if (state.phase == scsi_phase)
         {
@@ -1149,6 +1162,15 @@ int CSym53C895::DoClock()
 
           printf("SYM: INS = I/O (opc %d, r %d, t %d, a %d, dest %d, sc %d%d%d%d\n"
             ,opcode,relative,table_indirect,atn,destination,sc_carry,sc_target,sc_ack,sc_atn);
+
+          if (table_indirect)
+          {
+            u32 io_addr = R32(DSA) + sext_32(GET_DBC(),24);
+            u64 io_pa = cSystem->PCI_Phys(myPCIBus,io_addr);
+            u32 io_struc = cSystem->ReadMem(io_pa,32);
+            destination = (io_struc>>16) & 0x0f;
+            printf("SYM: table indirect. io_struct = %08x, new dest = %d.\n",io_struc,destination);
+          }
 
           switch(opcode)
           {
@@ -1320,6 +1342,13 @@ int CSym53C895::DoClock()
           if (cmp_phase)
           {
             printf("(phase %s %d)",jump_if?"==":"!=", scsi_phase);
+            if (state.phase < 0)
+            {
+              // selection timeout...?
+              printf("Phase check... selection time-out!\n");
+              set_interrupt(R_SIST1,R_SIST1_STO); // select time-out
+              return 0;
+            }
             if ((state.phase==scsi_phase) != jump_if)
               do_it = false;
           }
@@ -1457,11 +1486,11 @@ void CSym53C895::select_target(int target)
     PT.stat_len = 0;
     PT.dati_off_disk = false;
     PT.dato_to_disk = false;
-    PT.msg_err = false;
+    PT.lun_selected = false;
   }
   else
   {
-    set_interrupt(R_SIST1,R_SIST1_STO); // select time-out
+//    set_interrupt(R_SIST1,R_SIST1_STO); // select time-out
     state.phase = -1; // bus free
   }
 }
@@ -1483,8 +1512,8 @@ void CSym53C895::byte_to_target(u8 value)
     if (PT.msgo_len==0 && value&7)
     {
       // LUN...
-      printf("SYM: LUN selected; aborting...\n");
-      PT.msg_err = true;
+      printf("SYM: LUN selected...\n");
+      PT.lun_selected = true;
     }
     PT.msgo[PT.msgo_len++] = value;
     break;
@@ -1561,10 +1590,7 @@ void CSym53C895::end_xfer()
   case 6: // msg out
     PT.cmd_len = 0;
     PT.dato_len = 0;
-    if (PT.msg_err)
-      newphase = -1;
-    else
-      newphase = 2; // command
+    newphase = 2; // command
     break;
 
   case 2: // command;
@@ -1666,6 +1692,19 @@ int CSym53C895::do_command()
   if (PT.cmd_len<1)
     return 0;
 
+  if (PT.cmd[1] & 0xe0)
+  {
+    printf("SYM: LUN selected...\n");
+    PT.lun_selected = true;
+  }
+
+  if (PT.lun_selected && PT.cmd[0] != SCSICMD_INQUIRY && PT.cmd[0] != SCSICMD_REQUEST_SENSE)
+  {
+    printf("SYM: LUN not supported!\n");
+    printf(">");
+    getchar();
+  }
+
   switch(PT.cmd[0])
   {
   case SCSICMD_TEST_UNIT_READY:
@@ -1674,9 +1713,10 @@ int CSym53C895::do_command()
 	  printf("Weird cmd_len=%d.\n", PT.cmd_len);
 	if (PT.cmd[1] != 0x00) 
     {
-      printf("SYM: Don't know how to handle INQUIRY with cmd[1]=0x%02x.\n", PT.cmd[1]);
+      printf("SYM: Don't know how to handle TEST UNIT READY with cmd[1]=0x%02x.\n", PT.cmd[1]);
       break;
 	}
+    
     PT.stat_len = 1;
     PT.stat[0] = 0;
     PT.stat_ptr = 0;
@@ -1686,48 +1726,79 @@ int CSym53C895::do_command()
     break;
 
   case SCSICMD_INQUIRY:
-    printf("SYM.%d: INQUIRY.\n",GET_DEST());
-    if (PT.cmd_len != 6)
-	  printf("Weird cmd_len=%d.\n", PT.cmd_len);
-	if (PT.cmd[1] != 0x00) 
     {
-      printf("SYM: Don't know how to handle INQUIRY with cmd[1]=0x%02x.\n", PT.cmd[1]);
-      break;
-	}
+      printf("SYM.%d: INQUIRY.\n",GET_DEST());
+      if (PT.cmd_len != 6)
+	    printf("Weird cmd_len=%d.\n", PT.cmd_len);
+	  if ((PT.cmd[1] & 0x1e) != 0x00) 
+      {
+        printf("SYM: Don't know how to handle INQUIRY with cmd[1]=0x%02x.\n", PT.cmd[1]);
+        printf(">");
+        getchar();
+        break;
+	  }
+      u8 qual_dev = PT.lun_selected ? 0x7F : (PTD->cdrom() ? 0x05 : 0x00);
 
-    /*  Return values:  */
-    retlen = PT.cmd[4];
-    if (retlen < 36) {
-	    printf("SYM: SCSI inquiry len=%i, <36!\n", retlen);
-	    retlen = 36;
+      retlen = PT.cmd[4];
+      PT.dati[0] = qual_dev; // device type
+
+      if (PT.cmd[1] & 0x01)
+      {
+        // Vital Product Data
+        if (PT.cmd[2] == 0x80)
+        {
+          char serial_number[20];
+          sprintf(serial_number,"SRL%04x",GET_DEST()*0x0101);
+          // unit serial number page
+          PT.dati[1] = 0x80; // page code: 0x80
+          PT.dati[2] = 0x00; // reserved
+          PT.dati[3] = strlen(serial_number);
+          memcpy(&PT.dati[4],serial_number,strlen(serial_number));
+        }
+        else
+        {
+          printf("Don't know format for vital product data page %02x!!\n");
+          printf(">");
+          getchar();
+          PT.dati[1] = PT.cmd[2]; // page code
+          PT.dati[2] = 0x00; // reserved
+        }
+      }
+      else
+      {
+        /*  Return values:  */
+        if (retlen < 36) {
+	        printf("SYM: SCSI inquiry len=%i, <36!\n", retlen);
+	        retlen = 36;
+        }
+        PT.dati[1] = 0; // not removable;
+        PT.dati[2] = 0x02; // ANSI scsi 2
+        PT.dati[3] = 0x02; // response format
+        PT.dati[4] = 32; // additional length
+        PT.dati[5] = 0; // reserved
+        PT.dati[6] = 0x04; // reserved
+        PT.dati[7] = 0x60; // capabilities
+    //                        vendor  model           rev.
+        memcpy(&(PT.dati[8]),"DEC     RZ58     (C) DEC2000",28);
+
+        /*  Some data is different for CD-ROM drives:  */
+        if (PTD->cdrom()) {
+          PT.dati[1] = 0x80;  /*  0x80 = removable  */
+    //                           vendor  model           rev.
+	      memcpy(&(PT.dati[8]), "DEC     RRD42   (C) DEC 4.5d",28);
+        }
+      }
+
+      PT.dati_ptr = 0;
+      PT.dati_len = retlen;
+
+      PT.stat_len = 1;
+      PT.stat[0] = 0;
+      PT.stat_ptr = 0;
+      PT.msgi_len = 1;
+      PT.msgi[0] = 0;
+      PT.msgi_ptr = 0;
     }
-    PT.dati[0] = 0; // hard disk
-    PT.dati[1] = 0; // not removable;
-    PT.dati[2] = 0x02; // ANSI scsi 2
-    PT.dati[3] = 0x02; // response format
-    PT.dati[4] = 32; // additional length
-    PT.dati[5] = 0; // reserved
-    PT.dati[6] = 0x04; // reserved
-    PT.dati[7] = 0x60; // capabilities
-//                        vendor  model           rev.
-    memcpy(&(PT.dati[8]),"DEC     RZ58     (C) DEC2000",28);
-    PT.dati_ptr = 0;
-    PT.dati_len = retlen;
-
-    /*  Some data is different for CD-ROM drives:  */
-    if (PTD->cdrom()) {
-      PT.dati[0] = 0x05;  /*  0x05 = CD-ROM  */
-      PT.dati[1] = 0x80;  /*  0x80 = removable  */
-//                           vendor  model           rev.
-	  memcpy(&(PT.dati[8]), "DEC     RRD42   (C) DEC 4.5d",28);
-    }
-
-    PT.stat_len = 1;
-    PT.stat[0] = 0;
-    PT.stat_ptr = 0;
-    PT.msgi_len = 1;
-    PT.msgi[0] = 0;
-    PT.msgi_ptr = 0;
     break;
 
   case SCSICMD_MODE_SENSE:
@@ -1848,6 +1919,23 @@ int CSym53C895::do_command()
 	}
 	break;
 
+  case SCSICMD_PREVENT_ALLOW_REMOVE:
+    if (PT.cmd_len != 6)
+	  printf("Weird cmd_len=%d.\n", PT.cmd_len);
+
+    if (PT.cmd[4] & 1)
+      printf("SYM.%d: PREVENT MEDIA REMOVAL.\n",GET_DEST());
+    else
+      printf("SYM.%d: ALLOW MEDIA REMOVAL.\n",GET_DEST());
+    
+    PT.stat_len = 1;
+    PT.stat[0] = 0;
+    PT.stat_ptr = 0;
+    PT.msgi_len = 1;
+    PT.msgi[0] = 0;
+    PT.msgi_ptr = 0;
+    break;
+
   case SCSICMD_MODE_SELECT:
     // get data out first...
     if (PT.dato_len==0)
@@ -1955,11 +2043,65 @@ int CSym53C895::do_command()
     PT.dati_off_disk = true;
 
 	printf("SYM.%d READ  ofs=%d size=%d\n", GET_DEST(), ofs, retlen);
-
 	break;
+
+  case SCSICMD_SYNCHRONIZE_CACHE:
+    printf("SYM.%d: SYNCHRONIZE CACHE.\n",GET_DEST());
+    if (PT.cmd_len != 10)
+	  printf("Weird cmd_len=%d.\n", PT.cmd_len);
+    
+    PT.stat_len = 1;
+    PT.stat[0] = 0;
+    PT.stat_ptr = 0;
+    PT.msgi_len = 1;
+    PT.msgi[0] = 0;
+    PT.msgi_ptr = 0;
+    break;
+
+  case SCSICDROM_READ_TOC:
+    printf("SYM.%d: CDROM READ TOC.\n",GET_DEST());
+    if (PT.cmd_len != 10)
+	  printf("Weird cmd_len=%d.\n", PT.cmd_len);
+
+    retlen = PT.cmd[7]*256 + PT.cmd[8];
+
+    PT.dati_len = retlen;
+    PT.dati_ptr = 0;
+    retlen -=2;
+    if (retlen>10) 
+      retlen = 10; 
+    else 
+      retlen = 2;
+    
+    PT.dati[0] = (retlen>>8) & 0xff;
+    PT.dati[1] = (retlen>>0) & 0xff;
+    PT.dati[2] = 1; // first track
+    PT.dati[3] = 1; // second track
+
+    if (retlen==10)
+    {
+      PT.dati[4] = 0;
+      PT.dati[2] = PT.cmd[6];
+      if (PT.cmd[6]==1)
+        printf("SYM%d: Don't know how to return info on CDROM track %02x.\n",GET_DEST(),PT.cmd[6]);
+      else if (PT.cmd[6] == 0xAA)
+        printf("SYM%d: Don't know how to return info on CDROM leadout track %02x.\n",GET_DEST(),PT.cmd[6]);
+      else
+        printf("SYM%d: Unknown CDROM track %02x.\n",GET_DEST(),PT.cmd[6]);
+    }
+    
+    PT.stat_len = 1;
+    PT.stat[0] = 0;
+    PT.stat_ptr = 0;
+    PT.msgi_len = 1;
+    PT.msgi[0] = 0;
+    PT.msgi_ptr = 0;
+    break;
 
   default:
     printf("SYM: Unknown SCSI command 0x%02x.\n",PT.cmd[0]);
+    printf(">");
+    getchar();
     exit(1);
 
   }

@@ -27,6 +27,9 @@
  * \file
  * Contains the definitions for the emulated Symbios SCSI controller.
  *
+ * X-1.5        Camiel Vanderhoeven                             18-DEC-2007
+ *      Selection timeout occurs after the phase is checked the first time.
+ *
  * X-1.4        Camiel Vanderhoeven                             17-DEC-2007
  *      Added general timer.
  *
@@ -117,7 +120,7 @@ class CSym53C895 : public CDiskController
     u8 sist0_stack;
     u8 sist1_stack;
 
-    u8 gen_timer;
+    long gen_timer;
 
     int phase;
 
@@ -131,7 +134,7 @@ class CSym53C895 : public CDiskController
       u8 msgo[10];
       int msgo_len;
 
-      bool msg_err;
+      bool lun_selected;
 
       // cmd: Command phase 
       u8 cmd[20];
