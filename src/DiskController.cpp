@@ -27,6 +27,9 @@
  * \file
  * Contains definitions for the disk controller base class.
  *
+ * X-1.6        Camiel Vanderhoeven                             18-DEC-2007
+ *      Initialize pointers to 0 in constructor. (doh!)
+ *
  * X-1.5        Camiel Vanderhoeven                             17-DEC-2007
  *      Removed excessive whitespace.
  *
@@ -55,6 +58,11 @@ CDiskController::CDiskController(CConfigurator * cfg, CSystem * c, int pcibus, i
   num_dev = num_devices;
 
   disks = (CDisk**) malloc(num_bus*num_dev*sizeof(void*));
+
+  for (i=0;i<num_bus*num_dev;i++) 
+  {
+    disks[i] = 0;
+  }
 }
 
 CDiskController::~CDiskController(void)
