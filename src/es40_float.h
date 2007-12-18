@@ -30,6 +30,9 @@
  * point registers, and to convert them to/from the host's native floating point 
  * format when required.
  *
+ * X-1.12       Camiel Vanderhoeven                             18-DEC-2007
+ *      Conversion to/from IEEE through a union on IEEE-machined.
+ *
  * X-1.11       Camiel Vanderhoeven                             10-NOV-2007
  *      Corrected IEEE conversion problem; made really sure no endless 
  *      loops can occur in any of the host2xxx conversions.
@@ -72,6 +75,8 @@
 
 //#define DEBUG_FP_CONVERSION 1
 //#define DEBUG_FP_LOADSTORE 1
+
+#define FLOAT_IS_IEEE 1
 
 /**
  * VAX (G or F) floating point to host conversion.
@@ -132,28 +137,45 @@ inline double d2host(u64 val)
 
 inline double s2host(u64 val)
 {
-  int s = (val & X64(8000000000000000))?1:0;
-  int e = (int)((val & X64(7ff0000000000000))>>52);
-  s64 f = (val & X64(000fffffffffffff));
   double res;
 
-  if (e==2047) {
-    if (f)
-      res = (s?-0.0:0.0) / 0.0;	// NaN
-    else
-      res = (s?-1.0:1.0) / 0.0;	// +/- Inf
-  } else if (e==0) {
-    if (f)
-      res = (s?-1.0:1.0) * ldexp((double)f / (double)((s64)X64(10000000000000)), -1022);
-    else
-      res = (s?-1.0:1.0) * 0.0;
-  } else {
-      res = (s?-1.0:1.0) * ldexp (1.0 + ((double)f / (double)((s64)X64(0010000000000000))), e-1023);
+#if defined(FLOAT_IS_IEEE)
+  if (sizeof(double)==8)
+  {
+    printf("IEEE double = 8.\n");
+    union {
+      u64 a;
+      double b;
+    } f_ieee;
+    f_ieee.a = val;
+    res = f_ieee.b;
+  }
+  else
+#endif
+  {
+    int s = (val & X64(8000000000000000))?1:0;
+    int e = (int)((val & X64(7ff0000000000000))>>52);
+    s64 f = (val & X64(000fffffffffffff));
+    double res;
+
+    if (e==2047) {
+      if (f)
+        res = (s?-0.0:0.0) / 0.0;	// NaN
+      else
+        res = (s?-1.0:1.0) / 0.0;	// +/- Inf
+    } else if (e==0) {
+      if (f)
+        res = (s?-1.0:1.0) * ldexp((double)f / (double)((s64)X64(10000000000000)), -1022);
+      else
+        res = (s?-1.0:1.0) * 0.0;
+    } else {
+        res = (s?-1.0:1.0) * ldexp (1.0 + ((double)f / (double)((s64)X64(0010000000000000))), e-1023);
+    }
   }
 
-#if defined(DEBUG_FP_CONVERSION)
+//#if defined(DEBUG_FP_CONVERSION)
   printf("s/t->host: %016" LL "x -> %f   \n",val,res);
-#endif
+//#endif
 
   return res;
 }
@@ -337,47 +359,68 @@ inline u32 map_s(u32 val)
 
 inline u64 host2s(double val)
 {
-  double v = val;
-  int s = (v<0.0)?1:0;
-  if (s) v *= -1.0;
-  int e = (int)(log((double)v) / log((double)2.0));
-  double fr;
-  bool exp_down = true;
-
-  if (val==0.0)
-	return 0;
-
-    fr = v / pow((double)2.0,e);
-
-  while ((fr >= 2.0 && e<127) || e<-127)
+  u64 f;
+  int s;
+  int e;
+#if defined(FLOAT_IS_IEEE)
+  if (sizeof(float)==4)
   {
-    e++;
-    exp_down = false;
-    fr = v / pow((double)2.0,e);
+    printf("IEEE float = 4.\n");
+    union {
+      u32 a;
+      float b;
+    } f_ieee;
+    f_ieee.b = val;
+    s = (f_ieee.a>>31) & 1;
+    e = (f_ieee.a>>23) & 0xff;
+    f = (u64)(f_ieee.a>>0   & 0x7fffff) <<29;
   }
-
-  while (((fr < 1.0 && e>-127) || e>127) && exp_down)
+  else
+#endif
   {
-    e--;
-    fr = v / pow((double)2.0,e);
-  }
+    double v = val;
+    s = (v<0.0)?1:0;
+    if (s) v *= -1.0;
+    e = (int)(log((double)v) / log((double)2.0));
+    double fr;
+    bool exp_down = true;
 
-  e += 255;
-  
-  if (e==0)
-    fr = v / pow((double)2.0,-126);
+    if (val==0.0)
+	  return 0;
+
+      fr = v / pow((double)2.0,e);
+
+    while ((fr >= 2.0 && e<127) || e<-127)
+    {
+      e++;
+      exp_down = false;
+      fr = v / pow((double)2.0,e);
+    }
+
+    while (((fr < 1.0 && e>-127) || e>127) && exp_down)
+    {
+      e--;
+      fr = v / pow((double)2.0,e);
+    }
+
+    e += 255;
+    
+    if (e==0)
+      fr = v / pow((double)2.0,-126);
+    
+    f = (u64)(fr * (double)X64(0010000000000000)+0.5);
+  }
 
   e = map_s(e);
-  
-  u64 f = (u64)(fr * (double)X64(0010000000000000)+0.5);
 
   f =                (s?X64(800000000000000):0) | 
       (((u64)e << 52) & X64(7ff0000000000000)) |
       (f              & X64(000fffffe0000000));
 
-#if defined(DEBUG_FP_CONVERSION)
+//#if defined(DEBUG_FP_CONVERSION)
   printf("host->s: %f -> %016" LL "x   \n",val,f);
-#endif
+//#endif
+
 
   return f;
 }
@@ -389,45 +432,61 @@ inline u64 host2s(double val)
 
 inline u64 host2t(double val)
 {
-  double v = val;
-  int s = (v<0.0)?1:0;
-  if (s) v *= -1.0;
-  int e = (int)(log((double)v) / log((double)2.0));
-  double fr;
-  bool exp_down = true;
-
-  if (val==0.0)
-	return 0;
-
-  fr = v / pow((double)2.0,e);
-
-  while ((fr >= 2.0 && e<1023) || e<-1023)
+  u64 f;
+#if defined(FLOAT_IS_IEEE)
+  if (sizeof(double)==8)
   {
-    e++;
-    exp_down = false;
-    fr = v / pow((double)2.0,e);
+    printf("IEEE double = 8.\n");
+    union {
+      u64 a;
+      double b;
+    } f_ieee;
+    f_ieee.b = val;
+    f = f_ieee.a;
   }
-
-  while (((fr < 1.0 && e>-1023) || e>1023) && exp_down)
-  {
-    e--;
-    fr = v / pow((double)2.0,e);
-  }
-
-  e += 1023;
-
-  if (e==0)
-    fr = v / pow((double)2.0,-1022);
-
-  u64 f = (u64)(fr * (double)X64(0010000000000000)+0.5);
-
-  f =                (s?X64(800000000000000):0) | 
-      (((u64)e << 52) & X64(7ff0000000000000)) |
-      (f              & X64(000fffffffffffff));
-
-#if defined(DEBUG_FP_CONVERSION)
-  printf("host->t: %f -> %016" LL "x   \n",val,f);
+  else
 #endif
+  {
+    double v = val;
+    int s = (v<0.0)?1:0;
+    if (s) v *= -1.0;
+    int e = (int)(log((double)v) / log((double)2.0));
+    double fr;
+    bool exp_down = true;
+
+    if (val==0.0)
+	  return 0;
+
+    fr = v / pow((double)2.0,e);
+
+    while ((fr >= 2.0 && e<1023) || e<-1023)
+    {
+      e++;
+      exp_down = false;
+      fr = v / pow((double)2.0,e);
+    }
+
+    while (((fr < 1.0 && e>-1023) || e>1023) && exp_down)
+    {
+      e--;
+      fr = v / pow((double)2.0,e);
+    }
+
+    e += 1023;
+
+    if (e==0)
+      fr = v / pow((double)2.0,-1022);
+
+    f = (u64)(fr * (double)X64(0010000000000000)+0.5);
+
+    f =                (s?X64(800000000000000):0) | 
+        (((u64)e << 52) & X64(7ff0000000000000)) |
+        (f              & X64(000fffffffffffff));
+  }
+
+//#if defined(DEBUG_FP_CONVERSION)
+  printf("host->t: %f -> %016" LL "x   \n",val,f);
+//#endif
 
   return f;
 }
