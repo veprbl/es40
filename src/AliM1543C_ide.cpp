@@ -27,6 +27,9 @@
  * \file
  * Contains the code for the emulated Ali M1543C IDE chipset part.
  *
+ * X-1.9         Brian wheeler                                   19-DEC-2007
+ *      Added basic ATAPI support.
+ *
  * X-1.8         Brian wheeler                                   17-DEC-2007
  *      Delayed IDE interrupts. (NetBSD requirement)
  *
@@ -124,6 +127,30 @@ u32 ide_cfg_mask[64] = {
 #define SEL_DISK(a) get_disk(a,state.ide_selected[a])
 #define SEL_PER_DRIVE(a) state.ide_per_drive[a][state.ide_selected[a]]
 
+	// this handles point "d" in figure 16.
+#define ATAPI_OK(index) 	  \
+	SEL_PER_DRIVE(index).sector_count=0x03; \
+	SEL_STATUS(index).busy = false;  \
+	raise_interrupt(index);
+
+	// this handles point "b" in figure 16.
+#define ATAPI_OK_DATA(index,size) \
+	SEL_PER_DRIVE(index).cylinder_no=size; \
+	SEL_STATUS(index).busy = false; \
+	SEL_STATUS(index).drq = true; \
+	SEL_PER_DRIVE(index).sector_count=0x02; /* data in =2, data out = 0*/ \
+	state.ide_atapi_size[index] = size; \
+	state.ide_data_ptr[index] = 0; \
+	raise_interrupt(index);
+
+#define ATAPI_ERR(index,error) 	  SEL_STATUS(index).busy=false; \
+	  SEL_STATUS(index).drive_ready=true; \
+	  SEL_STATUS(index).drq=false; \
+	  SEL_STATUS(index).err=true; \
+	  SEL_PER_DRIVE(index).sector_count=0x03; \
+	  state.ide_error[index]=error; \
+	  raise_interrupt(index);
+
 /**
  * Constructor.
  **/
@@ -136,7 +163,6 @@ CAliM1543C_ide::CAliM1543C_ide(CConfigurator * cfg, CSystem * c, int pcibus, int
   theAliIDE = this;
 
   c->RegisterClock(this,true);
-
 
   add_function(0,ide_cfg_data, ide_cfg_mask);
 
@@ -159,15 +185,18 @@ CAliM1543C_ide::~CAliM1543C_ide()
 
 int CAliM1543C_ide::DoClock() 
 {
+  static int pause = 0;
   // check for any pending interrupts from the ide drives.
   for(int i=0;i<2;i++) {
-    if(state.ide_control[i].irq_ready) {
+    if(state.ide_control[i].irq_ready && (pause > 8)) {
       // issue the interrupt.
       state.busmaster[i][2] |= 0x04;
       theAli->pic_interrupt(1, 6+i);
       state.ide_control[i].irq_ready=false;
+      pause = 0;
     }
   }
+  pause++;
   return 0;
 }
 
@@ -293,9 +322,10 @@ u32 CAliM1543C_ide::ide_command_read(int index, u32 address, int dsize)
     }
     switch(SEL_STATUS(index).current_command)
     {
-    case 0x20:
-    case 0x21:
-    case 0xec:
+    case 0x20: // read sector
+    case 0x21: // read sector
+    case 0xec: // identify
+    case 0xa1: // packet identify
       data = 0;
       switch(dsize)
       {
@@ -316,7 +346,7 @@ u32 CAliM1543C_ide::ide_command_read(int index, u32 address, int dsize)
 
         state.ide_sectors[index]--;
 
-        if (!state.ide_sectors[index] || (SEL_STATUS(index).current_command == 0xec))
+        if (!state.ide_sectors[index] || (SEL_STATUS(index).current_command == 0xec) || (SEL_STATUS(index).current_command == 0xa1))
           SEL_STATUS(index).drq = false;
         else
         {
@@ -326,6 +356,35 @@ u32 CAliM1543C_ide::ide_command_read(int index, u32 address, int dsize)
         }
       }
       break;
+
+    case 0xa0: // packet
+      data = 0;
+      switch(dsize)
+      {
+      case 32:
+        data = state.ide_data[index][state.ide_data_ptr[index]++];
+        data |= state.ide_data[index][state.ide_data_ptr[index]++] << 16;
+        break;
+      case 16:
+        data = state.ide_data[index][state.ide_data_ptr[index]++];
+      }
+      printf("Reading %d bytes from ATAPI Packet: %x \n",dsize/8,data);
+      if (state.ide_data_ptr[index]>=(state.ide_atapi_size[index]/2))
+      {
+	    printf("--Reached end of packet data. (point e)\n");
+        SEL_STATUS(index).busy = false;
+        SEL_STATUS(index).drive_ready = true;
+        SEL_STATUS(index).seek_complete = true;
+        SEL_STATUS(index).err = false;
+	    SEL_PER_DRIVE(index).sector_count=0x03; // set c/d & i/o
+        state.ide_data_ptr[index] = 0;
+	    SEL_STATUS(index).drq = false;
+	    raise_interrupt(index);
+      } else {
+	    printf("--More packet data pending.\n");
+      }
+      break;
+
     default:
       printf("IDE read with unsupported command: %02x\n",SEL_STATUS(index).current_command);
       exit(1);
@@ -346,6 +405,7 @@ u32 CAliM1543C_ide::ide_command_read(int index, u32 address, int dsize)
   case 5:
     data = (SEL_PER_DRIVE(index).cylinder_no>>8) & 0xff;
     break;
+
   case 6:
     data =                                  0x80 
          | (SEL_PER_DRIVE(index).lba_mode ? 0x40 : 0x00)
@@ -353,10 +413,15 @@ u32 CAliM1543C_ide::ide_command_read(int index, u32 address, int dsize)
          | (state.ide_selected[index]     ? 0x10 : 0x00)
          | (SEL_PER_DRIVE(index).head_no  & 0x0f       );
     break;
+
   case 7:
       data = get_status(index);
+      // this is also supposed to clear any pending interrupts. (D1153)
+      theAli->pic_deassert(1,6+index); // clear the interrupt
+      state.ide_control[index].irq_ready=false;      
       break;
     }
+
   TRC_DEV4("%%ALI-I-READIDECMD: read port %d on IDE command %d: 0x%02x\n", (u32)(address), index, data);
 #ifdef DEBUG_IDE
   if (address)
@@ -409,10 +474,91 @@ void CAliM1543C_ide::ide_command_write(int index, u32 address, int dsize, u32 da
         raise_interrupt(index);
       }
       break;
+
+    case 0xa0: // packet
+      printf("Writing %d bytes to ATAPI Packet: %x \n",dsize/8,data);
+      switch(dsize)
+      {
+      case 32:
+        state.ide_data[index][state.ide_data_ptr[index]++] = data & 0xffff;
+        state.ide_data[index][state.ide_data_ptr[index]++] = (data>>16) & 0xffff;
+        break;
+      case 16:
+        state.ide_data[index][state.ide_data_ptr[index]++] = data & 0xffff;
+      }
+
+      if(state.ide_data_ptr[index] >= 6) 
+      {
+	    printf("Packet is complete (1153R18 pg 236).\n");
+	    SEL_STATUS(index).busy = true;
+	    SEL_STATUS(index).drq = false;
+
+	    // one command packet.  Let's see what we have.
+	    switch(state.ide_data[index][0] & 0xff) 
+        {
+	    case 0x00: // test unit ready.
+	      printf("ATAPI: Test unit ready.\n");
+	      ATAPI_OK(index);
+	      break;
+	    case 0x1e: // prevent/allow medium removal
+	      // we're really ignoring this since the emulator
+	      // doesn't even have an ejectable cd :)
+	      printf("ATAPI: lock/unlock door\n");
+	      ATAPI_OK(index);
+	      break;
+
+	    case 0x25: // CDVD Capacity
+	      printf("ATAPI: get capacity\n");
+	      *(u32 *)&state.ide_data[index][0] = SEL_DISK(index)->get_lba_size();
+	      *(u32 *)&state.ide_data[index][2] = 2048;
+	      ATAPI_OK_DATA(index,8);
+	      break;
+
+	    case 0x5a: // mode sense
+	      printf("ATAPI: mode sense PC: %x, page: %x\n", (state.ide_data[index][1] & 0xc0)>>6, state.ide_data[index][1]&0x3f);
+	      switch((state.ide_data[index][1] & 0xc0) >> 6) 
+          {
+	      case 0: // current values
+	      case 2: // default values
+	        // since none is changable (see below), then these two
+	        // will always be the same.
+	      case 1: // changable values
+	        // mark none as changable
+	      case 3: // saved values
+	        // we will error on this
+	        break;
+	      }
+	      ATAPI_OK(index); // um, we don't care?
+    	  break;
+
+	    case 0x43: // read toc-pma-atip
+	      state.ide_data[index][0] = 12;
+	      state.ide_data[index][1] = 0x0101; // one track
+	      state.ide_data[index][2] = 0x0000;
+	      state.ide_data[index][3] = 0x0001;
+	      *(u32 *)&state.ide_data[index][4] = 0; // track start address.
+	      ATAPI_OK_DATA(index,12);
+	      break;
+
+	    case 0x28: // read 10
+	    case 0x20: // ???
+	    case 0x03: // request sense
+	    default:
+	      printf("Unknown ATAPI command: ");
+	      for(int i=0;i<6;i++) 
+	        printf("%04x ",state.ide_data[index][i]);
+	        printf("\n");
+	        ATAPI_ERR(index,0x04);
+	      break;
+	    }
+      }
+      break;
+
     default:
       printf("IDE write with unsupported command: %02x\n",SEL_STATUS(index).current_command);
     }
     break;
+
   case 1:
     state.ide_per_drive[index][0].features = data;
     state.ide_per_drive[index][1].features = data;
@@ -468,11 +614,109 @@ void CAliM1543C_ide::ide_command_write(int index, u32 address, int dsize, u32 da
       break;
 
     case 0x08: // reset drive (DRST) (ATAPI)
+      if(!SEL_DISK(index)->cdrom()) 
+      {
+	    command_aborted(index,data);
+	    break;
+      }
+	  SEL_STATUS(index).busy = false;
+	  SEL_STATUS(index).drive_ready = true;
+	  SEL_STATUS(index).drq = false;
+	  SEL_STATUS(index).seek_complete = true;
+	  state.ide_data_ptr[index]=0;
+	  raise_interrupt(index);
+	  break;
+      
     case 0xa0: // packet send
+      if(!SEL_DISK(index)->cdrom()) 
+      {
+	    command_aborted(index,data);
+	    break;
+      }
+      printf("%%IDE-I-ATAPI: Packet Send Command\n");
+      SEL_STATUS(index).busy = false;
+      SEL_STATUS(index).drq=true;
+      SEL_STATUS(index).current_command = data;
+      SEL_PER_DRIVE(index).sector_count=0x01; // set C/D
+      state.ide_data_ptr[index]=0;
+      break;
+
     case 0xa1: // identify packet device (ATAPI)
+      if(!SEL_DISK(index)->cdrom()) 
+      {
+	    command_aborted(index,data);
+	    break;
+      }
+      printf("%%IDE-I-ATAPI: Identify Packet Device\n");
+      
+	  int i;
+	  char serial_number[21];
+	  char model_number[41];
+	  char rev_number[9];
+  	
+	  for(i=0;i<256;i++)
+	    state.ide_data[index][i]=0;
+  	
+	  state.ide_data[index][0] = 0x8580; // atapi, cdrom, removable, 12-byte
+	  // 10 = serial
+	  strcpy(serial_number,"                    ");
+	  i = strlen(SEL_DISK(index)->get_serial());
+	  i = (i > 20)? 20 : i;
+	  memcpy(model_number,SEL_DISK(index)->get_serial(),i);
+	  for (i=0;i<10;i++)
+	    state.ide_data[index][10+i] = (serial_number[i*2] << 8) |
+	      serial_number[i*2 + 1];	
+	  // 23 = firmware
+	  strcpy(rev_number,"        ");
+	  i = strlen(SEL_DISK(index)->get_rev());
+	  i = (i > 8)? 8 : i;
+	  memcpy(model_number,SEL_DISK(index)->get_rev(),i);
+	  for (i=0;i<4;i++)
+	    state.ide_data[index][23+i] = (rev_number[i*2] << 8) |
+	      rev_number[i*2 + 1];
+	  // 27 = model
+	  strcpy(model_number,"                                        ");
+	  i = strlen(SEL_DISK(index)->get_model());
+	  i = (i > 40)? 40 : i;
+	  memcpy(model_number,SEL_DISK(index)->get_model(),i);
+	  for(i=0;i<20;i++) 
+	    state.ide_data[index][i+27]= (model_number[i*2] << 8) | model_number[i*2+1];
+
+  	
+	  state.ide_data[index][49] = 0x0200;		// capability LBA
+	  state.ide_data[index][51] = 0x200;
+	  state.ide_data[index][52] = 0x200;
+	  // 53 = 0:54-58 valid, 1:64-70 valid
+	  state.ide_data[index][53] = 0x00;
+	  // 62 = single-word dma transfers
+	  // 63 = multi-word dma transfers
+	  // 64 = pio transfer mode
+	  // 65 = minimum dma time
+	  // 66 = recommended dma
+	  // 67 = minimum pio w/o flow
+	  // 68 = minimum pio w/iordy flow
+	  // 71 = release time
+	  // 72 = release
+	  // 73 = major rev number (0x0000)
+	  // 74 = minor ref number (0x0000)
+	  // 126 = last lun number (0x0000);
+	  // 127 = 8:device write protect (0), 0-1:media status notification (01)
+	  state.ide_data[index][127]=0x0001;
+
+      SEL_STATUS(index).current_command = data;
+	  state.ide_error[index] = 0;
+  	
+	  SEL_STATUS(index).busy = false;
+	  SEL_STATUS(index).drive_ready = true;
+	  SEL_STATUS(index).drq = true;
+	  SEL_STATUS(index).seek_complete = true;
+	  state.ide_data_ptr[index]=0;
+	  raise_interrupt(index);
+      break;
+
     case 0xa2: // service
 //#ifdef DEBUG_IDE
-      printf("%%IDE-I-ATAPI: ATAPI command.\n");
+      printf("%%IDE-I-ATAPI: ATAPI service command.\n");
 //#endif
       command_aborted(index,data);
       break;
@@ -593,6 +837,7 @@ void CAliM1543C_ide::ide_command_write(int index, u32 address, int dsize, u32 da
       SEL_STATUS(index).busy = false;
       SEL_STATUS(index).drive_ready = true;
       SEL_STATUS(index).drq = false;
+      raise_interrupt(index);
       break;
 
     case 0xc6: // SET MULTIPLE MODE
@@ -614,6 +859,13 @@ void CAliM1543C_ide::ide_command_write(int index, u32 address, int dsize, u32 da
         SEL_STATUS(index).drq = false;
         raise_interrupt(index);
       }
+      break;
+
+    case 0x70: // seek
+      SEL_STATUS(index).busy = false;
+      SEL_STATUS(index).drive_ready=true;
+      SEL_STATUS(index).seek_complete=true;
+      raise_interrupt(index);
       break;
 
     // power management & flush cache stubs
@@ -720,9 +972,24 @@ void CAliM1543C_ide::ide_command_write(int index, u32 address, int dsize, u32 da
       }
       break;
 
+    case 0xc8: // read dma
+    case 0xc9: // read dma
+      if(*(u32 *)(&state.busmaster[index][4]) != 0) 
+      {
+        // we have a valid prd.
+	    u32 prd_addr = *(u32 *)(&state.busmaster[index][4]);
+	    printf("PRD is at %08x\n",prd_addr);
+        u64 prd_addr_phys = cSystem->PCI_Phys(myPCIBus, prd_addr);
+	    u32 dma_addr = cSystem->ReadMem(prd_addr_phys,32);
+	    u16 dma_size = cSystem->ReadMem(prd_addr_phys+4,16);
+	    printf("DMA at %x, size: %d\n",dma_addr,dma_size);
+	    exit(1);
+      }
+
     default:
       printf("IDE: Unknown command: %02x!\n",data);
-      exit(1);
+      printf("Press enter to continue>");
+      getchar();
     }
   }
 }
@@ -869,8 +1136,9 @@ void CAliM1543C_ide::ide_busmaster_write(int index, u32 address, u32 data, int d
     // dword 1 =
     //   bit 31 = eot
     //   bit 15-0 = count
-
+    state.busmaster[index][0] = data & 0xff;
     break;
+
   case 2: // status 
     state.busmaster[index][2] = data & 0xff;
     // bit 7 = always 0 for us
@@ -1050,7 +1318,7 @@ void CAliM1543C_ide::identify_drive(int index)
 
   state.ide_data_ptr[index] = 0;
 
-  state.ide_data[index][0] = 0x0040;	// flags
+  state.ide_data[index][0] = SEL_DISK(index)->cdrom() ? 0x0080 : 0x0040;	// flags
   
   if (SEL_DISK(index)->get_cylinders() > 16383)
     state.ide_data[index][1] = 16383;	// cylinders
@@ -1097,10 +1365,10 @@ void CAliM1543C_ide::identify_drive(int index)
 
   state.ide_data[index][47] = 0;		// read/write multiples
   state.ide_data[index][48] = 1;		// double-word IO transfers supported
-  state.ide_data[index][49] = 0x0200;		// capability LBA
-  state.ide_data[index][50] = 0;
-  state.ide_data[index][51] = 0x200;		// cycle time
-  state.ide_data[index][52] = 0x200;		// cycle time
+  state.ide_data[index][49] = 0x0300;		// capability LBA (was 0x0200)
+  state.ide_data[index][50] = 0x4000;       // was 0
+  state.ide_data[index][51] = 0x0300;		// cycle time (was 0x0200)
+  state.ide_data[index][52] = 0x0200;		// cycle time
   state.ide_data[index][53] = 7;			// field_valid
 
   state.ide_data[index][54] = (u16)(SEL_DISK(index)->get_cylinders());		// cylinders
@@ -1115,21 +1383,22 @@ void CAliM1543C_ide::identify_drive(int index)
   
   state.ide_data[index][62] = 0;
   state.ide_data[index][63] = 0;
-  state.ide_data[index][64] = 0;
+  state.ide_data[index][64] = 0x0007; // advanced PIO modes supported (1,2,3)
   state.ide_data[index][65] = 120;
   state.ide_data[index][66] = 120;
   state.ide_data[index][67] = 120;
   state.ide_data[index][68] = 120;
-  state.ide_data[index][80] = 0x0e;
-  state.ide_data[index][81] = 0;
-  state.ide_data[index][82] = 0x4000;
+  state.ide_data[index][80] = 0x001e; // ATA 1,2,3,4
+  state.ide_data[index][81] = 0x000d; // ata/atapi-4 X3T13 1153d revision 6.
+  state.ide_data[index][82] = SEL_DISK(index)->cdrom() ? 0x4014 : 0x4000;
   state.ide_data[index][83] = 0x5000;
   state.ide_data[index][84] = 0x4000;
-  state.ide_data[index][85] = 0x4000;
+  state.ide_data[index][85] = SEL_DISK(index)->cdrom() ? 0x4014 : 0x4000;
   state.ide_data[index][86] = 0x5000;
   state.ide_data[index][87] = 0x4000;
   state.ide_data[index][88] = 0;
   state.ide_data[index][93] = 0x6001;
+  state.ide_data[index][127] = SEL_DISK(index)->cdrom() ? 0x0001 : 0x0000;
 }
 
 void CAliM1543C_ide::command_aborted(int index, u8 command)

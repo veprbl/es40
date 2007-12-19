@@ -27,6 +27,9 @@
  * \file
  * Contains the definitions for the emulated Ali M1543C IDE chipset part.
  *
+ * X-1.8         Brian wheeler                                   19-DEC-2007
+ *      Added basic ATAPI support.
+ *
  * X-1.7         Brian wheeler                                   17-DEC-2007
  *      Delayed IDE interrupts. (NetBSD requirement)
  *
@@ -141,14 +144,13 @@ class CAliM1543C_ide : public CDiskController
     u8 ide_error[2];
     u16 ide_data[2][256];
     int ide_data_ptr[2];
+    int ide_atapi_size[2];
     int ide_sectors[2];
     int ide_selected[2];
     u8 ide_bm_status[2];
 
     // Bus Mastering
     u8 busmaster[2][8];
-
-
 
   } state;
 
