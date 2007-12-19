@@ -27,6 +27,9 @@
  * \file 
  * Contains the code for the emulated Ali M1543C chipset devices.
  *
+ * X-1.43        Camiel Vanderhoeven                             19-DEC-2007
+ *      Commented out message on PIC de-assertion.
+ *
  * X-1.42        Brian wheeler                                   17-DEC-2007
  *      Better DMA support.      
  *
@@ -775,7 +778,7 @@ void CAliM1543C::toy_write(u64 address, u8 data)
 
 u8 CAliM1543C::pit_read(u64 address)
 {
-  printf("PIT Read: %02" LL "x \n",address);
+  //printf("PIT Read: %02" LL "x \n",address);
   u8 data;
   data = 0;
   return data;
@@ -783,7 +786,7 @@ u8 CAliM1543C::pit_read(u64 address)
 
 void CAliM1543C::pit_write(u64 address, u8 data)
 {
-  printf("PIT Write: %02" LL "x, %02x \n",address,data);
+  //printf("PIT Write: %02" LL "x, %02x \n",address,data);
   if(address==3) { // control
     if(data != 0) {
       state.pit_status[address]=data; // last command seen.
@@ -1082,12 +1085,17 @@ void CAliM1543C::pic_interrupt(int index, int intno)
 
 void CAliM1543C::pic_deassert(int index, int intno)
 {
-  printf("De-asserting %d,%d\n",index,intno);
-  state.pic_asserted[index] &= !(1<<intno);
-  if (index==1)
-    pic_deassert(0,2); // cascade
- }
+  if (!(state.pic_asserted[index] & (1<<intno)))
+    return;
 
+//  printf("De-asserting %d,%d\n",index,intno);
+  state.pic_asserted[index] &= !(1<<intno);
+  if (index==1 && state.pic_asserted[1]==0)
+    pic_deassert(0,2); // cascade
+
+  if (index==0 && state.pic_asserted[0]==0)
+    cSystem->interrupt(55,false);
+}
 
 /**
  * Read a byte from the dma controller.
