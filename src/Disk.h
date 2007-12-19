@@ -27,6 +27,9 @@
  * \file
  * Contains definitions for the disk base class.
  *
+ * X-1.3         Camiel Vanderhoeven                             19-DEC-2007
+ *      Allow for reporting disk-size in bytes.
+ *
  * X-1.2         Camiel Vanderhoeven                             18-DEC-2007
  *      Byte-sized transfers for SCSI controller.
  *
@@ -54,6 +57,7 @@ public:
   virtual size_t write_bytes(void * src, size_t bytes) = 0;
 
   long get_lba_size()  { return lba_size; };
+  long get_byte_size()  { return byte_size; };
   long get_chs_size()  { return cylinders*heads*sectors; };
   long get_cylinders() { return cylinders; };
   long get_heads()     { return heads; };

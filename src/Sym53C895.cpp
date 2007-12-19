@@ -27,6 +27,9 @@
  * \file
  * Contains the code for the emulated Symbios SCSI controller.
  *
+ * X-1.9         Camiel Vanderhoeven                             19-DEC-2007
+ *      Allow for different blocksizes.
+ *
  * X-1.8         Camiel Vanderhoeven                             18-DEC-2007
  *      Fixed silly mis-interpretation of "add-with-carry".
  *
@@ -334,6 +337,9 @@ CSym53C895::CSym53C895(CConfigurator * cfg, CSystem * c, int pcibus, int pcidev)
   memset(state.regs.reg32,0,sizeof(state.regs.reg32));
   R8(CTEST3) = (u8)(pci_state.config_data[0][2]<<4) & R_CTEST3_REV; // Chip rev.
   R8(STEST4) = 0xC0 | 0x20; // LVD SCSI, Freq. Locked
+
+  for (int i=0;i<16;i++)
+    state.per_target[i].block_size = 512;
 
   printf("%%SYM-I-INIT: Symbios 53c895 emulator initialized. STEST4 = %02x.\n",R8(STEST4));
 }
@@ -1112,7 +1118,7 @@ int CSym53C895::DoClock()
           }
           if (state.phase == 0 && PT.dato_to_disk)
           {
-            printf("SYM.%d PHASE %d: write %d bytes (%d blocks) to disk.\n",GET_DEST(),state.phase,count,count/512);
+            printf("SYM.%d PHASE %d: write %d bytes (%d blocks) to disk.\n",GET_DEST(),state.phase,count,count/PT.block_size);
             if (count>PT.dato_len)
             {
               printf("SYM: attempt to write more bytes than expected.\n");
@@ -1129,7 +1135,7 @@ int CSym53C895::DoClock()
           }
           else if (state.phase == 1 && PT.dati_off_disk)
           {
-            printf("SYM.%d PHASE %d: read %d bytes (%d blocks) from disk.\n",GET_DEST(),state.phase,count,count/512);
+            printf("SYM.%d PHASE %d: read %d bytes (%d blocks) from disk.\n",GET_DEST(),state.phase,count,count/PT.block_size);
             cmda0 = cSystem->PCI_Phys(myPCIBus,R32(DNAD));
             void * dptr = cSystem->PtrToMem(cmda0);
             PTD->read_bytes(dptr,count);
@@ -1896,9 +1902,9 @@ int CSym53C895::do_command()
 	PT.dati[q+2] = 0;	/*  nr of blocks, mid  */
 	PT.dati[q+3] = 0;	/*  nr of blocks, low */
 	PT.dati[q+4] = 0x00;	/*  reserved  */
-    PT.dati[q+5] = (512 >> 16) & 255;
-	PT.dati[q+6] = (512 >> 8) & 255;
-	PT.dati[q+7] = 512 & 255;
+    PT.dati[q+5] = (PT.block_size >> 16) & 255;
+	PT.dati[q+6] = (PT.block_size >>  8) & 255;
+	PT.dati[q+7] = (PT.block_size >>  0) & 255;
 	q += 8;
 
     PT.stat_len = 1;
@@ -1928,8 +1934,8 @@ int CSym53C895::do_command()
         PT.dati[q + 11] = PTD->get_sectors();
 
 		/*  12,13 = physical sector size  */
-		PT.dati[q + 12] = (512 >> 8) & 255;
-		PT.dati[q + 13] = 512 & 255;
+		PT.dati[q + 12] = (PT.block_size >> 8) & 255;
+		PT.dati[q + 13] = (PT.block_size >> 0) & 255;
 		break;
 	case 4:		/*  rigid disk geometry page  */
 		PT.dati[q + 0] = pagecode;
@@ -1955,8 +1961,8 @@ int CSym53C895::do_command()
 		PT.dati[q + 5] = PTD->get_sectors();
 
 		/*  6,7 = data bytes per sector  */
-		PT.dati[q + 6] = (512 >> 8) & 255;
-		PT.dati[q + 7] = 512 & 255;
+		PT.dati[q + 6] = (PT.block_size >> 8) & 255;
+		PT.dati[q + 7] = (PT.block_size >> 0) & 255;
 
 		PT.dati[q + 8] = (PTD->get_cylinders() >> 8) & 255;
 		PT.dati[q + 9] = PTD->get_cylinders() & 255;
@@ -1995,9 +2001,31 @@ int CSym53C895::do_command()
 
     printf("SYM.%d: MODE SELECT.\n",GET_DEST());
 
-    printf("SYM: MODE SELECT ignored. Data: ");
-    for(int x= 0; x<PT.dato_len; x++) printf("%02x ",PT.dato[x]);
-    printf("\n");
+
+    if (   PT.cmd_len == 6 
+        && PT.dato_len == 12 
+        && PT.dato[0] == 0x00 // data length
+        //&& PT.dato[1] == 0x05 // medium type - ignore
+        && PT.dato[2] == 0x00 // dev. specific
+        && PT.dato[3] == 0x08 // block descriptor length
+        && PT.dato[4] == 0x00 // density code
+        && PT.dato[5] == 0x00 // all blocks
+        && PT.dato[6] == 0x00 // all blocks
+        && PT.dato[7] == 0x00 // all blocks
+        && PT.dato[8] == 0x00) // reserved
+    {
+      PT.block_size = (PT.dato[9]<<16) | (PT.dato[10]<<8) | PT.dato[11];
+      printf("SYM%d: Block size set to %d.\n",GET_DEST(),PT.block_size);
+    }
+    else
+    {
+      printf("SYM: MODE SELECT ignored.\nCommand: ");
+      for(int x= 0; x<PT.cmd_len; x++) printf("%02x ",PT.cmd[x]);
+      printf("\nData: ");
+      for(int x= 0; x<PT.dato_len; x++) printf("%02x ",PT.dato[x]);
+      printf("\nThis might be an attempt to change our blocksize or something like that...\nPlease check the above data, then press enter.\n>");
+      getchar();
+    }
 
     // ignore it...
 
@@ -2019,15 +2047,15 @@ int CSym53C895::do_command()
       break;
 	}
 
-    PT.dati[0] = (PTD->get_lba_size() >> 24) & 255;
-	PT.dati[1] = (PTD->get_lba_size() >> 16) & 255;
-	PT.dati[2] = (PTD->get_lba_size() >> 8) & 255;
-	PT.dati[3] = PTD->get_lba_size() & 255;
+    PT.dati[0] = ((PTD->get_byte_size()/PT.block_size) >> 24) & 255;
+	PT.dati[1] = ((PTD->get_byte_size()/PT.block_size) >> 16) & 255;
+	PT.dati[2] = ((PTD->get_byte_size()/PT.block_size) >>  8) & 255;
+	PT.dati[3] = ((PTD->get_byte_size()/PT.block_size) >>  0) & 255;
 
-	PT.dati[4] = (512 >> 24) & 255;
-	PT.dati[5] = (512 >> 16) & 255;
-	PT.dati[6] = (512 >> 8) & 255;
-	PT.dati[7] = 512 & 255;
+	PT.dati[4] = (PT.block_size >> 24) & 255;
+	PT.dati[5] = (PT.block_size >> 16) & 255;
+	PT.dati[6] = (PT.block_size >>  8) & 255;
+	PT.dati[7] = (PT.block_size >>  0) & 255;
 
     PT.dati_len = 8;
 
@@ -2082,15 +2110,15 @@ int CSym53C895::do_command()
     PT.msgi_ptr = 0;
 
     /* Within bounds? */
-    if ((ofs+retlen) > PTD->get_lba_size())
+    if (((ofs+retlen)*PT.block_size) > PTD->get_byte_size())
     {
       PT.stat[0] = 0x02; // check condition
       break;
     }
 
 	/*  Return data:  */
-    PTD->seek_block(ofs);
-    PT.dati_len = retlen * 512;
+    PTD->seek_byte(ofs * PT.block_size);
+    PT.dati_len = retlen * PT.block_size;
     PT.dati_off_disk = true;
 
 	printf("SYM.%d READ  ofs=%d size=%d\n", GET_DEST(), ofs, retlen);
@@ -2139,15 +2167,15 @@ int CSym53C895::do_command()
     PT.msgi_ptr = 0;
 
     /* Within bounds? */
-    if ((ofs+retlen) > PTD->get_lba_size())
+    if (((ofs+retlen)*PT.block_size) > PTD->get_byte_size())
     {
       PT.stat[0] = 0x02; // check condition
       break;
     }
 
 	/*  Return data:  */
-    PTD->seek_block(ofs);
-    PT.dato_len = retlen * 512;
+    PTD->seek_byte(ofs * PT.block_size);
+    PT.dato_len = retlen * PT.block_size;
     PT.dato_to_disk = true;
 
 	printf("SYM.%d WRITE  ofs=%d size=%d\n", GET_DEST(), ofs, retlen);

@@ -27,6 +27,9 @@
  * \file
  * Contains the definitions for the emulated Symbios SCSI controller.
  *
+ * X-1.9         Camiel Vanderhoeven                             19-DEC-2007
+ *      Allow for different blocksizes.
+ *
  * X-1.5        Camiel Vanderhoeven                             18-DEC-2007
  *      Selection timeout occurs after the phase is checked the first time.
  *
@@ -154,6 +157,7 @@ class CSym53C895 : public CDiskController
       int stat_ptr;
       int stat_len;
 
+      u32 block_size;
     } per_target[16];
 
   } state;
