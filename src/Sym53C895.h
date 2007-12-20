@@ -27,6 +27,9 @@
  * \file
  * Contains the definitions for the emulated Symbios SCSI controller.
  *
+ * X-1.10        Camiel Vanderhoeven                             20-DEC-2007
+ *      Do reselection on read commands.
+ *
  * X-1.9         Camiel Vanderhoeven                             19-DEC-2007
  *      Allow for different blocksizes.
  *
@@ -88,11 +91,14 @@ class CSym53C895 : public CDiskController
 
   void post_dsp_write();
 
+  int execute();
+
   void select_target(int target);
   void byte_to_target(u8 value);
   u8 byte_from_target();
   void end_xfer();
   int do_command();
+  int do_message();
   void eval_interrupts();
   void set_interrupt(int reg, u8 interrupt);
   void chip_reset();
@@ -117,6 +123,8 @@ class CSym53C895 : public CDiskController
     bool executing;
 
     bool wait_reselect;
+    bool select_timeout;
+    int disconnected;
     u32 wait_jump;
 
     u8 dstat_stack;
@@ -142,6 +150,7 @@ class CSym53C895 : public CDiskController
       // cmd: Command phase 
       u8 cmd[20];
       int cmd_len;
+      bool cmd_sent;
 
       u8 dati[512];
       int dati_ptr;
@@ -157,8 +166,15 @@ class CSym53C895 : public CDiskController
       int stat_ptr;
       int stat_len;
 
+      bool disconnect_priv;
+      bool will_disconnect;
+      bool disconnected;
+      bool reselected;
+      int disconnect_phase;
+
       u32 block_size;
     } per_target[16];
+
 
   } state;
 
