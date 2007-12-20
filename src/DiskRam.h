@@ -27,6 +27,9 @@
  * \file
  * Contains definitions to use a RAM disk.
  *
+ * X-1.3        Camiel Vanderhoeven                             20-DEC-2007
+ *      Close files and free memory when the emulator shuts down.
+ *
  * X-1.2        Brian Wheeler                                   16-DEC-2007
  *      Corrected some weird uses of size_t...
  *
@@ -43,7 +46,7 @@ class CDiskRam : public CDisk
 {
 public:
   CDiskRam(CConfigurator * cfg, CDiskController * c, int idebus, int idedev);
-  ~CDiskRam(void);
+  virtual ~CDiskRam(void);
 
   virtual bool seek_block(long block);
   virtual size_t read_blocks(void * dest, size_t blocks);

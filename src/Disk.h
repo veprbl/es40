@@ -27,6 +27,9 @@
  * \file
  * Contains definitions for the disk base class.
  *
+ * X-1.4         Camiel Vanderhoeven                             20-DEC-2007
+ *      Close files and free memory when the emulator shuts down.
+ *
  * X-1.3         Camiel Vanderhoeven                             19-DEC-2007
  *      Allow for reporting disk-size in bytes.
  *
@@ -46,7 +49,7 @@ class CDisk
 {
 public:
   CDisk(CConfigurator * cfg, CDiskController * c, int idebus, int idedev);
-  ~CDisk(void);
+  virtual ~CDisk(void);
  
   virtual bool seek_block(long lba) = 0;
   virtual size_t read_blocks(void * dest, size_t blocks) = 0;

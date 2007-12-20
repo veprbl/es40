@@ -27,6 +27,9 @@
  * \file 
  * Contains the code for the emulated Typhoon Chipset devices.
  *
+ * X-1.41       Camiel Vanderhoeven                             20-DEC-2007
+ *      Close files and free memory when the emulator shuts down.
+ *
  * X-1.40       Camiel Vanderhoeven                             17-DEC-2007
  *      SaveState file format 2.1
  *
@@ -294,8 +297,14 @@ CSystem::CSystem(CConfigurator * cfg)
 CSystem::~CSystem()
 {
   int i;
+
+  printf("Freeing memory in use by system...\n");
+
   for (i=0;i<iNumComponents;i++)
     delete acComponents[i];
+
+  free(memory);
+
 }
 
 void CSystem::ResetMem(unsigned int membits) {

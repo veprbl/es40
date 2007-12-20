@@ -27,6 +27,9 @@
  * \file
  * Contains code to use a file as a disk image.
  *
+ * X-1.5         Camiel Vanderhoeven                             20-DEC-2007
+ *      Close files and free memory when the emulator shuts down.
+ *
  * X-1.4         Camiel Vanderhoeven                             18-DEC-2007
  *      Byte-sized transfers for SCSI controller.
  *
@@ -86,6 +89,8 @@ CDiskFile::CDiskFile(CConfigurator * cfg, CDiskController * c, int idebus, int i
 
 CDiskFile::~CDiskFile(void)
 {
+  printf("%s: Closing file.\n",devid_string);
+  fclose(handle);
 }
 
 bool CDiskFile::seek_block(long lba)
