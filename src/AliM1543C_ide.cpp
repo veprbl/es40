@@ -27,6 +27,9 @@
  * \file
  * Contains the code for the emulated Ali M1543C IDE chipset part.
  *
+ * X-1.10        Camiel Vanderhoeven                             20-DEC-2007
+ *      More checks if disk exists.
+ *
  * X-1.9         Brian wheeler                                   19-DEC-2007
  *      Added basic ATAPI support.
  *
@@ -614,6 +617,12 @@ void CAliM1543C_ide::ide_command_write(int index, u32 address, int dsize, u32 da
       break;
 
     case 0x08: // reset drive (DRST) (ATAPI)
+      if (!SEL_DISK(index))
+      {
+        printf("Disk %d.%d not present, aborting.\n",index,state.ide_selected[index]);
+        command_aborted(index,data);
+        break;
+      }
       if(!SEL_DISK(index)->cdrom()) 
       {
 	    command_aborted(index,data);
@@ -628,6 +637,12 @@ void CAliM1543C_ide::ide_command_write(int index, u32 address, int dsize, u32 da
 	  break;
       
     case 0xa0: // packet send
+      if (!SEL_DISK(index))
+      {
+        printf("Disk %d.%d not present, aborting.\n",index,state.ide_selected[index]);
+        command_aborted(index,data);
+        break;
+      }
       if(!SEL_DISK(index)->cdrom()) 
       {
 	    command_aborted(index,data);
@@ -642,6 +657,12 @@ void CAliM1543C_ide::ide_command_write(int index, u32 address, int dsize, u32 da
       break;
 
     case 0xa1: // identify packet device (ATAPI)
+      if (!SEL_DISK(index))
+      {
+        printf("Disk %d.%d not present, aborting.\n",index,state.ide_selected[index]);
+        command_aborted(index,data);
+        break;
+      }
       if(!SEL_DISK(index)->cdrom()) 
       {
 	    command_aborted(index,data);
@@ -893,7 +914,7 @@ void CAliM1543C_ide::ide_command_write(int index, u32 address, int dsize, u32 da
 //#endif
       if (!SEL_DISK(index))
       {
-        printf("Disk ^%d.%d not present, aborting.\n",index,state.ide_selected[index]);
+        printf("Disk %d.%d not present, aborting.\n",index,state.ide_selected[index]);
         command_aborted(index,data);
         break;
       }
@@ -1111,7 +1132,7 @@ u32 CAliM1543C_ide::ide_busmaster_read(int index, u32 address, int dsize)
   data = 0;
     break;
   }
-  printf("%%IDE-I-READBUSM: read port %d on IDE bus master %d: 0x%02x\n", (u32)(address), index, data);
+  //printf("%%IDE-I-READBUSM: read port %d on IDE bus master %d: 0x%02x\n", (u32)(address), index, data);
   return data;
 }
 
@@ -1123,9 +1144,9 @@ u32 CAliM1543C_ide::ide_busmaster_read(int index, u32 address, int dsize)
 void CAliM1543C_ide::ide_busmaster_write(int index, u32 address, u32 data, int desize)
 {
   TRC_DEV4("%%IDE-I-WRITBUSM: write port %d on IDE bus master %d: 0x%02x\n",  (u32)(address),index, data);
-//#ifdef DEBUG_IDE
+#ifdef DEBUG_IDE
   printf("%%IDE-I-WRITBUSM: write port %d on IDE bus master %d: 0x%02x\n",  (u32)(address),index, data);
-//#endif
+#endif
 
   switch(address) {
   case 0: // command register
