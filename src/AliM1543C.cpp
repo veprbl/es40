@@ -27,6 +27,9 @@
  * \file 
  * Contains the code for the emulated Ali M1543C chipset devices.
  *
+ * X-1.44       Camiel Vanderhoeven                             28-DEC-2007
+ *      Keep the compiler happy.
+ *
  * X-1.43        Camiel Vanderhoeven                             19-DEC-2007
  *      Commented out message on PIC de-assertion.
  *
@@ -582,13 +585,13 @@ void CAliM1543C::reg_61_write(u8 data)
   state.reg_61 = (state.reg_61 & 0xf0) | (((u8)data) & 0x0f);
 }
 
-u8 CAliM1543C::toy_read(u64 address)
+u8 CAliM1543C::toy_read(u32 address)
 {
   //printf("%%ALI-I-READTOY: read port %02x: 0x%02x\n", (u32)(0x70 + address), state.toy_access_ports[address]);
   return (u8)state.toy_access_ports[address];
 }
 
-void CAliM1543C::toy_write(u64 address, u8 data)
+void CAliM1543C::toy_write(u32 address, u8 data)
 {
   time_t ltime;
   struct tm stime;
@@ -776,7 +779,7 @@ void CAliM1543C::toy_write(u64 address, u8 data)
    PIT Write:  2, 13  = 1331
 */
 
-u8 CAliM1543C::pit_read(u64 address)
+u8 CAliM1543C::pit_read(u32 address)
 {
   //printf("PIT Read: %02" LL "x \n",address);
   u8 data;
@@ -784,7 +787,7 @@ u8 CAliM1543C::pit_read(u64 address)
   return data;
 }
 
-void CAliM1543C::pit_write(u64 address, u8 data)
+void CAliM1543C::pit_write(u32 address, u8 data)
 {
   //printf("PIT Write: %02" LL "x, %02x \n",address,data);
   if(address==3) { // control
@@ -834,7 +837,7 @@ void CAliM1543C::pit_clock() {
   int i;
   for(i=0;i<3;i++) {
     // decrement the counter.
-    if(state.pit_status[i] & 0x40 == 1)
+    if(state.pit_status[i] & 0x40)
       continue;
     PIT_DEC(state.pit_counter[i]);
     switch((state.pit_status[i] & 0x0e)>>1) {
@@ -899,7 +902,7 @@ int CAliM1543C::DoClock()
 #define PIC_INIT_1 2
 #define PIC_INIT_2 3
 
-u8 CAliM1543C::pic_read(int index, u64 address)
+u8 CAliM1543C::pic_read(int index, u32 address)
 {
   u8 data;
 
@@ -958,7 +961,7 @@ u8 CAliM1543C::pic_read_vector()
   return 0;
 }
 
-void CAliM1543C::pic_write(int index, u64 address, u8 data)
+void CAliM1543C::pic_write(int index, u32 address, u8 data)
 {
   int level;
   int op;
@@ -1102,7 +1105,7 @@ void CAliM1543C::pic_deassert(int index, int intno)
  * Always returns 0.
  **/
 
-u8 CAliM1543C::dma_read(int index, u64 address)
+u8 CAliM1543C::dma_read(int index, u32 address)
 {
   u8 data;
   printf("DMA Read: %d,%x \n",index,address);
@@ -1115,7 +1118,7 @@ u8 CAliM1543C::dma_read(int index, u64 address)
  * Write a byte to the dma controller.
  * Not functional.
  **/
-void CAliM1543C::dma_write(int index, u64 address, u8 data)
+void CAliM1543C::dma_write(int index, u32 address, u8 data)
 {
   printf("DMA Write: %x,%x,%x \n",index,address,data);
   int num;
@@ -1358,12 +1361,12 @@ int CAliM1543C::RestoreState(FILE *f)
   r = fread(&m1,sizeof(u32),1,f);
   if (r!=1)
   {
-    printf("%s: unexpected end of file!\n");
+    printf("%s: unexpected end of file!\n",devid_string);
     return -1;
   }
   if (m1 != ali_magic1)
   {
-    printf("%s: MAGIC 1 does not match!\n");
+    printf("%s: MAGIC 1 does not match!\n",devid_string);
     return -1;
   }
 
@@ -1402,7 +1405,7 @@ int CAliM1543C::RestoreState(FILE *f)
   return 0;
 }
 
-u8 CAliM1543C::lpt_read(u64 address) {
+u8 CAliM1543C::lpt_read(u32 address) {
   u8 data = 0;
   switch(address) {
   case 0:
@@ -1424,7 +1427,7 @@ u8 CAliM1543C::lpt_read(u64 address) {
 }
 
 
-void CAliM1543C::lpt_write(u64 address, u8 data) {
+void CAliM1543C::lpt_write(u32 address, u8 data) {
   switch(address) {
   case 0:
     state.lpt_data=data;
@@ -1886,7 +1889,7 @@ void CAliM1543C::kbd_controller_enQ(u8 data, unsigned source)
   // remember this includes mouse bytes.
   if (state.kbd_controller.outb) {
     if (state.kbd_controller_Qsize >= BX_KBD_CONTROLLER_QSIZE)
-      BX_PANIC(("controller_enq(): controller_Q full!"));
+      FAILURE("controller_enq(): controller_Q full!");
     state.kbd_controller_Q[state.kbd_controller_Qsize++] = data;
     state.kbd_controller_Qsource = source;
     return;

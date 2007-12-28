@@ -27,6 +27,9 @@
  * \file
  * Contains the code for the configuration file interpreter.
  *
+ * X-1.5        Camiel Vanderhoeven                             28-DEC-2007
+ *      Keep the compiler happy.
+ *
  * X-1.4        Camiel Vanderhoeven                             14-DEC-2007
  *      Add support for Symbios SCSI controller.
  *
@@ -63,7 +66,7 @@
 #endif
 #include "Sym53C895.h"
 
-CConfigurator::CConfigurator(class CConfigurator * parent, char * name, char * value, char * text, int textlen)
+CConfigurator::CConfigurator(class CConfigurator * parent, char * name, char * value, char * text, size_t textlen)
 {
   enum { STATE_NONE, 
     STATE_NAME, STATE_NAME_DONE, STATE_IS, 
@@ -73,18 +76,18 @@ CConfigurator::CConfigurator(class CConfigurator * parent, char * name, char * v
   char * cur_name;
   char * cur_value;
 
-  int curtext;
+  size_t curtext;
   int cmt_depth;
   int child_depth;
 
-  int name_start;
-  int name_len;
+  size_t name_start;
+  size_t name_len;
 
-  int value_start;
-  int value_len;
+  size_t value_start;
+  size_t value_len;
 
-  int child_start;
-  int child_len;
+  size_t child_start;
+  size_t child_len;
 
   int txt_depth;
 
@@ -154,7 +157,7 @@ CConfigurator::CConfigurator(class CConfigurator * parent, char * name, char * v
     switch(state)
     {
     case STATE_NONE:
-      if (isalnum(text[curtext]) || text[curtext]=='.' || text[curtext]=='_')
+      if (isalnum((unsigned char)text[curtext]) || text[curtext]=='.' || text[curtext]=='_')
       {
         name_start = curtext;
         state = STATE_NAME;
@@ -171,7 +174,7 @@ CConfigurator::CConfigurator(class CConfigurator * parent, char * name, char * v
         state = STATE_NAME_DONE;
         name_len = curtext - name_start;
       }
-      else if (!isalnum(text[curtext]) && text[curtext]!='.' && text[curtext] != '_')
+      else if (!isalnum((unsigned char)text[curtext]) && text[curtext]!='.' && text[curtext] != '_')
         printf("STATE_NAME: Illegal character: \'%c\'!! (%02x @ %d)\n", text[curtext],text[curtext],curtext);
       break;
     case STATE_NAME_DONE:
@@ -181,7 +184,7 @@ CConfigurator::CConfigurator(class CConfigurator * parent, char * name, char * v
         printf("STATE_NAME_DONE: Illegal character: \'%c\'!! (%02x @ %d)\n", text[curtext],text[curtext],curtext);
       break;
     case STATE_IS:
-      if (isalnum(text[curtext]) || text[curtext]=='.' || text[curtext] == '_')
+      if (isalnum((unsigned char)text[curtext]) || text[curtext]=='.' || text[curtext] == '_')
       {
         value_start = curtext;
         value_len = 1;
@@ -217,12 +220,12 @@ CConfigurator::CConfigurator(class CConfigurator * parent, char * name, char * v
         child_start = curtext+1;
         child_depth = 1;
       }
-      else if (isspace(text[curtext]))
+      else if (isspace((unsigned char)text[curtext]))
       {
         state = STATE_VALUE_DONE;
         value_len = curtext - value_start;
       }
-      else if (!isalnum(text[curtext]) && text[curtext]!='.' && text[curtext] != '_')
+      else if (!isalnum((unsigned char)text[curtext]) && text[curtext]!='.' && text[curtext] != '_')
         printf("STATE_VALUE: Illegal character: \'%c\'!! (%02x @ %d)\n", text[curtext],text[curtext],curtext);
       break;
     case STATE_VALUE_DONE:
@@ -246,7 +249,7 @@ CConfigurator::CConfigurator(class CConfigurator * parent, char * name, char * v
         child_start = curtext+1;
         child_depth = 1;
       }
-      else if (!isspace(text[curtext]))
+      else if (!isspace((unsigned char)text[curtext]))
         printf("STATE_VALUE_DONE: Illegal character: \'%c\'!! (%02x @ %d)\n", text[curtext],text[curtext],curtext);
       break;
     case STATE_CHILD:

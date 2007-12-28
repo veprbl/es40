@@ -30,6 +30,9 @@
  * or project specific include files that are used frequently, but
  * are changed infrequently.
  *
+ * X-1.18       Camiel Vanderhoeven                             28-DEC-2007
+ *      Keep the compiler happy.
+ *
  * X-1.17       Camiel Vanderhoeven                             1-DEC-2007
  *      Include stdlib.h by default. We don't do MFC, so replace afx.h 
  *      with windows.h 
@@ -154,7 +157,7 @@ inline bool isblank(char c)
 
 inline char printable(char c)
 {
-  if (isprint(c))
+  if (isprint((unsigned char)c))
 	  return c;
   return '.';
 }

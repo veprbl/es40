@@ -27,6 +27,9 @@
  * \file
  * Contains the definitions for the emulated Cirrus CL GD-5434 Video Card device.
  *
+ * X-1.5        Camiel Vanderhoeven                             28-DEC-2007
+ *      Keep the compiler happy.
+ *
  * X-1.4        Camiel Vanderhoeven                             17-DEC-2007
  *      SaveState file format 2.1
  *
@@ -242,7 +245,7 @@ private:
 
      struct {
        u8   address;
-       u8   reg[0x19];
+       u8   reg[0x20];
        bool write_protect;
        } CRTC;
       // generic register range.  Basically, we've got to
@@ -257,7 +260,6 @@ private:
       // indexed ports
       u8 crtc_index;
       u64 crtc_data[CRTC_MAX];
-
 
       // pallette information 
       u8 pel_mode;

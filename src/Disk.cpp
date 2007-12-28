@@ -27,6 +27,9 @@
  * \file
  * Contains code for the disk base class.
  *
+ * X-1.3        Camiel Vanderhoeven                             28-DEC-2007
+ *      Keep the compiler happy.
+ *
  * X-1.2        Brian Wheeler                                   16-DEC-2007
  *      Fixed case of StdAfx.h.
  *
@@ -55,7 +58,7 @@ CDisk::CDisk(CConfigurator * cfg, CDiskController * ctrl, int idebus, int idedev
   c = myCfg->get_myParent()->get_myName();
   d = myCfg->get_myParent()->get_myValue();
 
-  devid_string = (char*) malloc(strlen(a)+strlen(b)+strlen(c)+strlen(d)+6);
+  CHECK_ALLOCATION(devid_string = (char*) malloc(strlen(a)+strlen(b)+strlen(c)+strlen(d)+6));
   sprintf(devid_string,"%s(%s).%s(%s)",c,d,a,b);
 
   serial_number = myCfg->get_text_value("serial_num", "ES40EM00000");

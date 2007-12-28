@@ -27,6 +27,9 @@
  * \file 
  * Contains the definitions for the emulated Serial Port devices.
  *
+ * X-1.12       Camiel Vanderhoeven                             28-DEC-2007
+ *      Keep the compiler happy.
+ *
  * X-1.11       Camiel Vanderhoeven                             17-DEC-2007
  *      SaveState file format 2.1
  *
@@ -70,6 +73,7 @@
 
 #include "SystemComponent.h"
 #include "Configurator.h"
+#include "telnet.h"
 
 /**
  * Emulated serial port.

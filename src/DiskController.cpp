@@ -27,6 +27,9 @@
  * \file
  * Contains definitions for the disk controller base class.
  *
+ * X-1.7        Camiel Vanderhoeven                             28-DEC-2007
+ *      Keep the compiler happy.
+ *
  * X-1.6        Camiel Vanderhoeven                             18-DEC-2007
  *      Initialize pointers to 0 in constructor. (doh!)
  *
@@ -52,17 +55,10 @@
 
 CDiskController::CDiskController(CConfigurator * cfg, CSystem * c, int pcibus, int pcidev, int num_busses, int num_devices) : CPCIDevice(cfg,c,pcibus,pcidev)
 {
-  int i;
-
   num_bus = num_busses;
   num_dev = num_devices;
 
-  disks = (CDisk**) malloc(num_bus*num_dev*sizeof(void*));
-
-  for (i=0;i<num_bus*num_dev;i++) 
-  {
-    disks[i] = 0;
-  }
+  disks = (CDisk**) calloc(num_bus*num_dev,sizeof(CDisk*));
 }
 
 CDiskController::~CDiskController(void)

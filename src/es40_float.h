@@ -30,6 +30,9 @@
  * point registers, and to convert them to/from the host's native floating point 
  * format when required.
  *
+ * X-1.15       Camiel Vanderhoeven                             28-DEC-2007
+ *      Keep the compiler happy.
+ *
  * X-1.14       Camiel Vanderhoeven                             28-DEC-2007
  *      Avoid compiler warnings.
  *
@@ -161,7 +164,6 @@ inline double s2host(u64 val)
     int s = (val & X64(8000000000000000))?1:0;
     int e = (int)((val & X64(7ff0000000000000))>>52);
     s64 f = (val & X64(000fffffffffffff));
-    double res;
 
     if (e==2047) {
       if (f)

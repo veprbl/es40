@@ -32,6 +32,9 @@
  * \file 
  * Contains the code for the emulated DEC 21143 NIC device.
  *
+ * X-1.18       Camiel Vanderhoeven                             28-DEC-2007
+ *      Keep the compiler happy.
+ *
  * X-1.17       Camiel Vanderhoeven                             17-DEC-2007
  *      SaveState file format 2.1
  *
@@ -337,7 +340,7 @@ void CDEC21143::receive_process()
 
 u32 CDEC21143::nic_read(u32 address, int dsize)
 {
-  u32 data;
+  u32 data = 0;
 
     u32 oldreg = 0;
 	int regnr = (int)(address >> 3);
@@ -769,7 +772,7 @@ int CDEC21143::dec21143_rx()
 
 		/*  Append a 4 byte CRC:  */
 		state.cur_rx_buf_len += 4;
-		CHECK_ALLOCATION(state.cur_rx_buf = (u8 *) realloc(state.cur_rx_buf, state.cur_rx_buf_len));
+		CHECK_REALLOCATION(state.cur_rx_buf, realloc(state.cur_rx_buf, state.cur_rx_buf_len), u8);
 
 	    /*  Get the next packet into our buffer:  */
 	    memcpy(state.cur_rx_buf, packet_data, state.cur_rx_buf_len);
@@ -976,7 +979,7 @@ int CDEC21143::dec21143_tx()
 			if (state.cur_tx_buf == NULL)
 				fatal("[ dec21143: WARNING! tx: middle segment, but no first segment?! ]\n");
 
-			CHECK_ALLOCATION(state.cur_tx_buf = (u8 *) realloc(state.cur_tx_buf, state.cur_tx_buf_len + bufsize));
+			CHECK_REALLOCATION(state.cur_tx_buf, realloc(state.cur_tx_buf, state.cur_tx_buf_len + bufsize), u8);
 		}
 
 		/*  "DMA" data from emulated physical memory into the buf:  */

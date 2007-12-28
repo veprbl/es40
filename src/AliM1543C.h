@@ -27,7 +27,10 @@
  * \file 
  * Contains the definitions for the emulated Ali M1543C chipset devices.
  *
- * X-1.22        Brian wheeler                                   17-DEC-2007
+ * X-1.23       Camiel Vanderhoeven                             28-DEC-2007
+ *      Keep the compiler happy.
+ *
+ * X-1.22       Brian wheeler                                   17-DEC-2007
  *      Better DMA support.      
  *
  * X-1.21       Camiel Vanderhoeven                             17-DEC-2007
@@ -171,28 +174,28 @@ class CAliM1543C : public CPCIDevice
   void reg_61_write(u8 data);
 
   // REGISTERS 70 - 73: TOY
-  u8 toy_read(u64 address);
-  void toy_write(u64 address, u8 data);
+  u8 toy_read(u32 address);
+  void toy_write(u32 address, u8 data);
 
   // Timer/Counter
-  u8 pit_read(u64 address);
-  void pit_write(u64 address, u8 data);
+  u8 pit_read(u32 address);
+  void pit_write(u32 address, u8 data);
   void pit_clock();
 
   // interrupt controller
-  u8 pic_read(int index, u64 address);
-  void pic_write(int index, u64 address, u8 data);
+  u8 pic_read(int index, u32 address);
+  void pic_write(int index, u32 address, u8 data);
   u8 pic_read_vector();
   u8 pic_read_edge_level(int index);
   void pic_write_edge_level(int index, u8 data);
 
   // DMA controller
-  u8 dma_read(int channel, u64 address);
-  void dma_write(int channel, u64 address, u8 data);
+  u8 dma_read(int channel, u32 address);
+  void dma_write(int channel, u32 address, u8 data);
 
   // LPT controller
-  u8 lpt_read(u64 address);
-  void lpt_write(u64 address, u8 data);
+  u8 lpt_read(u32 address);
+  void lpt_write(u32 address, u8 data);
 
 #ifdef USE_CONSOLE
   u8 key2scan(int key);

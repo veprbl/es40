@@ -27,6 +27,9 @@
  * \file 
  * Contains the code for the emulated Typhoon Chipset devices.
  *
+ * X-1.42       Camiel Vanderhoeven                             28-DEC-2007
+ *      Keep the compiler happy.
+ *
  * X-1.41       Camiel Vanderhoeven                             20-DEC-2007
  *      Close files and free memory when the emulator shuts down.
  *
@@ -521,7 +524,7 @@ void CSystem::WriteMem(u64 address, int dsize, u64 data)
 	    {
 	      for (i=0;i<iNumCPUs;i++)
 		{
-		  if (data & (0x10<<i))
+		  if (data & (X64(10)<<i))
                     {
 		      acCPUs[i]->irq_h(2,false);
 		      //                        printf("*** TIMER interrupt cleared for CPU %d\n",i);
@@ -781,7 +784,7 @@ u64 CSystem::ReadMem(u64 address, int dsize)
 	case X64(00000801a0000080):
 	  return state.c_MISC;
 	case X64(00000801a0000100):
-	  return   ((iNumMemoryBits-23)<<12); //size
+	  return   ((u64)(iNumMemoryBits-23)<<12); //size
 	case X64(00000801a0000140):
 	case X64(00000801a0000180):
 	case X64(00000801a00001c0):

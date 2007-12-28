@@ -27,6 +27,9 @@
  * \file
  * Contains definitions to use a file as a disk image.
  *
+ * X-1.3        Camiel Vanderhoeven                             28-DEC-2007
+ *      Keep the compiler happy.
+ *
  * X-1.2        Camiel Vanderhoeven                             20-DEC-2007
  *      Close files and free memory when the emulator shuts down.
  *
@@ -45,11 +48,11 @@ public:
   CDiskFile(CConfigurator * cfg, CDiskController * c, int idebus, int idedev);
   virtual ~CDiskFile(void);
 
-  virtual bool seek_block(long block);
+  virtual bool seek_block(unsigned long block);
   virtual size_t read_blocks(void * dest, size_t blocks);
   virtual size_t write_blocks(void * src, size_t blocks);
 
-  virtual bool seek_byte(long byte);
+  virtual bool seek_byte(unsigned long byte);
   virtual size_t read_bytes(void * dest, size_t bytes);
   virtual size_t write_bytes(void * src, size_t bytes);
 

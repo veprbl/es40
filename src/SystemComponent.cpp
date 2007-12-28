@@ -27,6 +27,9 @@
  * \file 
  * Contains code for the base class for devices that connect to the chipset.
  *
+ * X-1.10       Camiel Vanderhoeven                             28-DEC-2007
+ *      Keep the compiler happy.
+ *
  * X-1.9        Camiel Vanderhoeven                             17-DEC-2007
  *      SaveState file format 2.1
  *
@@ -77,7 +80,7 @@ CSystemComponent::CSystemComponent(CConfigurator * cfg, CSystem * system)
   a = myCfg->get_myName();
   b = myCfg->get_myValue();
 
-  devid_string = (char*) malloc(strlen(a)+strlen(b)+3);
+  CHECK_ALLOCATION(devid_string = (char*) malloc(strlen(a)+strlen(b)+3));
   sprintf(devid_string,"%s(%s)",a,b);
 }
 

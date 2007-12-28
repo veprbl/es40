@@ -27,6 +27,9 @@
  * \file
  * Defines the entry point for the application.
  *
+ * X-1.34       Camiel Vanderhoeven                             28-DEC-2007
+ *      Keep the compiler happy.
+ *
  * X-1.33       Camiel Vanderhoeven                             10-DEC-2007
  *      Use configurator to read config-file and set up devices.
  *
@@ -203,7 +206,7 @@ int main(int argc, char* argv[])
   }
 
   char ch1[10000];
-  int ll1;
+  size_t ll1;
   f = fopen(filename,"rb");
   ll1 = fread(ch1,1,10000,f);
   CConfigurator * c = new CConfigurator(0,0,0,ch1,ll1);

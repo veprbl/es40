@@ -27,6 +27,9 @@
  * \file
  * Contains the code for the emulated Cirrus CL GD-5434 Video Card device.
  *
+ * X-1.7        Camiel Vanderhoeven                             28-DEC-2007
+ *      Keep the compiler happy.
+ *
  * X-1.6        Camiel Vanderhoeven                             17-DEC-2007
  *      SaveState file format 2.1
  *
@@ -2289,6 +2292,7 @@ u8 CCirrus::vga_mem_read(u32 addr)
 {
   u32 offset;
   u8 *plane0, *plane1, *plane2, *plane3;
+  u8 retval = 0;
 
 #if BX_SUPPORT_VBE  
   // if in a vbe enabled mode, read from the vbe_memory
@@ -2352,13 +2356,13 @@ u8 CCirrus::vga_mem_read(u32 addr)
       state.graphics_ctrl.latch[1] = plane1[offset];
       state.graphics_ctrl.latch[2] = plane2[offset];
       state.graphics_ctrl.latch[3] = plane3[offset];
-      return(state.graphics_ctrl.latch[state.graphics_ctrl.read_map_select]);
+      retval = state.graphics_ctrl.latch[state.graphics_ctrl.read_map_select];
       break;
 
     case 1: /* read mode 1 */
       {
       u8 color_compare, color_dont_care;
-      u8 latch0, latch1, latch2, latch3, retval;
+      u8 latch0, latch1, latch2, latch3;
 
       color_compare   = state.graphics_ctrl.color_compare & 0x0f;
       color_dont_care = state.graphics_ctrl.color_dont_care & 0x0f;
@@ -2378,13 +2382,10 @@ u8 CCirrus::vga_mem_read(u32 addr)
       latch3 &= ccdat[color_dont_care][3];
 
       retval = ~(latch0 | latch1 | latch2 | latch3);
-
-      return retval;
       }
       break;
-    default:
-      return 0;
   }
+  return retval;
 }
 
 void CCirrus::vga_mem_write(u32 addr, u8 value)

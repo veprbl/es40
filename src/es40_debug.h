@@ -32,6 +32,9 @@
  * \file
  * Contains macro's and prototypes for debugging.
  *
+ * X-1.3        Camiel Vanderhoeven                             28-DEC-2007
+ *      Keep the compiler happy.
+ *
  * X-1.2        Camiel Vanderhoeven                             15-NOV-2007
  *      Included stdarg.h for Linux.
  *
@@ -77,6 +80,16 @@
 #define	CHECK_ALLOCATION(ptr)					{	\
 		if ((ptr) == NULL)					\
 			FAILURE("Out of memory");			\
+	}
+
+#define	CHECK_REALLOCATION(dst,src,type)					{	\
+	    type * rea_x;											\
+		rea_x = (type *)src;									\
+		if ((rea_x) == NULL) {									\
+			FAILURE("Out of memory");							\
+		} else {												\
+			dst = rea_x;										\
+		}														\
 	}
 
 static void va_debug(va_list argp, char *fmt);

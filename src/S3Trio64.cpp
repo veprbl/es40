@@ -26,6 +26,9 @@
  * \file
  * Contains the code for emulated S3 Trio 64 Video Card device.
  *
+ * X-1.7        Camiel Vanderhoeven                             28-DEC-2007
+ *      Keep the compiler happy.
+ *
  * X-1.6        Camiel Vanderhoeven                             17-DEC-2007
  *      SaveState file format 2.1
  *
@@ -117,7 +120,7 @@ static DWORD WINAPI refresh_proc_s3(LPVOID lpParam)
   return 0;
 }
 
-static unsigned int rom_max;
+static size_t rom_max;
 static u8 option_rom[65536];
 
 
@@ -209,7 +212,7 @@ CS3Trio64::CS3Trio64(CConfigurator * cfg, CSystem * c, int pcibus, int pcidev): 
     printf("%%VGA-I-ROMSIZE: ROM is %d bytes.\n",rom_max);
 
     /* Option ROM address space: C0000  */
-    add_legacy_mem(5,0xc0000,rom_max);
+    add_legacy_mem(5,0xc0000,(u32)rom_max);
 
 
   state.vga_enabled = 1;
@@ -397,12 +400,12 @@ u32 CS3Trio64::ReadMem_Legacy(int index, u32 address, int dsize)
   switch(index)
     {
     case 2: /* io ports */
-      return endian_bits(io_read(address, dsize), dsize);
+      return io_read(address, dsize);
     case 4: /* legacy memory */
-      return endian_bits(legacy_read(address, dsize), dsize);
+      return legacy_read(address, dsize);
     case 5: /* rom */
     case 6:
-      return endian_bits(rom_read(address, dsize), dsize);
+      return rom_read(address, dsize);
     }
   return 0;
 }
@@ -412,14 +415,14 @@ void CS3Trio64::WriteMem_Legacy(int index, u32 address, int dsize, u32 data)
   switch(index)
     {
     case 2:  /* io port */
-      io_write(address,dsize,endian_bits(data,dsize));
+      io_write(address,dsize,data);
       return;
     case 4:  /* legacy memory */
-      legacy_write(address,dsize,endian_bits(data,dsize));
+      legacy_write(address,dsize,data);
       return;
     case 5:  /* rom */
     case 6:
-      rom_write(address,dsize,endian_bits(data,dsize));
+      rom_write(address,dsize,data);
       return;
     case 7: /* bios message */
       bios_message[bios_message_size++] = (char) data & 0xff;
@@ -441,7 +444,7 @@ u32 CS3Trio64::ReadMem_Bar(int func, int bar, u32 address, int dsize)
   switch(bar)
     {
     case 0: /* pci memory */
-      return endian_bits(mem_read(address, dsize), dsize);
+      return mem_read(address, dsize);
     }
   return 0;
 }
@@ -451,7 +454,7 @@ void CS3Trio64::WriteMem_Bar(int func, int bar, u32 address, int dsize, u32 data
   switch(bar)
     {
     case 0:  /* pci memory */
-      mem_write(address,dsize,endian_bits(data,dsize));
+      mem_write(address,dsize,data);
       return;
     }
 }
@@ -552,9 +555,9 @@ int CS3Trio64::RestoreState(FILE *f)
 /**
  * Read from Framebuffer
  */
-u64 CS3Trio64::mem_read(u64 address, int dsize)
+u32 CS3Trio64::mem_read(u32 address, int dsize)
 {
-  u64 data = 0;
+  u32 data = 0;
   //printf("S3 mem read: %" LL "x, %d, %" LL "x   \n", address, dsize, data);
 
   return data;
@@ -563,7 +566,7 @@ u64 CS3Trio64::mem_read(u64 address, int dsize)
 /**
  * Write to Framebuffer
  */
-void CS3Trio64::mem_write(u64 address, int dsize, u64 data)
+void CS3Trio64::mem_write(u32 address, int dsize, u32 data)
 {
 
   //printf("S3 mem write: %" LL "x, %d, %" LL "x   \n", address, dsize, data);
@@ -571,7 +574,6 @@ void CS3Trio64::mem_write(u64 address, int dsize, u64 data)
   case 8:
   case 16:
   case 32:
-  case 64:
     break;
   }
 }
@@ -579,16 +581,11 @@ void CS3Trio64::mem_write(u64 address, int dsize, u64 data)
 /**
  * Read from Legacy Framebuffer
  */
-u64 CS3Trio64::legacy_read(u64 address, int dsize)
+u32 CS3Trio64::legacy_read(u32 address, int dsize)
 {
-  u64 data = 0;    
+  u32 data = 0;    
   switch (dsize)
     {
-    case 64:
-      data |= (u64)vga_mem_read(address + 0xA0004) << 32;// (u64)(*((u8*)x))&0xff;
-      data |= (u64)vga_mem_read(address + 0xA0005) << 40;// (u64)(*((u8*)x))&0xff;
-      data |= (u64)vga_mem_read(address + 0xA0006) << 48;// (u64)(*((u8*)x))&0xff;
-      data |= (u64)vga_mem_read(address + 0xA0007) << 56;// (u64)(*((u8*)x))&0xff;
     case 32:
       data |= (u64)vga_mem_read(address + 0xA0002) << 16;// (u64)(*((u8*)x))&0xff;
       data |= (u64)vga_mem_read(address + 0xA0003) << 24;// (u64)(*((u8*)x))&0xff;
@@ -604,15 +601,10 @@ u64 CS3Trio64::legacy_read(u64 address, int dsize)
 /**
  * Write to Legacy Framebuffer
  */
-void CS3Trio64::legacy_write(u64 address, int dsize, u64 data)
+void CS3Trio64::legacy_write(u32 address, int dsize, u32 data)
 {
 //  //printf("S3 legacy write: %" LL "x, %d, %" LL "x   \n", address, dsize, data);
   switch(dsize) {
-  case 64:
-    vga_mem_write(address+0xA0004, (u8)(data>>32));
-    vga_mem_write(address+0xA0005, (u8)(data>>40));
-    vga_mem_write(address+0xA0006, (u8)(data>>48));
-    vga_mem_write(address+0xA0007, (u8)(data>>56));
   case 32:
     vga_mem_write(address+0xA0002, (u8)(data>>16));
     vga_mem_write(address+0xA0003, (u8)(data>>24));
@@ -627,9 +619,9 @@ void CS3Trio64::legacy_write(u64 address, int dsize, u64 data)
 /**
  * Read from Option ROM
  */
-u64 CS3Trio64::rom_read(u64 address, int dsize)
+u32 CS3Trio64::rom_read(u32 address, int dsize)
 {
-  u64 data = 0x00;  // make it easy for the checksummer.
+  u32 data = 0x00;  // make it easy for the checksummer.
   u8 *x=(u8 *)option_rom;
   if(address<= rom_max) {
     x+=address;
@@ -644,9 +636,6 @@ u64 CS3Trio64::rom_read(u64 address, int dsize)
       case 32:
 	data = (u64)(*((u32*)x))&0xffffffff;
 	break;
-      default:
-	data = (u64)(*((u64*)x));
-	break;
       }
     //printf("S3 rom read: %" LL "x, %d, %" LL "x\n", address, dsize,data);
   } else {
@@ -658,7 +647,7 @@ u64 CS3Trio64::rom_read(u64 address, int dsize)
 /**
  * Write to Option ROM
  */
-void CS3Trio64::rom_write(u64 address, int dsize, u64 data)
+void CS3Trio64::rom_write(u32 address, int dsize, u32 data)
 {
   //printf("S3 rom write: %" LL "x, %d, %" LL "x --", address, dsize, data);
 }
@@ -666,9 +655,9 @@ void CS3Trio64::rom_write(u64 address, int dsize, u64 data)
 /**
  * Read from I/O Port
  */
-u64 CS3Trio64::io_read(u64 address, int dsize)
+u32 CS3Trio64::io_read(u32 address, int dsize)
 {
-  u64 data = 0;
+  u32 data = 0;
   if (dsize !=8)
   {
     printf("Unsupported dsize!\n");
@@ -767,7 +756,7 @@ u64 CS3Trio64::io_read(u64 address, int dsize)
 /**
  * Write to I/O Port
  */
-void CS3Trio64::io_write(u64 address, int dsize, u64 data)
+void CS3Trio64::io_write(u32 address, int dsize, u32 data)
 {
 //  printf("S3 io write: %" LL "x, %d, %" LL "x   \n", address+VGA_BASE, dsize, data);
   switch(dsize)
@@ -785,7 +774,7 @@ void CS3Trio64::io_write(u64 address, int dsize, u64 data)
   }
 }
 
-void CS3Trio64::io_write_b(u64 address, u8 data)
+void CS3Trio64::io_write_b(u32 address, u8 data)
 {
   switch(address+VGA_BASE) {
 
@@ -2283,6 +2272,7 @@ u8 CS3Trio64::vga_mem_read(u32 addr)
 {
   u32 offset;
   u8 *plane0, *plane1, *plane2, *plane3;
+  u8 retval = 0;
 
 #if BX_SUPPORT_VBE  
   // if in a vbe enabled mode, read from the vbe_memory
@@ -2346,13 +2336,13 @@ u8 CS3Trio64::vga_mem_read(u32 addr)
       state.graphics_ctrl.latch[1] = plane1[offset];
       state.graphics_ctrl.latch[2] = plane2[offset];
       state.graphics_ctrl.latch[3] = plane3[offset];
-      return(state.graphics_ctrl.latch[state.graphics_ctrl.read_map_select]);
+      retval = state.graphics_ctrl.latch[state.graphics_ctrl.read_map_select];
       break;
 
     case 1: /* read mode 1 */
       {
       u8 color_compare, color_dont_care;
-      u8 latch0, latch1, latch2, latch3, retval;
+      u8 latch0, latch1, latch2, latch3;
 
       color_compare   = state.graphics_ctrl.color_compare & 0x0f;
       color_dont_care = state.graphics_ctrl.color_dont_care & 0x0f;
@@ -2372,13 +2362,10 @@ u8 CS3Trio64::vga_mem_read(u32 addr)
       latch3 &= ccdat[color_dont_care][3];
 
       retval = ~(latch0 | latch1 | latch2 | latch3);
-
-      return retval;
       }
       break;
-    default:
-      return 0;
   }
+  return retval;
 }
 
 void CS3Trio64::vga_mem_write(u32 addr, u8 value)

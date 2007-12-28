@@ -27,13 +27,16 @@
  * \file
  * Contains code to use a file as a disk image.
  *
- * X-1.5         Camiel Vanderhoeven                             20-DEC-2007
+ * X-1.6        Camiel Vanderhoeven                             28-DEC-2007
+ *      Keep the compiler happy.
+ *
+ * X-1.5        Camiel Vanderhoeven                             20-DEC-2007
  *      Close files and free memory when the emulator shuts down.
  *
- * X-1.4         Camiel Vanderhoeven                             18-DEC-2007
+ * X-1.4        Camiel Vanderhoeven                             18-DEC-2007
  *      Byte-sized transfers for SCSI controller.
  *
- * X-1.3         Brian wheeler                                   17-DEC-2007
+ * X-1.3        Brian wheeler                                   17-DEC-2007
  *      Changed last cylinder number.
  *
  * X-1.2        Brian Wheeler                                   16-DEC-2007
@@ -78,7 +81,7 @@ CDiskFile::CDiskFile(CConfigurator * cfg, CDiskController * c, int idebus, int i
   heads = 8;
   cylinders = (lba_size/sectors/heads);
 
-  long chs_size = sectors*cylinders*heads;
+  unsigned long chs_size = sectors*cylinders*heads;
   if (chs_size<lba_size)
     cylinders++;
 
@@ -93,7 +96,7 @@ CDiskFile::~CDiskFile(void)
   fclose(handle);
 }
 
-bool CDiskFile::seek_block(long lba)
+bool CDiskFile::seek_block(unsigned long lba)
 {
   if (lba >=lba_size)
   {
@@ -126,7 +129,7 @@ size_t CDiskFile::write_blocks(void * src, size_t blocks)
   return r;
 }
 
-bool CDiskFile::seek_byte(long byte)
+bool CDiskFile::seek_byte(unsigned long byte)
 {
   if (byte >=byte_size)
   {

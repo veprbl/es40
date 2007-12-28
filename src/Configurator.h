@@ -27,6 +27,9 @@
  * \file
  * Contains the definitions for the configuration file interpreter.
  *
+ * X-1.4        Camiel Vanderhoeven                             28-DEC-2007
+ *      Keep the compiler happy.
+ *
  * X-1.3        Camiel Vanderhoeven                             14-DEC-2007
  *      Add support for Symbios SCSI controller.
  *
@@ -66,7 +69,7 @@ typedef enum {c_none,
 class CConfigurator
 {
 public:
-  CConfigurator(class CConfigurator * parent, char * name, char * value, char * text, int textlen);
+  CConfigurator(class CConfigurator * parent, char * name, char * value, char * text, size_t textlen);
   ~CConfigurator(void);
 
   char * strip_string(char * c);

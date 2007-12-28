@@ -27,6 +27,9 @@
  * \file
  * Contains the code for the PCI device class.
  *
+ * X-1.6        Camiel Vanderhoeven                             28-DEC-2007
+ *      Keep the compiler happy.
+ *
  * X-1.5        Camiel Vanderhoeven                             17-DEC-2007
  *      SaveState file format 2.1
  *
@@ -122,9 +125,9 @@ void CPCIDevice::config_write(int func, u32 address, int dsize, u32 data)
   u8 * x;
   u8 * y;
 
-  u32 mask;
-  u32 old_data;
-  u32 new_data;
+  u32 mask = 0;
+  u32 old_data = 0;
+  u32 new_data = 0;
 
   x = (u8*)pci_state.config_data[func];
   x+= address;
@@ -256,7 +259,7 @@ u64 CPCIDevice::ReadMem(int index, u64 address, int dsize)
       return 0;
     }
 //    printf("%s(%s) Calling ReadMem_Legacy(%d).\n",myCfg->get_myName(), myCfg->get_myValue(), index);
-    return ReadMem_Legacy(index, address, dsize);
+    return ReadMem_Legacy(index, (u32)address, dsize);
   }
 
   index -= PCI_RANGE_BASE;
@@ -279,7 +282,7 @@ u64 CPCIDevice::ReadMem(int index, u64 address, int dsize)
   }
 
 //  printf("%s(%s).%d Calling ReadMem_Bar(%d,%d).\n",myCfg->get_myName(), myCfg->get_myValue(), func,func,bar);
-  return ReadMem_Bar(func,bar,address,dsize);
+  return ReadMem_Bar(func,bar,(u32)address,dsize);
 }
 
 void CPCIDevice::WriteMem(int index, u64 address, int dsize, u64 data) 

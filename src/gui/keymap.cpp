@@ -220,6 +220,7 @@ void bx_keymap_c::loadKeymap(u32 stringToSymbol(const char*), const char* filena
 
   if((keymapFile = fopen(filename,"r"))==NULL) {
     BX_PANIC(("Can not open keymap file '%s'.",filename));
+	return;
   }
     
   BX_INFO(("Loading keymap from '%s'",filename));
@@ -250,7 +251,7 @@ void bx_keymap_c::loadKeymap(u32 stringToSymbol(const char*), const char* filena
       continue;
     }
 
-    keymapTable=(BXKeyEntry*)realloc(keymapTable,(keymapCount+1) * sizeof(BXKeyEntry));
+    CHECK_REALLOCATION(keymapTable, realloc(keymapTable,(keymapCount+1) * sizeof(BXKeyEntry)), BXKeyEntry);
 
     if (keymapTable==NULL) 
       BX_PANIC(("Can not allocate memory for keymap table."));

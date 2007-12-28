@@ -29,6 +29,9 @@
  * DecChip 21264CB EV68 Alpha processor. Based on disassembly of original VMS
  * PALcode, HRM, and OpenVMS AXP Internals and Data Structures.
  *
+ * X-1.4        Camiel Vanderhoeven                             28-DEC-2007
+ *      Keep the compiler happy.
+ *
  * X-1.3        Camiel Vanderhoeven                             12-DEC-2007
  *      Use disk base class for direct IDE access.
  *
@@ -1048,7 +1051,7 @@ int CAlphaCPU::vmspal_ent_sw_int(int si)
     return 0;
 
   p7 = x;
-  p4 = x << 4;
+  p4 = (u64)x << 4;
   p5 = p4 + 0x500;
   hw_stq(p21+0x158,p5);
   hw_stq(p21+0x150,state.current_pc);
@@ -1060,7 +1063,7 @@ int CAlphaCPU::vmspal_ent_sw_int(int si)
   state.sien = ipl_ier_mask[x][4];
   state.asten = ipl_ier_mask[x][5];
   state.check_int = true;
-  p20 = x << 8;
+  p20 = (u64)x << 8;
   p20 |= 4;
   hw_stq(p21+0x128, p20);
   return vmspal_int_initiate_interrupt();
@@ -1204,7 +1207,7 @@ int CAlphaCPU::vmspal_ent_ast_int(int ast)
   }
   state.asten = 0;
   state.sien &= ~7;
-  p4 = x << 4;
+  p4 = (u64)x << 4;
   p5 = 0x240 + p4;
   hw_stq(p21+0x158,p5);
   hw_stq(p21+0x150,p23);
@@ -1623,8 +1626,8 @@ int CAlphaCPU::vmspal_int_read_ide()
   u64 virt = r19;
   u64 phys;
   u64 bytes = r17*r18;
-  long try_b;
-  long ok_b;
+  size_t try_b;
+  size_t ok_b;
 
   u64 phys_address;
 
@@ -1641,7 +1644,7 @@ int CAlphaCPU::vmspal_int_read_ide()
 
 //  FILE * h = ((CDiskFile *)(theAliIDE->get_disk(controller,drive)))->get_handle();
 
-  theAliIDE->get_disk(controller,drive)->seek_byte(filepos);
+  theAliIDE->get_disk((int)controller,(int)drive)->seek_byte((unsigned long)filepos);
 //fseek(theAliIDE->get_ide_disk((u32)controller,(u32)drive),(long)filepos,0);
 
   r0 = 0;
@@ -1653,7 +1656,7 @@ int CAlphaCPU::vmspal_int_read_ide()
     else
       try_b = (long)bytes;
     virt2phys(virt,&phys,ACCESS_WRITE,NULL,0);
-    ok_b  = theAliIDE->get_disk(controller,drive)->read_bytes(cSystem->PtrToMem(phys),try_b);
+    ok_b  = theAliIDE->get_disk((int)controller,(int)drive)->read_bytes(cSystem->PtrToMem(phys),try_b);
     //ok_b = fread(cSystem->PtrToMem(phys),1,try_b,h);
     filepos += ok_b;
     r0    += ok_b;

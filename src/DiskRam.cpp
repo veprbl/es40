@@ -27,10 +27,13 @@
  * \file
  * Contains code to use a RAM disk.
  *
- * X-1.5         Camiel Vanderhoeven                             18-DEC-2007
+ * X-1.6        Camiel Vanderhoeven                             28-DEC-2007
+ *      Keep the compiler happy.
+ *
+ * X-1.5        Camiel Vanderhoeven                             18-DEC-2007
  *      Byte-sized transfers for SCSI controller.
  *
- * X-1.4         Brian wheeler                                   17-DEC-2007
+ * X-1.4        Brian wheeler                                   17-DEC-2007
  *      Changed last cylinder number.
  *
  * X-1.3        Brian Wheeler                                   16-DEC-2007
@@ -66,7 +69,7 @@ CDiskRam::CDiskRam(CConfigurator * cfg, CDiskController * c, int idebus, int ide
   heads = 8;
   cylinders = (lba_size/sectors/heads);
 
-  long chs_size = sectors*cylinders*heads;
+  unsigned long chs_size = sectors*cylinders*heads;
   if (chs_size<lba_size)
     cylinders++;
 
@@ -85,7 +88,7 @@ CDiskRam::~CDiskRam(void)
   }
 }
 
-bool CDiskRam::seek_block(long lba)
+bool CDiskRam::seek_block(unsigned long lba)
 {
   if (lba >=lba_size)
   {
@@ -106,7 +109,7 @@ size_t CDiskRam::read_blocks(void *dest, size_t blocks)
     blocks--;
 
   memcpy(dest,&(((char*)ramdisk)[byte_pos]),blocks*512);
-  byte_pos += blocks*512;
+  byte_pos += (unsigned long)blocks*512;
   return blocks;
 }
 
@@ -122,12 +125,12 @@ size_t CDiskRam::write_blocks(void * src, size_t blocks)
     blocks--;
 
   memcpy(&(((char*)ramdisk)[byte_pos]),src,blocks*512);
-  byte_pos += blocks*512;
+  byte_pos += (unsigned long)blocks*512;
   return blocks;
 
 }
 
-bool CDiskRam::seek_byte(long byte)
+bool CDiskRam::seek_byte(unsigned long byte)
 {
   if (byte >=byte_size)
   {
@@ -148,7 +151,7 @@ size_t CDiskRam::read_bytes(void *dest, size_t bytes)
     bytes--;
 
   memcpy(dest,&(((char*)ramdisk)[byte_pos]),bytes);
-  byte_pos += bytes;
+  byte_pos += (unsigned long)bytes;
   return bytes;
 }
 
@@ -161,6 +164,6 @@ size_t CDiskRam::write_bytes(void *src, size_t bytes)
     bytes--;
 
   memcpy(&(((char*)ramdisk)[byte_pos]),src,bytes);
-  byte_pos += bytes;
+  byte_pos += (unsigned long)bytes;
   return bytes;
 }

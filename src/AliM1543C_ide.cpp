@@ -27,6 +27,9 @@
  * \file
  * Contains the code for the emulated Ali M1543C IDE chipset part.
  *
+ * X-1.12       Camiel Vanderhoeven                             28-DEC-2007
+ *      Keep the compiler happy.
+ *
  * X-1.11       Camiel Vanderhoeven                             28-DEC-2007
  *      Only delay IDE interrupts when NO_VMS is defined. (Need to fix this
  *		properly).
@@ -321,7 +324,7 @@ void CAliM1543C_ide::WriteMem_Bar(int func, int bar, u32 address, int dsize, u32
 
 u32 CAliM1543C_ide::ide_command_read(int index, u32 address, int dsize)
 {
-  u32 data;
+  u32 data = 0;
 
   switch (address)
   {
@@ -337,7 +340,6 @@ u32 CAliM1543C_ide::ide_command_read(int index, u32 address, int dsize)
     case 0x21: // read sector
     case 0xec: // identify
     case 0xa1: // packet identify
-      data = 0;
       switch(dsize)
       {
       case 32:
@@ -682,7 +684,7 @@ void CAliM1543C_ide::ide_command_write(int index, u32 address, int dsize, u32 da
       }
       printf("%%IDE-I-ATAPI: Identify Packet Device\n");
       
-	  int i;
+	  size_t i;
 	  char serial_number[21];
 	  char model_number[41];
 	  char rev_number[9];

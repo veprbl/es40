@@ -30,6 +30,9 @@
  * \bug Rounding and trap modes are not used for floating point ops.
  * \bug /V is ignored for integer ops.
  *
+ * X-1.49       Camiel Vanderhoeven                             28-DEC-2007
+ *      Keep the compiler happy.
+ *
  * X-1.48       Camiel Vanderhoeven                             17-DEC-2007
  *      SaveState file format 2.1
  *
@@ -1195,7 +1198,7 @@ if (spe && !cm)
         if (flags & VPTE)
         {
           state.fault_va = virt;
-          state.exc_sum = REG_1<<8;
+          state.exc_sum = (u64)REG_1<<8;
           state.pc = state.pal_base + 0x101;
         }
         else if (flags & ACCESS_EXEC)
@@ -1205,7 +1208,7 @@ if (spe && !cm)
         else
         {
           state.fault_va = virt;
-          state.exc_sum = REG_1<<8;
+          state.exc_sum = (u64)REG_1<<8;
           u32 opcode = move_bits_32(ins,31,26,0);
           state.mm_stat =  ((opcode==0x1b||opcode==0x1f)?opcode-0x18:opcode)<<4 | (flags & ACCESS_WRITE);
           state.pc = state.pal_base + 0x301;
@@ -1233,7 +1236,7 @@ if (spe && !cm)
         else
         {
           state.fault_va = virt;
-          state.exc_sum = REG_1<<8;
+          state.exc_sum = (u64)REG_1<<8;
           u32 opcode = move_bits_32(ins,31,26,0);
           state.mm_stat =  ((opcode==0x1b||opcode==0x1f)?opcode-0x18:opcode)<<4 | (flags & ACCESS_WRITE);
           if (res = vmspal_ent_dtbm_single(flags))
@@ -1285,7 +1288,7 @@ if (spe && !cm)
       {
         state.exc_addr = state.current_pc;
         state.fault_va = virt;
-        state.exc_sum = REG_1<<8;
+        state.exc_sum = (u64)REG_1<<8;
         u32 opcode = move_bits_32(ins,31,26,0);
         state.mm_stat =  ((opcode==0x1b||opcode==0x1f)?opcode-0x18:opcode)<<4 | (flags & ACCESS_WRITE) | 2;
         if (state.pal_vms)
@@ -1328,7 +1331,7 @@ if (spe && !cm)
       {
         state.exc_addr = state.current_pc;
         state.fault_va = virt;
-        state.exc_sum = REG_1<<8;
+        state.exc_sum = (u64)REG_1<<8;
         u32 opcode = move_bits_32(ins,31,26,0);
         state.mm_stat =  ((opcode==0x1b||opcode==0x1f)?opcode-0x18:opcode)<<4 | (flags & ACCESS_WRITE) | ((flags&ACCESS_WRITE)?8:4);
         if (state.pal_vms)
@@ -1373,9 +1376,9 @@ u64 CAlphaCPU::get_instruction_count()
 void CAlphaCPU::add_tb(u64 virt, u64 pte, int flags)
 {
   int t = (flags&ACCESS_EXEC)?1:0;
-  u64 match_mask;
-  u64 keep_mask;
-  u64 phys_mask;
+  u64 match_mask = 0;
+  u64 keep_mask = 0;
+  u64 phys_mask = 0;
   int i;
   int asn = (flags & ACCESS_EXEC)?state.asn:state.asn0;
 

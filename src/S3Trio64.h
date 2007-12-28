@@ -26,6 +26,9 @@
  * \file
  * Contains the definitions for emulated S3 Trio 64 Video Card device.
  *
+ * X-1.6        Camiel Vanderhoeven                             28-DEC-2007
+ *      Keep the compiler happy.
+ *
  * X-1.5        Camiel Vanderhoeven                             17-DEC-2007
  *      SaveState file format 2.1
  *
@@ -86,13 +89,13 @@ class CS3Trio64 : public CVGA
     virtual u8 get_actl_palette_idx(u8 index);
 
 private:
-    u64 mem_read(u64 address, int dsize);
-    void mem_write(u64 address, int dsize, u64 data);
+    u32 mem_read(u32 address, int dsize);
+    void mem_write(u32 address, int dsize, u32 data);
 
-    u64 io_read(u64 address, int dsize);
-    void io_write(u64 address, int dsize, u64 data);
+    u32 io_read(u32 address, int dsize);
+    void io_write(u32 address, int dsize, u32 data);
 
-    void io_write_b(u64 address, u8 data);
+    void io_write_b(u32 address, u8 data);
 
     void write_b_3c0(u8 data);
     void write_b_3c2(u8 data);
@@ -120,11 +123,11 @@ private:
     u8 read_b_3da();
 
 
-    u64 legacy_read(u64 address, int dsize);
-    void legacy_write(u64 address, int dsize, u64 data);
+    u32 legacy_read(u32 address, int dsize);
+    void legacy_write(u32 address, int dsize, u32 data);
 
-    u64 rom_read(u64 address, int dsize);
-    void rom_write(u64 address, int dsize, u64 data);
+    u32 rom_read(u32 address, int dsize);
+    void rom_write(u32 address, int dsize, u32 data);
 
     void redraw_area(unsigned x0, unsigned y0, unsigned width, unsigned height);
     void determine_screen_dimensions(unsigned *piHeight, unsigned *piWidth);
@@ -249,7 +252,7 @@ private:
 
      struct {
        u8   address;
-       u8   reg[0x19];
+       u8   reg[0x20];
        bool write_protect;
        } CRTC;
       // generic register range.  Basically, we've got to

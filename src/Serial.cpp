@@ -27,6 +27,9 @@
  * \file
  * Contains the code for the emulated Serial Port devices.
  *
+ * X-1.32       Camiel Vanderhoeven                             28-DEC-2007
+ *      Keep the compiler happy.
+ *
  * X-1.31       Camiel Vanderhoeven                             17-DEC-2007
  *      SaveState file format 2.1
  *
@@ -148,7 +151,6 @@
 #include <sys/wait.h>
 #endif
 
-#include "telnet.h"
 #include "lockstep.h"
 
 #define RECV_TICKS 10
@@ -188,7 +190,7 @@ CSerial::CSerial(CConfigurator * cfg, CSystem * c, u16 number) : CSystemComponen
 
   socklen_t nAddressSize=sizeof(struct sockaddr_in);
 
-  listenSocket = socket(AF_INET,SOCK_STREAM,0);
+  listenSocket = (int)socket(AF_INET,SOCK_STREAM,0);
   if (listenSocket == INVALID_SOCKET)
   {
     printf("Could not open socket to listen on!\n");
@@ -207,12 +209,13 @@ CSerial::CSerial(CConfigurator * cfg, CSystem * c, u16 number) : CSystemComponen
 
 #if !defined(LS_SLAVE)
   strncpy(s, cfg->get_text_value("action",""),999);
+  s[999] = '\0';
   printf("%%SRL-I-ACTION: Specified : %s\n",s);
 
   if (strcmp(s,""))
   {
     // spawn external program (telnet client)...
-    while (strcmp(nargv,""))
+    while (*nargv)
     {
       argv[i] = nargv;
       if (nargv[0] == '\"')
@@ -261,7 +264,7 @@ CSerial::CSerial(CConfigurator * cfg, CSystem * c, u16 number) : CSystemComponen
   connectSocket = INVALID_SOCKET;
   while (connectSocket == INVALID_SOCKET)
   {
-    connectSocket = accept(listenSocket,(struct sockaddr*)&Address,&nAddressSize);
+    connectSocket = (int)accept(listenSocket,(struct sockaddr*)&Address,&nAddressSize);
   }
 
   state.serial_cycles = 0;
@@ -452,7 +455,7 @@ void CSerial::WriteMem(int index, u64 address, int dsize, u64 data)
 
 void CSerial::write(char *s)
 {
-  send(connectSocket,s,strlen(s)+1,0);
+  send(connectSocket,s,(int)strlen(s)+1,0);
 }
 
 void CSerial::receive(const char* data)

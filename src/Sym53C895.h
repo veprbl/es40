@@ -27,10 +27,13 @@
  * \file
  * Contains the definitions for the emulated Symbios SCSI controller.
  *
- * X-1.10        Camiel Vanderhoeven                             20-DEC-2007
+ * X-1.11       Camiel Vanderhoeven                             28-DEC-2007
+ *      Keep the compiler happy.
+ *
+ * X-1.10       Camiel Vanderhoeven                             20-DEC-2007
  *      Do reselection on read commands.
  *
- * X-1.9         Camiel Vanderhoeven                             19-DEC-2007
+ * X-1.9        Camiel Vanderhoeven                             19-DEC-2007
  *      Allow for different blocksizes.
  *
  * X-1.5        Camiel Vanderhoeven                             18-DEC-2007
@@ -138,33 +141,33 @@ class CSym53C895 : public CDiskController
     struct {
       // msgi: Message In Phase (disk -> controller)
       u8 msgi[10];
-      int msgi_len;
-      int msgi_ptr;
+      unsigned int msgi_len;
+      unsigned int msgi_ptr;
 
       // msgo: Message Out Phase (controller -> disk)
       u8 msgo[10];
-      int msgo_len;
+      unsigned int msgo_len;
 
       bool lun_selected;
 
       // cmd: Command phase 
       u8 cmd[20];
-      int cmd_len;
+      unsigned int cmd_len;
       bool cmd_sent;
 
       u8 dati[512];
-      int dati_ptr;
-      int dati_len;
+      unsigned int dati_ptr;
+      unsigned int dati_len;
       bool dati_off_disk;
 
       u8 dato[512];
-      int dato_ptr;
-      int dato_len;
+      unsigned int dato_ptr;
+      unsigned int dato_len;
       bool dato_to_disk;
 
       int stat[10];
-      int stat_ptr;
-      int stat_len;
+      unsigned int stat_ptr;
+      unsigned int stat_len;
 
       bool disconnect_priv;
       bool will_disconnect;

@@ -27,16 +27,19 @@
  * \file
  * Contains the code for the emulated Symbios SCSI controller.
  *
- * X-1.10        Camiel Vanderhoeven                             20-DEC-2007
+ * X-1.11       Camiel Vanderhoeven                             28-DEC-2007
+ *      Keep the compiler happy.
+ *
+ * X-1.10       Camiel Vanderhoeven                             20-DEC-2007
  *      Do reselection on read commands.
  *
- * X-1.9         Camiel Vanderhoeven                             19-DEC-2007
+ * X-1.9        Camiel Vanderhoeven                             19-DEC-2007
  *      Allow for different blocksizes.
  *
- * X-1.8         Camiel Vanderhoeven                             18-DEC-2007
+ * X-1.8        Camiel Vanderhoeven                             18-DEC-2007
  *      Fixed silly mis-interpretation of "add-with-carry".
  *
- * X-1.7         Camiel Vanderhoeven                             18-DEC-2007
+ * X-1.7        Camiel Vanderhoeven                             18-DEC-2007
  *      Byte-sized transfers for SCSI controller.
  *
  * X-1.6        Camiel Vanderhoeven                             18-DEC-2007
@@ -599,7 +602,7 @@ void CSym53C895::WriteMem_Bar(int func,int bar, u32 address, int dsize, u32 data
         case R_SSTAT0:  // 0D
         case R_SSTAT1:  // 0E
         case R_SSTAT2:  // 0F
-          printf("SYM: Write to read-only memory at %02x. FreeBSD driver cache test.\n" ,address,data);
+          printf("SYM: Write to read-only memory at %02x. FreeBSD driver cache test.\n" ,address);
           break;
         default:
           printf("SYM: Write 8 bits to unknown memory at %02x with %08x.\n",address,data);
@@ -1129,8 +1132,8 @@ int CSym53C895::execute()
 
     //printf("SYM: INS @ %" LL "x, %" LL "x   \n",cmda0, cmda1);
 
-    R32(DBC) = cSystem->ReadMem(cmda0,32);  // loads both DBC and DCMD
-    R32(DSPS) = cSystem->ReadMem(cmda1,32);
+    R32(DBC) = (u32)cSystem->ReadMem(cmda0,32);  // loads both DBC and DCMD
+    R32(DSPS) = (u32)cSystem->ReadMem(cmda1,32);
 
     //printf("SYM: INS = %x, %x, %x   \n",R8(DCMD), GET_DBC(), R32(DSPS));
 
@@ -1170,7 +1173,7 @@ int CSym53C895::execute()
           u32 start;
           u32 count;
 
-          int i;
+          u32 i;
           if (table_indirect)
           {
             u32 add = R32(DSA) + sext_32(R32(DSPS),24);
@@ -1179,8 +1182,8 @@ int CSym53C895::execute()
 
             cmda0 = cSystem->PCI_Phys(myPCIBus,add);
             cmda1 = cSystem->PCI_Phys(myPCIBus,add+4);
-            count = cSystem->ReadMem(cmda0,32) & 0x00ffffff;
-            start = cSystem->ReadMem(cmda1,32);
+            count = (u32)cSystem->ReadMem(cmda0,32) & 0x00ffffff;
+            start = (u32)cSystem->ReadMem(cmda1,32);
           }
           else if (indirect)
           {
@@ -1251,7 +1254,7 @@ int CSym53C895::execute()
                 }
                 else
                 {
-                  dat = cSystem->ReadMem(cmda0,8);
+                  dat = (u8)cSystem->ReadMem(cmda0,8);
                   printf("%02x ",dat);
                   byte_to_target(dat);
                 }
@@ -1294,7 +1297,7 @@ int CSym53C895::execute()
           {
             u32 io_addr = R32(DSA) + sext_32(GET_DBC(),24);
             u64 io_pa = cSystem->PCI_Phys(myPCIBus,io_addr);
-            u32 io_struc = cSystem->ReadMem(io_pa,32);
+            u32 io_struc = (u32)cSystem->ReadMem(io_pa,32);
             destination = (io_struc>>16) & 0x0f;
             //printf("SYM: table indirect. io_struct = %08x, new dest = %d.\n",io_struc,destination);
           }
@@ -1558,7 +1561,7 @@ int CSym53C895::execute()
           return 0;
           break;
         default:
-          printf("SYM: Transfer Control Instruction with opcode %d is RESERVED.\n");
+          printf("SYM: Transfer Control Instruction with opcode %d is RESERVED.\n",opcode);
           exit(1);
         }
       }
@@ -1590,7 +1593,7 @@ int CSym53C895::execute()
             for (int i=0; i<byte_count;i++)
             {
               u64 ma = cSystem->PCI_Phys(myPCIBus,memaddr+i);
-              u8 dat = cSystem->ReadMem(ma,8);
+              u8 dat = (u8)cSystem->ReadMem(ma,8);
               printf("SYM: %02x -> reg%02x\n",dat,regaddr+i);
               WriteMem_Bar(0,1,regaddr+i,8,dat);
             }
@@ -1616,7 +1619,7 @@ int CSym53C895::execute()
           // memory move
           cmda0 = cSystem->PCI_Phys(myPCIBus, R32(DSP));
           R32(DSP) += 4;
-          u32 temp_shadow = cSystem->ReadMem(cmda0,32);
+          u32 temp_shadow = (u32)cSystem->ReadMem(cmda0,32);
           printf("SYM: %08x: Memory Move %06x bytes from %08x to %08x.\n",R32(DSP)-8,GET_DBC(),R32(DSPS),temp_shadow);
           cmda0 = cSystem->PCI_Phys(myPCIBus, R32(DSPS));
           cmda1 = cSystem->PCI_Phys(myPCIBus, temp_shadow);
@@ -1692,7 +1695,7 @@ void CSym53C895::byte_to_target(u8 value)
 
 u8 CSym53C895::byte_from_target()
 {
-  u8 retval;
+  u8 retval = 0;
 
   switch (state.phase)
   {
@@ -1910,15 +1913,15 @@ void CSym53C895::end_xfer()
 
 int CSym53C895::do_command()
 {
-  int retlen;
+  unsigned int retlen;
   int q;
   int pagecode;
-  long ofs;
+  u32 ofs;
 
   PT.cmd_sent = true;
 
   printf("SYM.%d: %d-byte command ",GET_DEST(),PT.cmd_len);
-  for (int x=0;x<PT.cmd_len;x++) printf("%02x ",PT.cmd[x]);
+  for (unsigned int x=0;x<PT.cmd_len;x++) printf("%02x ",PT.cmd[x]);
   printf("\n");
 
   if (PT.cmd_len<1)
@@ -1984,12 +1987,12 @@ int CSym53C895::do_command()
           // unit serial number page
           PT.dati[1] = 0x80; // page code: 0x80
           PT.dati[2] = 0x00; // reserved
-          PT.dati[3] = strlen(serial_number);
+          PT.dati[3] = (u8)strlen(serial_number);
           memcpy(&PT.dati[4],serial_number,strlen(serial_number));
         }
         else
         {
-          printf("Don't know format for vital product data page %02x!!\n");
+          printf("Don't know format for vital product data page %02x!!\n",PT.cmd[2]);
           printf(">");
           getchar();
           PT.dati[1] = PT.cmd[2]; // page code
@@ -2105,19 +2108,19 @@ int CSym53C895::do_command()
 
 		/*  10,11 = sectors per track  */
 		PT.dati[q + 10] = 0;
-        PT.dati[q + 11] = PTD->get_sectors();
+        PT.dati[q + 11] = (u8)PTD->get_sectors();
 
 		/*  12,13 = physical sector size  */
-		PT.dati[q + 12] = (PT.block_size >> 8) & 255;
-		PT.dati[q + 13] = (PT.block_size >> 0) & 255;
+		PT.dati[q + 12] = (u8)(PT.block_size >> 8) & 255;
+		PT.dati[q + 13] = (u8)(PT.block_size >> 0) & 255;
 		break;
 	case 4:		/*  rigid disk geometry page  */
 		PT.dati[q + 0] = pagecode;
 		PT.dati[q + 1] = 22;
-        PT.dati[q + 2] = (PTD->get_cylinders() >> 16) & 255;
-		PT.dati[q + 3] = (PTD->get_cylinders() >> 8) & 255;
-        PT.dati[q + 4] = PTD->get_cylinders() & 255;
-        PT.dati[q + 5] = PTD->get_heads();
+        PT.dati[q + 2] = (u8)(PTD->get_cylinders() >> 16) & 255;
+		PT.dati[q + 3] = (u8)(PTD->get_cylinders() >> 8) & 255;
+        PT.dati[q + 4] = (u8)PTD->get_cylinders() & 255;
+        PT.dati[q + 5] = (u8)PTD->get_heads();
 
         //rpms
 		PT.dati[q + 20] = (7200 >> 8) & 255;
@@ -2131,15 +2134,15 @@ int CSym53C895::do_command()
 		PT.dati[q + 2] = ((5000) >> 8) & 255;
 		PT.dati[q + 3] = (5000) & 255;
 
-		PT.dati[q + 4] = PTD->get_heads();
-		PT.dati[q + 5] = PTD->get_sectors();
+		PT.dati[q + 4] = (u8)PTD->get_heads();
+		PT.dati[q + 5] = (u8)PTD->get_sectors();
 
 		/*  6,7 = data bytes per sector  */
-		PT.dati[q + 6] = (PT.block_size >> 8) & 255;
-		PT.dati[q + 7] = (PT.block_size >> 0) & 255;
+		PT.dati[q + 6] = (u8)(PT.block_size >> 8) & 255;
+		PT.dati[q + 7] = (u8)(PT.block_size >> 0) & 255;
 
-		PT.dati[q + 8] = (PTD->get_cylinders() >> 8) & 255;
-		PT.dati[q + 9] = PTD->get_cylinders() & 255;
+		PT.dati[q + 8] = (u8)(PTD->get_cylinders() >> 8) & 255;
+		PT.dati[q + 9] = (u8)PTD->get_cylinders() & 255;
 
         //rpms
 		PT.dati[q + 28] = (7200 >> 8) & 255;
@@ -2194,9 +2197,9 @@ int CSym53C895::do_command()
     else
     {
       printf("SYM: MODE SELECT ignored.\nCommand: ");
-      for(int x= 0; x<PT.cmd_len; x++) printf("%02x ",PT.cmd[x]);
+      for(unsigned int x= 0; x<PT.cmd_len; x++) printf("%02x ",PT.cmd[x]);
       printf("\nData: ");
-      for(int x= 0; x<PT.dato_len; x++) printf("%02x ",PT.dato[x]);
+      for(unsigned int x= 0; x<PT.dato_len; x++) printf("%02x ",PT.dato[x]);
       printf("\nThis might be an attempt to change our blocksize or something like that...\nPlease check the above data, then press enter.\n>");
       getchar();
     }
@@ -2426,8 +2429,8 @@ int CSym53C895::do_command()
 
 int CSym53C895::do_message()
 {
-  int msg;
-  int msglen;
+  unsigned int msg;
+  unsigned int msglen;
 
   msg = 0;
   while (msg<PT.msgo_len)
@@ -2464,7 +2467,7 @@ int CSym53C895::do_message()
           PT.msgi_len = msglen+2;
           PT.msgi[0] = 0x01;
           PT.msgi[1] = msglen;
-          for (int x=0;x<msglen;x++)
+          for (unsigned int x=0;x<msglen;x++)
             PT.msgi[2+x] =PT.msgo[msg+x];
           break;
         case 0x03:
@@ -2472,7 +2475,7 @@ int CSym53C895::do_message()
           PT.msgi_len = msglen+2;
           PT.msgi[0] = 0x01;
           PT.msgi[1] = msglen;
-          for (int x=0;x<msglen;x++)
+          for (unsigned int x=0;x<msglen;x++)
             PT.msgi[2+x] =PT.msgo[msg+x];
           break;
         default:
