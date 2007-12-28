@@ -27,6 +27,9 @@
  * \file
  * Contains the code for the configuration file interpreter.
  *
+ * X-1.6        Camiel Vanderhoeven                             28-DEC-2007
+ *      Throw exceptions rather than just exiting when errors occur.
+ *
  * X-1.5        Camiel Vanderhoeven                             28-DEC-2007
  *      Keep the compiler happy.
  *
@@ -437,7 +440,7 @@ void CConfigurator::initialize()
   if (myClassId == c_none)
   {
     printf("Class %s not known!!\n",myValue);
-    exit(1);
+    throw((int)1);
   }
 
   if (myFlags & IS_PCI)
@@ -445,12 +448,12 @@ void CConfigurator::initialize()
     if (strncmp(myName,"pci",3))
     {
       printf("Error: name of PCI device %s should be pci<bus>.<device>, %s found.\n",myValue,myName);
-      exit(1);
+      throw((int)1);
     }
     if (!(pParent->get_flags() & HAS_PCI))
     {
       printf("Error: parent of PCI device %s(%s) should be a pci-bus capable device.\n",myName,myValue);
-      exit(1);
+      throw((int)1);
     }
 
     pt = &myName[3];
@@ -459,7 +462,7 @@ void CConfigurator::initialize()
     if (!pt)
     {
       printf("Error: name of PCI device %s should be pci<bus>.<device>, %s found.\n",myValue,myName);
-      exit(1);
+      throw((int)1);
     }
     pt++;
     pcidev = atoi(pt);
@@ -470,12 +473,12 @@ void CConfigurator::initialize()
     if (strncmp(myName,"disk",4))
     {
       printf("Error: name of Disk device %s should be disk<channel>.<device>, %s found.\n",myValue,myName);
-      exit(1);
+      throw((int)1);
     }
     if (!(pParent->get_flags() & HAS_DISK))
     {
       printf("Error: parent of disk device %s(%s) should be a disk controller.\n",myName,myValue);
-      exit(1);
+      throw((int)1);
     }
 
     pt = &myName[4];
@@ -484,7 +487,7 @@ void CConfigurator::initialize()
     if (!pt)
     {
       printf("Error: name of Disk device %s should be disk<controller>.<device>, %s found.\n",myValue,myName);
-      exit(1);
+      throw((int)1);
     }
     pt++;
     idedev = atoi(pt);

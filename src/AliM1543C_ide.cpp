@@ -27,6 +27,9 @@
  * \file
  * Contains the code for the emulated Ali M1543C IDE chipset part.
  *
+ * X-1.13       Camiel Vanderhoeven                             28-DEC-2007
+ *      Throw exceptions rather than just exiting when errors occur.
+ *
  * X-1.12       Camiel Vanderhoeven                             28-DEC-2007
  *      Keep the compiler happy.
  *
@@ -169,7 +172,7 @@ CAliM1543C_ide::CAliM1543C_ide(CConfigurator * cfg, CSystem * c, int pcibus, int
   : CDiskController(cfg,c,pcibus,pcidev,2,2)
 {
   if (theAliIDE != 0)
-    FAILURE("More than one AliIDE!!\n");
+    FAILURE("More than one AliIDE!!");
   theAliIDE = this;
 
 #if defined(NO_VMS)
@@ -400,7 +403,7 @@ u32 CAliM1543C_ide::ide_command_read(int index, u32 address, int dsize)
 
     default:
       printf("IDE read with unsupported command: %02x\n",SEL_STATUS(index).current_command);
-      exit(1);
+	  FAILURE("Unsupported IDE command");
     }
     break;
   case 1:
@@ -785,13 +788,11 @@ void CAliM1543C_ide::ide_command_write(int index, u32 address, int dsize, u32 da
     case 0x21: // read sector, without retries
       if (!SEL_DISK(index))
       {
-        printf("Read from non-existing disk!\n");
-        exit(1);
+        FAILURE("Read from non-existing disk!");
       }
       if (!SEL_PER_DRIVE(index).lba_mode)
       {
-        printf("Non-LBA mode!!\n");
-        exit(1);
+        FAILURE("Non-LBA mode!!");
       }
       else
       {
@@ -823,13 +824,11 @@ void CAliM1543C_ide::ide_command_write(int index, u32 address, int dsize, u32 da
     case 0x30: // write sectors, with retries
       if (!SEL_DISK(index))
       {
-        printf("Write to non-existing disk!\n");
-        exit(1);
+        FAILURE("Write to non-existing disk!");
       }
       if (!SEL_PER_DRIVE(index).lba_mode)
       {
-        printf("Non-LBA mode!!\n");
-        exit(1);
+        FAILURE("Non-LBA mode!!");
       }
       else
       {
@@ -1023,7 +1022,7 @@ void CAliM1543C_ide::ide_command_write(int index, u32 address, int dsize, u32 da
 	      u32 dma_addr = cSystem->ReadMem(prd_addr_phys,32);
 	      u16 dma_size = cSystem->ReadMem(prd_addr_phys+4,16);
 	      printf("DMA at %x, size: %d\n",dma_addr,dma_size);
-	      exit(1);
+	      throw((int)1);
         }
       }
 */

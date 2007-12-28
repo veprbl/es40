@@ -27,6 +27,9 @@
  * \file
  * Contains code to use a file as a disk image.
  *
+ * X-1.7        Camiel Vanderhoeven                             28-DEC-2007
+ *      Throw exceptions rather than just exiting when errors occur.
+ *
  * X-1.6        Camiel Vanderhoeven                             28-DEC-2007
  *      Keep the compiler happy.
  *
@@ -57,7 +60,7 @@ CDiskFile::CDiskFile(CConfigurator * cfg, CDiskController * c, int idebus, int i
   if (!filename)
   {
     printf("%s: Disk has no file attached!\n",devid_string);
-    exit(1);
+    throw((int)1);
   }
   
   if (read_only)
@@ -67,7 +70,7 @@ CDiskFile::CDiskFile(CConfigurator * cfg, CDiskController * c, int idebus, int i
   if (!handle)
   {
     printf("%s: Could not open file %s!\n",devid_string,filename);
-    exit(1);
+    throw((int)1);
   }
 
   // determine size...
@@ -101,7 +104,7 @@ bool CDiskFile::seek_block(unsigned long lba)
   if (lba >=lba_size)
   {
     printf("%s: Seek beyond end of file!\n",devid_string);
-    exit(1);
+    throw((int)1);
   }
 
   fseek(handle,lba*512,0);
@@ -134,7 +137,7 @@ bool CDiskFile::seek_byte(unsigned long byte)
   if (byte >=byte_size)
   {
     printf("%s: Seek beyond end of file!\n",devid_string);
-    exit(1);
+    throw((int)1);
   }
 
   fseek(handle,byte,0);

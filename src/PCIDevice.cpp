@@ -27,6 +27,9 @@
  * \file
  * Contains the code for the PCI device class.
  *
+ * X-1.7        Camiel Vanderhoeven                             28-DEC-2007
+ *      Throw exceptions rather than just exiting when errors occur.
+ *
  * X-1.6        Camiel Vanderhoeven                             28-DEC-2007
  *      Keep the compiler happy.
  *
@@ -243,7 +246,7 @@ u64 CPCIDevice::ReadMem(int index, u64 address, int dsize)
   if (dsize != 8 && dsize != 16 && dsize != 32)
   {
     printf("ReadMem: %s(%s) Unsupported dsize %d. (%d, %" LL "x)\n",myCfg->get_myName(), myCfg->get_myValue(),dsize,index,address);
-    exit(1);
+    throw((int)1);
   }
   
   if (index < PCI_RANGE_BASE)
@@ -300,7 +303,7 @@ void CPCIDevice::WriteMem(int index, u64 address, int dsize, u64 data)
   if (dsize != 8 && dsize != 16 && dsize != 32)
   {
     printf("WriteMem: %s(%s) Unsupported dsize %d. (%d,%" LL "x,%" LL "x)\n",myCfg->get_myName(), myCfg->get_myValue(),dsize,index,address,data);
-    exit(1);
+    throw((int)1);
   }
   
   if (index < PCI_RANGE_BASE)
@@ -434,27 +437,25 @@ int CPCIDevice::RestoreState(FILE *f)
 u32 CPCIDevice::ReadMem_Legacy(int index, u32 address, int dsize) 
 {
   printf("%s(%s) No Legacy read handler installed!\n",myCfg->get_myName(), myCfg->get_myValue());
-  exit(1);
+  throw((int)1);
   return 0;
 }
 
 void CPCIDevice::WriteMem_Legacy(int index, u32 address, int dsize, u32 data) 
 {
   printf("%s(%s) No Legacy write handler installed!\n",myCfg->get_myName(), myCfg->get_myValue());
-  exit(1);
-  return;
+  throw((int)1);
 }
 
 u32 CPCIDevice::ReadMem_Bar(int func,int bar, u32 address, int dsize) 
 { 
   printf("%s(%s).%d No BAR read handler installed!\n",myCfg->get_myName(), myCfg->get_myValue(), func);
-  exit(1);
+  throw((int)1);
   return 0; 
 }
 
 void CPCIDevice::WriteMem_Bar(int func, int bar, u32 address, int dsize, u32 data) 
 {
   printf("%s(%s).%d No BAR write handler installed!\n",myCfg->get_myName(), myCfg->get_myValue(), func);
-  exit(1);
-  return; 
+  throw((int)1);
 }

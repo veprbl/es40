@@ -33,6 +33,9 @@
  * \file
  * Contains code for debugging.
  *
+ * X-1.3        Camiel Vanderhoeven                             28-DEC-2007
+ *      Throw exceptions rather than just exiting when errors occur.
+ *
  * X-1.2        Camiel Vanderhoeven                             15-NOV-2007
  *      Added newline at end to avoid warnings.
  *
@@ -57,7 +60,6 @@ int quiet_mode = 0;
 
 static int debug_indent = 0;
 static int debug_currently_at_start_of_line = 1;
-
 
 /*
  *  va_debug():
@@ -89,7 +91,6 @@ static void va_debug(va_list argp, char *fmt)
 	}
 }
 
-
 /*
  *  debug_indentation():
  *
@@ -101,7 +102,6 @@ void debug_indentation(int diff)
 	if (debug_indent < 0)
 		fprintf(stderr, "WARNING: debug_indent less than 0!\n");
 }
-
 
 /*
  *  debug():
@@ -119,7 +119,6 @@ void debug(char *fmt, ...)
 	va_debug(argp, fmt);
 	va_end(argp);
 }
-
 
 /*
  *  fatal():

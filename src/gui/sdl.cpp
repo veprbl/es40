@@ -155,7 +155,7 @@ void bx_sdl_gui_c::specific_init(
   flags = SDL_INIT_VIDEO;
   if (SDL_Init(flags) < 0) {
     printf("Unable to initialize SDL libraries  \n");
-    ::exit(1);
+    throw((int)1);
   }
   #ifdef __MORPHOS__
   atexit(bx_sdl_morphos_exit);
@@ -828,8 +828,7 @@ void bx_sdl_gui_c::handle_events(void)
 	break;
 
     case SDL_QUIT:
-	  BX_PANIC (("User requested shutdown."));
-      ::exit(1);
+	  FAILURE("User requested shutdown");
     }
   }
 }

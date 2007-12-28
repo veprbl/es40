@@ -27,6 +27,9 @@
  * \file 
  * Contains the code for the emulated Ali M1543C chipset devices.
  *
+ * X-1.45       Camiel Vanderhoeven                             28-DEC-2007
+ *      Throw exceptions rather than just exiting when errors occur.
+ *
  * X-1.44       Camiel Vanderhoeven                             28-DEC-2007
  *      Keep the compiler happy.
  *
@@ -265,7 +268,6 @@ u32 ali_cfg_mask[64] = {
         0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
 };
 
-
 /**
  * Constructor.
  **/
@@ -273,7 +275,7 @@ u32 ali_cfg_mask[64] = {
 CAliM1543C::CAliM1543C(CConfigurator * cfg, CSystem * c, int pcibus, int pcidev): CPCIDevice(cfg,c,pcibus,pcidev)
 {
   if (theAli != 0)
-    FAILURE("More than one Ali!!\n");
+    FAILURE("More than one Ali!!");
   theAli = this;
 
   add_function(0, ali_cfg_data, ali_cfg_mask);

@@ -27,6 +27,9 @@
  * \file
  * Contains code to use a RAM disk.
  *
+ * X-1.7        Camiel Vanderhoeven                             28-DEC-2007
+ *      Throw exceptions rather than just exiting when errors occur.
+ *
  * X-1.6        Camiel Vanderhoeven                             28-DEC-2007
  *      Keep the compiler happy.
  *
@@ -60,7 +63,7 @@ CDiskRam::CDiskRam(CConfigurator * cfg, CDiskController * c, int idebus, int ide
   if (!ramdisk)
   {
     printf("%s: Could not allocate %d MB!\n",devid_string,lba_size/2*1024);
-    exit(1);
+    throw((int)1);
   }
 
   byte_pos = 0;
@@ -93,7 +96,7 @@ bool CDiskRam::seek_block(unsigned long lba)
   if (lba >=lba_size)
   {
     printf("%s: Seek beyond end of file!\n",devid_string);
-    exit(1);
+    throw((int)1);
   }
 
   byte_pos = lba*512;
@@ -135,7 +138,7 @@ bool CDiskRam::seek_byte(unsigned long byte)
   if (byte >=byte_size)
   {
     printf("%s: Seek beyond end of file!\n",devid_string);
-    exit(1);
+    throw((int)1);
   }
 
   byte_pos = byte;

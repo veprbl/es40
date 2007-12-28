@@ -27,6 +27,9 @@
  * \file
  * Contains the code for the emulated Flash ROM devices.
  *
+ * X-1.14       Camiel Vanderhoeven                             28-DEC-2007
+ *      Throw exceptions rather than just exiting when errors occur.
+ *
  * X-1.13       Camiel Vanderhoeven                             17-DEC-2007
  *      SaveState file format 2.1
  *
@@ -94,7 +97,7 @@ extern CAlphaCPU * cpu[4];
 CFlash::CFlash(CConfigurator * cfg, CSystem * c) : CSystemComponent(cfg,c)
 {
   if (theSROM)
-    FAILURE("More than one SROM!!\n");
+    FAILURE("More than one SROM!!");
   theSROM = this;
   c->RegisterMemory(this, 0, X64(0000080100000000),0x8000000); // 2MB
   printf("%%FLS-I-INIT: Flash ROM emulator initialized.\n");

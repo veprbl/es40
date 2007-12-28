@@ -27,6 +27,9 @@
  * \file
  * Contains the code for the emulated Symbios SCSI controller.
  *
+ * X-1.12       Camiel Vanderhoeven                             28-DEC-2007
+ *      Throw exceptions rather than just exiting when errors occur.
+ *
  * X-1.11       Camiel Vanderhoeven                             28-DEC-2007
  *      Keep the compiler happy.
  *
@@ -606,7 +609,7 @@ void CSym53C895::WriteMem_Bar(int func,int bar, u32 address, int dsize, u32 data
           break;
         default:
           printf("SYM: Write 8 bits to unknown memory at %02x with %08x.\n",address,data);
-          exit(1);
+	      throw((int)1);
         }
         break;
       case 16:
@@ -744,7 +747,7 @@ u32 CSym53C895::ReadMem_Bar(int func,int bar, u32 address, int dsize)
 
         default:
           printf("SYM: Attempt to read %d bits from memory at %02x\n", dsize, address);
-          exit(1);
+	      throw((int)1);
         }
         break;
       case 16:
@@ -798,16 +801,10 @@ void CSym53C895::write_b_scntl0(u8 value)
   WRM_R8(SCNTL0,value);
 
   if (TB_R8(SCNTL0,START) && !old_start)
-  {
-    printf("SYM: Don't know how to start arbitration sequence.\n");
-    exit(1);
-  }
+    FAILURE("SYM: Don't know how to start arbitration sequence");
 
   if (TB_R8(SCNTL0,TRG))
-  {
-    printf("SYM: Don't know how to operate in target mode.\n");
-    exit(1);
-  }
+    FAILURE("SYM: Don't know how to operate in target mode");
 }
 
 void CSym53C895::write_b_scntl1(u8 value)
@@ -837,10 +834,7 @@ void CSym53C895::write_b_scntl1(u8 value)
   }
 
   if (TB_R8(SCNTL1,IARB) && !old_iarb)
-  {
-    printf("SYM: Don't know how to start immediate arbitration sequence.\n");
-    exit(1);
-  }
+    FAILURE("SYM: Don't know how to start immediate arbitration sequence.\n");
 }
 
 void CSym53C895::write_b_scntl3(u8 value)
@@ -913,10 +907,7 @@ void CSym53C895::write_b_ctest3(u8 value)
   //  printf("SYM: Don't know how to clear DMA FIFO\n");
 
   if ((value>>1) & 1)
-  {
-    printf("SYM: Don't know how to handle FM mode\n");
-    exit(1);
-  }
+    FAILURE("SYM: Don't know how to handle FM mode");
 }
 
 void CSym53C895::write_b_ctest4(u8 value)
@@ -924,10 +915,7 @@ void CSym53C895::write_b_ctest4(u8 value)
   R8(CTEST4) = value;
 
   if ((value>>4) & 1)
-  {
-    printf("SYM: Don't know how to handle SRTM mode\n");
-    exit(1);
-  }
+    FAILURE("SYM: Don't know how to handle SRTM mode");
 }
 
 
@@ -936,15 +924,10 @@ void CSym53C895::write_b_ctest5(u8 value)
   WRM_R8(CTEST5,value);
 
   if ((value>>7) & 1)
-  {
-    printf("SYM: Don't know how to do Clock Address increment.\n");
-    exit(1);
-  }
+    FAILURE("SYM: Don't know how to do Clock Address increment");
+
   if ((value>>6) & 1)
-  {
-    printf("SYM: Don't know how to do Clock Byte Counter decrement.\n");
-    exit(1);
-  }
+    FAILURE("SYM: Don't know how to do Clock Byte Counter decrement");
 }
 
 u8 CSym53C895::read_b_dstat()
@@ -1018,10 +1001,7 @@ void CSym53C895::write_b_stest2(u8 value)
     printf("SYM: Don't know how to reset SCSI offset!\n");
 
   if (TB_R8(STEST2,LOW))
-  {
-    printf("SYM: I don't like LOW level mode!\n");
-    exit(1);
-  }
+    FAILURE("SYM: I don't like LOW level mode");
 }
 
 void CSym53C895::write_b_stest3(u8 value)
@@ -1187,9 +1167,8 @@ int CSym53C895::execute()
           }
           else if (indirect)
           {
-            printf("SYM: Unsupported: indirect addressing\n");
-            exit(1);
-          }
+            FAILURE("SYM: Unsupported: indirect addressing");
+		  }
           else
           {
             start = R32(DSPS);
@@ -1562,7 +1541,7 @@ int CSym53C895::execute()
           break;
         default:
           printf("SYM: Transfer Control Instruction with opcode %d is RESERVED.\n",opcode);
-          exit(1);
+	      throw((int)1);
         }
       }
     case 3:
@@ -1689,7 +1668,7 @@ void CSym53C895::byte_to_target(u8 value)
 
   default:
     printf("byte written in phase %d\n",state.phase);
-    exit(1);
+    throw((int)1);
   }
 }
 
@@ -1769,7 +1748,7 @@ u8 CSym53C895::byte_from_target()
 
   default:
     printf("byte requested in phase %d\n",state.phase);
-   // exit(1);
+    throw((int)1);
   }
   return retval;
 }
@@ -1802,10 +1781,7 @@ void CSym53C895::end_xfer()
     {
       res = do_command();
       if (res == 2)
-      {
-        printf("do_command returned 2 after DATA OUT phase!!\n");
-        exit(1);
-      }
+        FAILURE("do_command returned 2 after DATA OUT phase");
     }
     else if(!PT.dato_len)
       PT.dato_to_disk = false;
@@ -2047,13 +2023,13 @@ int CSym53C895::do_command()
 		break;
 	default:
 	  printf("Weird cmd_len=%d.\n", PT.cmd_len);
-      exit(1);
+      throw((int)1);
 	}
 
 	if ((PT.cmd[2] & 0xc0) != 0)
     {
       printf(" mode sense, cmd[2] = 0x%02x.\n", PT.cmd[2]);
-      exit(1);
+      throw((int)1);
     }
 
 	/*  Return data:  */
@@ -2150,7 +2126,7 @@ int CSym53C895::do_command()
 		break;
 	default:
 		printf("[ MODE_SENSE for page %i is not yet implemented! ]\n", pagecode);
-        exit(1);
+        throw((int)1);
 	}
 	break;
 
@@ -2421,8 +2397,7 @@ int CSym53C895::do_command()
     printf("SYM: Unknown SCSI command 0x%02x.\n",PT.cmd[0]);
     printf(">");
     getchar();
-    exit(1);
-
+    throw((int)1);
   }
   return 0;
 }
@@ -2480,13 +2455,13 @@ int CSym53C895::do_message()
           break;
         default:
           printf("SYM.%d: MSG: don't understand extended message %02x.\n",GET_DEST(),PT.msgo[msg]);
-          exit(1);
-        }
+	      throw((int)1);
+		}
         msg += msglen;
         break;
       default:
         printf("SYM.%d: MSG: don't understand message %02x.\n",GET_DEST(),PT.msgo[msg]);
-        exit(1);
+	    throw((int)1);
       }
     }
   }
@@ -2550,8 +2525,8 @@ void CSym53C895::set_interrupt(int reg, u8 interrupt)
     R8(ISTAT) |= interrupt;
     break;
   default:
-    //printf("set_interrupt reg %02x!!\n",reg);
-    exit(1);
+    printf("set_interrupt reg %02x!!\n",reg);
+    throw((int)1);
   }
 
   //printf("--> eval int\n");

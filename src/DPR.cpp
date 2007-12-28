@@ -27,6 +27,9 @@
  * \file
  * Contains the code for the emulated Dual Port Ram and RMC devices.
  *
+ * X-1.14       Camiel Vanderhoeven                             28-DEC-2007
+ *      Throw exceptions rather than just exiting when errors occur.
+ *
  * X-1.13       Camiel Vanderhoeven                             17-DEC-2007
  *      SaveState file format 2.1
  *
@@ -83,7 +86,7 @@ extern CSerial * srl[2];
 CDPR::CDPR(CConfigurator * cfg, CSystem * c) : CSystemComponent(cfg,c)
 {
   if (theDPR)
-    FAILURE("More than one DPR!!\n");
+    FAILURE("More than one DPR!!");
   theDPR = this;
   u8 i;
 

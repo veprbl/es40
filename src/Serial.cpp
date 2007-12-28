@@ -27,6 +27,9 @@
  * \file
  * Contains the code for the emulated Serial Port devices.
  *
+ * X-1.33       Camiel Vanderhoeven                             28-DEC-2007
+ *      Throw exceptions rather than just exiting when errors occur.
+ *
  * X-1.32       Camiel Vanderhoeven                             28-DEC-2007
  *      Keep the compiler happy.
  *
@@ -245,13 +248,13 @@ CSerial::CSerial(CConfigurator * cfg, CSystem * c, u16 number) : CSystemComponen
     if (!(child=fork())){
       execvp(argv[0], argv);
       printf("Exec of '%s' failed.\n",argv[0]);
-      exit(1);
+      throw((int)1);
     } else {
       sleep(1);  // give it a chance to start up.
       waitpid(child,&status,WNOHANG); // reap it, if needed.
       if(kill(child,0) < 0) { // uh oh, no kiddo.
-	printf("%%SRL-F-EXEC: Exec of '%s' has failed.\n",argv[0]);
-	exit(1);
+	    printf("%%SRL-F-EXEC: Exec of '%s' has failed.\n",argv[0]);
+        throw((int)1);
       }
     }
 #endif

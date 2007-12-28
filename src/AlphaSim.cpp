@@ -27,6 +27,9 @@
  * \file
  * Defines the entry point for the application.
  *
+ * X-1.35       Camiel Vanderhoeven                             28-DEC-2007
+ *      Throw exceptions rather than just exiting when errors occur.
+ *
  * X-1.34       Camiel Vanderhoeven                             28-DEC-2007
  *      Keep the compiler happy.
  *
@@ -179,30 +182,32 @@ int main(int argc, char* argv[])
   char *filename = 0;
   FILE *f;
 
-  printf("%%SYS-I-INITSTART: System initialization started.\n");
+  try 
+  {
+	printf("%%SYS-I-INITSTART: System initialization started.\n");
 
 #if defined(IDB) && (defined(LS_MASTER) || defined(LS_SLAVE))
-  lockstep_init();
+	lockstep_init();
 #endif
 #if defined(IDB)
-  if ((argc == 2 || argc==3) && argv[1][0] != '@')
+	if ((argc == 2 || argc==3) && argv[1][0] != '@')
 #else
-  if (argc == 2)
+	if (argc == 2)
 #endif
-  {
-    filename = argv[1];
-  } else {
-    for(int i = 0 ; path[i] ; i++) {
-      filename=path[i];
-      f=fopen(path[i],"r");
-      if(f != NULL) {
-	fclose(f);
-	filename = path[i];
-	break;
+	{
+	  filename = argv[1];
+    } else {
+      for(int i = 0 ; path[i] ; i++) {
+        filename=path[i];
+        f=fopen(path[i],"r");
+        if(f != NULL) {
+		  fclose(f);
+		  filename = path[i];
+		  break;
       }
     }
     if(filename==NULL)
-      FAILURE("%%SYS-E-CONFIG:  Configuration file not found.\n");
+      FAILURE("Configuration file not found.");
   }
 
   char ch1[10000];
@@ -312,6 +317,11 @@ int main(int argc, char* argv[])
 #endif
 
   delete theSystem;
-
+  }
+  catch(int)
+  {
+	if (theSystem)
+	  delete theSystem;
+  }
   return 0;
 }

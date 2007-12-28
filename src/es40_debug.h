@@ -32,6 +32,9 @@
  * \file
  * Contains macro's and prototypes for debugging.
  *
+ * X-1.4        Camiel Vanderhoeven                             28-DEC-2007
+ *      Throw exceptions rather than just exiting when errors occur.
+ *
  * X-1.3        Camiel Vanderhoeven                             28-DEC-2007
  *      Keep the compiler happy.
  *
@@ -52,7 +55,6 @@
 #define	DEBUG_BUFSIZE		1024
 #define	DEBUG_INDENTATION	4
 
-
 #ifdef HAVE___FUNCTION__
 
 #define	FAILURE(error_msg)					{	\
@@ -61,7 +63,7 @@
 		    "%s, line %i, function '%s'\n",			\
 		    __FILE__, __LINE__, __FUNCTION__);			\
         	fprintf(stderr, "%s: %s\n", error_msg, where_msg);	\
-		exit(1);						\
+		throw((int)1);						\
 	}
 
 #else
@@ -71,11 +73,10 @@
 		sprintf(where_msg,			\
 		    "%s, line %i\n", __FILE__, __LINE__);		\
         	fprintf(stderr, "%s: %s\n", error_msg, where_msg);	\
-		exit(1);						\
+		throw((int)1);						\
 	}
 
 #endif	/*  !HAVE___FUNCTION__  */
-
 
 #define	CHECK_ALLOCATION(ptr)					{	\
 		if ((ptr) == NULL)					\

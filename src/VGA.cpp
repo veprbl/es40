@@ -27,6 +27,9 @@
  * \file
  * Contains the code for the VGA base class.
  *
+ * X-1.2        Camiel Vanderhoeven                             28-DEC-2007
+ *      Throw exceptions rather than just exiting when errors occur.
+ *
  * X-1.1        Camiel Vanderhoeven                             10-DEC-2007
  *      Initial version in CVS.
  **/
@@ -37,7 +40,7 @@
 CVGA::CVGA(class CConfigurator * cfg, class CSystem * c, int pcibus, int pcidev) : CPCIDevice(cfg,c,pcibus,pcidev)
 {
   if (theVGA != 0)
-    FAILURE("More than one VGA card not supported!!\n");
+    FAILURE("More than one VGA card not supported!!");
   theVGA = this;
 }
 

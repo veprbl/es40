@@ -27,6 +27,9 @@
  * \file
  * Contains code for the disk base class.
  *
+ * X-1.4        Camiel Vanderhoeven                             28-DEC-2007
+ *      Throw exceptions rather than just exiting when errors occur.
+ *
  * X-1.3        Camiel Vanderhoeven                             28-DEC-2007
  *      Keep the compiler happy.
  *
@@ -69,7 +72,7 @@ CDisk::CDisk(CConfigurator * cfg, CDiskController * ctrl, int idebus, int idedev
   if (!myCtrl->register_disk(this,myBus,myDev))
   {
     printf("%s: Could not register disk!\n",devid_string);
-    exit(1);
+    throw((int)1);
   }
 }
 

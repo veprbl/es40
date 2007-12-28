@@ -27,6 +27,9 @@
  * \file 
  * Contains the code for the emulated Typhoon Chipset devices.
  *
+ * X-1.43       Camiel Vanderhoeven                             28-DEC-2007
+ *      Throw exceptions rather than just exiting when errors occur.
+ *
  * X-1.42       Camiel Vanderhoeven                             28-DEC-2007
  *      Keep the compiler happy.
  *
@@ -222,7 +225,7 @@ char * dbg_strptr = debug_string;
 CSystem::CSystem(CConfigurator * cfg)
 {
   if (theSystem != 0)
-    FAILURE("More than one system!!\n");
+    FAILURE("More than one system!!");
   theSystem = this;
   myCfg = cfg;
 
@@ -1144,7 +1147,7 @@ u64 CSystem::PCI_Phys(int pcibus, u64 address)
       && ! ((address ^ state.p_WSBA[pcibus][j]) & 0xfff00000 & ~state.p_WSM[pcibus][j]))	// address in range...
 	{
       if (state.p_WSBA[pcibus][j] & 2)
-        FAILURE("Don't know how to handle scatter-gather yet!!\n");
+        FAILURE("Don't know how to handle scatter-gather yet!!");
 	  a = (address & ((state.p_WSM[pcibus][j] & X64(fff00000)) | 0xfffff)) + (state.p_TBA[pcibus][j] & X64(3fffc0000));
 //	  printf("PCI memory address %08x translated to %016"LL "x\n",address, a);
       return a;
@@ -1269,7 +1272,7 @@ void CSystem::RestoreState(char *fn)
   for (i=0;i<iNumComponents;i++)
   {
    if (acComponents[i]->RestoreState(f))
-     exit(1);
+    throw((int)1);
   }
   fclose(f);
 }
@@ -1353,8 +1356,6 @@ void CSystem::panic(char *message, int flags)
   }
 #endif
 
-
-
   if(flags & PANIC_ASKSHUTDOWN) {
     printf("Stop Emulation? ");
     int c = getc(stdin);
@@ -1362,10 +1363,8 @@ void CSystem::panic(char *message, int flags)
       flags |= PANIC_SHUTDOWN;
   }
 
-
-
   if(flags & PANIC_SHUTDOWN) {
-    exit(0);
+    throw((int)1);
   }
 
   return;

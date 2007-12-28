@@ -32,6 +32,9 @@
  * \file 
  * Contains the code for the emulated DEC 21143 NIC device.
  *
+ * X-1.19       Camiel Vanderhoeven                             28-DEC-2007
+ *      Throw exceptions rather than just exiting when errors occur.
+ *
  * X-1.18       Camiel Vanderhoeven                             28-DEC-2007
  *      Keep the compiler happy.
  *
@@ -200,8 +203,9 @@ CDEC21143::CDEC21143(CConfigurator * confg, CSystem * c, int pcibus, int pcidev)
     printf("\n%%NIC-Q-CHNIC: Choose a network adapter to connect to:\n");
     if (pcap_findalldevs(&alldevs, errbuf) == -1)
     {
-      FAILURE("%%NIC-F-PCAPFAD: Error in pcap_findalldevs_ex:");
-      FAILURE(errbuf);
+      printf("%%NIC-F-PCAPFAD: Error in pcap_findalldevs_ex:");
+      printf(errbuf);
+	  FAILURE("NIC error");
     }
 
     /* Print the list */
@@ -215,7 +219,7 @@ CDEC21143::CDEC21143(CConfigurator * confg, CSystem * c, int pcibus, int pcidev)
     }
         
     if (i==0)
-      FAILURE("%%NIC-F-NONIC: No interfaces found! Exiting.\n");
+      FAILURE("%%NIC-F-NONIC: No interfaces found! Exiting");
    
     if (i==1)
       inum = 1;
@@ -238,7 +242,7 @@ CDEC21143::CDEC21143(CConfigurator * confg, CSystem * c, int pcibus, int pcidev)
                              1 /*flags*/,
                              1 /*read timeout: 1ms.*/,
                              errbuf)) == NULL)
-      FAILURE("Error opening adapter\n");
+      FAILURE("Error opening adapter");
   }
 
   cfg = myCfg->get_text_value("decnet","1.1");
@@ -1101,10 +1105,10 @@ void CDEC21143::SetupFilter()
   //printf("FILTER = %s.   \n",filter);
 
   if (pcap_compile(fp,&fcode,filter,1,0xffffffff)<0)
-    FAILURE("Unable to compile the packet filter. Check the syntax.\n");
+    FAILURE("Unable to compile the packet filter. Check the syntax.");
 
   if (pcap_setfilter(fp, &fcode)<0)
-    FAILURE("Error setting the filter.\n");
+    FAILURE("Error setting the filter.");
 
 //  getchar();
 }
