@@ -27,10 +27,14 @@
  * \file
  * Contains the definitions for the emulated Ali M1543C IDE chipset part.
  *
- * X-1.8         Brian wheeler                                   19-DEC-2007
+ * X-1.9        Camiel Vanderhoeven                             28-DEC-2007
+ *      Only delay IDE interrupts when NO_VMS is defined. (Need to fix this
+ *		properly).
+ *
+ * X-1.8         Brian wheeler                                  19-DEC-2007
  *      Added basic ATAPI support.
  *
- * X-1.7         Brian wheeler                                   17-DEC-2007
+ * X-1.7         Brian wheeler                                  17-DEC-2007
  *      Delayed IDE interrupts. (NetBSD requirement)
  *
  * X-1.6        Camiel Vanderhoeven                             17-DEC-2007
@@ -88,7 +92,9 @@ class CAliM1543C_ide : public CDiskController
   virtual void WriteMem_Bar(int func,int bar, u32 address, int dsize, u32 data);
   virtual u32 ReadMem_Bar(int func,int bar, u32 address, int dsize);
 
+#if defined(NO_VMS)
   virtual int  DoClock();
+#endif
 
   CAliM1543C_ide(CConfigurator * cfg, class CSystem * c, int pcibus, int pcidev);
   virtual ~CAliM1543C_ide();
@@ -117,7 +123,9 @@ class CAliM1543C_ide : public CDiskController
     struct {
       bool disable_irq;
       bool reset;
+#if defined(NO_VMS)
       bool irq_ready;
+#endif
     } ide_control[2];
 
     struct {
@@ -147,14 +155,10 @@ class CAliM1543C_ide : public CDiskController
     int ide_atapi_size[2];
     int ide_sectors[2];
     int ide_selected[2];
-    u8 ide_bm_status[2];
 
     // Bus Mastering
     u8 busmaster[2][8];
-
   } state;
-
-//  struct disk_info ide_info[2][2];
 };
 
 extern CAliM1543C_ide * theAliIDE;

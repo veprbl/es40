@@ -27,6 +27,10 @@
  * \file
  * Contains the code for the emulated Ali M1543C IDE chipset part.
  *
+ * X-1.11       Camiel Vanderhoeven                             28-DEC-2007
+ *      Only delay IDE interrupts when NO_VMS is defined. (Need to fix this
+ *		properly).
+ *
  * X-1.10        Camiel Vanderhoeven                             20-DEC-2007
  *      More checks if disk exists.
  *
@@ -165,7 +169,10 @@ CAliM1543C_ide::CAliM1543C_ide(CConfigurator * cfg, CSystem * c, int pcibus, int
     FAILURE("More than one AliIDE!!\n");
   theAliIDE = this;
 
+#if defined(NO_VMS)
   c->RegisterClock(this,true);
+#endif
+
 
   add_function(0,ide_cfg_data, ide_cfg_mask);
 
@@ -186,6 +193,7 @@ CAliM1543C_ide::~CAliM1543C_ide()
 {
 }
 
+#if defined(NO_VMS)
 int CAliM1543C_ide::DoClock() 
 {
   static int pause = 0;
@@ -202,7 +210,7 @@ int CAliM1543C_ide::DoClock()
   pause++;
   return 0;
 }
-
+#endif
 
 u32 CAliM1543C_ide::ReadMem_Legacy(int index, u32 address, int dsize)
 {
@@ -320,7 +328,7 @@ u32 CAliM1543C_ide::ide_command_read(int index, u32 address, int dsize)
   case 0:
     if (!SEL_STATUS(index).drq) 
     {
-      printf("IDE%d port 0 read with drq == 0: last command was %02xh", index, SEL_STATUS(index).current_command);
+      printf("IDE%d port 0 read with drq == 0: last command was %02xh\n", index, SEL_STATUS(index).current_command);
       return 0;
     }
     switch(SEL_STATUS(index).current_command)
@@ -421,7 +429,9 @@ u32 CAliM1543C_ide::ide_command_read(int index, u32 address, int dsize)
       data = get_status(index);
       // this is also supposed to clear any pending interrupts. (D1153)
       theAli->pic_deassert(1,6+index); // clear the interrupt
+#if defined(NO_VMS)
       state.ide_control[index].irq_ready=false;      
+#endif
       break;
     }
 
@@ -605,6 +615,8 @@ void CAliM1543C_ide::ide_command_write(int index, u32 address, int dsize, u32 da
 
     if ( (data & 0xf0) == 0x10 )
       data = 0x10;
+
+	SEL_STATUS(index).current_command = data;
 
 //    printf("IDE Command %02x\n",data);
 
@@ -993,24 +1005,31 @@ void CAliM1543C_ide::ide_command_write(int index, u32 address, int dsize, u32 da
       }
       break;
 
+      /*
     case 0xc8: // read dma
     case 0xc9: // read dma
-      if(*(u32 *)(&state.busmaster[index][4]) != 0) 
       {
-        // we have a valid prd.
-	    u32 prd_addr = *(u32 *)(&state.busmaster[index][4]);
-	    printf("PRD is at %08x\n",prd_addr);
-        u64 prd_addr_phys = cSystem->PCI_Phys(myPCIBus, prd_addr);
-	    u32 dma_addr = cSystem->ReadMem(prd_addr_phys,32);
-	    u16 dma_size = cSystem->ReadMem(prd_addr_phys+4,16);
-	    printf("DMA at %x, size: %d\n",dma_addr,dma_size);
-	    exit(1);
+        u32 prd = (state.busmaster[index][4] << 0)
+          | (state.busmaster[index][5] << 8)
+          | (state.busmaster[index][6] << 16)
+          | (state.busmaster[index][7] << 24);
+        if(prd) 
+        {
+          // we have a valid prd.
+	      printf("PRD is at %08x\n",prd);
+          u64 prd_addr_phys = cSystem->PCI_Phys(myPCIBus, prd);
+	      u32 dma_addr = cSystem->ReadMem(prd_addr_phys,32);
+	      u16 dma_size = cSystem->ReadMem(prd_addr_phys+4,16);
+	      printf("DMA at %x, size: %d\n",dma_addr,dma_size);
+	      exit(1);
+        }
       }
-
+*/
     default:
       printf("IDE: Unknown command: %02x!\n",data);
       printf("Press enter to continue>");
       getchar();
+      command_aborted(index, data);
     }
   }
 }
@@ -1141,7 +1160,7 @@ u32 CAliM1543C_ide::ide_busmaster_read(int index, u32 address, int dsize)
  * Not functional.
  **/
 
-void CAliM1543C_ide::ide_busmaster_write(int index, u32 address, u32 data, int desize)
+void CAliM1543C_ide::ide_busmaster_write(int index, u32 address, u32 data, int dsize)
 {
   TRC_DEV4("%%IDE-I-WRITBUSM: write port %d on IDE bus master %d: 0x%02x\n",  (u32)(address),index, data);
 #ifdef DEBUG_IDE
@@ -1173,8 +1192,24 @@ void CAliM1543C_ide::ide_busmaster_write(int index, u32 address, u32 data, int d
     // bit 1 = busmaster active.
     break;
   case 4: // descriptor table pointer register
-    printf("%%IDE-I-DPR: Write to PRD: %x.\n",(u32) data);
-    *(u32 *)(&state.busmaster[index][4]) = (u32)data;
+  case 5:
+  case 6:
+  case 7:
+    {
+      void * x = &state.busmaster[index][address];
+      switch (dsize)
+      {
+      case 8:
+        *(u8*)x = (u8)data;
+        break;
+      case 16:
+        *(u16*)x = (u16)data;
+        break;
+      case 32:
+        *(u32*)x = (u32)data;
+        break;
+      }
+    }
     break;
   default:
     break;
@@ -1185,7 +1220,12 @@ void CAliM1543C_ide::raise_interrupt(int index)
 {
   if (!state.ide_control[index].disable_irq) 
   {
+#if !defined(NO_VMS)
+    state.busmaster[index][2] |= 0x04;
+    theAli->pic_interrupt(1, 6+index);
+#else
     state.ide_control[index].irq_ready=true;
+#endif
   }
 }
 
@@ -1204,7 +1244,7 @@ void CAliM1543C_ide::ResetPCI()
   for (i=0;i<2;i++)
   {
     state.ide_error[i] = 0;
-    state.ide_bm_status[i] = 0;
+//    state.ide_bm_status[i] = 0;
     state.ide_sectors[i] = 0;
     state.ide_selected[i] = 0;
 
@@ -1386,8 +1426,15 @@ void CAliM1543C_ide::identify_drive(int index)
 
   state.ide_data[index][47] = 0;		// read/write multiples
   state.ide_data[index][48] = 1;		// double-word IO transfers supported
+  
+  /** VMS doesn't like these as long as DMA doesn't work properly! **
   state.ide_data[index][49] = 0x0300;		// capability LBA (was 0x0200)
   state.ide_data[index][50] = 0x4000;       // was 0
+  **/
+  
+  state.ide_data[index][49] = 0x0200;		// capability LBA (was 0x0200)
+  state.ide_data[index][50] = 0x0000;       // was 0
+
   state.ide_data[index][51] = 0x0300;		// cycle time (was 0x0200)
   state.ide_data[index][52] = 0x0200;		// cycle time
   state.ide_data[index][53] = 7;			// field_valid
