@@ -30,6 +30,9 @@
  * point registers, and to convert them to/from the host's native floating point 
  * format when required.
  *
+ * X-1.14       Camiel Vanderhoeven                             28-DEC-2007
+ *      Avoid compiler warnings.
+ *
  * X-1.13       Camiel Vanderhoeven                             18-DEC-2007
  *      Removed some messages.
  *
@@ -371,7 +374,7 @@ inline u64 host2s(double val)
       u32 a;
       float b;
     } f_ieee;
-    f_ieee.b = val;
+    f_ieee.b = (float)val;
     s = (f_ieee.a>>31) & 1;
     e = (f_ieee.a>>23) & 0xff;
     f = (u64)(f_ieee.a>>0   & 0x7fffff) <<29;
