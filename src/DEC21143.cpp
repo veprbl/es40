@@ -32,6 +32,10 @@
  * \file 
  * Contains the code for the emulated DEC 21143 NIC device.
  *
+ * X-1.20       Camiel Vanderhoeven                             29-DEC-2007
+ *      Compileable with older compilers (VC 6.0). Avoid referencing
+ *      uninitialized data. Fixed memory-leak.
+ *
  * X-1.19       Camiel Vanderhoeven                             28-DEC-2007
  *      Throw exceptions rather than just exiting when errors occur.
  *
@@ -261,6 +265,8 @@ CDEC21143::CDEC21143(CConfigurator * confg, CSystem * c, int pcibus, int pcidev)
 
   state.cur_rx_buf = NULL;
   state.cur_tx_buf = NULL;
+  state.irq_was_asserted = false;
+  state.tx_idling = 0;
 
   ResetPCI();
 
@@ -275,6 +281,7 @@ CDEC21143::CDEC21143(CConfigurator * confg, CSystem * c, int pcibus, int pcidev)
 
 CDEC21143::~CDEC21143()
 {
+  pcap_close(fp);
 }
 
 u32 CDEC21143::ReadMem_Bar(int func, int bar, u32 address, int dsize)
@@ -405,7 +412,7 @@ void CDEC21143::nic_write(u32 address, int dsize, u32 data)
 	case CSR_RXLIST:	/*  csr3  */
 		/* debug("[ dec21143: setting RXLIST to 0x%x ]\n", (int)data); */
 		if (data & 0x3)
-			fatal("[ dec21143: WARNING! RXLIST not aligned? (0x%" LL "x) ]\n", (long long)data);
+			fatal("[ dec21143: WARNING! RXLIST not aligned? (0x%x) ]\n", data);
 		data &= ~0x3;
 		state.cur_rx_addr = data;
 		break;
@@ -413,7 +420,7 @@ void CDEC21143::nic_write(u32 address, int dsize, u32 data)
 	case CSR_TXLIST:	/*  csr4  */
 		/* debug("[ dec21143: setting TXLIST to 0x%x ]\n", (int)data); */
 		if (data & 0x3)
-			fatal("[ dec21143: WARNING! TXLIST not aligned? (0x%" LL "x) ]\n", (long long)data);
+			fatal("[ dec21143: WARNING! TXLIST not aligned? (0x%x) ]\n", data);
 		data &= ~0x3;
 		state.cur_tx_addr = data;
 		break;
@@ -776,7 +783,7 @@ int CDEC21143::dec21143_rx()
 
 		/*  Append a 4 byte CRC:  */
 		state.cur_rx_buf_len += 4;
-		CHECK_REALLOCATION(state.cur_rx_buf, realloc(state.cur_rx_buf, state.cur_rx_buf_len), u8);
+		CHECK_REALLOCATION(state.cur_rx_buf, realloc(state.cur_rx_buf, state.cur_rx_buf_len), unsigned char);
 
 	    /*  Get the next packet into our buffer:  */
 	    memcpy(state.cur_rx_buf, packet_data, state.cur_rx_buf_len);
@@ -974,7 +981,7 @@ int CDEC21143::dec21143_tx()
 			/*  First segment. Let's allocate a new buffer:  */
 			/*  fatal("new frame }\n");  */
 
-			CHECK_ALLOCATION(state.cur_tx_buf = (u8 *)malloc(bufsize));
+			CHECK_ALLOCATION(state.cur_tx_buf = (unsigned char *)malloc(bufsize));
 			state.cur_tx_buf_len = 0;
 		} else {
 			/*  Not first segment. Increase the length of the current buffer:  */
@@ -983,7 +990,7 @@ int CDEC21143::dec21143_tx()
 			if (state.cur_tx_buf == NULL)
 				fatal("[ dec21143: WARNING! tx: middle segment, but no first segment?! ]\n");
 
-			CHECK_REALLOCATION(state.cur_tx_buf, realloc(state.cur_tx_buf, state.cur_tx_buf_len + bufsize), u8);
+			CHECK_REALLOCATION(state.cur_tx_buf, realloc(state.cur_tx_buf, state.cur_tx_buf_len + bufsize), unsigned char);
 		}
 
 		/*  "DMA" data from emulated physical memory into the buf:  */

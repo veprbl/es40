@@ -27,6 +27,9 @@
  * \file 
  * Contains the code for the emulated Ali M1543C chipset devices.
  *
+ * X-1.46       Camiel Vanderhoeven                             29-DEC-2007
+ *      Avoid referencing uninitialized data.
+ *
  * X-1.45       Camiel Vanderhoeven                             28-DEC-2007
  *      Throw exceptions rather than just exiting when errors occur.
  *
@@ -358,10 +361,10 @@ CAliM1543C::CAliM1543C(CConfigurator * cfg, CSystem * c, int pcibus, int pcidev)
   // PIT Setup
   add_legacy_io(6,0x40,4);
   for (i=0;i<3;i++)
-  {
     state.pit_status[i]=0x40; // invalid/null counter
+
+  for(i=0;i<9;i++)
     state.pit_counter[i] = 0;
-  }
 
   c->RegisterClock(this, true);
 

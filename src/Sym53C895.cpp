@@ -27,6 +27,9 @@
  * \file
  * Contains the code for the emulated Symbios SCSI controller.
  *
+ * X-1.13       Camiel Vanderhoeven                             29-DEC-2007
+ *      Compileable with older compilers (VC 6.0).
+ *
  * X-1.12       Camiel Vanderhoeven                             28-DEC-2007
  *      Throw exceptions rather than just exiting when errors occur.
  *
@@ -2172,10 +2175,11 @@ int CSym53C895::do_command()
     }
     else
     {
+	  unsigned int x;
       printf("SYM: MODE SELECT ignored.\nCommand: ");
-      for(unsigned int x= 0; x<PT.cmd_len; x++) printf("%02x ",PT.cmd[x]);
+      for(x=0; x<PT.cmd_len; x++) printf("%02x ",PT.cmd[x]);
       printf("\nData: ");
-      for(unsigned int x= 0; x<PT.dato_len; x++) printf("%02x ",PT.dato[x]);
+      for(x=0; x<PT.dato_len; x++) printf("%02x ",PT.dato[x]);
       printf("\nThis might be an attempt to change our blocksize or something like that...\nPlease check the above data, then press enter.\n>");
       getchar();
     }
@@ -2438,20 +2442,24 @@ int CSym53C895::do_message()
         switch (PT.msgo[msg])
         {
         case 0x01:
+			{
           printf("SYM.%d: MSG: SDTR.\n",GET_DEST());
           PT.msgi_len = msglen+2;
           PT.msgi[0] = 0x01;
           PT.msgi[1] = msglen;
           for (unsigned int x=0;x<msglen;x++)
             PT.msgi[2+x] =PT.msgo[msg+x];
+			}
           break;
         case 0x03:
+			{
           printf("SYM.%d: MSG: WDTR.\n",GET_DEST());
           PT.msgi_len = msglen+2;
           PT.msgi[0] = 0x01;
           PT.msgi[1] = msglen;
           for (unsigned int x=0;x<msglen;x++)
             PT.msgi[2+x] =PT.msgo[msg+x];
+			}
           break;
         default:
           printf("SYM.%d: MSG: don't understand extended message %02x.\n",GET_DEST(),PT.msgo[msg]);

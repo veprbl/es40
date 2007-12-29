@@ -27,6 +27,9 @@
  * \file
  * Contains definitions for the disk controller base class.
  *
+ * X-1.8        Camiel Vanderhoeven                             29-DEC-2007
+ *      Fix memory-leak.
+ *
  * X-1.7        Camiel Vanderhoeven                             28-DEC-2007
  *      Keep the compiler happy.
  *
@@ -72,6 +75,7 @@ CDiskController::~CDiskController(void)
       disks[i] = 0;
     }
   }
+  free(disks);
 }
 
 bool CDiskController::register_disk(class CDisk * dsk, int bus, int dev)

@@ -27,6 +27,9 @@
  * \file 
  * Contains code for the base class for devices that connect to the chipset.
  *
+ * X-1.11       Camiel Vanderhoeven                             29-DEC-2007
+ *      Fix memory-leak.
+ *
  * X-1.10       Camiel Vanderhoeven                             28-DEC-2007
  *      Keep the compiler happy.
  *
@@ -90,5 +93,5 @@ CSystemComponent::CSystemComponent(CConfigurator * cfg, CSystem * system)
 
 CSystemComponent::~CSystemComponent()
 {
-
+  free(devid_string);
 }

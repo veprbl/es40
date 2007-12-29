@@ -27,6 +27,9 @@
  * \file
  * Contains code for the disk base class.
  *
+ * X-1.5        Camiel Vanderhoeven                             29-DEC-2007
+ *      Fix memory-leak.
+ *
  * X-1.4        Camiel Vanderhoeven                             28-DEC-2007
  *      Throw exceptions rather than just exiting when errors occur.
  *
@@ -78,4 +81,5 @@ CDisk::CDisk(CConfigurator * cfg, CDiskController * ctrl, int idebus, int idedev
 
 CDisk::~CDisk(void)
 {
+  free(devid_string);
 }

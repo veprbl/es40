@@ -27,6 +27,10 @@
  * \file
  * Contains the code for the emulated Ali M1543C IDE chipset part.
  *
+ * X-1.14       Camiel Vanderhoeven                             29-DEC-2007
+ *      Compileable with older compilers (VC 6.0). Avoid referencing
+ *      uninitialized data.
+ *
  * X-1.13       Camiel Vanderhoeven                             28-DEC-2007
  *      Throw exceptions rather than just exiting when errors occur.
  *
@@ -318,9 +322,9 @@ void CAliM1543C_ide::WriteMem_Bar(int func, int bar, u32 address, int dsize, u32
       return;
     case 4:
       if (address <8)
-        return ide_busmaster_write(0,address,data,dsize);
+        ide_busmaster_write(0,address,data,dsize);
       else
-        return ide_busmaster_write(1,address-8,data,dsize);
+        ide_busmaster_write(1,address-8,data,dsize);
       return;
     }
 }
@@ -1248,6 +1252,8 @@ void CAliM1543C_ide::ResetPCI()
 //    state.ide_bm_status[i] = 0;
     state.ide_sectors[i] = 0;
     state.ide_selected[i] = 0;
+	state.ide_control[i].disable_irq = false;
+
 
     for (j=0;j<2;j++)
     {

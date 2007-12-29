@@ -27,6 +27,9 @@
  * \file 
  * Contains the code for the emulated Typhoon Chipset devices.
  *
+ * X-1.44       Camiel Vanderhoeven                             29-DEC-2007
+ *      Fix memory-leak.
+ *
  * X-1.43       Camiel Vanderhoeven                             28-DEC-2007
  *      Throw exceptions rather than just exiting when errors occur.
  *
@@ -308,6 +311,9 @@ CSystem::~CSystem()
 
   for (i=0;i<iNumComponents;i++)
     delete acComponents[i];
+
+  for (i=0;i<iNumMemories;i++)
+    free(asMemories[i]);
 
   free(memory);
 

@@ -33,6 +33,9 @@
  * \file
  * Contains code for debugging.
  *
+ * X-1.4        Camiel Vanderhoeven                             29-DEC-2007
+ *      Compileable with older compilers (VC 6.0).
+ *
  * X-1.3        Camiel Vanderhoeven                             28-DEC-2007
  *      Throw exceptions rather than just exiting when errors occur.
  *
@@ -73,7 +76,8 @@ static void va_debug(va_list argp, char *fmt)
 	int i;
 
 	buf[0] = buf[DEBUG_BUFSIZE] = 0;
-	vsnprintf(buf, DEBUG_BUFSIZE, fmt, argp);
+	//vsnprintf(buf, DEBUG_BUFSIZE, fmt, argp);
+	sprintf(buf,fmt,argp);
 
 	s = buf;
 	while (*s) {

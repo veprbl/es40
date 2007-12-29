@@ -329,11 +329,11 @@ void bx_sdl_gui_c::text_update(
 	fontline = cfstart;
 	if (y > 0)
 	{
-	  pfont_row = &vga_charmap[(new_text[0] << 5)];
+	  pfont_row = (u8*) &vga_charmap[(new_text[0] << 5)];
 	}
 	else
 	{
-	  pfont_row = &vga_charmap[(new_text[0] << 5) + cfstart];
+	  pfont_row = (u8*) &vga_charmap[(new_text[0] << 5) + cfstart];
 	}
 	buf_char = buf;
 	do

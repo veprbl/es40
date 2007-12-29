@@ -27,6 +27,9 @@
  * \file
  * Contains the code for the PCI device class.
  *
+ * X-1.8        Camiel Vanderhoeven                             29-DEC-2007
+ *      Avoid referencing uninitialized data.
+ *
  * X-1.7        Camiel Vanderhoeven                             28-DEC-2007
  *      Throw exceptions rather than just exiting when errors occur.
  *
@@ -55,11 +58,17 @@
 
 CPCIDevice::CPCIDevice(CConfigurator * cfg, CSystem * c, int pcibus, int pcidev) : CSystemComponent(cfg, c)
 {
-  int i;
-
+  int i,j;
 
   for (i=0;i<8; i++)
+  {
     device_at[i] = false;
+	for (j=0;j<8;j++)
+	  pci_range_is_io[i][j] = false;
+  }
+
+  for (i=0;i<MAX_DEV_RANGES;i++)
+	dev_range_is_io[i] = false;
 
   myPCIBus = pcibus;
   myPCIDev = pcidev;

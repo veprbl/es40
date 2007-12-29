@@ -28,6 +28,9 @@
  * \file
  * Contains the definitions for the emulated DecChip 21264CB EV68 Alpha processor.
  *
+ * X-1.30       Camiel Vanderhoeven                             29-DEC-2007
+ *      Avoid referencing uninitialized data.
+ *
  * X-1.29       Camiel Vanderhoeven                             17-DEC-2007
  *      SaveState file format 2.1
  *
@@ -401,9 +404,10 @@ class CAlphaCPU : public CSystemComponent
 
 inline void CAlphaCPU::flush_icache()
 {
-  int i;
-  for(i=0;i<ICACHE_ENTRIES;i++) 
-    state.icache[i].valid = false;
+  memset(state.icache,0,sizeof(state.icache));
+//  int i;
+//  for(i=0;i<ICACHE_ENTRIES;i++) 
+//    state.icache[i].valid = false;
   state.next_icache = 0;
   state.last_found_icache = 0;
 }
