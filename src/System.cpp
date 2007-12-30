@@ -27,6 +27,9 @@
  * \file 
  * Contains the code for the emulated Typhoon Chipset devices.
  *
+ * X-1.48       Camiel Vanderhoeven                             30-DEC-2007
+ *      Comments.
+ *
  * X-1.47       Camiel Vanderhoeven                             30-DEC-2007
  *      Fixed error in printf again.
  *
@@ -304,11 +307,12 @@ CSystem::CSystem(CConfigurator * cfg)
 
   CHECK_ALLOCATION(memory = calloc(1<<iNumMemoryBits,1));
 
-  printf("%s(%s): $Id: System.cpp,v 1.47 2007/12/30 15:17:12 iamcamiel Exp $\n",cfg->get_myName(),cfg->get_myValue());
+  printf("%s(%s): $Id: System.cpp,v 1.48 2007/12/30 15:41:14 iamcamiel Exp $\n",cfg->get_myName(),cfg->get_myValue());
 }
 
 /**
- * Destructor.
+ * Destructor. Calls the destructors for registered devices, and 
+ * frees used memory.
  **/
 
 CSystem::~CSystem()
@@ -324,14 +328,21 @@ CSystem::~CSystem()
     free(asMemories[i]);
 
   free(memory);
-
 }
+
+/**
+ * free memory, and allocate and clear new memory.
+ **/
 
 void CSystem::ResetMem(unsigned int membits) {
   free(memory);
   iNumMemoryBits=membits;
   CHECK_ALLOCATION(memory = calloc(1<<iNumMemoryBits,1));
 }
+
+/**
+ * Register a device.
+ **/
 
 int CSystem::RegisterComponent(CSystemComponent *component)
 {
@@ -340,15 +351,28 @@ int CSystem::RegisterComponent(CSystemComponent *component)
   return 0;
 }
 
+/**
+ * Get the number of bits that corresponds to the amount of RAM installed.
+ * (e.g. 28 = 256 MB, 29 = 512 MB, 30 = 1 GB)
+ **/
+
 unsigned int CSystem::get_memory_bits()
 {
   return iNumMemoryBits;
 }
 
+/**
+ * Obtain a pointer to system memory.
+ **/
+
 char * CSystem::PtrToMem(u64 address)
 {
   return &(((char*)memory)[(int)address]);
 }
+
+/**
+ * Register a device as being a CPU. Return the CPU number.
+ **/
 
 int CSystem::RegisterCPU(class CAlphaCPU * cpu)
 {
@@ -358,6 +382,10 @@ int CSystem::RegisterCPU(class CAlphaCPU * cpu)
   iNumCPUs++;
   return iNumCPUs - 1;
 }
+
+/**
+ * Register a device as being clocked.
+ **/
 
 int CSystem::RegisterClock(CSystemComponent *component, bool slow)
 {
@@ -373,6 +401,10 @@ int CSystem::RegisterClock(CSystemComponent *component, bool slow)
   }
   return 0;
 }
+
+/**
+ * Reserve a range of the 64-bit system address space for a device.
+ **/
 
 int CSystem::RegisterMemory(CSystemComponent *component, int index, u64 base, u64 length)
 {
@@ -400,10 +432,19 @@ int CSystem::RegisterMemory(CSystemComponent *component, int index, u64 base, u6
 }
 
 int got_sigint = 0;
+
+/**
+ * Handle a SIGINT by setting a flag that terminates the emulator.
+ **/
+
 void sigint_handler (int signum) 
 {
   got_sigint=1;
 }
+
+/**
+ * Run the system by clocking the CPU(s) and devices.
+ **/
 
 int CSystem::Run()
 {
@@ -442,15 +483,15 @@ int CSystem::Run()
   return 1;
 }
 
+/**
+ * Do one clock tick. The cpu(s) will execute one single instruction, and
+ * some devices may be clocked.
+ **/
+
 int CSystem::SingleStep()
 {
   int i;
   int result;
-
-//#if defined(LS_MASTER) || defined(LS_SLAVE)
-//  lockstep_sync_m2s("sync1");
-//  lockstep_sync_s2m("sync2");
-//#endif
 
   for(i=0;i<iNumFastClocks;i++)
   {
@@ -496,6 +537,10 @@ int CSystem::SingleStep()
 u64 lastport;
 #endif
 
+/**
+ * Write 8, 4, 2 or 1 byte(s) to a 64-bit system address. This could be memory,
+ * or some device.
+ **/
 
 void CSystem::WriteMem(u64 address, int dsize, u64 data)
 {
@@ -772,6 +817,11 @@ void CSystem::WriteMem(u64 address, int dsize, u64 data)
     }
 }
 
+/**
+ * Read 8, 4, 2 or 1 byte(s) from a 64-bit system address. This could be memory,
+ * or some device.
+ **/
+
 u64 CSystem::ReadMem(u64 address, int dsize)
 {
   u64 a;
@@ -994,6 +1044,11 @@ u64 CSystem::ReadMem(u64 address, int dsize)
     }
 }
 
+/**
+ * Load ROM contents from file. Try if the decompressed ROM image
+ * is available, otherwise create it first.
+ **/
+
 int CSystem::LoadROM()
 {
   FILE * f;
@@ -1102,6 +1157,10 @@ int CSystem::LoadROM()
   return 0;
 }
  
+/**
+ * Assert or deassert one of 64 possible interrupt lines on the Tsunami chipset.
+ **/
+
 void CSystem::interrupt(int number, bool assert)
 {
   int i;
@@ -1140,6 +1199,12 @@ void CSystem::interrupt(int number, bool assert)
 
 }
 
+/**
+ * Translate a 32-bit address coming off the PCI bus into a 
+ * 64-bit system address. Used by PCI devices when accessing
+ * memory (or other PCI devices) as bus master.
+ **/
+
 u64 CSystem::PCI_Phys(int pcibus, u64 address)
 {
   u64 a;
@@ -1169,6 +1234,10 @@ u64 CSystem::PCI_Phys(int pcibus, u64 address)
   }
   return X64(80000000000) | (pcibus * X64(200000000)) | (u64)address;
 }
+
+/**
+ * Save system state to a state file.
+ **/
 
 void CSystem::SaveState(char *fn)
 {
@@ -1227,6 +1296,10 @@ void CSystem::SaveState(char *fn)
     }
 }
 
+/**
+ * Restore system state from a state file.
+ **/
+
 void CSystem::RestoreState(char *fn)
 {
   FILE * f;
@@ -1239,18 +1312,15 @@ void CSystem::RestoreState(char *fn)
 
   f = fopen(fn,"rb");
   if (!f)
-    {
-      printf("%%SYS-F-NOFILE: Can't open restore file %s\n",fn);
-      return;
-    }
+  {
+    printf("%%SYS-F-NOFILE: Can't open restore file %s\n",fn);
+    return;
+  }
+
   fread(&temp_32,sizeof(u32),1,f);
   if (temp_32 != 0xa1fae540)    // MAGIC NUMBER (ALFAES40 ==> A1FAE540 )
   {
-    if (temp_32 == 0x40e5faa1)
-      printf("%%SYS-F-ENDIAN: State file %s can't be restored because it was created on a"
-             " machine of different endianness.\n",fn);     
-    else
-      printf("%%SYS-F-FORMAT: %s does not appear to be a state file.\n",fn);
+    printf("%%SYS-F-FORMAT: %s does not appear to be a state file.\n",fn);
     return;
   }
 
@@ -1264,17 +1334,17 @@ void CSystem::RestoreState(char *fn)
 
   // memory
   for (m=0;m<memints;m++)
+  {
+    fread(&(mem[m]),1,sizeof(int),f);
+    if (!mem[m])
     {
-      fread(&(mem[m]),1,sizeof(int),f);
-      if (!mem[m])
-	{
-	  fread(&j,1,sizeof(int),f);
-	  while (j--)
-	    {
-	      mem[++m] = 0;
-	    }
-	}
+      fread(&j,1,sizeof(int),f);
+      while (j--)
+      {
+        mem[++m] = 0;
+      }
     }
+  }
 
   fread(&state, sizeof(state), 1, f);
   
@@ -1290,6 +1360,10 @@ void CSystem::RestoreState(char *fn)
   }
   fclose(f);
 }
+
+/**
+ * Dump memory contents to a file.
+ **/
 
 void CSystem::DumpMemory(unsigned int filenum)
 {
@@ -1314,6 +1388,7 @@ void CSystem::DumpMemory(unsigned int filenum)
 /**
  *  Dump system state to stdout for debugging purposes.
  **/
+
 void CSystem::panic(char *message, int flags) 
 {
   int cpunum,i;
@@ -1383,6 +1458,10 @@ void CSystem::panic(char *message, int flags)
 
   return;
 }
+
+/**
+ * Clear the clock interrupt for a specific CPU. Used by the CPU to acknowledge the interrupt.
+ **/
 
 void CSystem::clear_clock_int(int ProcNum)
 {
