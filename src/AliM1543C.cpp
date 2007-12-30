@@ -27,6 +27,9 @@
  * \file 
  * Contains the code for the emulated Ali M1543C chipset devices.
  *
+ * X-1.47       Camiel Vanderhoeven                             30-DEC-2007
+ *      Comments.
+ *
  * X-1.46       Camiel Vanderhoeven                             29-DEC-2007
  *      Avoid referencing uninitialized data.
  *
@@ -155,7 +158,7 @@
  *
  * X-1.14	Camiel Vanderhoeven				16-FEB-2007
  *   a) This is now a slow-clocked device.
- *   b) Removed #ifdef _WIN32 from printf statements.
+ *   b) Removed ifdef _WIN32 from printf statements.
  *
  * X-1.13	Brian Wheeler					13-FEB-2007
  *      Corrected some typecasts in printf statements.
@@ -371,9 +374,8 @@ CAliM1543C::CAliM1543C(CConfigurator * cfg, CSystem * c, int pcibus, int pcidev)
   add_legacy_io(7,0x20,2);
   add_legacy_io(8,0xa0,2);
   add_legacy_io(30,0x4d0,2);
-//  c->RegisterMemory(this, 7,  X64(00000801fc000020), 2);
-//  c->RegisterMemory(this, 8,  X64(00000801fc0000a0), 2);
-//  c->RegisterMemory(this, 30, X64(00000801fc0004d0), 2);
+
+  // odd one, byte read in PCI IACK (interrupt acknowledge) cycle. Interrupt vector.
   c->RegisterMemory(this, 20, X64(00000801f8000000), 1);
   for(i=0;i<2;i++)
     {
@@ -383,26 +385,17 @@ CAliM1543C::CAliM1543C(CConfigurator * cfg, CSystem * c, int pcibus, int pcidev)
       state.pic_asserted[i] = 0;
     }
 
-
-
-
   // DMA Setup
   add_legacy_io(12,0x00,16); // dma 0-3
   add_legacy_io(13,0xc0,32); // dma 4-7
   add_legacy_io(33,0x80,16); // dma 0-7 (memory base low page register)
   add_legacy_io(34,0x480,16); // dma 0-7 (memory base high page register)
-//  c->RegisterMemory(this, 12, X64(00000801fc000000), 16);
-//  c->RegisterMemory(this, 13, X64(00000801fc0000c0), 32);
-
-
   for(i=0;i<4;i++) {
     state.dma_channel[i].lobyte=true;
   }
 
-
   // Initialize parallel port
   add_legacy_io(27,0x3bc,4);
-//  c->RegisterMemory(this,27, X64(00000801fc0003bc), 4);
   filename=myCfg->get_text_value("lpt.outfile");
   if(filename) {
     lpt=fopen(filename,"wb");
@@ -410,10 +403,12 @@ CAliM1543C::CAliM1543C(CConfigurator * cfg, CSystem * c, int pcibus, int pcidev)
     lpt=NULL;
   }
 
-
-  printf("%%ALI-I-INIT: ALi M1543C chipset emulator initialized.\n");
-  printf("%%ALI-I-IMPL: Implemented: keyboard, port 61, toy clock, isa bridge, flash ROM.\n");
+  printf("%s: $Id: AliM1543C.cpp,v 1.47 2007/12/30 14:54:25 iamcamiel Exp $ initialized.\n",devid_string);
 }
+
+/**
+ * Desructor.
+ **/
 
 CAliM1543C::~CAliM1543C()
 {
@@ -2160,11 +2155,6 @@ void CAliM1543C::kbd_enQ_imm(u8 val)
 
 void CAliM1543C::kbd_ctrl_to_mouse(u8 value)
 {
-  // if we are not using a ps2 mouse, some of the following commands need to return different values
-//  bool is_ps2 = 0;
-//  if ((state.mouse.type == BX_MOUSE_TYPE_PS2) ||
-//      (state.mouse.type == BX_MOUSE_TYPE_IMPS2)) is_ps2 = 1;
-
 #if defined(DEBUG_KBD)
   BX_DEBUG(("MOUSE: kbd_ctrl_to_mouse(%02xh)", (unsigned) value));
   BX_DEBUG(("  enable = %u", (unsigned) state.mouse.enable));
@@ -2189,14 +2179,10 @@ void CAliM1543C::kbd_ctrl_to_mouse(u8 value)
         } else if ((value == 100) && (state.mouse.im_request == 1)) {
           state.mouse.im_request = 2;
         } else if ((value == 80) && (state.mouse.im_request == 2)) {
-//          if (state.mouse.type == BX_MOUSE_TYPE_IMPS2) {
 #if defined(DEBUG_KBD)
-            BX_INFO(("wheel mouse mode enabled"));
+          BX_INFO(("wheel mouse mode enabled"));
 #endif
-            state.mouse.im_mode = 1;
-//          } else {
-//            BX_INFO(("wheel mouse mode request rejected"));
-//          }
+          state.mouse.im_mode = 1;
           state.mouse.im_request = 0;
         } else {
           state.mouse.im_request = 0;
@@ -2333,18 +2319,11 @@ void CAliM1543C::kbd_ctrl_to_mouse(u8 value)
         break;
 
       case 0xf4: // Enable (in stream mode)
-        // is a mouse present?
-//        if (is_ps2) {
-          state.mouse.enable = 1;
-          kbd_controller_enQ(0xFA, 1); // ACK
+        state.mouse.enable = 1;
+        kbd_controller_enQ(0xFA, 1); // ACK
 #if defined(DEBUG_KBD)
-          BX_DEBUG(("[mouse] Mouse enabled (stream mode)"));
+        BX_DEBUG(("[mouse] Mouse enabled (stream mode)"));
 #endif
-//        } else {
-//          // a mouse isn't present.  We need to return a 0xFE (resend) instead of a 0xFA (ACK)
-//          kbd_controller_enQ(0xFE, 1); // RESEND
-//          state.kbd_controller.tim = 1;
-//        }
         break;
 
       case 0xf5: // Disable (in stream mode)
@@ -2368,30 +2347,22 @@ void CAliM1543C::kbd_ctrl_to_mouse(u8 value)
         break;
 
       case 0xff: // Reset
-        // is a mouse present?
-//        if (is_ps2) {
-          state.mouse.sample_rate     = 100; /* reports per second (default) */
-          state.mouse.resolution_cpmm = 4; /* 4 counts per millimeter (default) */
-          state.mouse.scaling         = 1;   /* 1:1 (default) */
-          state.mouse.mode            = MOUSE_MODE_RESET;
-          state.mouse.enable          = 0;
+        state.mouse.sample_rate     = 100; /* reports per second (default) */
+        state.mouse.resolution_cpmm = 4; /* 4 counts per millimeter (default) */
+        state.mouse.scaling         = 1;   /* 1:1 (default) */
+        state.mouse.mode            = MOUSE_MODE_RESET;
+        state.mouse.enable          = 0;
 #if defined(DEBUG_KBD)
-          if (state.mouse.im_mode)
-            BX_INFO(("wheel mouse mode disabled"));
+        if (state.mouse.im_mode)
+          BX_INFO(("wheel mouse mode disabled"));
 #endif
-          state.mouse.im_mode         = 0;
-          /* (mch) NT expects an ack here */
-          kbd_controller_enQ(0xFA, 1); // ACK
-          kbd_controller_enQ(0xAA, 1); // completion code
-          kbd_controller_enQ(0x00, 1); // ID code (standard after reset)
+        state.mouse.im_mode         = 0;
+        kbd_controller_enQ(0xFA, 1); // ACK
+        kbd_controller_enQ(0xAA, 1); // completion code
+        kbd_controller_enQ(0x00, 1); // ID code (standard after reset)
 #if defined(DEBUG_KBD)
-          BX_DEBUG(("[mouse] Mouse reset"));
+        BX_DEBUG(("[mouse] Mouse reset"));
 #endif
-//        } else {
-//          // a mouse isn't present.  We need to return a 0xFE (resend) instead of a 0xFA (ACK)
-//          kbd_controller_enQ(0xFE, 1); // RESEND
-//          state.kbd_controller.tim = 1;
-//        }
         break;
 
       case 0xe9: // Get mouse information
@@ -2423,11 +2394,8 @@ void CAliM1543C::kbd_ctrl_to_mouse(u8 value)
        break;
 
       default:
-        // If PS/2 mouse present, send NACK for unknown commands, otherwise ignore
-//        if (is_ps2) {
-          BX_ERROR(("[mouse] kbd_ctrl_to_mouse(): got value of 0x%02x", value));
-          kbd_controller_enQ(0xFE, 1); /* send NACK */
-//        }
+        BX_ERROR(("[mouse] kbd_ctrl_to_mouse(): got value of 0x%02x", value));
+        kbd_controller_enQ(0xFE, 1); /* send NACK */
     }
   }
 }
