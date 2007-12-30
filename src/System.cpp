@@ -27,6 +27,9 @@
  * \file 
  * Contains the code for the emulated Typhoon Chipset devices.
  *
+ * X-1.45       Camiel Vanderhoeven                             30-DEC-2007
+ *      Print file id on initialization.
+ *
  * X-1.44       Camiel Vanderhoeven                             29-DEC-2007
  *      Fix memory-leak.
  *
@@ -295,8 +298,7 @@ CSystem::CSystem(CConfigurator * cfg)
 
   CHECK_ALLOCATION(memory = calloc(1<<iNumMemoryBits,1));
 
-  printf("%%TYP-I-INIT: 21272 Typhoon chipset emulator initialized.\n");
-  printf("%%TYP-I-CONF: 21272 Typhoon config: 1 Cchip, 8 DChip, 2 PChip.\n");
+  printf("%s: $Id: System.cpp,v 1.45 2007/12/30 15:12:55 iamcamiel Exp $\n");
 }
 
 /**
