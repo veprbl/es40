@@ -27,6 +27,9 @@
  * \file
  * Contains the code for the emulated Floppy Controller devices.
  *
+ * X-1.11       Camiel Vanderhoeven                             30-DEC-2007
+ *      Print file id on initialization.
+ *
  * X-1.10       Camiel Vanderhoeven                             11-DEC-2007
  *      Don't claim IO port 3f6 as this is in use by the IDE controller.
  *
@@ -119,8 +122,7 @@ CFloppyController::CFloppyController(CConfigurator * cfg, CSystem * c, int id) :
   iRegisters[0x28] = 0x00;
   iRegisters[0x29] = 0x00;
 
-  printf("%%FDC-I-INIT: Floppy Drive Controller emulator initialized.\n");
-
+  printf("%s: $Id: FloppyController.cpp,v 1.11 2007/12/30 15:10:22 iamcamiel Exp $\n",devid_string);
 }
 
 /**

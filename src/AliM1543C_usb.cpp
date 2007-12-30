@@ -27,6 +27,9 @@
  * \file
  * Contains the code for the emulated Ali M1543C IDE chipset part.
  *
+ * X-1.3        Camiel Vanderhoeven                             30-DEC-2007
+ *      Print file id on initialization.
+ *
  * X-1.2        Camiel Vanderhoeven                             17-DEC-2007
  *      SaveState file format 2.1
  *
@@ -94,8 +97,7 @@ CAliM1543C_usb::CAliM1543C_usb(CConfigurator * cfg, CSystem * c, int pcibus, int
 
   ResetPCI();
 
-  printf("%%ALI-I-INIT: ALi M1543C chipset emulator initialized.\n");
-  printf("%%ALI-I-IMPL: Implemented: keyboard, port 61, toy clock, isa bridge, flash ROM.\n");
+  printf("%s: $Id: AliM1543C_usb.cpp,v 1.3 2007/12/30 15:10:22 iamcamiel Exp $\n",devid_string);
 }
 
 CAliM1543C_usb::~CAliM1543C_usb()

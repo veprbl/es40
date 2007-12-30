@@ -27,6 +27,9 @@
  * \file
  * Contains the code for the emulated Ali M1543C IDE chipset part.
  *
+ * X-1.15       Camiel Vanderhoeven                             30-DEC-2007
+ *      Print file id on initialization.
+ *
  * X-1.14       Camiel Vanderhoeven                             29-DEC-2007
  *      Compileable with older compilers (VC 6.0). Avoid referencing
  *      uninitialized data.
@@ -195,8 +198,7 @@ CAliM1543C_ide::CAliM1543C_ide(CConfigurator * cfg, CSystem * c, int pcibus, int
   
   ResetPCI();
 
-  printf("%%ALI-I-INIT: ALi M1543C chipset emulator initialized.\n");
-  printf("%%ALI-I-IMPL: Implemented: keyboard, port 61, toy clock, isa bridge, flash ROM.\n");
+  printf("%s: $Id: AliM1543C_ide.cpp,v 1.15 2007/12/30 15:10:22 iamcamiel Exp $\n",devid_string);
 }
 
 CAliM1543C_ide::~CAliM1543C_ide()

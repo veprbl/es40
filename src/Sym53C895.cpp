@@ -27,6 +27,9 @@
  * \file
  * Contains the code for the emulated Symbios SCSI controller.
  *
+ * X-1.14       Camiel Vanderhoeven                             30-DEC-2007
+ *      Print file id on initialization.
+ *
  * X-1.13       Camiel Vanderhoeven                             29-DEC-2007
  *      Compileable with older compilers (VC 6.0).
  *
@@ -375,7 +378,7 @@ CSym53C895::CSym53C895(CConfigurator * cfg, CSystem * c, int pcibus, int pcidev)
   for (int i=0;i<16;i++)
     state.per_target[i].block_size = 512;
 
-  printf("%%SYM-I-INIT: Symbios 53c895 emulator initialized. STEST4 = %02x.\n",R8(STEST4));
+  printf("%s: $Id: Sym53C895.cpp,v 1.14 2007/12/30 15:10:22 iamcamiel Exp $\n",devid_string);
 }
 
 CSym53C895::~CSym53C895()

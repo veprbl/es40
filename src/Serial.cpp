@@ -27,6 +27,9 @@
  * \file
  * Contains the code for the emulated Serial Port devices.
  *
+ * X-1.34       Camiel Vanderhoeven                             30-DEC-2007
+ *      Print file id on initialization.
+ *
  * X-1.33       Camiel Vanderhoeven                             28-DEC-2007
  *      Throw exceptions rather than just exiting when errors occur.
  *
@@ -208,12 +211,12 @@ CSerial::CSerial(CConfigurator * cfg, CSystem * c, u16 number) : CSystemComponen
   bind(listenSocket,(struct sockaddr *)&Address,sizeof(Address));
   listen(listenSocket, 1);
 
-  printf("%%SRL-I-WAIT: Waiting for connection on port %d.\n",base);
+  printf("%s: Waiting for connection on port %d.\n",devid_string,base);
 
 #if !defined(LS_SLAVE)
   strncpy(s, cfg->get_text_value("action",""),999);
   s[999] = '\0';
-  printf("%%SRL-I-ACTION: Specified : %s\n",s);
+  //printf("%s: Specified : %s\n",devid_string,s);
 
   if (strcmp(s,""))
   {
@@ -239,7 +242,7 @@ CSerial::CSerial(CConfigurator * cfg, CSystem * c, u16 number) : CSystemComponen
       nargv++;
       *(strchr(nargv,'\"')) = '\0';
     }
-    printf("%%SRL-I-START: Starting %s\n", nargv);
+    //printf("%s: Starting %s\n", devid_string,nargv);
 #if defined(_WIN32)
     _spawnvp(_P_NOWAIT, nargv, argv);
 #else
@@ -305,16 +308,13 @@ CSerial::CSerial(CConfigurator * cfg, CSystem * c, u16 number) : CSystemComponen
   dest_addr.sin_port = htons((u16)(base + number));
   dest_addr.sin_addr.s_addr = inet_addr(ls_IP);
 
-  printf("%%SRL-I-WAIT: Waiting to initiate remote connection to %s.\n",ls_IP);
+  printf("%s: Waiting to initiate remote connection to %s.\n",devid_string,ls_IP);
 
   while (result == -1)
   {
     result = connect(throughSocket, (struct sockaddr *)&dest_addr, sizeof(struct sockaddr));
   }
 #endif
-
-  printf("%%SRL-I-INIT: Serial Interface %d emulator initialized.\n",number);
-  printf("%%SRL-I-ADDRESS: Serial Interface %d on telnet port %d.\n",number,number+base);
 
   state.iNumber = number;
 
@@ -325,6 +325,8 @@ CSerial::CSerial(CConfigurator * cfg, CSystem * c, u16 number) : CSystemComponen
   state.bLSR = 0x60; // THRE, TSRE
   state.bMSR = 0x30; // CTS, DSR
   state.bIIR = 0x01; // no interrupt
+
+  printf("%s: $Id: Serial.cpp,v 1.34 2007/12/30 15:10:22 iamcamiel Exp $\n",devid_string);
 }
 
 /**

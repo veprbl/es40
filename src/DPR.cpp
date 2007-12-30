@@ -27,6 +27,9 @@
  * \file
  * Contains the code for the emulated Dual Port Ram and RMC devices.
  *
+ * X-1.15       Camiel Vanderhoeven                             30-DEC-2007
+ *      Print file id on initialization.
+ *
  * X-1.14       Camiel Vanderhoeven                             28-DEC-2007
  *      Throw exceptions rather than just exiting when errors occur.
  *
@@ -91,7 +94,6 @@ CDPR::CDPR(CConfigurator * cfg, CSystem * c) : CSystemComponent(cfg,c)
   u8 i;
 
   c->RegisterMemory(this, 0, X64(0000080110000000),0x100000); // 16KB
-  printf("%%DPR-I-INIT: Dual-Port RAM emulator initialized.\n");
   memset(state.ram,0,16*1024);
   //
   state.ram[0x3401] = 1;	// SROM valid
@@ -328,6 +330,7 @@ CDPR::CDPR(CConfigurator * cfg, CSystem * c) : CSystemComponent(cfg,c)
   //	3700:37FF SRM Reserved
   //	3800:3AFF RMC RMC scratch space
 
+  printf("%s: $Id: DPR.cpp,v 1.15 2007/12/30 15:10:22 iamcamiel Exp $\n",devid_string);
 }
 
 /**

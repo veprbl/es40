@@ -27,6 +27,9 @@
  * \file
  * Contains the code for the emulated Flash ROM devices.
  *
+ * X-1.15       Camiel Vanderhoeven                             30-DEC-2007
+ *      Print file id on initialization.
+ *
  * X-1.14       Camiel Vanderhoeven                             28-DEC-2007
  *      Throw exceptions rather than just exiting when errors occur.
  *
@@ -100,9 +103,10 @@ CFlash::CFlash(CConfigurator * cfg, CSystem * c) : CSystemComponent(cfg,c)
     FAILURE("More than one SROM!!");
   theSROM = this;
   c->RegisterMemory(this, 0, X64(0000080100000000),0x8000000); // 2MB
-  printf("%%FLS-I-INIT: Flash ROM emulator initialized.\n");
   memset(state.Flash,0xff,2*1024*1024);
   state.mode = MODE_READ;
+
+  printf("%s: $Id: Flash.cpp,v 1.15 2007/12/30 15:10:22 iamcamiel Exp $\n",devid_string);
 }
 
 /**

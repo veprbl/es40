@@ -26,6 +26,9 @@
  * \file
  * Contains the code for emulated S3 Trio 64 Video Card device.
  *
+ * X-1.9        Camiel Vanderhoeven                             30-DEC-2007
+ *      Print file id on initialization.
+ *
  * X-1.8        Camiel Vanderhoeven                             28-DEC-2007
  *      Throw exceptions rather than just exiting when errors occur.
  *
@@ -390,7 +393,7 @@ CS3Trio64::CS3Trio64(CConfigurator * cfg, CSystem * c, int pcibus, int pcidev): 
     pthread_create(&screen_refresh_handle_s3,NULL,refresh_proc_s3,this);
 #endif
 
-    printf("%%VGA-I-INIT: S3 Trio 64 Initialized\n");
+  printf("%s: $Id: S3Trio64.cpp,v 1.9 2007/12/30 15:10:22 iamcamiel Exp $\n",devid_string);
 }
 
 CS3Trio64::~CS3Trio64()

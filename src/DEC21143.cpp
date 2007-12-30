@@ -32,6 +32,9 @@
  * \file 
  * Contains the code for the emulated DEC 21143 NIC device.
  *
+ * X-1.21       Camiel Vanderhoeven                             30-DEC-2007
+ *      Print file id on initialization.
+ *
  * X-1.20       Camiel Vanderhoeven                             29-DEC-2007
  *      Compileable with older compilers (VC 6.0). Avoid referencing
  *      uninitialized data. Fixed memory-leak.
@@ -276,7 +279,7 @@ CDEC21143::CDEC21143(CConfigurator * confg, CSystem * c, int pcibus, int pcidev)
   pthread_create(&receive_process_handle, NULL, recv_proc, this);
 #endif
 
-  printf("%%NIC-I-INIT: DEC 21143 network interface card emulator initialized.\n");
+  printf("%s: $Id: DEC21143.cpp,v 1.21 2007/12/30 15:10:22 iamcamiel Exp $\n",devid_string);
 }
 
 CDEC21143::~CDEC21143()

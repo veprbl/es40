@@ -27,6 +27,9 @@
  * \file
  * Contains the code for the emulated Cirrus CL GD-5434 Video Card device.
  *
+ * X-1.9        Camiel Vanderhoeven                             30-DEC-2007
+ *      Print file id on initialization.
+ *
  * X-1.8        Camiel Vanderhoeven                             28-DEC-2007
  *      Throw exceptions rather than just exiting when errors occur.
  *
@@ -390,7 +393,7 @@ CCirrus::CCirrus(CConfigurator * cfg, CSystem * c, int pcibus, int pcidev): CVGA
     pthread_create(&screen_refresh_handle_cirrus,NULL,refresh_proc_cirrus,this);
 #endif
 
-    printf("%%VGA-I-INIT: Cirrus Video Initialized\n");
+  printf("%s: $Id: Cirrus.cpp,v 1.9 2007/12/30 15:10:22 iamcamiel Exp $\n",devid_string);
 }
 
 CCirrus::~CCirrus()

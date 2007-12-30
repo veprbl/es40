@@ -30,6 +30,9 @@
  * \bug Rounding and trap modes are not used for floating point ops.
  * \bug /V is ignored for integer ops.
  *
+ * X-1.50       Camiel Vanderhoeven                             30-DEC-2007
+ *      Print file id on initialization.
+ *
  * X-1.49       Camiel Vanderhoeven                             28-DEC-2007
  *      Keep the compiler happy.
  *
@@ -394,7 +397,7 @@ CAlphaCPU::CAlphaCPU(CConfigurator * cfg, CSystem * system) : CSystemComponent (
   bListing = false;
 #endif
   
-  printf("%%CPU-I-INIT: Alpha AXP 21264 EV68 processor %d initialized.\n", state.iProcNum);
+  printf("%s: $Id: AlphaCPU.cpp,v 1.50 2007/12/30 15:10:22 iamcamiel Exp $\n",devid_string);
 }
 
 /**
