@@ -27,6 +27,9 @@
  * \file 
  * Contains the code for the emulated Typhoon Chipset devices.
  *
+ * X-1.46       Camiel Vanderhoeven                             30-DEC-2007
+ *      Fixed error in printf.
+ *
  * X-1.45       Camiel Vanderhoeven                             30-DEC-2007
  *      Print file id on initialization.
  *
@@ -298,7 +301,7 @@ CSystem::CSystem(CConfigurator * cfg)
 
   CHECK_ALLOCATION(memory = calloc(1<<iNumMemoryBits,1));
 
-  printf("%s: $Id: System.cpp,v 1.45 2007/12/30 15:12:55 iamcamiel Exp $\n");
+  printf("%s: $Id: System.cpp,v 1.46 2007/12/30 15:14:56 iamcamiel Exp $\n",devid_string);
 }
 
 /**
