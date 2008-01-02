@@ -1,6 +1,6 @@
 ################################################################################
 # ES40 emulator.
-# Copyright (C) 2007 by the ES40 Emulator Project
+# Copyright (C) 2007-2008 by the ES40 Emulator Project
 #
 # Website: http://sourceforge.net/projects/es40
 # E-mail : camiel@camicom.com
@@ -24,8 +24,13 @@
 # the general public.
 #
 ################################################################################
-# 
+#
 # Makefile for GNU Linux. (And possibly many UNIX'es).
+#
+# $Id: Makefile,v 1.14 2008/01/02 09:49:17 iamcamiel Exp $
+#
+# X-1.14		Camiel Vanderhoeven				02-JAN-2008
+#	Brought up-to-date.
 #
 # X-1.13		Brian Wheeler      				16-DEC-2007
 #	Added SCSI support.
@@ -75,7 +80,7 @@ LDFLAGS =
 #CC = /home/bdwheele/intel/cce/10.1.008/bin/icc
 #LDFLAGS = -L/home/bdwheele/intel/cce/10.1.008/lib -lirc -lintlc
 
-CFLAGS = -g  -O2 -I. -I.. -I/usr/include/SDL -DUSE_CONSOLE -DUSE_NETWORK
+CFLAGS = -g  -O2 -I. -I.. -I/usr/include/SDL -DHAVE_SDL -DHAVE_PCAP
 LDFLAGS = -lpcap -lSDL
 IDB_CFLAGS = -DIDB 
 LSM_CFLAGS = -DIDB -DLS_MASTER
