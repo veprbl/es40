@@ -1,5 +1,5 @@
 /* ES40 emulator.
- * Copyright (C) 2007 by the ES40 Emulator Project
+ * Copyright (C) 2007-2008 by the ES40 Emulator Project
  *
  * Website: http://sourceforge.net/projects/es40
  * E-mail : camiel@camicom.com
@@ -26,6 +26,11 @@
 /**
  * \file 
  * Contains the code for the emulated Typhoon Chipset devices.
+ *
+ * $Id: System.cpp,v 1.49 2008/01/02 08:53:41 iamcamiel Exp $
+ *
+ * X-1.49       Camiel Vanderhoeven                             02-JAN-2008
+ *      Cleanup. 
  *
  * X-1.48       Camiel Vanderhoeven                             30-DEC-2007
  *      Comments.
@@ -307,7 +312,7 @@ CSystem::CSystem(CConfigurator * cfg)
 
   CHECK_ALLOCATION(memory = calloc(1<<iNumMemoryBits,1));
 
-  printf("%s(%s): $Id: System.cpp,v 1.48 2007/12/30 15:41:14 iamcamiel Exp $\n",cfg->get_myName(),cfg->get_myValue());
+  printf("%s(%s): $Id: System.cpp,v 1.49 2008/01/02 08:53:41 iamcamiel Exp $\n",cfg->get_myName(),cfg->get_myValue());
 }
 
 /**
@@ -1438,7 +1443,7 @@ void CSystem::panic(char *message, int flags)
   printf("\n");
 #ifdef IDB
   if(flags & PANIC_LISTING) {
-    u64 start,end,xpc;
+    u64 start,end;
     start = cpu->get_pc() - 64;
     end = start + 128;
     cpu->listing(start,end,cpu->get_pc());
