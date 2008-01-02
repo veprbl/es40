@@ -1,5 +1,5 @@
 /* ES40 emulator.
- * Copyright (C) 2007 by the ES40 Emulator Project
+ * Copyright (C) 2007-2008 by the ES40 Emulator Project
  *
  * WWW    : http://sourceforge.net/projects/es40
  * E-mail : camiel@camicom.com
@@ -27,6 +27,11 @@
  * \file
  * Contains code for the disk base class.
  *
+ * $Id: Disk.cpp,v 1.6 2008/01/02 09:44:36 iamcamiel Exp $
+ *
+ * X-1.6        Camiel Vanderhoeven                             02-JAN-2008
+ *      Cleanup.
+ *
  * X-1.5        Camiel Vanderhoeven                             29-DEC-2007
  *      Fix memory-leak.
  *
@@ -45,7 +50,6 @@
 
 #include "StdAfx.h" 
 #include "Disk.h"
-#include "Configurator.h"
 
 CDisk::CDisk(CConfigurator * cfg, CDiskController * ctrl, int idebus, int idedev)
 {
