@@ -1,9 +1,9 @@
-/////////////////////////////////////////////////////////////////////////
-// $Id: scancodes.h,v 1.2 2007/12/06 15:31:14 iamcamiel Exp $
-/////////////////////////////////////////////////////////////////////////
-//
-/*  ES40 emulator.
+/* ES40 emulator.
+ * Copyright (C) 2007-2008 by the ES40 Emulator Project
  *
+ * WWW    : http://sourceforge.net/projects/es40
+ * E-mail : camiel@camicom.com
+ * 
  *  This file is based upon Bochs.
  *
  *  Copyright (C) 2002  MandrakeSoft S.A.
@@ -30,6 +30,12 @@
  */
 
 /**
+ * \file
+ * Contains definitions for scancode table.
+ *
+ * $Id: scancodes.h,v 1.3 2008/01/02 09:35:58 iamcamiel Exp $
+ * X-1.3        Camiel Vanderhoeven                             02-JAN-2008
+ *      Comments.
  *
  * X-1.1        Camiel Vanderhoeven                             6-DEC-2007
  *      Initial version for ES40 emulator.

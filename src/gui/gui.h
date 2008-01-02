@@ -1,5 +1,9 @@
-/*  ES40 emulator.
+/* ES40 emulator.
+ * Copyright (C) 2007-2008 by the ES40 Emulator Project
  *
+ * WWW    : http://sourceforge.net/projects/es40
+ * E-mail : camiel@camicom.com
+ * 
  *  This file is based upon Bochs.
  *
  *  Copyright (C) 2002  MandrakeSoft S.A.
@@ -26,8 +30,14 @@
  */
 
 /**
- * Contains the definitions for the bx_gui_c class used for interfacing with
+ * \file
+ * Contains the definitions for the bx_gui_c base class used for interfacing with
  * SDL and other device interfaces.
+ *
+ * $Id: gui.h,v 1.4 2008/01/02 09:35:57 iamcamiel Exp $
+ *
+ * X-1.4        Camiel Vanderhoeven                             02-JAN-2008
+ *      Comments.
  *
  * X-1.3        Camiel Vanderhoeven                             10-DEC-2007
  *      Use Configurator.
@@ -48,12 +58,9 @@
 #define BX_PANIC(a) BX_DEBUG(a)
 #define BX_ERROR(a) BX_DEBUG(a)
 
-#define BX_WITH_SDL 1
-
-#define BOCHSAPI
-
 #include "vga.h" 
 
+/// VGA mode information for GUI
 typedef struct {
   u16  start_address;
   u8   cs_start;
@@ -66,6 +73,7 @@ typedef struct {
   bool split_hpanning;
 } bx_vga_tminfo_t;
 
+/// VGA tile information for GUI
 typedef struct {
   u16 bpp, pitch;
   u8 red_shift, green_shift, blue_shift;
@@ -75,20 +83,16 @@ typedef struct {
 
 extern class bx_gui_c *bx_gui;
 
-// The bx_gui_c class provides data and behavior that is common to
-// all guis.  Each gui implementation will override the abstract methods.
+/**
+ * \brief Abstract base class for GUI implementations.
+ **/
+
 class bx_gui_c {
 public:
   bx_gui_c (void);
   virtual ~bx_gui_c ();
-  // Define the following functions in the module for your particular GUI
-  // (x.cc, beos.cc, ...)
-  virtual void specific_init(
-    //int argc, char **argv,
-                 unsigned x_tilesize, unsigned y_tilesize) = 0;
-  virtual void text_update(u8 *old_text, u8 *new_text,
-                          unsigned long cursor_x, unsigned long cursor_y,
-                          bx_vga_tminfo_t tm_info, unsigned rows) = 0;
+  virtual void specific_init(unsigned x_tilesize, unsigned y_tilesize) = 0;
+  virtual void text_update(u8 *old_text, u8 *new_text, unsigned long cursor_x, unsigned long cursor_y, bx_vga_tminfo_t tm_info, unsigned rows) = 0;
   virtual void graphics_tile_update(u8 *snapshot, unsigned x, unsigned y) = 0;
   virtual bx_svga_tileinfo_t *graphics_tile_info(bx_svga_tileinfo_t *info);
   virtual u8 *graphics_tile_get(unsigned x, unsigned y, unsigned *w, unsigned *h);
@@ -100,31 +104,23 @@ public:
   virtual void dimension_update(unsigned x, unsigned y, unsigned fheight=0, unsigned fwidth=0, unsigned bpp=8) = 0;
   virtual void mouse_enabled_changed_specific (bool val) = 0;
   virtual void exit(void) = 0;
-  // These are only needed for the term gui. For all other guis they will
-  // have no effect.
-  // returns 32-bit bitmask in which 1 means the GUI should handle that signal
+
   virtual u32 get_sighandler_mask () {return 0;}
-  // called when registered signal arrives
   virtual void sighandler (int sig) {}
   virtual void beep_on(float frequency);
   virtual void beep_off();
   virtual void get_capabilities(u16 *xres, u16 *yres, u16 *bpp);
 
-  // The following function(s) are defined already, and your
-  // GUI code calls them
   static void key_event(u32 key);
   static void set_text_charmap(u8 *fbuffer);
   static void set_text_charbyte(u16 address, u8 data);
 
-  void init( /*int argc, char **argv, */
-                 unsigned x_tilesize, unsigned y_tilesize);
+  void init(unsigned x_tilesize, unsigned y_tilesize);
   void cleanup(void);
-  static void     mouse_enabled_changed(bool val);
+  static void mouse_enabled_changed(bool val);
   static void init_signal_handlers();
 
-
 protected:
-  // And these are defined and used privately in gui.cc
   static s32 make_text_snapshot (char **snapshot, u32 *length);
   static void toggle_mouse_enable(void);
 
@@ -138,43 +134,6 @@ protected:
   u8 host_bpp;
   u8 *framebuffer;
 };
-
-
-// Add this macro in the class declaration of each GUI, to define all the
-// required virtual methods.  Example:
-//   
-//    class bx_rfb_gui_c : public bx_gui_c {
-//    public:
-//      bx_rfb_gui_c (void) {}
-//      DECLARE_GUI_VIRTUAL_METHODS()
-//    };
-// Then, each method must be defined later in the file.
-#define DECLARE_GUI_VIRTUAL_METHODS()                                       \
-virtual void specific_init(/*int argc, char **argv, */                          \
-         unsigned x_tilesize, unsigned y_tilesize                      \
-         );                                        \
-virtual void text_update(u8 *old_text, u8 *new_text,                  \
-                  unsigned long cursor_x, unsigned long cursor_y,       \
-                  bx_vga_tminfo_t tm_info, unsigned rows);              \
-virtual void graphics_tile_update(u8 *snapshot, unsigned x, unsigned y); \
-virtual void handle_events(void);                                           \
-virtual void flush(void);                                                   \
-virtual void clear_screen(void);                                            \
-virtual bool palette_change(unsigned index,                              \
-unsigned red, unsigned green, unsigned blue);                           \
-virtual void dimension_update(unsigned x, unsigned y, unsigned fheight=0,   \
-                          unsigned fwidth=0, unsigned bpp=8);           \
-virtual void mouse_enabled_changed_specific (bool val);                  \
-virtual void exit(void);                                                    \
-/* end of DECLARE_GUI_VIRTUAL_METHODS */
-
-#define DECLARE_GUI_NEW_VIRTUAL_METHODS()                                   \
-virtual bx_svga_tileinfo_t *graphics_tile_info(bx_svga_tileinfo_t *info);   \
-virtual u8 *graphics_tile_get(unsigned x, unsigned y,                    \
-                             unsigned *w, unsigned *h);                 \
-virtual void graphics_tile_update_in_place(unsigned x, unsigned y,          \
-                                       unsigned w, unsigned h);
-/* end of DECLARE_GUI_NEW_VIRTUAL_METHODS */
 
 #define BX_KEY_PRESSED  0x00000000
 #define BX_KEY_RELEASED 0x80000000

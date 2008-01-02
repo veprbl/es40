@@ -1,5 +1,9 @@
-/*  ES40 emulator.
+/* ES40 emulator.
+ * Copyright (C) 2007-2008 by the ES40 Emulator Project
  *
+ * WWW    : http://sourceforge.net/projects/es40
+ * E-mail : camiel@camicom.com
+ * 
  *  This file is based upon Bochs.
  *
  *  Copyright (C) 2002  MandrakeSoft S.A.
@@ -26,8 +30,14 @@
  */
 
 /**
+ * \file
  * Contains the definitions for use with bx_..._gui_c classes used for
  * interfacing with SDL and other device interfaces.
+ *
+ * $Id: plugin.h,v 1.4 2008/01/02 09:35:58 iamcamiel Exp $
+ *
+ * X-1.3        Camiel Vanderhoeven                             02-JAN-2008
+ *      Comments.
  *
  * X-1.2        Camiel Vanderhoeven                             10-DEC-2007
  *      Simplified this for use with ES40.
@@ -55,7 +65,9 @@
 #define DECLARE_PLUGIN_INIT_FINI_FOR_MODULE(mod) \
   int lib##mod##_LTX_plugin_init(CConfigurator * cfg); \
   void lib##mod##_LTX_plugin_fini(void);
-  
+
+#if defined(HAVE_SDL)
 DECLARE_PLUGIN_INIT_FINI_FOR_MODULE(sdl)
+#endif
 
 #endif /* __PLUGIN_H */

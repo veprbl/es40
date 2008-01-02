@@ -1,5 +1,9 @@
-/*  ES40 emulator.
+/* ES40 emulator.
+ * Copyright (C) 2007-2008 by the ES40 Emulator Project
  *
+ * WWW    : http://sourceforge.net/projects/es40
+ * E-mail : camiel@camicom.com
+ * 
  *  This file is based upon Bochs.
  *
  *  Copyright (C) 2002  MandrakeSoft S.A.
@@ -26,8 +30,14 @@
  */
 
 /**
+ * \file
  * Contains the code for the bx_keymap_c class used for keyboard
  * interfacing with SDL and other device interfaces.
+ *
+ * $Id: keymap.cpp,v 1.7 2008/01/02 09:35:57 iamcamiel Exp $
+ *
+ * X-1.4        Camiel Vanderhoeven                             02-JAN-2008
+ *      Comments.
  *
  * X-1.3        Camiel Vanderhoeven                             10-DEC-2007
  *      Use Configurator.
@@ -106,16 +116,20 @@ bx_keymap_c::~bx_keymap_c(void)
     keymapCount = 0;
 }
 
+/**
+ * Loads the configuration specified keymap file if keymapping is enabled
+ * using convertStringToSymbol to convert strings to client constants
+ **/
+
 void bx_keymap_c::loadKeymap(u32 stringToSymbol(const char*))
 {
   if (myCfg->get_bool_value("keyboard.use_mapping",false))
-  {
     loadKeymap(stringToSymbol, myCfg->get_text_value("keyboard.map","keys.map"));
-  }
-//  if (SIM->get_param_bool(BXPN_KBD_USEMAPPING)->get()) {
-//    loadKeymap(stringToSymbol, SIM->get_param_string(BXPN_KBD_KEYMAP)->getptr());
-//  }
 }
+
+/**
+ * Returns true if the keymap contains any valid key entries.
+ **/
 
 bool bx_keymap_c::isKeymapLoaded ()
 {
@@ -211,6 +225,10 @@ static s32 get_next_keymap_line (FILE *fp, char *bxsym, char *modsym, s32 *ascii
   }
 }
 
+/**
+ * Loads the specified keymap file using convertStringToSymbol to convert strings to client constants.
+ **/
+
 void bx_keymap_c::loadKeymap(u32 stringToSymbol(const char*), const char* filename)
 {
   FILE   *keymapFile;
@@ -269,6 +287,10 @@ void bx_keymap_c::loadKeymap(u32 stringToSymbol(const char*), const char* filena
   fclose(keymapFile);
 }
 
+/**
+ * Convert a null-terminate string to a BX_KEY code.
+ **/
+
 u32 bx_keymap_c::convertStringToBXKey(const char* string)
 {
   // We look through the bx_key_symbol table to find the searched string
@@ -281,6 +303,11 @@ u32 bx_keymap_c::convertStringToBXKey(const char* string)
   // Key is not known
   return BX_KEYMAP_UNKNOWN;
 }
+
+/**
+ * Finds an entry whose hostKey value matches the target value, and 
+ * returns a pointer to the corresponging BXKeyEntry structure.
+ **/
 
 BXKeyEntry *bx_keymap_c::findHostKey(u32 key)
 {
@@ -296,6 +323,11 @@ BXKeyEntry *bx_keymap_c::findHostKey(u32 key)
   // Return default
   return NULL;
 }
+
+/**
+ * Finds an entry whose ASCII character matches the target value, and 
+ * returns a pointer to the corresponging BXKeyEntry structure.
+ **/
 
 BXKeyEntry *bx_keymap_c::findAsciiChar(u8 ch)
 {

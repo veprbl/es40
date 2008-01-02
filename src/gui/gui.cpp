@@ -1,5 +1,9 @@
-/*  ES40 emulator.
+/* ES40 emulator.
+ * Copyright (C) 2007-2008 by the ES40 Emulator Project
  *
+ * WWW    : http://sourceforge.net/projects/es40
+ * E-mail : camiel@camicom.com
+ * 
  *  This file is based upon Bochs.
  *
  *  Copyright (C) 2002  MandrakeSoft S.A.
@@ -26,6 +30,14 @@
  */
 
 /**
+ * \file
+ * Contains code for the bx_gui_c base class used for interfacing with
+ * SDL and other device interfaces.
+ *
+ * $Id: gui.cpp,v 1.4 2008/01/02 09:35:57 iamcamiel Exp $
+ *
+ * X-1.3        Camiel Vanderhoeven                             02-JAN-2008
+ *      Comments.
  *
  * X-1.2        Camiel Vanderhoeven                             7-DEC-2007
  *      Code cleanup.

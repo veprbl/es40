@@ -1,5 +1,9 @@
-/*  ES40 emulator.
+/* ES40 emulator.
+ * Copyright (C) 2007-2008 by the ES40 Emulator Project
  *
+ * WWW    : http://sourceforge.net/projects/es40
+ * E-mail : camiel@camicom.com
+ * 
  *  This file is based upon Bochs.
  *
  *  Copyright (C) 2002  MandrakeSoft S.A.
@@ -26,8 +30,14 @@
  */
 
 /**
+ * \file
  * Contains the code for the bx_sdl_gui_c class used for interfacing with
  * SDL.
+ *
+ * $Id: sdl.cpp,v 1.9 2008/01/02 09:35:58 iamcamiel Exp $
+ *
+ * X-1.5        Camiel Vanderhoeven                             02-JAN-2008
+ *      Comments.
  *
  * X-1.4        Camiel Vanderhoeven                             10-DEC-2007
  *      Use Configurator.
@@ -44,6 +54,9 @@
  **/
 
 #include "../StdAfx.h"
+
+#if defined(HAVE_SDL)
+
 #include "gui.h" 
 #include "keymap.h"
 #include "../VGA.h"
@@ -58,8 +71,6 @@
 // is used to know when we are exporting symbols and when we are importing.
 #define BX_PLUGGABLE
 
-#if BX_WITH_SDL
-
 #include <stdlib.h>
 #include <SDL.h>
 #include <SDL_endian.h>
@@ -67,11 +78,26 @@
 
 #include "sdl_fonts.h"
 
+/**
+ * \brief GUI implementation using SDL.
+ **/
+
 class bx_sdl_gui_c : public bx_gui_c {
 public:
   bx_sdl_gui_c (CConfigurator * cfg);
-  DECLARE_GUI_VIRTUAL_METHODS()
-  DECLARE_GUI_NEW_VIRTUAL_METHODS()
+  virtual void specific_init(unsigned x_tilesize, unsigned y_tilesize);
+  virtual void text_update(u8 *old_text, u8 *new_text, unsigned long cursor_x, unsigned long cursor_y, bx_vga_tminfo_t tm_info, unsigned rows);
+  virtual void graphics_tile_update(u8 *snapshot, unsigned x, unsigned y);
+  virtual void handle_events(void);
+  virtual void flush(void);
+  virtual void clear_screen(void);
+  virtual bool palette_change(unsigned index, unsigned red, unsigned green, unsigned blue);
+  virtual void dimension_update(unsigned x, unsigned y, unsigned fheight=0, unsigned fwidth=0, unsigned bpp=8);
+  virtual void mouse_enabled_changed_specific (bool val);
+  virtual void exit(void);
+  virtual bx_svga_tileinfo_t *graphics_tile_info(bx_svga_tileinfo_t *info);
+  virtual u8 *graphics_tile_get(unsigned x, unsigned y, unsigned *w, unsigned *h);
+  virtual void graphics_tile_update_in_place(unsigned x, unsigned y, unsigned w, unsigned h);
 private:
   CConfigurator * myCfg;
 };
@@ -97,7 +123,6 @@ u16 line_compare = 1023;
 int fontwidth = 8, fontheight = 16;
 static unsigned vga_bpp=8;
 unsigned tilewidth, tileheight;
-unsigned char menufont[256][8];
 u32 palette[256];
 u8 old_mousebuttons=0, new_mousebuttons=0;
 int old_mousex=0, new_mousex=0;
@@ -140,10 +165,6 @@ void bx_sdl_gui_c::specific_init(
     for(j=0;j<16;j++)
       vga_charmap[i*32+j] = sdl_font8x16[i][j];
 
-  for(i=0;i<256;i++)
-    for(j=0;j<8;j++)
-      menufont[i][j] = sdl_font8x8[i][j];
-  
   #ifdef __MORPHOS__
   if (!(PowerSDLBase=OpenLibrary("powersdl.library",0)))
   {
@@ -980,4 +1001,4 @@ static u32 convertStringToSDLKey (const char *string)
   return BX_KEYMAP_UNKNOWN;
 }
 
-#endif /* if BX_WITH_SDL */
+#endif //defined(HAVE_SDL)

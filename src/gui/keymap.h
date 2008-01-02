@@ -1,5 +1,9 @@
-/*  ES40 emulator.
+/* ES40 emulator.
+ * Copyright (C) 2007-2008 by the ES40 Emulator Project
  *
+ * WWW    : http://sourceforge.net/projects/es40
+ * E-mail : camiel@camicom.com
+ * 
  *  This file is based upon Bochs.
  *
  *  Copyright (C) 2002  MandrakeSoft S.A.
@@ -26,8 +30,14 @@
  */
 
 /**
+ * \file
  * Contains the definitions for the bx_keymap_c class used for keyboard
  * interfacing with SDL and other device interfaces.
+ *
+ * $Id: keymap.h,v 1.5 2008/01/02 09:35:57 iamcamiel Exp $
+ *
+ * X-1.4        Camiel Vanderhoeven                             02-JAN-2008
+ *      Comments.
  *
  * X-1.3        Camiel Vanderhoeven                             10-DEC-2007
  *      Use Configurator.
@@ -41,35 +51,11 @@
  **/
 
 #include "../Configurator.h"
-/////////////////////////////////////////////////////////////////////////
-//
-// Methods of bx_keymap_c :
-//
-// - loadKeymap(u32 convertStringToSymbol(const char*));
-//   loads the configuration specified keymap file if keymapping is enabled
-//   using convertStringToSymbol to convert strings to client constants
-//
-// - loadKeymap(u32 convertStringToSymbol(const char*), const char* filename);
-//   loads the specified keymap file 
-//   using convertStringToSymbol to convert strings to client constants
-//
-// - isKeymapLoaded () returns true if the keymap contains any valid key
-//   entries.
-//
-// - convertStringToBXKey
-//   convert a null-terminate string to a BX_KEY code
-//
-// - findHostKey(u32 key)
-// - findAsciiChar(u8 ch)
-//   Each of these methods returns a pointer to a BXKeyEntry structure
-//   corresponding to a key.  findHostKey() finds an entry whose hostKey
-//   value matches the target value, and findAsciiChar() finds an entry
-//   whose ASCII code matches the search value.
 
 // In case of unknown symbol
 #define BX_KEYMAP_UNKNOWN   0xFFFFFFFF
 
-// Structure of an element of the keymap table
+/// Structure of an element of the keymap table
 typedef struct { 
   u32 baseKey;   // base key
   u32 modKey;   // modifier key that must be held down
@@ -77,13 +63,17 @@ typedef struct {
   u32 hostKey;  // value that the host's OS or library recognizes
   } BXKeyEntry;
 
+/**
+ * \brief Keymap, used to map host keys to scancodes.
+ **/
+
 class bx_keymap_c {
 public:
   bx_keymap_c(CConfigurator * cfg);
   ~bx_keymap_c(void);
 
-  void   loadKeymap(u32(*)(const char*));
-  void   loadKeymap(u32(*)(const char*),const char *filename);
+  void loadKeymap(u32 stringToSymbol(const char*));
+  void loadKeymap(u32 stringToSymbol(const char*),const char *filename);
   bool isKeymapLoaded ();
 
   BXKeyEntry *findHostKey(u32 hostkeynum);
