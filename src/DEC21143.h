@@ -1,5 +1,9 @@
-/*  ES40 emulator.
+/* ES40 emulator.
+ * Copyright (C) 2007-2008 by the ES40 Emulator Project
  *
+ * WWW    : http://sourceforge.net/projects/es40
+ * E-mail : camiel@camicom.com
+ * 
  *  This file is based upon GXemul.
  *
  *  Copyright (C) 2004-2007  Anders Gavare.  All rights reserved.
@@ -31,6 +35,11 @@
 /**
  * \file 
  * Contains the definitions for the emulated DEC 21143 NIC device.
+ *
+ * $Id: DEC21143.h,v 1.10 2008/01/02 09:30:18 iamcamiel Exp $
+ *
+ * X-1.10       Camiel Vanderhoeven                             02-JAN-2008
+ *      Comments.
  *
  * X-1.9        Camiel Vanderhoeven                             17-DEC-2007
  *      SaveState file format 2.1
@@ -71,10 +80,9 @@
 #include "DEC21143_mii.h"
 #include "DEC21143_tulipreg.h"
 #include <pcap.h>
-#include "Configurator.h"
 
 /**
- * Emulated DEC 21143 NIC device.
+ * \brief Emulated DEC 21143 NIC device.
  **/
 
 class CDEC21143 : public CPCIDevice  
@@ -112,47 +120,54 @@ class CDEC21143 : public CPCIDevice
 
   pcap_t *fp;
   struct bpf_program fcode;
+  bool shutting_down;
 
-  // The state structure contains all elements that need to be saved to the statefile.
-  struct SDEC21143State {
+  /// The state structure contains all elements that need to be saved to the statefile.
+  struct SNIC_state {
    
-    bool		irq_was_asserted;
+    bool irq_was_asserted;      /**< remember state of IRQ */
 
-    /*  Ethernet address, and a network which we are connected to:  */
-	u8		mac[6];
-    u8      setup_filter[192];
+	u8		mac[6];             /**< ethernet address */
+    u8      setup_filter[192];  /**< filter for perfect filtering */
 
-	/*  SROM emulation:  */
-	u8		srom[1 << (7)];
-	int		srom_curbit;
-	int		srom_opcode;
-	int		srom_opcode_has_started;
-	int		srom_addr;
+	/// SROM emulation
+    struct SNIC_srom {
+	  u8		data[1 << (7)];
+	  int		curbit;
+	  int		opcode;
+	  int		opcode_has_started;
+	  int		addr;
+      } srom;
 
-	/*  MII PHY emulation:  */
-	u16	    mii_phy_reg[MII_NPHY * 32];
-	int		mii_state;
-	int		mii_bit;
-	int		mii_opcode;
-	int		mii_phyaddr;
-	int		mii_regaddr;
+	/// MII PHY emulation
+    struct SNIC_mii {
+	  u16	    phy_reg[MII_NPHY * 32];
+	  int		state;
+	  int		bit;
+	  int		opcode;
+	  int		phyaddr;
+	  int		regaddr;
+      } mii;
 
-	/*  21143 registers:  */
-	u32	    reg[32];
+	u32	    reg[32]; /**< 21143 registers */
 
-    /*  Internal TX state:  */
-	u64	    cur_tx_addr;
-	unsigned char	*cur_tx_buf;
-	int		cur_tx_buf_len;
-	int		tx_idling;
-	int		tx_idling_threshold;
-    bool tx_suspend;
+    /// Internal TX state
+    struct SNIC_tx {
+	  u64	    cur_addr;
+	  unsigned char	*cur_buf;
+	  int		cur_buf_len;
+	  int		idling;
+	  int		idling_threshold;
+      bool suspend;
+      } tx;
 
-	/*  Internal RX state:  */
-	u64	    cur_rx_addr;
-	unsigned char	*cur_rx_buf;
-	int		cur_rx_buf_len;
-	int		cur_rx_offset;
+	/// Internal RX state
+    struct SNIC_rx {
+	  u64	    cur_addr;
+	  unsigned char	*cur_buf;
+	  int		cur_buf_len;
+	  int		cur_offset;
+      } rx;
   } state;
 };
 

@@ -1,5 +1,5 @@
 /* ES40 emulator.
- * Copyright (C) 2007 by the ES40 Emulator Project
+ * Copyright (C) 2007-2008 by the ES40 Emulator Project
  *
  * WWW    : http://sourceforge.net/projects/es40
  * E-mail : camiel@camicom.com
@@ -27,6 +27,11 @@
  * \file
  * Contains definitions for the disk controller base class.
  *
+ * $Id: DiskController.h,v 1.2 2008/01/02 09:30:19 iamcamiel Exp $
+ *
+ * X-1.2        Camiel Vanderhoeven                             02-JAN-2008
+ *      Comments.
+ *
  * X-1.1        Camiel Vanderhoeven                             12-DEC-2007
  *      Initial version in CVS.
  **/
@@ -35,6 +40,10 @@
 #define __DISKCONTROLLER_H__
 
 #include "PCIDevice.h"
+
+/**
+ * \brief Abstract base class for disk controllers (uses CDisk's)
+ **/
 
 class CDiskController : public CPCIDevice
 {

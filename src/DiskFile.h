@@ -27,6 +27,11 @@
  * \file
  * Contains definitions to use a file as a disk image.
  *
+ * $Id: DiskFile.h,v 1.4 2008/01/02 09:30:19 iamcamiel Exp $
+ *
+ * X-1.4        Camiel Vanderhoeven                             02-JAN-2008
+ *      Comments.
+ *
  * X-1.3        Camiel Vanderhoeven                             28-DEC-2007
  *      Keep the compiler happy.
  *
@@ -41,6 +46,10 @@
 #define __DISKFILE_H__
 
 #include "Disk.h"
+
+/**
+ * \brief Emulated disk that uses an image file.
+ **/
 
 class CDiskFile : public CDisk
 {

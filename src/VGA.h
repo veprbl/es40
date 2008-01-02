@@ -1,5 +1,5 @@
 /* ES40 emulator.
- * Copyright (C) 2007 by the ES40 Emulator Project
+ * Copyright (C) 2007-2008 by the ES40 Emulator Project
  *
  * WWW    : http://sourceforge.net/projects/es40
  * E-mail : camiel@camicom.com
@@ -27,6 +27,11 @@
  * \file
  * Contains the definitions for the VGA base class.
  *
+ * $Id: VGA.h,v 1.3 2008/01/02 09:30:21 iamcamiel Exp $
+ *
+ * X-1.3        Camiel Vanderhoeven                             02-JAN-2008
+ *      Comments.
+ *
  * X-1.2        Brian Wheeler                                   10-DEC-2007
  *      Made include's case-correct.
  *
@@ -38,6 +43,10 @@
 #define __VGA_H__
 
 #include "PCIDevice.h"
+
+/**
+ * \brief Abstract base class for PCI VGA cards.
+ **/
 
 class CVGA :
   public CPCIDevice

@@ -1,5 +1,5 @@
 /* ES40 emulator.
- * Copyright (C) 2007 by the ES40 Emulator Project
+ * Copyright (C) 2007-2008 by the ES40 Emulator Project
  *
  * WWW    : http://sourceforge.net/projects/es40
  * E-mail : camiel@camicom.com
@@ -26,6 +26,11 @@
 /**
  * \file 
  * Contains the definitions for the emulated Port 80 device.
+ *
+ * $Id: Port80.h,v 1.9 2008/01/02 09:30:20 iamcamiel Exp $
+ *
+ * X-1.9        Camiel Vanderhoeven                             02-JAN-2008
+ *      Comments.
  *
  * X-1.8        Camiel Vanderhoeven                             17-DEC-2007
  *      SaveState file format 2.1
@@ -58,10 +63,10 @@
 #define INCLUDED_PORT80_H
 
 #include "SystemComponent.h"
-#include "Configurator.h"
 
 /**
- * Emulated port 80.
+ * \brief Emulated port 80.
+ *
  * Port 80 is a port without a real function, that is used to slow things down.
  * Since our emulator is slow enough already ;-) this port has no function at
  * all, but it needs to be there to avoid error messages about non-existing
@@ -71,7 +76,6 @@
 class CPort80 : public CSystemComponent  
 {
  public:
-
   CPort80(CConfigurator * cfg, class CSystem * c);
   virtual ~CPort80();
   virtual u64 ReadMem(int index, u64 address, int dsize);
@@ -80,7 +84,8 @@ class CPort80 : public CSystemComponent
   virtual int RestoreState(FILE * f);
 
  protected:
-  struct {
+  /// The state structure contains all elements that need to be saved to the statefile.
+  struct SPort80_state {
     u8 p80;	/**< Last value written.*/
   } state;
 };

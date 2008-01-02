@@ -1,5 +1,5 @@
 /* ES40 emulator.
- * Copyright (C) 2007 by Camiel Vanderhoeven
+ * Copyright (C) 2007-2008 by Camiel Vanderhoeven
  *
  * Website: www.camicom.com
  * E-mail : camiel@camicom.com
@@ -26,6 +26,11 @@
 /**
  * \file 
  * Contains the definitions for the emulated Floppy Controller devices.
+ *
+ * $Id: FloppyController.h,v 1.8 2008/01/02 09:30:19 iamcamiel Exp $
+ *
+ * X-1.8        Camiel Vanderhoeven                             02-JAN-2008
+ *      Comments.
  *
  * X-1.7        Camiel Vanderhoeven                             10-DEC-2007
  *      Use configurator.
@@ -57,7 +62,7 @@
 #include "SystemComponent.h"
 
 /**
- * Emulated floppy-drive controller.
+ * \brief Emulated floppy-drive controller.
  **/
 
 class CFloppyController : public CSystemComponent  

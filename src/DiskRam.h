@@ -1,5 +1,5 @@
 /* ES40 emulator.
- * Copyright (C) 2007 by the ES40 Emulator Project
+ * Copyright (C) 2007-2008 by the ES40 Emulator Project
  *
  * WWW    : http://sourceforge.net/projects/es40
  * E-mail : camiel@camicom.com
@@ -27,6 +27,11 @@
  * \file
  * Contains definitions to use a RAM disk.
  *
+ * $Id: DiskRam.h,v 1.5 2008/01/02 09:30:19 iamcamiel Exp $
+ *
+ * X-1.5        Camiel Vanderhoeven                             02-JAN-2008
+ *      Comments.
+ *
  * X-1.4        Camiel Vanderhoeven                             28-DEC-2007
  *      Keep the compiler happy.
  *
@@ -44,6 +49,10 @@
 #define __DISKRAM_H__
 
 #include "Disk.h"
+
+/**
+ * \brief Emulated disk that uses RAM.
+ **/
 
 class CDiskRam : public CDisk
 {

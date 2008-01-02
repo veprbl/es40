@@ -1,5 +1,5 @@
 /* ES40 emulator.
- * Copyright (C) 2007 by the ES40 Emulator Project
+ * Copyright (C) 2007-2008 by the ES40 Emulator Project
  *
  * WWW    : http://sourceforge.net/projects/es40
  * E-mail : camiel@camicom.com
@@ -26,6 +26,11 @@
 /**
  * \file 
  * Contains the definitions for the emulated Serial Port devices.
+ *
+ * $Id: Serial.h,v 1.13 2008/01/02 09:30:20 iamcamiel Exp $
+ *
+ * X-1.13       Camiel Vanderhoeven                             02-JAN-2008
+ *      Comments.
  *
  * X-1.12       Camiel Vanderhoeven                             28-DEC-2007
  *      Keep the compiler happy.
@@ -72,11 +77,11 @@
 #define INCLUDED_SERIAL_H
 
 #include "SystemComponent.h"
-#include "Configurator.h"
 #include "telnet.h"
 
 /**
- * Emulated serial port.
+ * \brief Emulated serial port.
+ *
  * The serial port is translated to a telnet port.
  **/
 
@@ -94,7 +99,8 @@ class CSerial : public CSystemComponent
   virtual int RestoreState(FILE * f);
 
  private:
-  struct {
+  /// The state structure contains all elements that need to be saved to the statefile.
+  struct SSrl_state {
     u8 bTHR;
     u8 bRDR;
     u8 bBRB_LSB;

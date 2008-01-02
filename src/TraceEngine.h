@@ -1,7 +1,7 @@
 /* ES40 emulator.
- * Copyright (C) 2007 by Camiel Vanderhoeven
+ * Copyright (C) 2007-2008 by the ES40 Emulator Project
  *
- * Website: www.camicom.com
+ * WWW    : http://sourceforge.net/projects/es40
  * E-mail : camiel@camicom.com
  * 
  * This program is free software; you can redistribute it and/or
@@ -27,8 +27,13 @@
  * \file 
  * Contains the definitions for the CPU tracing engine.
  *
- * X-1.16	Camiel Vanderhoeven				7-APR-2007
- *	Added hwpcb to PRBR structure.
+ * $Id: TraceEngine.h,v 1.17 2008/01/02 09:30:21 iamcamiel Exp $
+ *
+ * X-1.17       Camiel Vanderhoeven                             02-JAN-2008
+ *      Comments.
+ *
+ * X-1.16	    Camiel Vanderhoeven			                    7-APR-2007
+ *      Added hwpcb to PRBR structure.
  *
  * X-1.15       Camiel Vanderhoeven                             30-MAR-2007
  *      Added old changelog comments.
@@ -86,10 +91,7 @@
 
 #include "datatypes.h"
 
-/**
- * Structure used to define named functions within memory.
- **/
-
+/// Structure used to define named functions within memory.
 struct STraceFunction {
   u32 address;
   char * fn_name;
@@ -97,10 +99,7 @@ struct STraceFunction {
   bool step_over;
 };
 
-/**
- * Structure used to keep track of PRBR values.
- **/
-
+/// Structure used to keep track of PRBR values.
 struct STracePRBR {
   u64 prbr;
   u64 hwpcb;
@@ -113,16 +112,13 @@ struct STracePRBR {
   int generation;
 };
 
-/**
- * Structure used to keep track of CPU's
- **/
-
+/// Structure used to keep track of CPU's
 struct STraceCPU {
   int last_prbr;
 };
 
 /**
- * CPU tracing engine.
+ * \brief CPU tracing engine.
  **/
 
 class CTraceEngine

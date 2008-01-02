@@ -1,5 +1,5 @@
 /* ES40 emulator.
- * Copyright (C) 2007 by Camiel Vanderhoeven
+ * Copyright (C) 2007-2008 by Camiel Vanderhoeven
  *
  * Website: www.camicom.com
  * E-mail : camiel@camicom.com
@@ -29,6 +29,11 @@
  * We've chosen to keep the floating point values as 64-bit integers in the floating
  * point registers, and to convert them to/from the host's native floating point 
  * format when required.
+ *
+ * $Id: es40_float.h,v 1.16 2008/01/02 09:30:21 iamcamiel Exp $
+ *
+ * X-1.16       Camiel Vanderhoeven                             02-JAN-2008
+ *      Comments.
  *
  * X-1.15       Camiel Vanderhoeven                             28-DEC-2007
  *      Keep the compiler happy.
@@ -151,7 +156,7 @@ inline double s2host(u64 val)
 #if defined(FLOAT_IS_IEEE)
   if (sizeof(double)==8)
   {
-    union {
+    union s2h_conv {
       u64 a;
       double b;
     } f_ieee;
@@ -372,7 +377,7 @@ inline u64 host2s(double val)
 #if defined(FLOAT_IS_IEEE)
   if (sizeof(float)==4)
   {
-    union {
+    union h2s_conv {
       u32 a;
       float b;
     } f_ieee;
@@ -441,7 +446,7 @@ inline u64 host2t(double val)
 #if defined(FLOAT_IS_IEEE)
   if (sizeof(double)==8)
   {
-    union {
+    union h2t_conv {
       u64 a;
       double b;
     } f_ieee;

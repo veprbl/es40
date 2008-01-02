@@ -1,5 +1,5 @@
 /* ES40 emulator.
- * Copyright (C) 2007 by the ES40 Emulator Project
+ * Copyright (C) 2007-2008 by the ES40 Emulator Project
  *
  * WWW    : http://sourceforge.net/projects/es40
  * E-mail : camiel@camicom.com
@@ -26,6 +26,11 @@
 /**
  * \file
  * Contains the definitions for the emulated Symbios SCSI controller.
+ *
+ * $Id: Sym53C895.h,v 1.9 2008/01/02 09:30:20 iamcamiel Exp $
+ *
+ * X-1.12       Camiel Vanderhoeven                             02-JAN-2008
+ *      Comments.
  *
  * X-1.11       Camiel Vanderhoeven                             28-DEC-2007
  *      Keep the compiler happy.
@@ -56,7 +61,12 @@
 #define INCLUDED_SYM53C895_H_
 
 #include "DiskController.h"
-#include "Configurator.h"
+
+/**
+ * \brief Symbios Sym53C895 SCSI disk controller.					 
+ *
+ * \bug Exception below ASTDEL during OpenVMS boot when booting from SCSI.
+ **/
 
 class CSym53C895 : public CDiskController  
 {
@@ -106,18 +116,18 @@ class CSym53C895 : public CDiskController
   void set_interrupt(int reg, u8 interrupt);
   void chip_reset();
 
-// The state structure contains all elements that need to be saved to the statefile.
-  struct SSym53C895State {
+  /// The state structure contains all elements that need to be saved to the statefile.
+  struct SSym_state {
 
     bool irq_asserted;
 
-    union {
+    union USym_regs {
       u8 reg8[128];
       u16 reg16[64];
       u32 reg32[64];
     } regs;
 
-    struct {
+    struct SSym_alu{
       bool carry;
     } alu;
 
@@ -138,7 +148,7 @@ class CSym53C895 : public CDiskController
 
     int phase;
 
-    struct {
+    struct SSym_per_target {
       // msgi: Message In Phase (disk -> controller)
       u8 msgi[10];
       unsigned int msgi_len;

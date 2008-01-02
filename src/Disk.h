@@ -1,5 +1,5 @@
 /* ES40 emulator.
- * Copyright (C) 2007 by the ES40 Emulator Project
+ * Copyright (C) 2007-2008 by the ES40 Emulator Project
  *
  * WWW    : http://sourceforge.net/projects/es40
  * E-mail : camiel@camicom.com
@@ -27,6 +27,11 @@
  * \file
  * Contains definitions for the disk base class.
  *
+ * $Id: Disk.h,v 1.6 2008/01/02 09:30:19 iamcamiel Exp $
+ *
+ * X-1.6        Camiel Vanderhoeven                             02-JAN-2008
+ *      Comments.
+ *
  * X-1.5        Camiel Vanderhoeven                             28-DEC-2007
  *      Keep the compiler happy.
  *
@@ -47,6 +52,10 @@
 #define __DISK_H__
 
 #include "DiskController.h"
+
+/**
+ * \brief Abstract base class for disks (connects to a CDiskController)
+ **/
 
 class CDisk
 {

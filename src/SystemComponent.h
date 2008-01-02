@@ -1,5 +1,5 @@
 /* ES40 emulator.
- * Copyright (C) 2007 by the ES40 Emulator Project
+ * Copyright (C) 2007-2008 by the ES40 Emulator Project
  *
  * WWW    : http://sourceforge.net/projects/es40
  * E-mail : camiel@camicom.com
@@ -26,6 +26,11 @@
 /**
  * \file 
  * Contains definitions for the base class for devices that connect to the chipset.
+ *
+ * $Id: SystemComponent.h,v 1.12 2008/01/02 09:30:20 iamcamiel Exp $
+ *
+ * X-1.12       Camiel Vanderhoeven                             02-JAN-2008
+ *      Comments.
  *
  * X-1.11       Camiel Vanderhoeven                             17-DEC-2007
  *      SaveState file format 2.1
@@ -66,10 +71,9 @@
 #if !defined(INCLUDED_SYSTEMCOMPONENT_H)
 #define INCLUDED_SYSTEMCOMPONENT_H
 
-#include "datatypes.h"
-
+#include "Configurator.h"
 /**
- * Base class for devices.
+ * \brief Abstract base class for devices that connect to the Typhoon chipset.
  **/
 
 class CSystemComponent  

@@ -1,7 +1,7 @@
 /* ES40 emulator.
- * Copyright (C) 2007 by Camiel Vanderhoeven
+ * Copyright (C) 2007-2008 by the ES40 Emulator Project
  *
- * Website: www.camicom.com
+ * WWW    : http://sourceforge.net/projects/es40
  * E-mail : camiel@camicom.com
  * 
  * This program is free software; you can redistribute it and/or
@@ -27,6 +27,11 @@
  * \file
  * Contains TCP/IP declarations used by the serial port emulator, network
  * emulation, and lock-step code.
+ *
+ * $Id: telnet.h,v 1.7 2008/01/02 09:30:21 iamcamiel Exp $
+ *
+ * X-1.7        Camiel Vanderhoeven                             02-JAN-2008
+ *      Comments.
  *
  * X-1.6        Brian Wheeler                                   1-DEC-2007
  *      Corrected an unsigned/signed issue in inet_aton.
@@ -101,8 +106,6 @@ typedef unsigned int socklen_t;
 #include <arpa/telnet.h>
 #include <netinet/in.h>
 #include <sys/select.h>
-#include <sys/time.h>
-#include <unistd.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <signal.h>

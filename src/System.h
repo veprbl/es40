@@ -1,5 +1,5 @@
 /** ES40 emulator.
- * Copyright (C) 2007 by the ES40 Emulator Project
+ * Copyright (C) 2007-2008 by the ES40 Emulator Project
  *
  * Website: http://sourceforge.net/projects/es40
  * E-mail : camiel@camicom.com
@@ -26,6 +26,11 @@
 /**
  * \file 
  * Contains the definitions for the emulated Typhoon Chipset devices.
+ *
+ * $Id: System.h,v 1.20 2008/01/02 09:30:20 iamcamiel Exp $
+ *
+ * X-1.20       Camiel Vanderhoeven                             02-JAN-2008
+ *      Comments.
  *
  * X-1.19       Camiel Vanderhoeven                             10-DEC-2007
  *      Added get_cpu
@@ -94,10 +99,8 @@
  * \author Camiel Vanderhoeven (camiel@camicom.com / http://www.camicom.com)
  **/
 
-#include "datatypes.h"
 #include "SystemComponent.h"
 #include "TraceEngine.h"
-#include "Configurator.h"
 
 #if !defined(INCLUDED_SYSTEM_H)
 #define INCLUDED_SYSTEM_H
@@ -129,30 +132,22 @@ extern bool profile_started;
 extern char * dbg_strptr;
 #endif
 
- /**
- * Structure used for mapping memory ranges to devices.
- **/
-
+/// Structure used for mapping memory ranges to devices.
 struct SMemoryUser {
   CSystemComponent * component;	/**< Device that occupies this range. */
-  int index;			/**< Index within the device. 
-                                 *   Used by devices that occupy more than one range.
-                                 **/
-  u64 base;			/**< Address of first byte. */
-  u64 length;			/**< Number of bytes in range. */
+  int index;			        /**< Index within the device. Used by devices that occupy more than one range. */
+  u64 base;			            /**< Address of first byte. */
+  u64 length;			        /**< Number of bytes in range. */
 };
 
-/**
- * Structure used for configuration values.
- **/
-
+/// Structure used for configuration values.
 struct SConfig {
   char *key;		/**< Name of the value. */
   char *value;		/**< Value of the value. */
 };
 
 /**
- * Emulated Typhoonchipset.
+ * \brief Emulated Typhoon 21172 chipset.
  **/
 
 class CSystem  
@@ -200,8 +195,8 @@ class CSystem
 private:
   int iNumCPUs;
 
-  // The state structure contains all elements that need to be saved to the statefile.
-  struct SSystemState{
+  /// The state structure contains all elements that need to be saved to the statefile.
+  struct SSys_state {
     u8  tig_FwWrite;
     u8  tig_HaltA;
     u8  tig_HaltB;

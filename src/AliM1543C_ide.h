@@ -1,5 +1,5 @@
 /* ES40 emulator.
- * Copyright (C) 2007 by the ES40 Emulator Project
+ * Copyright (C) 2007-2008 by the ES40 Emulator Project
  *
  * WWW    : http://sourceforge.net/projects/es40
  * E-mail : camiel@camicom.com
@@ -26,6 +26,11 @@
 /**
  * \file
  * Contains the definitions for the emulated Ali M1543C IDE chipset part.
+ *
+ * $Id: AliM1543C_ide.h,v 1.10 2008/01/02 09:30:18 iamcamiel Exp $
+ *
+ * X-1.10       Camiel Vanderhoeven                             02-JAN-2008
+ *      Comments.
  *
  * X-1.9        Camiel Vanderhoeven                             28-DEC-2007
  *      Only delay IDE interrupts when NO_VMS is defined. (Need to fix this
@@ -61,22 +66,16 @@
 #define INCLUDED_ALIM1543C_IDE_H_
 
 #include "DiskController.h"
-//#include "gui/gui.h"
-#include "Configurator.h"
 
 #define MAX_MULTIPLE_SECTORS 16
 
 /**
- * Emulated ALi M1543C multi-function device.
- * The ALi M1543C device provides i/o and glue logic support to the system: 
- * ISA, USB, IDE, DMA, Interrupt, Timer, TOY Clock. 
+ * \brief Emulated IDE part of ALi M1543C multi-function device.
  *
  * Known shortcomings:
- *   - IDE
- *     - disk images are not checked for size, so size is not always correctly 
- *       reported.
- *     - IDE disks can be read but not written.
- *     .
+ *   - disk images are not checked for size, so size is not always correctly 
+ *     reported.
+ *   - IDE disks can be read but not written.
  *   .
  **/
 
@@ -117,10 +116,11 @@ class CAliM1543C_ide : public CDiskController
   void command_aborted(int index, u8 command);
   void identify_drive(int index);
 
-// The state structure contains all elements that need to be saved to the statefile.
-  struct SAliM1543C_ideState {
+  /// The state structure contains all elements that need to be saved to the statefile.
+  struct SIDE_state {
 
-    struct {
+    /// IDE control port
+    struct SIDE_control {
       bool disable_irq;
       bool reset;
 #if defined(NO_VMS)
@@ -128,7 +128,8 @@ class CAliM1543C_ide : public CDiskController
 #endif
     } ide_control[2];
 
-    struct {
+    /// IDE status port
+    struct SIDE_status{
       bool busy;
       bool drive_ready;
       bool seek_complete;
@@ -139,7 +140,8 @@ class CAliM1543C_ide : public CDiskController
       u8 current_command;
     } ide_status[2][2];
 
-    struct {
+    /// IDE per drive-data
+    struct SIDE_per_drive{
       int head_no;
       int sector_count;
       int sector_no;

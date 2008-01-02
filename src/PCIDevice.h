@@ -1,5 +1,5 @@
 /* ES40 emulator.
- * Copyright (C) 2007 by the ES40 Emulator Project
+ * Copyright (C) 2007-2008 by the ES40 Emulator Project
  *
  * WWW    : http://sourceforge.net/projects/es40
  * E-mail : camiel@camicom.com
@@ -27,6 +27,11 @@
  * \file
  * Contains the definitions for the PCI Device base class.
  *
+ * $Id: PCIDevice.h,v 1.3 2008/01/02 09:30:19 iamcamiel Exp $
+ *
+ * X-1.3        Camiel Vanderhoeven                             02-JAN-2008
+ *      Comments.
+ *
  * X-1.2        Camiel Vanderhoeven                             17-DEC-2007
  *      SaveState file format 2.1
  *
@@ -41,8 +46,11 @@
 
 #define PCI_RANGE_BASE 0x0800
 
-
 #include "SystemComponent.h"
+
+/**
+ * \brief Abstract base class for devices on the PCI-bus.
+ **/
 
 class CPCIDevice :
   public CSystemComponent
@@ -87,7 +95,8 @@ protected:
   bool dev_range_is_io[MAX_DEV_RANGES];
   bool pci_range_is_io[8][8];
 
-  struct
+  /// The PCI state structure contains all elements that need to be saved to the statefile.
+  struct SPCI_state
   {
     u32 config_data[8][64] ;
     u32 config_mask[8][64] ;

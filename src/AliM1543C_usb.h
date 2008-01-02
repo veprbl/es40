@@ -1,5 +1,5 @@
 /* ES40 emulator.
- * Copyright (C) 2007 by the ES40 Emulator Project
+ * Copyright (C) 2007-2008 by the ES40 Emulator Project
  *
  * WWW    : http://sourceforge.net/projects/es40
  * E-mail : camiel@camicom.com
@@ -27,6 +27,11 @@
  * \file
  * Contains the definitions for the emulated Ali M1543C USB chipset part.
  *
+ * $Id: AliM1543C_usb.h,v 1.3 2008/01/02 09:30:18 iamcamiel Exp $
+ *
+ * X-1.3        Camiel Vanderhoeven                             02-JAN-2008
+ *      Comments.
+ *
  * X-1.2        Camiel Vanderhoeven                             17-DEC-2007
  *      SaveState file format 2.1
  *
@@ -39,8 +44,13 @@
 #define INCLUDED_ALIM1543C_USB_H
 
 #include "PCIDevice.h"
-#include "gui/gui.h"
-#include "Configurator.h"
+
+/**
+ * \brief Emulated USB part of ALi M1543C multi-function device.
+ *
+ * \todo This device is just a stub. Not functional yet.
+ *
+ **/
 
 class CAliM1543C_usb : public CPCIDevice  
 {
@@ -56,8 +66,8 @@ class CAliM1543C_usb : public CPCIDevice
   u64 usb_config_read(u64 address, int dsize);
   void usb_config_write(u64 address, int dsize, u64 data);
 
-  // The state structure contains all elements that need to be saved to the statefile.
-  struct SAliM1543C_usbState {
+  /// The state structure contains all elements that need to be saved to the statefile.
+  struct SUSB_state {
   } state;
 
 };

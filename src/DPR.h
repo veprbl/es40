@@ -1,5 +1,5 @@
 /* ES40 emulator.
- * Copyright (C) 2007 by the ES40 Emulator Project
+ * Copyright (C) 2007-2008 by the ES40 Emulator Project
  *
  * Website: http://sourceforge.net/projects/es40
  * E-mail : camiel@camicom.com
@@ -26,6 +26,11 @@
 /**
  * \file 
  * Contains the definitions for the emulated Dual Port Ram and RMC devices.
+ *
+ * $Id: DPR.h,v 1.10 2008/01/02 09:30:18 iamcamiel Exp $
+ *
+ * X-1.10       Camiel Vanderhoeven                             02-JAN-2008
+ *      Comments.
  *
  * X-1.9        Camiel Vanderhoeven                             17-DEC-2007
  *      SaveState file format 2.1
@@ -61,10 +66,9 @@
 #define INCLUDED_DPR_H
 
 #include "SystemComponent.h"
-#include "Configurator.h"
 
 /**
- * Emulated dual-port RAM and management controller.
+ * \brief Emulated dual-port RAM and management controller.
  **/
 
 class CDPR : public CSystemComponent  
@@ -82,7 +86,8 @@ class CDPR : public CSystemComponent
   void RestoreStateF(char * fn);
 
  protected:
-  struct {
+  /// The state structure contains all elements that need to be saved to the statefile.
+  struct SDPR_state {
     u8 ram[16*1024];
   } state;
 };
