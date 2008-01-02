@@ -1,5 +1,5 @@
 /* ES40 emulator.
- * Copyright (C) 2007 by the ES40 Emulator Project
+ * Copyright (C) 2007-2008 by the ES40 Emulator Project
  *
  * WWW    : http://sourceforge.net/projects/es40
  * E-mail : camiel@camicom.com
@@ -26,6 +26,11 @@
 /**
  * \file
  * Contains the code for the configuration file interpreter.
+ *
+ * $Id: Configurator.cpp,v 1.7 2008/01/02 08:39:17 iamcamiel Exp $
+ *
+ * X-1.7        Camiel Vanderhoeven                             02-JAN-2008
+ *      Better handling of configuration errors.
  *
  * X-1.6        Camiel Vanderhoeven                             28-DEC-2007
  *      Throw exceptions rather than just exiting when errors occur.
@@ -59,15 +64,27 @@
 #include "DiskFile.h"
 #include "DiskRam.h"
 #include "Port80.h"
-#if defined(USE_CONSOLE)
 #include "S3Trio64.h"
 #include "Cirrus.h"
 #include "gui/plugin.h"
-#endif
-#if defined(USE_NETWORK)
+#if defined(HAVE_PCAP)
 #include "DEC21143.h"
 #endif
 #include "Sym53C895.h"
+
+/**
+ * Constructor.
+ *
+ * The portion of the configuration file that corresponds with the device we are the configurator for
+ * is passed as text, with a length of textlen.
+ * We parse this text portion, creating values and children configurators as needed. 
+ * If parent is NULL, we are the master configurator, and we will call initialize for our children
+ * (probably GUI and System) so they can instantiate the classes that correspond to the devices that
+ * they configure for. The children will in turn initialize their children.
+ *
+ * \bug This needs to be more robust! As it is now, this code was more or less "hacked together" in a
+ *      few minutes. Also, more comments should be provided to make it more readable.
+ **/
 
 CConfigurator::CConfigurator(class CConfigurator * parent, char * name, char * value, char * text, size_t textlen)
 {
@@ -283,6 +300,7 @@ CConfigurator::CConfigurator(class CConfigurator * parent, char * name, char * v
   int i;
   if (parent==0)
   {
+    myFlags = 0;
     for (i=0;i<iNumChildren;i++)
     {
       pChildren[i]->initialize();
@@ -290,9 +308,31 @@ CConfigurator::CConfigurator(class CConfigurator * parent, char * name, char * v
   }
 }
 
+/**
+ * Destructor.
+ *
+ * \bug This does nothing now; it should:
+ *       - if we are a top-level component (System or GUI) delete the component (which 
+ *         will delete the components children).
+ *       - delete our children.
+ *       - free memory we allocated for values.
+ *       .
+ **/
+
 CConfigurator::~CConfigurator(void)
 {
 }
+
+/**
+ * Reduce a quoted string to it's real value.
+ * Some values are enclosed in double quotes("), in this case, we take off the quotes, 
+ * and replace all double double quotes ("") with single double quotes ("). Quoting values
+ * is particularly useful if values contain forbidden characters such as spaces, quotes,
+ * semicolons, etc. e.g. a text like
+ *   "c:\program files\putty\putty.exe" telnet://localhost:8000
+ * should be quoted as 
+ *   """c:\program files\putty\putty.exe"" telnet://localhost:8000"
+ **/
 
 char * CConfigurator::strip_string(char * c)
 {
@@ -321,12 +361,21 @@ char * CConfigurator::strip_string(char * c)
   return c;
 }
 
+/**
+ * Add a value to our list of values.
+ **/
+
 void CConfigurator::add_value(char * n, char * v)
 {
   pValues[iNumValues].name = n;
   pValues[iNumValues].value = v;
   iNumValues++;
 }
+
+/**
+ * Return a text value, if the name of the value can't be found in
+ * our list of values, return def.
+ **/
 
 char * CConfigurator::get_text_value(char * n, char * def)
 {
@@ -338,6 +387,20 @@ char * CConfigurator::get_text_value(char * n, char * def)
   }
   return def;
 }
+
+/**
+ * Return a boolean value, if the name of the value can't be found in
+ * our list of values, or if the value isn't valid, return def.
+ *
+ * Valid values are strings that have a first character of:
+ *  - t (true)
+ *  - y (yes, evaluates to true)
+ *  - 1 (evaluates to true)
+ *  - f (false)
+ *  - n (no, evaluates to false)
+ *  - 0 (evaluates to false)
+ *  .
+ **/
 
 bool CConfigurator::get_bool_value(char * n, bool def)
 {
@@ -368,6 +431,11 @@ bool CConfigurator::get_bool_value(char * n, bool def)
   return def;
 }
 
+/**
+ * Return a numeric value, if the name of the value can't be found in
+ * our list of values, return def.
+ **/
+
 int CConfigurator::get_int_value(char * n, int def)
 {
   int i;
@@ -381,15 +449,26 @@ int CConfigurator::get_int_value(char * n, int def)
 
 // THIS IS WHERE THINGS GET COMPLICATED...
 
-#define NO_FLAGS 0
-#define IS_CHIPSET 1
-#define HAS_PCI 2
-#define IS_PCI 4
-#define HAS_ISA 8
-#define IS_ISA 16
-#define HAS_DISK 32
-#define IS_DISK 64
-#define IS_GUI 128
+#define NO_FLAGS   0
+
+#define IS_CS      1
+#define ON_CS      2
+
+#define HAS_PCI    4
+#define IS_PCI     8
+
+#define HAS_ISA   16
+#define IS_ISA    32
+
+#define HAS_DISK  64
+#define IS_DISK  128
+
+#define IS_GUI   256
+#define ON_GUI   512
+
+#define IS_NIC  1024
+
+#define N_P     2048 // no parent
 
 typedef struct {
   char * name;
@@ -397,24 +476,28 @@ typedef struct {
   int flags;
 } classinfo;
 
-  
 classinfo classes[] = 
 {
-  {"tsunami", c_tsunami, IS_CHIPSET | HAS_PCI},
-  {"ev68cb",  c_ev68cb,  NO_FLAGS},
-  {"ali",     c_ali,     IS_PCI | HAS_ISA},
-  {"ali_ide", c_ali_ide, IS_PCI | HAS_DISK},
-  {"ali_usb", c_ali_usb, IS_PCI},
-  {"serial",  c_serial,  NO_FLAGS},
-  {"s3",      c_s3,      IS_PCI},
-  {"cirrus",  c_cirrus,  IS_PCI},
-  {"dec21143",c_dec21143,IS_PCI},
-  {"sym53c895", c_sym53c895, IS_PCI | HAS_DISK},
-  {"file",    c_file,    IS_DISK},
-  {"ramdisk", c_ramdisk, IS_DISK},
-  {"sdl",     c_sdl,     IS_GUI},
-  {0,c_none,0}
+  {"tsunami", c_tsunami, N_P | IS_CS  | HAS_PCI                             },
+  {"ev68cb",  c_ev68cb,        ON_CS                                        },
+  {"ali",     c_ali,                    IS_PCI | HAS_ISA                    },
+  {"ali_ide", c_ali_ide,                IS_PCI |           HAS_DISK         },
+  {"ali_usb", c_ali_usb,                IS_PCI                              },
+  {"serial",  c_serial,        ON_CS                                        },
+  {"s3",      c_s3,                     IS_PCI |                    ON_GUI  },
+  {"cirrus",  c_cirrus,                 IS_PCI |                    ON_GUI  },
+  {"dec21143",c_dec21143,               IS_PCI |                    IS_NIC  },
+  {"sym53c895", c_sym53c895,            IS_PCI |           HAS_DISK         },
+  {"file",    c_file,                                      IS_DISK          },
+  {"ramdisk", c_ramdisk,                                   IS_DISK          },
+  {"sdl",     c_sdl,     N_P |                                      IS_GUI  },
+  {0,         c_none,    0                                                  }
 };
+
+/**
+ * Determine what device this configurator represents, and instantiate it; 
+ * then call initialize for our children.
+ **/
 
 void CConfigurator::initialize()
 {
@@ -442,6 +525,50 @@ void CConfigurator::initialize()
     printf("Class %s not known!!\n",myValue);
     throw((int)1);
   }
+
+  if (myFlags & N_P)
+  {
+    if (pParent->get_flags())
+    {
+      printf("Error: %s(%s) should not have a parent!\n",myName,myValue);
+      throw((int)1);
+    }
+  }
+
+  if (myFlags & ON_CS)
+  {
+    if (!(pParent->get_flags() & IS_CS))
+    {
+      printf("Error: parent of SYSBUS device %s(%s) should be a chipset.\n",myName,myValue);
+      throw((int)1);
+    }
+  }
+
+  if (myFlags & ON_GUI)
+  {
+    if (!bx_gui)
+    {
+      printf("Error: %s(%s) needs a GUI.\n",myName,myValue);
+      throw((int)1);
+    }
+  }
+
+  if (myFlags & IS_GUI)
+  {
+    if (bx_gui)
+    {
+      printf("Error: %s(%s): another GUI was already instantiated.\n",myName,myValue);
+      throw((int)1);
+    }
+  }
+
+#if !defined(HAVE_PCAP)
+  if (myFlags & IS_NIC)
+  {
+    printf("Error: %s(%s): For network support, compilation with libpcap support is required.\n",myName,myValue);
+    throw((int)1);
+  }
+#endif
 
   if (myFlags & IS_PCI)
   {
@@ -500,60 +627,70 @@ void CConfigurator::initialize()
     new CDPR(this,(CSystem *)myDevice);
     new CFlash(this,(CSystem *)myDevice);
     break;
+
   case c_ev68cb:
-    if (pParent->get_flags() & IS_CHIPSET)
-      myDevice = new CAlphaCPU(this,(CSystem *)pParent->get_device());
+    myDevice = new CAlphaCPU(this,(CSystem *)pParent->get_device());
     break;
+
   case c_ali:
     myDevice = new CAliM1543C(this,(CSystem *)pParent->get_device(),pcibus,pcidev);
     new CPort80(this,(CSystem *)pParent->get_device());
     break;
+
   case c_ali_ide:
     myDevice = new CAliM1543C_ide(this,(CSystem *)pParent->get_device(),pcibus,pcidev);
     break;
+
   case c_ali_usb:
     myDevice = new CAliM1543C_usb(this,(CSystem *)pParent->get_device(),pcibus,pcidev);
     break;
+
   case c_s3:
     myDevice = new CS3Trio64(this,(CSystem *)pParent->get_device(),pcibus,pcidev);
     break;
+
   case c_cirrus:
     myDevice = new CCirrus(this,(CSystem *)pParent->get_device(),pcibus,pcidev);
     break;
+
+#if defined(HAVE_PCAP)
   case c_dec21143:
     myDevice = new CDEC21143(this,(CSystem *)pParent->get_device(),pcibus,pcidev);
     break;
+#endif
+
   case c_sym53c895:
     myDevice = new CSym53C895(this,(CSystem *)pParent->get_device(),pcibus,pcidev);
     break;
+
   case c_file:
     myDevice = new CDiskFile(this,(CDiskController *)pParent->get_device(),idebus,idedev);
     break;
+
   case c_ramdisk:
     myDevice = new CDiskRam(this,(CDiskController *)pParent->get_device(),idebus,idedev);
     break;
+
   case c_serial:
-    if (pParent->get_flags() & IS_CHIPSET)
+    number = 0;
+    if (!strncmp(myName,"serial",6))
     {
-      number = 0;
-      if (!strncmp(myName,"serial",6))
-      {
-        pt = &myName[6];
-        number = atoi(pt);
-      }
-      myDevice = new CSerial(this,(CSystem *)pParent->get_device(),number);
+      pt = &myName[6];
+      number = atoi(pt);
     }
+    myDevice = new CSerial(this,(CSystem *)pParent->get_device(),number);
     break;
-#if defined(USE_CONSOLE)
+
   case c_sdl:
+#if defined(HAVE_SDL)
     PLUG_load_plugin (this, sdl);
+#else
+    FAILURE("Can't instantiate the SDL GUI without SDL support");
+#endif
     break;
-#endif // USE_CONSOLE
 
   }
 
   for (i=0;i<iNumChildren;i++)
-  {
     pChildren[i]->initialize();
-  }
 }

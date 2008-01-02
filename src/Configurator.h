@@ -1,5 +1,5 @@
 /* ES40 emulator.
- * Copyright (C) 2007 by the ES40 Emulator Project
+ * Copyright (C) 2007-2008 by the ES40 Emulator Project
  *
  * WWW    : http://sourceforge.net/projects/es40
  * E-mail : camiel@camicom.com
@@ -26,6 +26,11 @@
 /**
  * \file
  * Contains the definitions for the configuration file interpreter.
+ *
+ * $Id: Configurator.h,v 1.5 2008/01/02 08:39:17 iamcamiel Exp $
+ *
+ * X-1.5        Camiel Vanderhoeven                             02-JAN-2008
+ *      Better handling of configuration errors.
  *
  * X-1.4        Camiel Vanderhoeven                             28-DEC-2007
  *      Keep the compiler happy.
@@ -104,7 +109,7 @@ private:
   classid myClassId;
   int myFlags;
   int iNumValues;
-  struct {
+  struct SCfg_Value {
     char * name;
     char * value;
   } pValues[CFG_MAX_VALUES];
