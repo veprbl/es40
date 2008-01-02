@@ -36,7 +36,10 @@
  * \file 
  * Contains the code for the emulated DEC 21143 NIC device.
  *
- * $Id: DEC21143.cpp,v 1.22 2008/01/02 08:41:19 iamcamiel Exp $
+ * $Id: DEC21143.cpp,v 1.23 2008/01/02 12:34:20 iamcamiel Exp $
+ *
+ * X-1.23       Camiel Vanderhoeven                             02-JAN-2008
+ *      Ignore OPMODE_OM (loopback mode) bits.
  *
  * X-1.22       Camiel Vanderhoeven                             02-JAN-2008
  *      Replaced USE_NETWORK with HAVE_PCAP.
@@ -284,7 +287,7 @@ CDEC21143::CDEC21143(CConfigurator * confg, CSystem * c, int pcibus, int pcidev)
   pthread_create(&receive_process_handle, NULL, recv_proc, this);
 #endif
 
-  printf("%s: $Id: DEC21143.cpp,v 1.22 2008/01/02 08:41:19 iamcamiel Exp $\n",devid_string);
+  printf("%s: $Id: DEC21143.cpp,v 1.23 2008/01/02 12:34:20 iamcamiel Exp $\n",devid_string);
 }
 
 /**
@@ -460,7 +463,7 @@ void CDEC21143::nic_write(u32 address, int dsize, u32 data)
 			/*  Turned off RX? Then go to stopped state:  */
 			state.reg[CSR_STATUS/8] &= ~STATUS_RS;
 		}
-		data &= ~(OPMODE_HBD | OPMODE_SCR | OPMODE_PCS | OPMODE_PS | OPMODE_SF | OPMODE_TTM | OPMODE_FD | OPMODE_TR);
+		data &= ~(OPMODE_HBD | OPMODE_SCR | OPMODE_PCS | OPMODE_PS | OPMODE_SF | OPMODE_TTM | OPMODE_FD | OPMODE_TR | OPMODE_OM);
 //		if (data & OPMODE_PNIC_IT) {
 //			data &= ~OPMODE_PNIC_IT;
 //		    state.tx.idling = state.tx.idling_threshold;
