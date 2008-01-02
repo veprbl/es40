@@ -5,44 +5,6 @@
 # TARGTYPE "Win32 (x86) Console Application" 0x0103
 
 CFG=es40 - Win32 Debug
-
-!MESSAGE ES40 emulator.
-!MESSAGE Copyright (C) 2007 by Camiel Vanderhoeven
-!MESSAGE
-!MESSAGE Website: www.camicom.com
-!MESSAGE E-mail : camiel@camicom.com
-!MESSAGE 
-!MESSAGE This program is free software; you can redistribute it and/or
-!MESSAGE modify it under the terms of the GNU General Public License
-!MESSAGE as published by the Free Software Foundation; either version 2
-!MESSAGE of the License, or (at your option) any later version.
-!MESSAGE 
-!MESSAGE This program is distributed in the hope that it will be useful,
-!MESSAGE but WITHOUT ANY WARRANTY; without even the implied warranty of
-!MESSAGE MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-!MESSAGE GNU General Public License for more details.
-!MESSAGE 
-!MESSAGE You should have received a copy of the GNU General Public License
-!MESSAGE along with this program; if not, write to the Free Software
-!MESSAGE Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
-!MESSAGE 
-!MESSAGE Although this is not required, the author would appreciate being notified of, 
-!MESSAGE and receiving any modifications you may make to the source code that might serve
-!MESSAGE the general public.
-
-!MESSAGE DSP file to build ES40 with Visual Studio 6.0.
-!MESSAGE
-!MESSAGE X-1.3		Camiel Vanderhoeven				17-NOV-2007
-!MESSAGE   	Removed files no longer needed.
-!MESSAGE
-!MESSAGE X-1.2		Camiel Vanderhoeven				14-NOV-2007
-!MESSAGE   	Added files for network support.
-!MESSAGE
-!MESSAGE X-1.1		Camiel Vanderhoeven				11-APR-2007
-!MESSAGE   	File created.
-!MESSAGE
-!MESSAGE \author Camiel Vanderhoeven
-
 !MESSAGE This is not a valid makefile. To build this project using NMAKE,
 !MESSAGE use the Export Makefile command and run
 !MESSAGE 
@@ -60,6 +22,18 @@ CFG=es40 - Win32 Debug
 !MESSAGE "es40 - Win32 Release IDB" (based on "Win32 (x86) Console Application")
 !MESSAGE "es40 - Win32 Release LSS" (based on "Win32 (x86) Console Application")
 !MESSAGE "es40 - Win32 Release LSM" (based on "Win32 (x86) Console Application")
+!MESSAGE "es40 - Win32 Release NN" (based on "Win32 (x86) Console Application")
+!MESSAGE "es40 - Win32 Release NN IDB" (based on "Win32 (x86) Console Application")
+!MESSAGE "es40 - Win32 Release NN LSS" (based on "Win32 (x86) Console Application")
+!MESSAGE "es40 - Win32 Release NN LSM" (based on "Win32 (x86) Console Application")
+!MESSAGE "es40 - Win32 Release NN NS" (based on "Win32 (x86) Console Application")
+!MESSAGE "es40 - Win32 Release NN NS IDB" (based on "Win32 (x86) Console Application")
+!MESSAGE "es40 - Win32 Release NN NS LSS" (based on "Win32 (x86) Console Application")
+!MESSAGE "es40 - Win32 Release NN NS LSM" (based on "Win32 (x86) Console Application")
+!MESSAGE "es40 - Win32 Release NS" (based on "Win32 (x86) Console Application")
+!MESSAGE "es40 - Win32 Release NS IDB" (based on "Win32 (x86) Console Application")
+!MESSAGE "es40 - Win32 Release NS LSS" (based on "Win32 (x86) Console Application")
+!MESSAGE "es40 - Win32 Release NS LSM" (based on "Win32 (x86) Console Application")
 !MESSAGE 
 
 # Begin Project
@@ -83,7 +57,7 @@ RSC=rc.exe
 # PROP Ignore_Export_Lib 0
 # PROP Target_Dir ""
 # ADD BASE CPP /nologo /W3 /GX /O2 /D "WIN32" /D "NDEBUG" /D "_CONSOLE" /D "_MBCS" /YX /FD /c
-# ADD CPP /nologo /MT /W3 /GX /O2 /D "WIN32" /D "NDEBUG" /D "_CONSOLE" /D "_MBCS" /YX /FD /c
+# ADD CPP /nologo /MT /W3 /GX /O2 /I "c:\program files\winpcap\include" /I "c:\program files\sdl\include" /D "WIN32" /D "NDEBUG" /D "_CONSOLE" /D "_MBCS" /D "HAVE_PCAP" /D "HAVE_SDL" /YX /FD /c
 # ADD BASE RSC /l 0x413 /d "NDEBUG"
 # ADD RSC /l 0x413 /d "NDEBUG"
 BSC32=bscmake.exe
@@ -91,7 +65,7 @@ BSC32=bscmake.exe
 # ADD BSC32 /nologo
 LINK32=link.exe
 # ADD BASE LINK32 kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /nologo /subsystem:console /machine:I386
-# ADD LINK32 kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib ws2_32.lib /nologo /subsystem:console /machine:I386 /out:"bin/es40.exe"
+# ADD LINK32 kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib ws2_32.lib wpcap.lib sdl.lib sdlmain.lib /nologo /subsystem:console /machine:I386 /out:"bin/es40.exe" /libpath:"c:\program files\sdl\lib" /libpath:"c:\program files\winpcap\lib"
 
 !ELSEIF  "$(CFG)" == "es40 - Win32 Debug"
 
@@ -107,7 +81,7 @@ LINK32=link.exe
 # PROP Ignore_Export_Lib 0
 # PROP Target_Dir ""
 # ADD BASE CPP /nologo /W3 /Gm /GX /ZI /Od /D "WIN32" /D "_DEBUG" /D "_CONSOLE" /D "_MBCS" /YX /FD /GZ /c
-# ADD CPP /nologo /MTd /W3 /Gm /GX /ZI /Od /D "WIN32" /D "_DEBUG" /D "_CONSOLE" /D "_MBCS" /YX /FD /GZ /c
+# ADD CPP /nologo /MTd /W3 /Gm /GX /ZI /Od /I "c:\program files\winpcap\include" /I "c:\program files\sdl\include" /D "WIN32" /D "_DEBUG" /D "_CONSOLE" /D "_MBCS" /D "HAVE_PCAP" /D "HAVE_SDL" /YX /FD /GZ /c
 # ADD BASE RSC /l 0x413 /d "_DEBUG"
 # ADD RSC /l 0x413 /d "_DEBUG"
 BSC32=bscmake.exe
@@ -115,7 +89,7 @@ BSC32=bscmake.exe
 # ADD BSC32 /nologo
 LINK32=link.exe
 # ADD BASE LINK32 kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /nologo /subsystem:console /debug /machine:I386 /pdbtype:sept
-# ADD LINK32 kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib ws2_32.lib /nologo /subsystem:console /debug /machine:I386 /pdbtype:sept
+# ADD LINK32 kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib ws2_32.lib wpcap.lib sdl.lib sdlmain.lib /nologo /subsystem:console /debug /machine:I386 /pdbtype:sept /libpath:"c:\program files\sdl\lib" /libpath:"c:\program files\winpcap\lib"
 
 !ELSEIF  "$(CFG)" == "es40 - Win32 Release IDB"
 
@@ -132,7 +106,7 @@ LINK32=link.exe
 # PROP Ignore_Export_Lib 0
 # PROP Target_Dir ""
 # ADD BASE CPP /nologo /MT /W3 /GX /O2 /D "WIN32" /D "NDEBUG" /D "_CONSOLE" /D "_MBCS" /YX /FD /c
-# ADD CPP /nologo /MT /W3 /GX /Ot /D "WIN32" /D "NDEBUG" /D "_CONSOLE" /D "_MBCS" /D "IDB" /YX /FD /c
+# ADD CPP /nologo /MT /W3 /GX /Ot /I "c:\program files\winpcap\include" /I "c:\program files\sdl\include" /D "WIN32" /D "NDEBUG" /D "_CONSOLE" /D "_MBCS" /D "IDB" /D "HAVE_PCAP" /D "HAVE_SDL" /YX /FD /c
 # ADD BASE RSC /l 0x413 /d "NDEBUG"
 # ADD RSC /l 0x413 /d "NDEBUG"
 BSC32=bscmake.exe
@@ -140,7 +114,7 @@ BSC32=bscmake.exe
 # ADD BSC32 /nologo
 LINK32=link.exe
 # ADD BASE LINK32 kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib ws2_32.lib /nologo /subsystem:console /machine:I386 /out:"bin/es40.exe"
-# ADD LINK32 kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib ws2_32.lib /nologo /subsystem:console /machine:I386 /out:"bin/es40_idb.exe"
+# ADD LINK32 kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib ws2_32.lib wpcap.lib sdl.lib sdlmain.lib /nologo /subsystem:console /machine:I386 /out:"bin/es40_idb.exe" /libpath:"c:\program files\sdl\lib" /libpath:"c:\program files\winpcap\lib"
 
 !ELSEIF  "$(CFG)" == "es40 - Win32 Release LSS"
 
@@ -157,7 +131,7 @@ LINK32=link.exe
 # PROP Ignore_Export_Lib 0
 # PROP Target_Dir ""
 # ADD BASE CPP /nologo /MT /W3 /GX /Ot /D "WIN32" /D "NDEBUG" /D "_CONSOLE" /D "_MBCS" /D "IDB" /YX /FD /c
-# ADD CPP /nologo /MT /W3 /GX /Ot /D "WIN32" /D "NDEBUG" /D "_CONSOLE" /D "_MBCS" /D "IDB" /D "LS_SLAVE" /YX /FD /c
+# ADD CPP /nologo /MT /W3 /GX /Ot /I "c:\program files\winpcap\include" /I "c:\program files\sdl\include" /D "WIN32" /D "NDEBUG" /D "_CONSOLE" /D "_MBCS" /D "IDB" /D "LS_SLAVE" /D "HAVE_PCAP" /D "HAVE_SDL" /YX /FD /c
 # ADD BASE RSC /l 0x413 /d "NDEBUG"
 # ADD RSC /l 0x413 /d "NDEBUG"
 BSC32=bscmake.exe
@@ -165,7 +139,7 @@ BSC32=bscmake.exe
 # ADD BSC32 /nologo
 LINK32=link.exe
 # ADD BASE LINK32 kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib ws2_32.lib /nologo /subsystem:console /machine:I386 /out:"bin/es40_idb.exe"
-# ADD LINK32 kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib ws2_32.lib /nologo /subsystem:console /machine:I386 /out:"bin/es40_lss.exe"
+# ADD LINK32 kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib ws2_32.lib wpcap.lib sdl.lib sdlmain.lib /nologo /subsystem:console /machine:I386 /out:"bin/es40_lss.exe" /libpath:"c:\program files\sdl\lib" /libpath:"c:\program files\winpcap\lib"
 
 !ELSEIF  "$(CFG)" == "es40 - Win32 Release LSM"
 
@@ -182,6 +156,204 @@ LINK32=link.exe
 # PROP Ignore_Export_Lib 0
 # PROP Target_Dir ""
 # ADD BASE CPP /nologo /MT /W3 /GX /Ot /D "WIN32" /D "NDEBUG" /D "_CONSOLE" /D "_MBCS" /D "IDB" /YX /FD /c
+# ADD CPP /nologo /MT /W3 /GX /Ot /I "c:\program files\winpcap\include" /I "c:\program files\sdl\include" /D "WIN32" /D "NDEBUG" /D "_CONSOLE" /D "_MBCS" /D "IDB" /D "LS_MASTER" /D "HAVE_PCAP" /D "HAVE_SDL" /YX /FD /c
+# ADD BASE RSC /l 0x413 /d "NDEBUG"
+# ADD RSC /l 0x413 /d "NDEBUG"
+BSC32=bscmake.exe
+# ADD BASE BSC32 /nologo
+# ADD BSC32 /nologo
+LINK32=link.exe
+# ADD BASE LINK32 kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib ws2_32.lib /nologo /subsystem:console /machine:I386 /out:"bin/es40_idb.exe"
+# ADD LINK32 kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib ws2_32.lib wpcap.lib sdl.lib sdlmain.lib /nologo /subsystem:console /machine:I386 /out:"bin/es40_lsm.exe" /libpath:"c:\program files\sdl\lib" /libpath:"c:\program files\winpcap\lib"
+
+!ELSEIF  "$(CFG)" == "es40 - Win32 Release NN"
+
+# PROP BASE Use_MFC 0
+# PROP BASE Use_Debug_Libraries 0
+# PROP BASE Output_Dir "Release NN"
+# PROP BASE Intermediate_Dir "Release NN"
+# PROP BASE Target_Dir ""
+# PROP Use_MFC 0
+# PROP Use_Debug_Libraries 0
+# PROP Output_Dir "Release NN"
+# PROP Intermediate_Dir "Release NN"
+# PROP Ignore_Export_Lib 0
+# PROP Target_Dir ""
+# ADD BASE CPP /nologo /W3 /GX /O2 /D "WIN32" /D "NDEBUG" /D "_CONSOLE" /D "_MBCS" /YX /FD /c
+# ADD CPP /nologo /MT /W3 /GX /O2 /I "c:\program files\sdl\include" /D "WIN32" /D "NDEBUG" /D "_CONSOLE" /D "_MBCS" /D "HAVE_SDL" /YX /FD /c
+# ADD BASE RSC /l 0x413 /d "NDEBUG"
+# ADD RSC /l 0x413 /d "NDEBUG"
+BSC32=bscmake.exe
+# ADD BASE BSC32 /nologo
+# ADD BSC32 /nologo
+LINK32=link.exe
+# ADD BASE LINK32 kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /nologo /subsystem:console /machine:I386
+# ADD LINK32 kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib ws2_32.lib sdl.lib sdlmain.lib /nologo /subsystem:console /machine:I386 /out:"bin/es40_nn.exe" /libpath:"c:\program files\sdl\lib"
+
+!ELSEIF  "$(CFG)" == "es40 - Win32 Release NN IDB"
+
+# PROP BASE Use_MFC 0
+# PROP BASE Use_Debug_Libraries 0
+# PROP BASE Output_Dir "Release NN IDB"
+# PROP BASE Intermediate_Dir "Release NN IDB"
+# PROP BASE Ignore_Export_Lib 0
+# PROP BASE Target_Dir ""
+# PROP Use_MFC 0
+# PROP Use_Debug_Libraries 0
+# PROP Output_Dir "Release NN IDB"
+# PROP Intermediate_Dir "Release NN IDB"
+# PROP Ignore_Export_Lib 0
+# PROP Target_Dir ""
+# ADD BASE CPP /nologo /MT /W3 /GX /O2 /D "WIN32" /D "NDEBUG" /D "_CONSOLE" /D "_MBCS" /YX /FD /c
+# ADD CPP /nologo /MT /W3 /GX /Ot /I "c:\program files\sdl\include" /D "WIN32" /D "NDEBUG" /D "_CONSOLE" /D "_MBCS" /D "IDB" /D "HAVE_SDL" /YX /FD /c
+# ADD BASE RSC /l 0x413 /d "NDEBUG"
+# ADD RSC /l 0x413 /d "NDEBUG"
+BSC32=bscmake.exe
+# ADD BASE BSC32 /nologo
+# ADD BSC32 /nologo
+LINK32=link.exe
+# ADD BASE LINK32 kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib ws2_32.lib /nologo /subsystem:console /machine:I386 /out:"bin/es40.exe"
+# ADD LINK32 kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib ws2_32.lib sdl.lib sdlmain.lib /nologo /subsystem:console /machine:I386 /out:"bin/es40_nn_idb.exe" /libpath:"c:\program files\sdl\lib"
+
+!ELSEIF  "$(CFG)" == "es40 - Win32 Release NN LSS"
+
+# PROP BASE Use_MFC 0
+# PROP BASE Use_Debug_Libraries 0
+# PROP BASE Output_Dir "Release NN LSS"
+# PROP BASE Intermediate_Dir "Release NN LSS"
+# PROP BASE Ignore_Export_Lib 0
+# PROP BASE Target_Dir ""
+# PROP Use_MFC 0
+# PROP Use_Debug_Libraries 0
+# PROP Output_Dir "Release NN LSS"
+# PROP Intermediate_Dir "Release NN LSS"
+# PROP Ignore_Export_Lib 0
+# PROP Target_Dir ""
+# ADD BASE CPP /nologo /MT /W3 /GX /Ot /D "WIN32" /D "NDEBUG" /D "_CONSOLE" /D "_MBCS" /D "IDB" /YX /FD /c
+# ADD CPP /nologo /MT /W3 /GX /Ot /I "c:\program files\sdl\include" /D "WIN32" /D "NDEBUG" /D "_CONSOLE" /D "_MBCS" /D "IDB" /D "LS_SLAVE" /D "HAVE_SDL" /YX /FD /c
+# ADD BASE RSC /l 0x413 /d "NDEBUG"
+# ADD RSC /l 0x413 /d "NDEBUG"
+BSC32=bscmake.exe
+# ADD BASE BSC32 /nologo
+# ADD BSC32 /nologo
+LINK32=link.exe
+# ADD BASE LINK32 kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib ws2_32.lib /nologo /subsystem:console /machine:I386 /out:"bin/es40_idb.exe"
+# ADD LINK32 kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib ws2_32.lib sdl.lib sdlmain.lib /nologo /subsystem:console /machine:I386 /out:"bin/es40_nn_lss.exe" /libpath:"c:\program files\sdl\lib"
+
+!ELSEIF  "$(CFG)" == "es40 - Win32 Release NN LSM"
+
+# PROP BASE Use_MFC 0
+# PROP BASE Use_Debug_Libraries 0
+# PROP BASE Output_Dir "Release NN LSM"
+# PROP BASE Intermediate_Dir "Release NN LSM"
+# PROP BASE Ignore_Export_Lib 0
+# PROP BASE Target_Dir ""
+# PROP Use_MFC 0
+# PROP Use_Debug_Libraries 0
+# PROP Output_Dir "Release NN LSM"
+# PROP Intermediate_Dir "Release NN LSM"
+# PROP Ignore_Export_Lib 0
+# PROP Target_Dir ""
+# ADD BASE CPP /nologo /MT /W3 /GX /Ot /D "WIN32" /D "NDEBUG" /D "_CONSOLE" /D "_MBCS" /D "IDB" /YX /FD /c
+# ADD CPP /nologo /MT /W3 /GX /Ot /I "c:\program files\sdl\include" /D "WIN32" /D "NDEBUG" /D "_CONSOLE" /D "_MBCS" /D "IDB" /D "LS_MASTER" /D "HAVE_SDL" /YX /FD /c
+# ADD BASE RSC /l 0x413 /d "NDEBUG"
+# ADD RSC /l 0x413 /d "NDEBUG"
+BSC32=bscmake.exe
+# ADD BASE BSC32 /nologo
+# ADD BSC32 /nologo
+LINK32=link.exe
+# ADD BASE LINK32 kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib ws2_32.lib /nologo /subsystem:console /machine:I386 /out:"bin/es40_idb.exe"
+# ADD LINK32 kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib ws2_32.lib sdl.lib sdlmain.lib /nologo /subsystem:console /machine:I386 /out:"bin/es40_nn_lsm.exe" /libpath:"c:\program files\sdl\lib"
+
+!ELSEIF  "$(CFG)" == "es40 - Win32 Release NN NS"
+
+# PROP BASE Use_MFC 0
+# PROP BASE Use_Debug_Libraries 0
+# PROP BASE Output_Dir "Release NN NS"
+# PROP BASE Intermediate_Dir "Release NN NS"
+# PROP BASE Target_Dir ""
+# PROP Use_MFC 0
+# PROP Use_Debug_Libraries 0
+# PROP Output_Dir "Release NN NS"
+# PROP Intermediate_Dir "Release NN NS"
+# PROP Ignore_Export_Lib 0
+# PROP Target_Dir ""
+# ADD BASE CPP /nologo /W3 /GX /O2 /D "WIN32" /D "NDEBUG" /D "_CONSOLE" /D "_MBCS" /YX /FD /c
+# ADD CPP /nologo /MT /W3 /GX /O2 /D "WIN32" /D "NDEBUG" /D "_CONSOLE" /D "_MBCS" /YX /FD /c
+# ADD BASE RSC /l 0x413 /d "NDEBUG"
+# ADD RSC /l 0x413 /d "NDEBUG"
+BSC32=bscmake.exe
+# ADD BASE BSC32 /nologo
+# ADD BSC32 /nologo
+LINK32=link.exe
+# ADD BASE LINK32 kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /nologo /subsystem:console /machine:I386
+# ADD LINK32 kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib ws2_32.lib /nologo /subsystem:console /machine:I386 /out:"bin/es40_nn_ns.exe"
+
+!ELSEIF  "$(CFG)" == "es40 - Win32 Release NN NS IDB"
+
+# PROP BASE Use_MFC 0
+# PROP BASE Use_Debug_Libraries 0
+# PROP BASE Output_Dir "Release NN NS IDB"
+# PROP BASE Intermediate_Dir "Release NN NS IDB"
+# PROP BASE Ignore_Export_Lib 0
+# PROP BASE Target_Dir ""
+# PROP Use_MFC 0
+# PROP Use_Debug_Libraries 0
+# PROP Output_Dir "Release NN NS IDB"
+# PROP Intermediate_Dir "Release NN NS IDB"
+# PROP Ignore_Export_Lib 0
+# PROP Target_Dir ""
+# ADD BASE CPP /nologo /MT /W3 /GX /O2 /D "WIN32" /D "NDEBUG" /D "_CONSOLE" /D "_MBCS" /YX /FD /c
+# ADD CPP /nologo /MT /W3 /GX /Ot /D "WIN32" /D "NDEBUG" /D "_CONSOLE" /D "_MBCS" /D "IDB" /YX /FD /c
+# ADD BASE RSC /l 0x413 /d "NDEBUG"
+# ADD RSC /l 0x413 /d "NDEBUG"
+BSC32=bscmake.exe
+# ADD BASE BSC32 /nologo
+# ADD BSC32 /nologo
+LINK32=link.exe
+# ADD BASE LINK32 kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib ws2_32.lib /nologo /subsystem:console /machine:I386 /out:"bin/es40.exe"
+# ADD LINK32 kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib ws2_32.lib /nologo /subsystem:console /machine:I386 /out:"bin/es40_nn_ns_idb.exe"
+
+!ELSEIF  "$(CFG)" == "es40 - Win32 Release NN NS LSS"
+
+# PROP BASE Use_MFC 0
+# PROP BASE Use_Debug_Libraries 0
+# PROP BASE Output_Dir "Release NN NS LSS"
+# PROP BASE Intermediate_Dir "Release NN NS LSS"
+# PROP BASE Ignore_Export_Lib 0
+# PROP BASE Target_Dir ""
+# PROP Use_MFC 0
+# PROP Use_Debug_Libraries 0
+# PROP Output_Dir "Release NN NS LSS"
+# PROP Intermediate_Dir "Release NN NS LSS"
+# PROP Ignore_Export_Lib 0
+# PROP Target_Dir ""
+# ADD BASE CPP /nologo /MT /W3 /GX /Ot /D "WIN32" /D "NDEBUG" /D "_CONSOLE" /D "_MBCS" /D "IDB" /YX /FD /c
+# ADD CPP /nologo /MT /W3 /GX /Ot /D "WIN32" /D "NDEBUG" /D "_CONSOLE" /D "_MBCS" /D "IDB" /D "LS_SLAVE" /YX /FD /c
+# ADD BASE RSC /l 0x413 /d "NDEBUG"
+# ADD RSC /l 0x413 /d "NDEBUG"
+BSC32=bscmake.exe
+# ADD BASE BSC32 /nologo
+# ADD BSC32 /nologo
+LINK32=link.exe
+# ADD BASE LINK32 kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib ws2_32.lib /nologo /subsystem:console /machine:I386 /out:"bin/es40_idb.exe"
+# ADD LINK32 kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib ws2_32.lib /nologo /subsystem:console /machine:I386 /out:"bin/es40_nn_ns_lss.exe"
+
+!ELSEIF  "$(CFG)" == "es40 - Win32 Release NN NS LSM"
+
+# PROP BASE Use_MFC 0
+# PROP BASE Use_Debug_Libraries 0
+# PROP BASE Output_Dir "Release NN NS LSM"
+# PROP BASE Intermediate_Dir "Release NN NS LSM"
+# PROP BASE Ignore_Export_Lib 0
+# PROP BASE Target_Dir ""
+# PROP Use_MFC 0
+# PROP Use_Debug_Libraries 0
+# PROP Output_Dir "Release NN NS LSM"
+# PROP Intermediate_Dir "Release NN NS LSM"
+# PROP Ignore_Export_Lib 0
+# PROP Target_Dir ""
+# ADD BASE CPP /nologo /MT /W3 /GX /Ot /D "WIN32" /D "NDEBUG" /D "_CONSOLE" /D "_MBCS" /D "IDB" /YX /FD /c
 # ADD CPP /nologo /MT /W3 /GX /Ot /D "WIN32" /D "NDEBUG" /D "_CONSOLE" /D "_MBCS" /D "IDB" /D "LS_MASTER" /YX /FD /c
 # ADD BASE RSC /l 0x413 /d "NDEBUG"
 # ADD RSC /l 0x413 /d "NDEBUG"
@@ -190,7 +362,106 @@ BSC32=bscmake.exe
 # ADD BSC32 /nologo
 LINK32=link.exe
 # ADD BASE LINK32 kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib ws2_32.lib /nologo /subsystem:console /machine:I386 /out:"bin/es40_idb.exe"
-# ADD LINK32 kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib ws2_32.lib /nologo /subsystem:console /machine:I386 /out:"bin/es40_lsm.exe"
+# ADD LINK32 kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib ws2_32.lib /nologo /subsystem:console /machine:I386 /out:"bin/es40_nn_ns_lsm.exe"
+
+!ELSEIF  "$(CFG)" == "es40 - Win32 Release NS"
+
+# PROP BASE Use_MFC 0
+# PROP BASE Use_Debug_Libraries 0
+# PROP BASE Output_Dir "Release NS"
+# PROP BASE Intermediate_Dir "Release NS"
+# PROP BASE Target_Dir ""
+# PROP Use_MFC 0
+# PROP Use_Debug_Libraries 0
+# PROP Output_Dir "Release NS"
+# PROP Intermediate_Dir "Release NS"
+# PROP Ignore_Export_Lib 0
+# PROP Target_Dir ""
+# ADD BASE CPP /nologo /W3 /GX /O2 /D "WIN32" /D "NDEBUG" /D "_CONSOLE" /D "_MBCS" /YX /FD /c
+# ADD CPP /nologo /MT /W3 /GX /O2 /I "c:\program files\winpcap\include" /D "WIN32" /D "NDEBUG" /D "_CONSOLE" /D "_MBCS" /D "HAVE_PCAP" /YX /FD /c
+# ADD BASE RSC /l 0x413 /d "NDEBUG"
+# ADD RSC /l 0x413 /d "NDEBUG"
+BSC32=bscmake.exe
+# ADD BASE BSC32 /nologo
+# ADD BSC32 /nologo
+LINK32=link.exe
+# ADD BASE LINK32 kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /nologo /subsystem:console /machine:I386
+# ADD LINK32 kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib ws2_32.lib wpcap.lib /nologo /subsystem:console /machine:I386 /out:"bin/es40_ns.exe" /libpath:"c:\program files\winpcap\lib"
+
+!ELSEIF  "$(CFG)" == "es40 - Win32 Release NS IDB"
+
+# PROP BASE Use_MFC 0
+# PROP BASE Use_Debug_Libraries 0
+# PROP BASE Output_Dir "Release NS IDB"
+# PROP BASE Intermediate_Dir "Release NS IDB"
+# PROP BASE Ignore_Export_Lib 0
+# PROP BASE Target_Dir ""
+# PROP Use_MFC 0
+# PROP Use_Debug_Libraries 0
+# PROP Output_Dir "Release NS IDB"
+# PROP Intermediate_Dir "Release NS IDB"
+# PROP Ignore_Export_Lib 0
+# PROP Target_Dir ""
+# ADD BASE CPP /nologo /MT /W3 /GX /O2 /D "WIN32" /D "NDEBUG" /D "_CONSOLE" /D "_MBCS" /YX /FD /c
+# ADD CPP /nologo /MT /W3 /GX /Ot /I "c:\program files\winpcap\include" /D "WIN32" /D "NDEBUG" /D "_CONSOLE" /D "_MBCS" /D "IDB" /D "HAVE_PCAP" /YX /FD /c
+# ADD BASE RSC /l 0x413 /d "NDEBUG"
+# ADD RSC /l 0x413 /d "NDEBUG"
+BSC32=bscmake.exe
+# ADD BASE BSC32 /nologo
+# ADD BSC32 /nologo
+LINK32=link.exe
+# ADD BASE LINK32 kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib ws2_32.lib /nologo /subsystem:console /machine:I386 /out:"bin/es40.exe"
+# ADD LINK32 kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib ws2_32.lib wpcap.lib /nologo /subsystem:console /machine:I386 /out:"bin/es40_ns_idb.exe" /libpath:"c:\program files\winpcap\lib"
+
+!ELSEIF  "$(CFG)" == "es40 - Win32 Release NS LSS"
+
+# PROP BASE Use_MFC 0
+# PROP BASE Use_Debug_Libraries 0
+# PROP BASE Output_Dir "Release NS LSS"
+# PROP BASE Intermediate_Dir "Release NS LSS"
+# PROP BASE Ignore_Export_Lib 0
+# PROP BASE Target_Dir ""
+# PROP Use_MFC 0
+# PROP Use_Debug_Libraries 0
+# PROP Output_Dir "Release NS LSS"
+# PROP Intermediate_Dir "Release NS LSS"
+# PROP Ignore_Export_Lib 0
+# PROP Target_Dir ""
+# ADD BASE CPP /nologo /MT /W3 /GX /Ot /D "WIN32" /D "NDEBUG" /D "_CONSOLE" /D "_MBCS" /D "IDB" /YX /FD /c
+# ADD CPP /nologo /MT /W3 /GX /Ot /I "c:\program files\winpcap\include" /D "WIN32" /D "NDEBUG" /D "_CONSOLE" /D "_MBCS" /D "IDB" /D "LS_SLAVE" /D "HAVE_PCAP" /YX /FD /c
+# ADD BASE RSC /l 0x413 /d "NDEBUG"
+# ADD RSC /l 0x413 /d "NDEBUG"
+BSC32=bscmake.exe
+# ADD BASE BSC32 /nologo
+# ADD BSC32 /nologo
+LINK32=link.exe
+# ADD BASE LINK32 kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib ws2_32.lib /nologo /subsystem:console /machine:I386 /out:"bin/es40_idb.exe"
+# ADD LINK32 kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib ws2_32.lib wpcap.lib /nologo /subsystem:console /machine:I386 /out:"bin/es40_ns_lss.exe" /libpath:"c:\program files\winpcap\lib"
+
+!ELSEIF  "$(CFG)" == "es40 - Win32 Release NS LSM"
+
+# PROP BASE Use_MFC 0
+# PROP BASE Use_Debug_Libraries 0
+# PROP BASE Output_Dir "Release NS LSM"
+# PROP BASE Intermediate_Dir "Release NS LSM"
+# PROP BASE Ignore_Export_Lib 0
+# PROP BASE Target_Dir ""
+# PROP Use_MFC 0
+# PROP Use_Debug_Libraries 0
+# PROP Output_Dir "Release NS LSM"
+# PROP Intermediate_Dir "Release NS LSM"
+# PROP Ignore_Export_Lib 0
+# PROP Target_Dir ""
+# ADD BASE CPP /nologo /MT /W3 /GX /Ot /D "WIN32" /D "NDEBUG" /D "_CONSOLE" /D "_MBCS" /D "IDB" /YX /FD /c
+# ADD CPP /nologo /MT /W3 /GX /Ot /I "c:\program files\winpcap\include" /D "WIN32" /D "NDEBUG" /D "_CONSOLE" /D "_MBCS" /D "IDB" /D "LS_MASTER" /D "HAVE_PCAP" /YX /FD /c
+# ADD BASE RSC /l 0x413 /d "NDEBUG"
+# ADD RSC /l 0x413 /d "NDEBUG"
+BSC32=bscmake.exe
+# ADD BASE BSC32 /nologo
+# ADD BSC32 /nologo
+LINK32=link.exe
+# ADD BASE LINK32 kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib ws2_32.lib /nologo /subsystem:console /machine:I386 /out:"bin/es40_idb.exe"
+# ADD LINK32 kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib ws2_32.lib wpcap.lib /nologo /subsystem:console /machine:I386 /out:"bin/es40_ns_lsm.exe" /libpath:"c:\program files\winpcap\lib"
 
 !ENDIF 
 
@@ -201,72 +472,148 @@ LINK32=link.exe
 # Name "es40 - Win32 Release IDB"
 # Name "es40 - Win32 Release LSS"
 # Name "es40 - Win32 Release LSM"
+# Name "es40 - Win32 Release NN"
+# Name "es40 - Win32 Release NN IDB"
+# Name "es40 - Win32 Release NN LSS"
+# Name "es40 - Win32 Release NN LSM"
+# Name "es40 - Win32 Release NN NS"
+# Name "es40 - Win32 Release NN NS IDB"
+# Name "es40 - Win32 Release NN NS LSS"
+# Name "es40 - Win32 Release NN NS LSM"
+# Name "es40 - Win32 Release NS"
+# Name "es40 - Win32 Release NS IDB"
+# Name "es40 - Win32 Release NS LSS"
+# Name "es40 - Win32 Release NS LSM"
 # Begin Group "Source Files"
 
 # PROP Default_Filter "cpp;c;cxx;rc;def;r;odl;idl;hpj;bat"
 # Begin Source File
 
-SOURCE=.\src\AliM1543C.cpp
+SOURCE=..\AliM1543C.cpp
 # End Source File
 # Begin Source File
 
-SOURCE=.\src\AlphaCPU.cpp
+SOURCE=..\AliM1543C_ide.cpp
 # End Source File
 # Begin Source File
 
-SOURCE=.\src\AlphaSim.cpp
+SOURCE=..\AliM1543C_usb.cpp
 # End Source File
 # Begin Source File
 
-SOURCE=.\src\DPR.cpp
+SOURCE=..\AlphaCPU.cpp
 # End Source File
 # Begin Source File
 
-SOURCE=.\src\Flash.cpp
+SOURCE=..\AlphaCPU_vmspal.cpp
 # End Source File
 # Begin Source File
 
-SOURCE=.\src\FloppyController.cpp
+SOURCE=..\AlphaSim.cpp
 # End Source File
 # Begin Source File
 
-SOURCE=.\src\lockstep.cpp
+SOURCE=..\Cirrus.cpp
 # End Source File
 # Begin Source File
 
-SOURCE=.\src\Port80.cpp
+SOURCE=..\Configurator.cpp
 # End Source File
 # Begin Source File
 
-SOURCE=.\src\Serial.cpp
+SOURCE=..\DEC21143.cpp
 # End Source File
 # Begin Source File
 
-SOURCE=.\src\StdAfx.cpp
+SOURCE=..\Disk.cpp
 # End Source File
 # Begin Source File
 
-SOURCE=.\src\System.cpp
+SOURCE=..\DiskController.cpp
 # End Source File
 # Begin Source File
 
-SOURCE=.\src\SystemComponent.cpp
+SOURCE=..\DiskFile.cpp
 # End Source File
 # Begin Source File
 
-SOURCE=.\src\TraceEngine.cpp
+SOURCE=..\DiskRam.cpp
 # End Source File
 # Begin Source File
 
-SOURCE=.\src\TranslationBuffer.cpp
+SOURCE=..\DPR.cpp
 # End Source File
 # Begin Source File
 
-SOURCE=.\src\DEC21143.cpp
+SOURCE=..\es40_debug.cpp
 # End Source File
 # Begin Source File
 
-SOURCE=.\src\es40_debug.cpp
+SOURCE=..\Flash.cpp
+# End Source File
+# Begin Source File
+
+SOURCE=..\FloppyController.cpp
+# End Source File
+# Begin Source File
+
+SOURCE=..\gui\gui.cpp
+# End Source File
+# Begin Source File
+
+SOURCE=..\gui\keymap.cpp
+# End Source File
+# Begin Source File
+
+SOURCE=..\lockstep.cpp
+# End Source File
+# Begin Source File
+
+SOURCE=..\PCIDevice.cpp
+# End Source File
+# Begin Source File
+
+SOURCE=..\Port80.cpp
+# End Source File
+# Begin Source File
+
+SOURCE=..\S3Trio64.cpp
+# End Source File
+# Begin Source File
+
+SOURCE=..\gui\scancodes.cpp
+# End Source File
+# Begin Source File
+
+SOURCE=..\gui\sdl.cpp
+# End Source File
+# Begin Source File
+
+SOURCE=..\Serial.cpp
+# End Source File
+# Begin Source File
+
+SOURCE=..\StdAfx.cpp
+# End Source File
+# Begin Source File
+
+SOURCE=..\Sym53C895.cpp
+# End Source File
+# Begin Source File
+
+SOURCE=..\System.cpp
+# End Source File
+# Begin Source File
+
+SOURCE=..\SystemComponent.cpp
+# End Source File
+# Begin Source File
+
+SOURCE=..\TraceEngine.cpp
+# End Source File
+# Begin Source File
+
+SOURCE=..\VGA.cpp
 # End Source File
 # End Group
 # Begin Group "Header Files"
@@ -274,143 +621,211 @@ SOURCE=.\src\es40_debug.cpp
 # PROP Default_Filter "h;hpp;hxx;hm;inl"
 # Begin Source File
 
-SOURCE=.\src\AliM1543C.h
+SOURCE=..\AliM1543C.h
 # End Source File
 # Begin Source File
 
-SOURCE=.\src\AlphaCPU.h
+SOURCE=..\AliM1543C_ide.h
 # End Source File
 # Begin Source File
 
-SOURCE=.\src\cpu_arith.h
+SOURCE=..\AliM1543C_usb.h
 # End Source File
 # Begin Source File
 
-SOURCE=.\src\cpu_bwx.h
+SOURCE=..\AlphaCPU.h
 # End Source File
 # Begin Source File
 
-SOURCE=.\src\cpu_control.h
+SOURCE=..\Cirrus.h
 # End Source File
 # Begin Source File
 
-SOURCE=.\src\cpu_debug.h
+SOURCE=..\Configurator.h
 # End Source File
 # Begin Source File
 
-SOURCE=.\src\cpu_fp_branch.h
+SOURCE=..\cpu_arith.h
 # End Source File
 # Begin Source File
 
-SOURCE=.\src\cpu_fp_memory.h
+SOURCE=..\cpu_bwx.h
 # End Source File
 # Begin Source File
 
-SOURCE=.\src\cpu_fp_operate.h
+SOURCE=..\cpu_control.h
 # End Source File
 # Begin Source File
 
-SOURCE=.\src\cpu_logical.h
+SOURCE=..\cpu_debug.h
 # End Source File
 # Begin Source File
 
-SOURCE=.\src\cpu_memory.h
+SOURCE=..\cpu_fp_branch.h
 # End Source File
 # Begin Source File
 
-SOURCE=.\src\cpu_misc.h
+SOURCE=..\cpu_fp_memory.h
 # End Source File
 # Begin Source File
 
-SOURCE=.\src\cpu_mvi.h
+SOURCE=..\cpu_fp_operate.h
 # End Source File
 # Begin Source File
 
-SOURCE=.\src\cpu_pal.h
+SOURCE=..\cpu_logical.h
 # End Source File
 # Begin Source File
 
-SOURCE=.\src\cpu_srm.h
+SOURCE=..\cpu_memory.h
 # End Source File
 # Begin Source File
 
-SOURCE=.\src\cpu_vax.h
+SOURCE=..\cpu_misc.h
 # End Source File
 # Begin Source File
 
-SOURCE=.\src\datatypes.h
+SOURCE=..\cpu_mvi.h
 # End Source File
 # Begin Source File
 
-SOURCE=.\src\DPR.h
+SOURCE=..\cpu_pal.h
 # End Source File
 # Begin Source File
 
-SOURCE=.\src\es40_endian.h
+SOURCE=..\cpu_vax.h
 # End Source File
 # Begin Source File
 
-SOURCE=.\src\es40_float.h
+SOURCE=..\datatypes.h
 # End Source File
 # Begin Source File
 
-SOURCE=.\src\Flash.h
+SOURCE=..\DEC21143.h
 # End Source File
 # Begin Source File
 
-SOURCE=.\src\FloppyController.h
+SOURCE=..\DEC21143_mii.h
 # End Source File
 # Begin Source File
 
-SOURCE=.\src\lockstep.h
+SOURCE=..\DEC21143_tulipreg.h
 # End Source File
 # Begin Source File
 
-SOURCE=.\src\Port80.h
+SOURCE=..\Disk.h
 # End Source File
 # Begin Source File
 
-SOURCE=.\src\Serial.h
+SOURCE=..\DiskController.h
 # End Source File
 # Begin Source File
 
-SOURCE=.\src\StdAfx.h
+SOURCE=..\DiskFile.h
 # End Source File
 # Begin Source File
 
-SOURCE=.\src\System.h
+SOURCE=..\DiskRam.h
 # End Source File
 # Begin Source File
 
-SOURCE=.\src\SystemComponent.h
+SOURCE=..\DPR.h
 # End Source File
 # Begin Source File
 
-SOURCE=.\src\telnet.h
+SOURCE=..\es40_debug.h
 # End Source File
 # Begin Source File
 
-SOURCE=.\src\TraceEngine.h
+SOURCE=..\es40_endian.h
 # End Source File
 # Begin Source File
 
-SOURCE=.\src\TranslationBuffer.h
+SOURCE=..\es40_float.h
 # End Source File
 # Begin Source File
 
-SOURCE=.\src\DEC21143.h
+SOURCE=..\Flash.h
 # End Source File
 # Begin Source File
 
-SOURCE=.\src\DEC21143_mii.h
+SOURCE=..\FloppyController.h
 # End Source File
 # Begin Source File
 
-SOURCE=.\src\DEC21143_tulipreg.h
+SOURCE=..\gui\gui.h
 # End Source File
 # Begin Source File
 
-SOURCE=.\src\es40_debug.h
+SOURCE=..\gui\keymap.h
+# End Source File
+# Begin Source File
+
+SOURCE=..\lockstep.h
+# End Source File
+# Begin Source File
+
+SOURCE=..\PCIDevice.h
+# End Source File
+# Begin Source File
+
+SOURCE=..\gui\plugin.h
+# End Source File
+# Begin Source File
+
+SOURCE=..\Port80.h
+# End Source File
+# Begin Source File
+
+SOURCE=..\S3Trio64.h
+# End Source File
+# Begin Source File
+
+SOURCE=..\gui\scancodes.h
+# End Source File
+# Begin Source File
+
+SOURCE=..\gui\sdl_fonts.h
+# End Source File
+# Begin Source File
+
+SOURCE=..\gui\sdlkeys.h
+# End Source File
+# Begin Source File
+
+SOURCE=..\Serial.h
+# End Source File
+# Begin Source File
+
+SOURCE=..\StdAfx.h
+# End Source File
+# Begin Source File
+
+SOURCE=..\Sym53C895.h
+# End Source File
+# Begin Source File
+
+SOURCE=..\System.h
+# End Source File
+# Begin Source File
+
+SOURCE=..\SystemComponent.h
+# End Source File
+# Begin Source File
+
+SOURCE=..\telnet.h
+# End Source File
+# Begin Source File
+
+SOURCE=..\TraceEngine.h
+# End Source File
+# Begin Source File
+
+SOURCE=..\gui\vga.h
+# End Source File
+# Begin Source File
+
+SOURCE=..\VGA.h
 # End Source File
 # End Group
 # Begin Group "Resource Files"
