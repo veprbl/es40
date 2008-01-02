@@ -28,7 +28,10 @@
  * \file
  * Contains the definitions for the emulated DecChip 21264CB EV68 Alpha processor.
  *
- * $Id: AlphaCPU.h,v 1.32 2008/01/02 08:59:18 iamcamiel Exp $
+ * $Id: AlphaCPU.h,v 1.33 2008/01/02 17:36:57 iamcamiel Exp $
+ *
+ * X-1.32       Camiel Vanderhoeven                             02-JAN-2008
+ *      Possible endianess fix.
  *
  * X-1.31       Camiel Vanderhoeven                             02-JAN-2008
  *      Comments. Undid part of last change because of performance impact.
@@ -459,7 +462,7 @@ inline int CAlphaCPU::get_icache(u64 address, u32 * data)
 	&& (state.icache[i].asn == state.asn || state.icache[i].asm_bit)
 	&& state.icache[i].address == (address & ICACHE_MATCH_MASK))
   {
-    *data = state.icache[i].data[(address>>2)&ICACHE_INDEX_MASK];
+    *data = endian_32(state.icache[i].data[(address>>2)&ICACHE_INDEX_MASK]);
 #ifdef IDB
     current_pc_physical = state.icache[i].p_address + (address & ICACHE_BYTE_MASK);
 #endif
@@ -473,7 +476,7 @@ inline int CAlphaCPU::get_icache(u64 address, u32 * data)
 	&& state.icache[i].address == (address & ICACHE_MATCH_MASK))
     {
       state.last_found_icache = i;
-      *data = state.icache[i].data[(address>>2)&ICACHE_INDEX_MASK];
+      *data = endian_32(state.icache[i].data[(address>>2)&ICACHE_INDEX_MASK]);
 
 #ifdef IDB
 	  current_pc_physical = state.icache[i].p_address + (address & ICACHE_BYTE_MASK);
@@ -498,14 +501,14 @@ inline int CAlphaCPU::get_icache(u64 address, u32 * data)
   }
   
   memcpy(state.icache[state.next_icache].data, cSystem->PtrToMem(p_a), ICACHE_LINE_SIZE * 4);
-  
+
   state.icache[state.next_icache].valid = true;
   state.icache[state.next_icache].asn = state.asn;
   state.icache[state.next_icache].asm_bit = asm_bit;
   state.icache[state.next_icache].address = address & ICACHE_MATCH_MASK;
   state.icache[state.next_icache].p_address = p_a;
 	
-  *data = state.icache[state.next_icache].data[(address>>2)&ICACHE_INDEX_MASK];
+  *data = endian_32(state.icache[state.next_icache].data[(address>>2)&ICACHE_INDEX_MASK]);
 
 #ifdef IDB
   current_pc_physical = state.icache[state.next_icache].p_address + (address & ICACHE_BYTE_MASK);

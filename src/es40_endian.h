@@ -1,7 +1,7 @@
 /* ES40 emulator.
- * Copyright (C) 2007 by Camiel Vanderhoeven
+ * Copyright (C) 2007-2008 by the ES40 Emulator Project
  *
- * Website: www.camicom.com
+ * WWW    : http://sourceforge.net/projects/es40
  * E-mail : camiel@camicom.com
  * 
  * This program is free software; you can redistribute it and/or
@@ -26,6 +26,11 @@
 /** 
  * \file
  * Contains macro's for byte-swapping on big-endian host architectures.
+ *
+ * $Id: es40_endian.h,v 1.3 2008/01/02 17:36:58 iamcamiel Exp $
+ *
+ * X-1.3        fangzhe@sourceforge.net                         02-JAN-2008
+ *      Recognize endianess on more architectures.
  *
  * X-1.2        Camiel Vanderhoeven                             30-MAR-2007
  *      Added old changelog comments.
@@ -53,6 +58,17 @@
 #else // defined (_WIN32) || defined(__VMS)
 
 #include <sys/param.h>
+
+#if !defined(__BYTE_ORDER) && defined(BYTE_ORDER)
+# define __BYTE_ORDER BYTE_ORDER
+# if !defined(__BIG_ENDIAN) && defined(BIG_ENDIAN)
+# define __BIG_ENDIAN BIG_ENDIAN
+# endif
+# if !defined(__LITTLE_ENDIAN) && defined(LITTLE_ENDIAN)
+# define __LITTLE_ENDIAN LITTLE_ENDIAN
+# endif
+#endif
+
 #if (defined(__BYTE_ORDER) && (__BYTE_ORDER == __BIG_ENDIAN)) || defined(sparc)
 #define ES40_BIG_ENDIAN
 #else // assume little endian
