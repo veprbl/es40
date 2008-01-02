@@ -1,5 +1,5 @@
 /* ES40 emulator.
- * Copyright (C) 2007 by the ES40 Emulator Project
+ * Copyright (C) 2007-2008 by the ES40 Emulator Project
  *
  * WWW    : http://sourceforge.net/projects/es40
  * E-mail : camiel@camicom.com
@@ -26,6 +26,11 @@
 /** 
  * \file
  * Defines the entry point for the application.
+ *
+ * $Id: AlphaSim.cpp,v 1.37 2008/01/02 08:30:17 iamcamiel Exp $
+ *
+ * X-1.37       Camiel Vanderhoeven                             02-JAN-2008
+ *      Version updated to 0.17.
  *
  * X-1.35       Camiel Vanderhoeven                             28-DEC-2007
  *      Throw exceptions rather than just exiting when errors occur.
@@ -152,17 +157,9 @@
 #include "Flash.h"
 #include "DPR.h"
 
-#include "TraceEngine.h"
 #include "lockstep.h"
 
-#include "Configurator.h"
-
-CFlash * srom;
-CDPR * dpr = 0;
-
-
-// "standard" locations for a configuration file.  This
-// will be port specific.
+/// "standard" locations for a configuration file.  This will be port specific.
 char *path[]={
 #if defined(_WIN32)
   ".\\es40.cfg",
@@ -177,15 +174,42 @@ char *path[]={
   0
 };
 
+/**
+ * Entry point for the application.
+ *
+ * Does the following:
+ *  - Try to find the configuration file.
+ *  - Reads the configuration file, and uses the configurator to instantiate all system components.
+ *  - Creates the trace-engine if in debug mode.
+ *  - Runs the emulator.
+ *  - Cleans up.
+ *  .
+ **/
+
 int main(int argc, char* argv[])
 {
+
+  printf("\n\n");
+  printf("   **======================================================================**\n");
+  printf("   ||                             ES40  emulator                           ||\n");
+  printf("   ||                              Version 0.17                            ||\n");
+  printf("   ||                                                                      ||\n");
+  printf("   ||  Copyright (C) 2007-2008 by the ES40 Emulator Project                ||\n");
+  printf("   ||  Website: http://sourceforge.net/projects/es40                       ||\n");
+  printf("   ||  E-mail : camiel@camicom.com                                         ||\n");
+  printf("   ||                                                                      ||\n");
+  printf("   ||  This program is free software; you can redistribute it and/or       ||\n");
+  printf("   ||  modify it under the terms of the GNU General Public License         ||\n");
+  printf("   ||  as published by the Free Software Foundation; either version 2      ||\n");
+  printf("   ||  of the License, or (at your option) any later version.              ||\n");
+  printf("   **======================================================================**\n");
+  printf("\n\n");
+
   char *filename = 0;
   FILE *f;
 
   try 
   {
-	printf("%%SYS-I-INITSTART: System initialization started.\n");
-
 #if defined(IDB) && (defined(LS_MASTER) || defined(LS_SLAVE))
 	lockstep_init();
 #endif
@@ -196,127 +220,96 @@ int main(int argc, char* argv[])
 #endif
 	{
 	  filename = argv[1];
-    } else {
-      for(int i = 0 ; path[i] ; i++) {
+    } 
+    else 
+    {
+      for(int i = 0 ; path[i] ; i++) 
+      {
         filename=path[i];
         f=fopen(path[i],"r");
-        if(f != NULL) {
+        if(f != NULL) 
+        {
 		  fclose(f);
 		  filename = path[i];
 		  break;
+        }
       }
+      if(filename==NULL)
+        FAILURE("Configuration file not found.");
     }
-    if(filename==NULL)
-      FAILURE("Configuration file not found.");
-  }
 
-  char ch1[10000];
-  size_t ll1;
-  f = fopen(filename,"rb");
-  ll1 = fread(ch1,1,10000,f);
-  CConfigurator * c = new CConfigurator(0,0,0,ch1,ll1);
-  fclose(f);
+    char ch1[10000];
+    size_t ll1;
+    f = fopen(filename,"rb");
+    ll1 = fread(ch1,1,10000,f);
+    CConfigurator * c = new CConfigurator(0,0,0,ch1,ll1);
+    fclose(f);
 
 #if defined(IDB)
-  trc = new CTraceEngine(theSystem);
+    trc = new CTraceEngine(theSystem);
 #endif
 
-  theSystem->LoadROM();
+    theSystem->LoadROM();
 
-  printf("%%SYS-I-INITEND: System initialization complete.\n");
-
-  printf("\n\n");
-  printf("   **======================================================================**\n");
-  printf("   ||                                                                      ||\n");
-  printf("   ||                             ES40  emulator                           ||\n");
-  printf("   ||                              Version 0.16                            ||\n");
-  printf("   ||                                                                      ||\n");
-  printf("   ||  Copyright (C) 2007 by Camiel Vanderhoeven                           ||\n");
-  printf("   ||  Website: www.camicom.com                                            ||\n");
-  printf("   ||  E-mail : camiel@camicom.com                                         ||\n");
-  printf("   ||                                                                      ||\n");
-  printf("   ||  This program is free software; you can redistribute it and/or       ||\n");
-  printf("   ||  modify it under the terms of the GNU General Public License         ||\n");
-  printf("   ||  as published by the Free Software Foundation; either version 2      ||\n");
-  printf("   ||  of the License, or (at your option) any later version.              ||\n");
-  printf("   ||                                                                      ||\n");
-  printf("   ||  This program is distributed in the hope that it will be useful,     ||\n");
-  printf("   ||  but WITHOUT ANY WARRANTY; without even the implied warranty of      ||\n");
-  printf("   ||  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the       ||\n");
-  printf("   ||  GNU General Public License for more details.                        ||\n");
-  printf("   ||                                                                      ||\n");
-  printf("   ||  You should have received a copy of the GNU General Public License   ||\n");
-  printf("   ||  along with this program; if not, write to the Free Software         ||\n");
-  printf("   ||  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,          ||\n");
-  printf("   ||  MA  02110-1301, USA.                                                ||\n");
-  printf("   ||                                                                      ||\n");
-  printf("   **======================================================================**\n");
-  printf("\n\n");
-
-  theSROM->RestoreStateF();
-  theDPR->RestoreStateF();
+    theSROM->RestoreStateF();
+    theDPR->RestoreStateF();
 
 #if defined(PROFILE)
-  {
-    u64 p_i;
-    for (p_i = PROFILE_FROM; p_i < PROFILE_TO; p_i+=(4*PROFILE_BUCKSIZE))
-      PROFILE_BUCKET(p_i) = 0;
-    profiled_insts = 0;
-  }
+    {
+      u64 p_i;
+      for (p_i = PROFILE_FROM; p_i < PROFILE_TO; p_i+=(4*PROFILE_BUCKSIZE))
+        PROFILE_BUCKET(p_i) = 0;
+      profiled_insts = 0;
+    }
 #endif
 
 
 #if defined(IDB)
-  if (argc>1 && argc<4 && argv[argc-1][0]=='@')
-    trc->run_script(argv[argc-1] + 1);
-  else
-    trc->run_script(NULL);
+    if (argc>1 && argc<4 && argv[argc-1][0]=='@')
+      trc->run_script(argv[argc-1] + 1);
+    else
+      trc->run_script(NULL);
 #else
 
-  if (theSystem->Run()>0)
-  {
-    // save flash and dpr rom only if not terminated with a fatal error
-    theSROM->SaveStateF();
-    theDPR->SaveStateF();
-  }
+    if (theSystem->Run()>0)
+    {
+      // save flash and dpr rom only if not terminated with a fatal error
+      theSROM->SaveStateF();
+      theDPR->SaveStateF();
+    }
 #endif
 
 #if defined(PROFILE)
-  {
-    FILE * p_fp;
-    u64 p_max = 0;
-    u64 p_i;
-    int p_j;
-
-    printf("Writing profile to profile.txt");
-
-    p_fp = fopen("profile.txt","w");
-    for (p_i = PROFILE_FROM; p_i < PROFILE_TO; p_i+=(4*PROFILE_BUCKSIZE))
     {
-      if (PROFILE_BUCKET(p_i)>p_max)
-        p_max = PROFILE_BUCKET(p_i);
-    }
-    fprintf(p_fp,"p_max = %10" LL "d; %10" LL "d profiled instructions.\n\n",p_max,profiled_insts);
-    for (p_i = PROFILE_FROM; p_i < PROFILE_TO; p_i+=(4*PROFILE_BUCKSIZE))
-    {
-      if (PROFILE_BUCKET(p_i))
+      FILE * p_fp;
+      u64 p_max = 0;
+      u64 p_i;
+      int p_j;
+
+      printf("Writing profile to profile.txt");
+
+      p_fp = fopen("profile.txt","w");
+      for (p_i = PROFILE_FROM; p_i < PROFILE_TO; p_i+=(4*PROFILE_BUCKSIZE))
       {
-        fprintf(p_fp,"%016" LL "x: %10" LL "d ",p_i,PROFILE_BUCKET(p_i));
-//        printf("%016" LL " x: %10 " LL " d ",p_i,PROFILE_BUCKET(p_i));
-        for(p_j=0;p_j<(((float)PROFILE_BUCKET(p_i)/(float)p_max)*100);p_j++)
-        {
-          fprintf(p_fp,"*");
-//          printf("*");
-        }
-        fprintf(p_fp,"\n");
-//        printf("\n");
+        if (PROFILE_BUCKET(p_i)>p_max)
+          p_max = PROFILE_BUCKET(p_i);
       }
+      fprintf(p_fp,"p_max = %10" LL "d; %10" LL "d profiled instructions.\n\n",p_max,profiled_insts);
+      for (p_i = PROFILE_FROM; p_i < PROFILE_TO; p_i+=(4*PROFILE_BUCKSIZE))
+      {
+        if (PROFILE_BUCKET(p_i))
+        {
+          fprintf(p_fp,"%016" LL "x: %10" LL "d ",p_i,PROFILE_BUCKET(p_i));
+          for(p_j=0;p_j<(((float)PROFILE_BUCKET(p_i)/(float)p_max)*100);p_j++)
+            fprintf(p_fp,"*");
+          fprintf(p_fp,"\n");
+        }
+      }
+      fclose(p_fp);
     }
-    fclose(p_fp);
-  }
 #endif
 
-  delete theSystem;
+    delete theSystem;
   }
   catch(int)
   {
