@@ -1,5 +1,5 @@
 /* ES40 emulator.
- * Copyright (C) 2007 by Camiel Vanderhoeven
+ * Copyright (C) 2007-2008 by Camiel Vanderhoeven
  *
  * Website: www.camicom.com
  * E-mail : camiel@camicom.com
@@ -29,6 +29,11 @@
  * Include file for standard system include files,
  * or project specific include files that are used frequently, but
  * are changed infrequently.
+ *
+ * $Id: StdAfx.h,v 1.20 2008/01/02 09:24:12 iamcamiel Exp $
+ *
+ * X-1.19       Camiel Vanderhoeven                             02-JAN-2008
+ *      Cleanup. 
  *
  * X-1.18       Camiel Vanderhoeven                             28-DEC-2007
  *      Keep the compiler happy.
@@ -116,12 +121,15 @@ inline void sleep_ms(DWORD ms)
 	Sleep(ms);
 }
 
+#include <process.h>
 #else
-
 #define _strdup strdup
 #include <sys/time.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include "pthread.h"
+#include "signal.h"
+#include <sys/wait.h>
 
 inline void sleep_ms(int ms)
 {
