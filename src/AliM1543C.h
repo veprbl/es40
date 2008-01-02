@@ -1,5 +1,5 @@
 /* ES40 emulator.
- * Copyright (C) 2007 by the ES40 Emulator Project
+ * Copyright (C) 2007-2008 by the ES40 Emulator Project
  *
  * WWW    : http://sourceforge.net/projects/es40
  * E-mail : camiel@camicom.com
@@ -25,7 +25,12 @@
 
 /**
  * \file 
- * Contains the definitions for the emulated Ali M1543C chipset devices.
+ * Contains the definitions for the ISA part of the emulated Ali M1543C chipset.
+ *
+ * $Id: AliM1543C.h,v 1.24 2008/01/02 08:25:00 iamcamiel Exp $
+ *
+ * X-1.24       Camiel Vanderhoeven                             02-JAN-2008
+ *      Comments; moved keyboard status register bits to "status" struct.
  *
  * X-1.23       Camiel Vanderhoeven                             28-DEC-2007
  *      Keep the compiler happy.
@@ -106,7 +111,6 @@
 
 #include "PCIDevice.h"
 #include "gui/gui.h"
-#include "Configurator.h"
 
 #define BX_KBD_ELEMENTS 16
 #define BX_MOUSE_BUFF_SIZE 48
@@ -117,17 +121,10 @@
 #define MOUSE_MODE_WRAP   13
 
 /**
- * Emulated ALi M1543C multi-function device.
- * The ALi M1543C device provides i/o and glue logic support to the system: 
- * ISA, USB, IDE, DMA, Interrupt, Timer, TOY Clock. 
+ * \brief Emulated ISA part of the ALi M1543C chipset. 
  *
- * Known shortcomings:
- *   - IDE
- *     - disk images are not checked for size, so size is not always correctly 
- *       reported.
- *     - IDE disks can be read but not written.
- *     .
- *   .
+ * The ALi M1543C device provides i/o and glue logic support to the system: 
+ * ISA, DMA, Interrupt, Timer, TOY Clock.
  **/
 
 class CAliM1543C : public CPCIDevice
@@ -197,25 +194,21 @@ class CAliM1543C : public CPCIDevice
   u8 lpt_read(u32 address);
   void lpt_write(u32 address, u8 data);
 
-#ifdef USE_CONSOLE
-  u8 key2scan(int key);
-#endif
-
-  // The state structure contains all elements that need to be saved to the statefile.
-  struct SAliM1543CState {
-    // REGISTERS 60 & 64: KEYBOARD / MOUSE
-    struct {
-      /* status bits matching the status port*/
-      bool pare; // Bit7, 1= parity error from keyboard/mouse - ignored.
-      bool tim;  // Bit6, 1= timeout from keyboard - ignored.
-      bool auxb; // Bit5, 1= mouse data waiting for CPU to read.
-      bool keyl; // Bit4, 1= keyswitch in lock position - ignored.
-      bool c_d; /*  Bit3, 1=command to port 64h, 0=data to port 60h */
-      bool sysf; // Bit2,
-      bool inpb; // Bit1,
-      bool outb; // Bit0, 1= keyboard data or mouse data ready for CPU
-                    //       check aux to see which. Or just keyboard
-                    //       data before AT style machines
+  /// The state structure contains all elements that need to be saved to the statefile.
+  struct SAli_state {
+    /// registers 60 & 64: keyboard/mouse controller
+    struct SAli_kbdc {
+      /// status bits matching the status port
+      struct SAli_kbdc_status {
+        bool pare;  /**< Bit7, 1= parity error from keyboard/mouse - ignored. */
+        bool tim;   /**< Bit6, 1= timeout from keyboard - ignored. */
+        bool auxb;  /**< Bit5, 1= mouse data waiting for CPU to read. */
+        bool keyl;  /**< Bit4, 1= keyswitch in lock position - ignored. */
+        bool c_d;   /**< Bit3, 1=command to port 64h, 0=data to port 60h. */
+        bool sysf;  /**< Bit2 */
+        bool inpb;  /**< Bit1 */
+        bool outb;  /**< Bit0, 1= keyboard data or mouse data ready for CPU. Check aux to see which. */
+      } status;
 
       /* internal to our version of the keyboard controller */
       bool kbd_clock_enabled;
@@ -237,7 +230,8 @@ class CAliM1543C : public CPCIDevice
       bool bat_in_progress;
     } kbd_controller;
 
-    struct mouseStruct {
+    /// mouse status
+    struct SAli_mouse {
       bool captured; // host mouse capture enabled
 //      u8   type;
       u8   sample_rate;
@@ -248,42 +242,42 @@ class CAliM1543C : public CPCIDevice
       bool enable;
 
       u8 get_status_byte ()
-	{
-	  // top bit is 0 , bit 6 is 1 if remote mode.
-	  u8 ret = (u8) ((mode == MOUSE_MODE_REMOTE) ? 0x40 : 0);
-	  ret |= (enable << 5);
-	  ret |= (scaling == 1) ? 0 : (1 << 4);
-	  ret |= ((button_status & 0x1) << 2);
-	  ret |= ((button_status & 0x2) << 0);
-	  return ret;
-	}
+	  {
+	    // top bit is 0 , bit 6 is 1 if remote mode.
+		u8 ret = (u8) ((mode == MOUSE_MODE_REMOTE) ? 0x40 : 0);
+		ret |= (enable << 5);
+		ret |= (scaling == 1) ? 0 : (1 << 4);
+		ret |= ((button_status & 0x1) << 2);
+		ret |= ((button_status & 0x2) << 0);
+		return ret;
+	  }
 
       u8 get_resolution_byte ()
-	{
-	  u8 ret = 0;
+	  {
+	    u8 ret = 0;
 
-	  switch (resolution_cpmm) {
-	  case 1:
-	    ret = 0;
-	    break;
+	    switch (resolution_cpmm) {
+	    case 1:
+	      ret = 0;
+	      break;
 
-	  case 2:
-	    ret = 1;
-	    break;
+	    case 2:
+	      ret = 1;
+	      break;
 
-	  case 4:
-	    ret = 2;
-	    break;
+	    case 4:
+	      ret = 2;
+	      break;
 
-	  case 8:
-	    ret = 3;
-	    break;
+	    case 8:
+	      ret = 3;
+	      break;
 
-	  default:
-	    FAILURE("mouse: invalid resolution_cpmm");
-	  };
-	  return ret;
-	}
+	    default:
+	      FAILURE("mouse: invalid resolution_cpmm");
+	    };
+	    return ret;
+	  }
 
       u8 button_status;
       s16 delayed_dx;
@@ -293,7 +287,8 @@ class CAliM1543C : public CPCIDevice
       bool im_mode;
     } mouse;
 
-    struct {
+    /// internal keyboard buffer
+    struct SAli_kbdib{
       int     num_elements;
       u8   buffer[BX_KBD_ELEMENTS];
       int     head;
@@ -306,15 +301,17 @@ class CAliM1543C : public CPCIDevice
       bool scanning_enabled;
     } kbd_internal_buffer;
 
-    struct {
+    /// internal mouse buffer
+    struct SAli_mib{
       int     num_elements;
       u8   buffer[BX_MOUSE_BUFF_SIZE];
       int     head;
     } mouse_internal_buffer;
+
 #define BX_KBD_CONTROLLER_QSIZE 5
     u8    kbd_controller_Q[BX_KBD_CONTROLLER_QSIZE];
     unsigned kbd_controller_Qsize;
-    unsigned kbd_controller_Qsource; // 0=keyboard, 1=mouse
+    unsigned kbd_controller_Qsource; /**< 0=keyboard, 1=mouse */
 
     // REGISTER 61 (NMI)
     u8 reg_61;
@@ -337,8 +334,8 @@ class CAliM1543C : public CPCIDevice
     u8 pic_asserted[2];
     u8 pic_edge_level[2];
 
-    // DMA Controller
-    struct dmaStruct {
+    /// DMA channel state
+    struct SAli_dmachan {
       bool lobyte;
       u16 current;
       u16 base;
@@ -346,16 +343,14 @@ class CAliM1543C : public CPCIDevice
       u16 count;
     } dma_channel[8];
 
-    struct dmacontrollerStruct {
+    /// DMA controller state
+    struct SAli_dmactrl {
       u8 status;
       u8 command;
       u8 writereq;
       u8 mask;
       u8 mode;
-
     } dma_controller[2];
-
-
 
     u8 lpt_data;
     u8 lpt_control;

@@ -1,5 +1,5 @@
 /* ES40 emulator.
- * Copyright (C) 2007 by the ES40 Emulator Project
+ * Copyright (C) 2007-2008 by the ES40 Emulator Project
  *
  * Website: http://sourceforge.net/projects/es40
  * E-mail : camiel@camicom.com
@@ -26,6 +26,11 @@
 /**
  * \file 
  * Contains the code for the emulated Ali M1543C chipset devices.
+ *
+ * $Id: AliM1543C.cpp,v 1.49 2008/01/02 08:25:00 iamcamiel Exp $
+ *
+ * X-1.49       Camiel Vanderhoeven                             02-JAN-2008
+ *      Comments; moved keyboard status register bits to a "status" struct.
  *
  * X-1.48       Camiel Vanderhoeven                             30-DEC-2007
  *      Print file id on initialization.
@@ -106,41 +111,41 @@
  *      Moved all data that should be saved to a state file to a structure
  *      "state".
  *
- * X-1.23	Camiel Vanderhoeven				3-APR-2007
- *	Fixed wrong IDE configuration mask (address ranges masked were too 
- *	short, leading to overlapping memory regions.)	
+ * X-1.23	    Camiel Vanderhoeven				                3-APR-2007
+ *	    Fixed wrong IDE configuration mask (address ranges masked were too 
+ *	    short, leading to overlapping memory regions.)	
  *
- * X-1.22	Camiel Vanderhoeven				1-APR-2007
- *	Uncommented the IDE debugging statements.
+ * X-1.22	    Camiel Vanderhoeven				                1-APR-2007
+ *	    Uncommented the IDE debugging statements.
  *
  * X-1.21       Camiel Vanderhoeven                             31-MAR-2007
  *      Added old changelog comments.
  *
- * X-1.20	Camiel Vanderhoeven				30-MAR-2007
- *	Unintentional CVS commit / version number increase.
+ * X-1.20	    Camiel Vanderhoeven				                30-MAR-2007
+ *	    Unintentional CVS commit / version number increase.
  *
- * X-1.19	Camiel Vanderhoeven				27-MAR-2007
- *   a) When DEBUG_PIC is defined, generate more debugging messages.
- *   b)	When an interrupt originates from the cascaded interrupt controller,
- *	the interrupt vector from the cascaded controller is returned.
- *   c)	When interrupts are ended on the cascaded controller, and no 
- *	interrupts are left on that controller, the cascade interrupt (2)
- *	on the primary controller is ended as well. I'M NOT COMPLETELY SURE
- *	IF THIS IS CORRECT, but what goes on in OpenVMS seems to imply this.
- *   d) When the system state is saved to a vms file, and then restored, the
- *	ide_status may be 0xb9, this bug has not been found yet, but as a 
- *	workaround, we detect the value 0xb9, and replace it with 0x40.
- *   e) Changed the values for cylinders/heads/sectors on the IDE identify
- *	command, because it looks like OpenVMS' DQDRIVER doesn't like it if
- *	the number of sectors is greater than 63.
- *   f) All IDE commands generate an interrupt upon completion.
- *   g) IDE command SET TRANSLATION (0x91) is recognized, but has no effect.
- *	This is allright, as long as OpenVMS NEVER DOES CHS-mode access to 
- *	the disk.
+ * X-1.19	    Camiel Vanderhoeven				                27-MAR-2007
+ *       a) When DEBUG_PIC is defined, generate more debugging messages.
+ *       b)	When an interrupt originates from the cascaded interrupt controller,
+ *	    the interrupt vector from the cascaded controller is returned.
+ *       c)	When interrupts are ended on the cascaded controller, and no 
+ *	    interrupts are left on that controller, the cascade interrupt (2)
+ *	    on the primary controller is ended as well. I'M NOT COMPLETELY SURE
+ *	    IF THIS IS CORRECT, but what goes on in OpenVMS seems to imply this.
+ *       d) When the system state is saved to a vms file, and then restored, the
+ *	    ide_status may be 0xb9, this bug has not been found yet, but as a 
+ *	    workaround, we detect the value 0xb9, and replace it with 0x40.
+ *       e) Changed the values for cylinders/heads/sectors on the IDE identify
+ *	    command, because it looks like OpenVMS' DQDRIVER doesn't like it if
+ *	    the number of sectors is greater than 63.
+ *       f) All IDE commands generate an interrupt upon completion.
+ *       g) IDE command SET TRANSLATION (0x91) is recognized, but has no effect.
+ *	    This is allright, as long as OpenVMS NEVER DOES CHS-mode access to 
+ *	    the disk.
  *
- * X-1.18	Camiel Vanderhoeven				26-MAR-2007
- *   a) Specific-EOI's (end-of-interrupt) now only end the interrupt they 
- *	are meant for.
+ * X-1.18	    Camiel Vanderhoeven				                26-MAR-2007
+ *       a) Specific-EOI's (end-of-interrupt) now only end the interrupt they 
+ *	    are meant for.
  *   b) When DEBUG_PIC is defined, debugging messages for the interrupt 
  *	controllers are output to the console, same with DEBUG_IDE and the
  *	IDE controller.
@@ -184,7 +189,7 @@
  *
  * X-1.7	Camiel Vanderhoeven				3-FEB-2007
  *      Removed last conditional for supporting another system than an ES40
- *      (#ifdef DS15)
+ *      (ifdef DS15)
  *
  * X-1.6        Brian Wheeler                                   3-FEB-2007
  *      Formatting.
@@ -306,14 +311,14 @@ CAliM1543C::CAliM1543C(CConfigurator * cfg, CSystem * c, int pcibus, int pcidev)
     state.mouse_internal_buffer.buffer[i] = 0;
   state.mouse_internal_buffer.head = 0;
 
-  state.kbd_controller.pare = 0;
-  state.kbd_controller.tim  = 0;
-  state.kbd_controller.auxb = 0;
-  state.kbd_controller.keyl = 1;
-  state.kbd_controller.c_d  = 1;
-  state.kbd_controller.sysf = 0;
-  state.kbd_controller.inpb = 0;
-  state.kbd_controller.outb = 0;
+  state.kbd_controller.status.pare = 0;
+  state.kbd_controller.status.tim  = 0;
+  state.kbd_controller.status.auxb = 0;
+  state.kbd_controller.status.keyl = 1;
+  state.kbd_controller.status.c_d  = 1;
+  state.kbd_controller.status.sysf = 0;
+  state.kbd_controller.status.inpb = 0;
+  state.kbd_controller.status.outb = 0;
 
   state.kbd_controller.kbd_clock_enabled = 1;
   state.kbd_controller.aux_clock_enabled = 0;
@@ -380,6 +385,7 @@ CAliM1543C::CAliM1543C(CConfigurator * cfg, CSystem * c, int pcibus, int pcidev)
 
   // odd one, byte read in PCI IACK (interrupt acknowledge) cycle. Interrupt vector.
   c->RegisterMemory(this, 20, X64(00000801f8000000), 1);
+
   for(i=0;i<2;i++)
     {
       state.pic_mode[i] = 0;
@@ -406,19 +412,45 @@ CAliM1543C::CAliM1543C(CConfigurator * cfg, CSystem * c, int pcibus, int pcidev)
     lpt=NULL;
   }
 
-  printf("%s: $Id: AliM1543C.cpp,v 1.48 2007/12/30 15:10:22 iamcamiel Exp $\n",devid_string);
+  printf("%s: $Id: AliM1543C.cpp,v 1.49 2008/01/02 08:25:00 iamcamiel Exp $\n",devid_string);
 }
 
 /**
- * Desructor.
+ * Destructor.
  **/
 
 CAliM1543C::~CAliM1543C()
 {
 }
 
+/**
+ * Read (byte,word,longword) from one of the legacy ranges. Only byte-accesses are supported.
+ *
+ * Ranges are:
+ *  - 1. I/O port 61h
+ *  - 2. I/O ports 70h-73h (time-of-year clock)
+ *  - 6. I/O ports 40h-43h (programmable interrupt timer)
+ *  - 7. I/O ports 20h-21h (primary programmable interrupt controller)
+ *  - 8. I/O ports a0h-a1h (secondary (cascaded) programmable interrupt controller)
+ *  - 12. I/O ports 00h-0fh (primary DMA controller)
+ *  - 13. I/O ports c0h-dfh (secondary DMA controller)
+ *  - 20. PCI IACK address (interrupt vector)
+ *  - 27. I/O ports 3bch-3bfh (parallel port)
+ *  - 28. I/O port 60h (keyboard controller)
+ *  - 29. I/O port 64h (keyboard controller)
+ *  - 30. I/O ports 4d0h-4d1h (edge/level register of programmable interrupt controller)
+ *  - 33. I/O ports 80h-8fh (DMA controller memory base low page register)
+ *  - 34. I/O ports 480h-48fh (DMA controller memory base high page register)
+ *  .
+ **/
+
 u32 CAliM1543C::ReadMem_Legacy(int index, u32 address, int dsize)
 {
+  if (dsize!=8 && index !=20) // when interrupt vector is read, dsize doesn't matter.
+  {
+    printf("%s: DSize %d seen reading from legacy memory range # %d at address %02x\n", devid_string, dsize, index, address);
+    FAILURE("Unsupported dsize");
+  }
   int channel = 0;
   switch(index)
     {
@@ -456,8 +488,34 @@ u32 CAliM1543C::ReadMem_Legacy(int index, u32 address, int dsize)
   return 0;
 }
 
+/**
+ * Write (byte,word,longword) to one of the legacy ranges. Only byte-accesses are supported.
+ *
+ * Ranges are:
+ *  - 1. I/O port 61h
+ *  - 2. I/O ports 70h-73h (time-of-year clock)
+ *  - 6. I/O ports 40h-43h (programmable interrupt timer)
+ *  - 7. I/O ports 20h-21h (primary programmable interrupt controller)
+ *  - 8. I/O ports a0h-a1h (secondary (cascaded) programmable interrupt controller)
+ *  - 12. I/O ports 00h-0fh (primary DMA controller)
+ *  - 13. I/O ports c0h-dfh (secondary DMA controller)
+ *  - 20. PCI IACK address (interrupt vector)
+ *  - 27. I/O ports 3bch-3bfh (parallel port)
+ *  - 28. I/O port 60h (keyboard controller)
+ *  - 29. I/O port 64h (keyboard controller)
+ *  - 30. I/O ports 4d0h-4d1h (edge/level register of programmable interrupt controller)
+ *  - 33. I/O ports 80h-8fh (DMA controller memory base low page register)
+ *  - 34. I/O ports 480h-48fh (DMA controller memory base high page register)
+ *  .
+ **/
+
 void CAliM1543C::WriteMem_Legacy(int index, u32 address, int dsize, u32 data)
 {
+  if (dsize!=8)
+  {
+    printf("%s: DSize %d seen writing to legacy memory range # %d at address %02x\n", devid_string, dsize, index, address);
+    FAILURE("Unsupported dsize");
+  }
   int channel = 0;
   switch(index)
     {
@@ -502,6 +560,11 @@ void CAliM1543C::WriteMem_Legacy(int index, u32 address, int dsize, u32 data)
     }
 }
 
+/**
+ * Enqueue scancode for a keypress or key-release. Used by the GUI implementation
+ * to send keypresses to the keyboartd controller.
+ **/
+
 void CAliM1543C::kbd_gen_scancode(u32 key)
 {
   unsigned char *scancode;
@@ -527,14 +590,19 @@ void CAliM1543C::kbd_gen_scancode(u32 key)
   else
     scancode=(unsigned char *)scancodes[(key&0xFF)][state.kbd_controller.current_scancodes_set].make;
 
-  if (state.kbd_controller.scancodes_translate) {
+  if (state.kbd_controller.scancodes_translate) 
+  {
     // Translate before send
     u8 escaped=0x00;
 
-    for (i=0; i<strlen((const char *)scancode); i++) {
+    for (i=0; i<strlen((const char *)scancode); i++) 
+    {
       if (scancode[i] == 0xF0)
+      {
         escaped=0x80;
-      else {
+      }
+      else 
+      {
 #if defined(DEBUG_KBD)
 	    printf("gen_scancode(): writing translated %02x   \n",translation8042[scancode[i] ] | escaped);
 #endif
@@ -543,7 +611,8 @@ void CAliM1543C::kbd_gen_scancode(u32 key)
       }
     }
   } 
-  else {
+  else 
+  {
     // Send raw data
     for (i=0; i<strlen((const char *)scancode); i++) {
 #if defined(DEBUG_KBD)
@@ -554,17 +623,21 @@ void CAliM1543C::kbd_gen_scancode(u32 key)
   }
 }
 
-/* BDW:
-  This may need some expansion to help with timer delays.  It looks like
-  the 8254 flips bits on occasion, and the linux kernel (at least) uses
-    do {
-        count++;
-    } while ((inb(0x61) & 0x20) == 0 && count < TIMEOUT_COUNT);
-  to calibrate the cpu clock.
-
-  Every 1500 reads the bit gets flipped so maybe the timing will
-  seem reasonable to the OS.
+/**
+ * Read port 61h (speaker/ miscellaneous).
+ *
+ * BDW:
+ * This may need some expansion to help with timer delays.  It looks like
+ * the 8254 flips bits on occasion, and the linux kernel (at least) uses
+ *   do {
+ *     count++;
+ *   } while ((inb(0x61) & 0x20) == 0 && count < TIMEOUT_COUNT);
+ * to calibrate the cpu clock.
+ * 
+ * Every 1500 reads the bit gets flipped so maybe the timing will
+ * seem reasonable to the OS.
  */
+
 u8 CAliM1543C::reg_61_read()
 {
 #if 0
@@ -583,16 +656,28 @@ u8 CAliM1543C::reg_61_read()
   return state.reg_61;
 }
 
+/**
+ * Write port 61h (speaker/ miscellaneous).
+ **/
+
 void CAliM1543C::reg_61_write(u8 data)
 {
   state.reg_61 = (state.reg_61 & 0xf0) | (((u8)data) & 0x0f);
 }
+
+/**
+ * Read time-of-year clock ports (70h-73h).
+ **/
 
 u8 CAliM1543C::toy_read(u32 address)
 {
   //printf("%%ALI-I-READTOY: read port %02x: 0x%02x\n", (u32)(0x70 + address), state.toy_access_ports[address]);
   return (u8)state.toy_access_ports[address];
 }
+
+/**
+ * Write time-of-year clock ports (70h-73h). On a write to port 0, recalculate clock values.
+ **/
 
 void CAliM1543C::toy_write(u32 address, u8 data)
 {
@@ -603,58 +688,45 @@ void CAliM1543C::toy_write(u32 address, u8 data)
 
   //printf("%%ALI-I-WRITETOY: write port %02x: 0x%02x\n", (u32)(0x70 + address), data);
 
-
   state.toy_access_ports[address] = (u8)data;
 
   switch (address)
+  {
+  case 0:
+    if ((data&0x7f)<14)
     {
-    case 0:
-      if ((data&0x7f)<14)
-        {
 	  state.toy_stored_data[0x0d] = 0x80; // data is geldig!
 	  // update clock.......
 	  time (&ltime);
 	  gmtime_s(&stime,&ltime);
 	  if (state.toy_stored_data[0x0b] & 4)
-            {
-	      state.toy_stored_data[0] = (u8)(stime.tm_sec);
-	      state.toy_stored_data[2] = (u8)(stime.tm_min);
-	      if (state.toy_stored_data[0x0b] & 2)
-                {
-		  // 24-hour
+      {
+        // binary
+        state.toy_stored_data[0] = (u8)(stime.tm_sec);
+	    state.toy_stored_data[2] = (u8)(stime.tm_min);
+	    if (state.toy_stored_data[0x0b] & 2)		  // 24-hour
 		  state.toy_stored_data[4] = (u8)(stime.tm_hour);
-                }
-	      else
-                {
-		  // 12-hour
+	    else                                  		  // 12-hour
 		  state.toy_stored_data[4] = (u8)(((stime.tm_hour/12)?0x80:0) | (stime.tm_hour%12));
-                }
-	      state.toy_stored_data[6] = (u8)(stime.tm_wday + 1);
-	      state.toy_stored_data[7] = (u8)(stime.tm_mday);
-	      state.toy_stored_data[8] = (u8)(stime.tm_mon + 1);
-	      state.toy_stored_data[9] = (u8)(stime.tm_year % 100);  
-	    }
+        state.toy_stored_data[6] = (u8)(stime.tm_wday + 1);
+        state.toy_stored_data[7] = (u8)(stime.tm_mday);
+	    state.toy_stored_data[8] = (u8)(stime.tm_mon + 1);
+	    state.toy_stored_data[9] = (u8)(stime.tm_year % 100);  
+	  }
 	  else
-            {
-	      // BCD
-	      state.toy_stored_data[0] = (u8)(((stime.tm_sec/10)<<4) | (stime.tm_sec%10));
-	      state.toy_stored_data[2] = (u8)(((stime.tm_min/10)<<4) | (stime.tm_min%10));
-	      if (state.toy_stored_data[0x0b] & 2)
-                {
-		  // 24-hour
+      {
+	    // BCD
+	    state.toy_stored_data[0] = (u8)(((stime.tm_sec/10)<<4) | (stime.tm_sec%10));
+	    state.toy_stored_data[2] = (u8)(((stime.tm_min/10)<<4) | (stime.tm_min%10));
+	    if (state.toy_stored_data[0x0b] & 2)		  // 24-hour
 		  state.toy_stored_data[4] = (u8)(((stime.tm_hour/10)<<4) | (stime.tm_hour%10));
-                }
-	      else
-                {
-		  // 12-hour
+        else                                  		  // 12-hour
 		  state.toy_stored_data[4] = (u8)(((stime.tm_hour/12)?0x80:0) | (((stime.tm_hour%12)/10)<<4) | ((stime.tm_hour%12)%10));
-                }
-	      state.toy_stored_data[6] = (u8)(stime.tm_wday + 1);
-	      state.toy_stored_data[7] = (u8)(((stime.tm_mday/10)<<4) | (stime.tm_mday%10));
-	      state.toy_stored_data[8] = (u8)((((stime.tm_mon+1)/10)<<4) | ((stime.tm_mon+1)%10));
-	      state.toy_stored_data[9] = (u8)((((stime.tm_year%100)/10)<<4) | ((stime.tm_year%100)%10));
-            }
-
+	    state.toy_stored_data[6] = (u8)(stime.tm_wday + 1);
+	    state.toy_stored_data[7] = (u8)(((stime.tm_mday/10)<<4) | (stime.tm_mday%10));
+	    state.toy_stored_data[8] = (u8)((((stime.tm_mon+1)/10)<<4) | ((stime.tm_mon+1)%10));
+	    state.toy_stored_data[9] = (u8)((((stime.tm_year%100)/10)<<4) | ((stime.tm_year%100)%10));
+      }
 
 	  // Debian Linux wants something out of 0x0a.  It gets initialized
 	  // with 0x26, by the SRM
@@ -683,30 +755,32 @@ void CAliM1543C::toy_write(u32 address, u8 data)
 	  
 	  // The SRM-init value of 0x26 means:
 	  //  xtal speed 32.768KHz  (standard)
-	  //  periodic interrupt rate divisor of 32 =
-	  // interrupt every 976.562 ms (1024Hz clock)
+	  //  periodic interrupt rate divisor of 32 = interrupt every 976.562 ms (1024Hz clock)
 	  
-
-	  if(state.toy_stored_data[0x0a] & 0x80) {
+	  if(state.toy_stored_data[0x0a] & 0x80) 
+      {
 	    // Once the UIP line goes high, we have to stay high for 2228us.
 	    hold_count--;
-	    if(hold_count==0) {
+	    if(hold_count==0) 
+        {
 	      state.toy_stored_data[0x0a] &= ~0x80;
 	      read_count=0;
 	    }
-	  } else {
+	  } 
+      else 
+      {
 	    // UIP isn't high, so if we're looping and waiting for it to go, it
 	    // will take 1,000,000/(IPus*3) reads for a 3 instruction loop.
 	    // If it happens to be a one time read, it'll only throw our calculations
 	    // off a tiny bit, and they'll be re-synced on the next read-loop.
 	    read_count++;
-	    if(read_count > 1000000/(IPus*3)) {   // 3541 @ 847IPus
+	    if(read_count > 1000000/(IPus*3))    // 3541 @ 847IPus
+        {
 	      state.toy_stored_data[0x0a] |= 0x80;
 	      hold_count=(2228/(IPus*3))+1; // .876 @ 847IPus, so we add one.
 	    }
 	  }
-	  
-	  
+	  	  
 	  //# /****************************************************/
 	  //# #define RTC_CONTROL RTC_REG_B
 	  //# # define RTC_SET 0x80 /* disable updates for clock setting */
@@ -720,7 +794,6 @@ void CAliM1543C::toy_write(u32 address, u8 data)
 	  //#
 	  // this is set (by the srm?) to 0x0e = SQWE | DM_BINARY | 24H
 	  // linux sets the PIE bit later.
-
     
 	  //# /***********************************************************/
 	  //# #define RTC_INTR_FLAGS RTC_REG_C
@@ -730,57 +803,55 @@ void CAliM1543C::toy_write(u32 address, u8 data)
 	  //# # define RTC_AF 0x20
 	  //# # define RTC_UF 0x10
 	  //#
-
 	}
-      state.toy_access_ports[1] = state.toy_stored_data[data & 0x7f];
+    state.toy_access_ports[1] = state.toy_stored_data[data & 0x7f];
 
-      // register C is cleared after a read, and we don't care if its a write
-      if(data== 0x0c) {
-	state.toy_stored_data[data & 0x7f]=0;
-      }
-      break;
-    case 1:
-      if(state.toy_access_ports[0]==0x0b &&
-	 data & 0x040) {
-	// If we're writing to register B, we make register C look like
-	// it fired.
-	state.toy_stored_data[0x0c]=0xf0;
-      }
-      state.toy_stored_data[state.toy_access_ports[0] & 0x7f] = (u8)data;
-      break;
-    case 2:
-      state.toy_access_ports[3] = state.toy_stored_data[0x80 + (data & 0x7f)];
-      break;
-    case 3:
-      state.toy_stored_data[0x80 + (state.toy_access_ports[2] & 0x7f)] = (u8)data;
-      break;
-    }
+    // register C is cleared after a read, and we don't care if its a write
+    if(data== 0x0c) 
+	  state.toy_stored_data[data & 0x7f]=0;
+    break;
+  case 1:
+    if(state.toy_access_ports[0]==0x0b && data & 0x040) // If we're writing to register B, we make register C look like it fired.
+	  state.toy_stored_data[0x0c]=0xf0;
+    state.toy_stored_data[state.toy_access_ports[0] & 0x7f] = (u8)data;
+    break;
+  case 2:
+    state.toy_access_ports[3] = state.toy_stored_data[0x80 + (data & 0x7f)];
+    break;
+  case 3:
+    state.toy_stored_data[0x80 + (state.toy_access_ports[2] & 0x7f)] = (u8)data;
+    break;
+  }
 }
 
-/* Here's the PIT Traffic during SRM and Linux Startup 
-   SRM
-   PIT Write:  3, 36  = counter 0, load lsb + msb, mode 3
-   PIT Write:  0, 00  
-   PIT Write:  0, 00  = 65536 = 18.2 Hz = timer interrupt.
-   PIT Write:  3, 54  = counter 1, msb only, mode 2
-   PIT Write:  1, 12  = 0x1200 = memory refresh?
-   PIT Write:  3, b6  = counter 2, load lsb + msb, mode 3
-   PIT Write:  3, 00  
-   PIT Write:  0, 00  
-   PIT Write:  0, 00  
-   
-   
-   Linux Startup
-   PIT Write:  3, b0  = counter 2, load lsb+msb, mode 0
-   PIT Write:  2, a4  
-   PIT Write:  2, ec  = eca4
-   PIT Write:  3, 36  = counter 0, load lsb+msb, mode 3
-   PIT Write:  0, 00  
-   PIT Write:  0, 00  = 65536
-   PIT Write:  3, b6  = counter 2, load lsb+msb, mode 3
-   PIT Write:  2, 31  
-   PIT Write:  2, 13  = 1331
-*/
+/**
+ * Read from the programmable interrupt timer ports (40h-43h)
+ *
+ * BDW:
+ * Here's the PIT Traffic during SRM and Linux Startup:
+ *
+ * SRM
+ * PIT Write:  3, 36  = counter 0, load lsb + msb, mode 3
+ * PIT Write:  0, 00  
+ * PIT Write:  0, 00  = 65536 = 18.2 Hz = timer interrupt.
+ * PIT Write:  3, 54  = counter 1, msb only, mode 2
+ * PIT Write:  1, 12  = 0x1200 = memory refresh?
+ * PIT Write:  3, b6  = counter 2, load lsb + msb, mode 3
+ * PIT Write:  3, 00  
+ * PIT Write:  0, 00  
+ * PIT Write:  0, 00  
+ * 
+ * Linux Startup
+ * PIT Write:  3, b0  = counter 2, load lsb+msb, mode 0
+ * PIT Write:  2, a4  
+ * PIT Write:  2, ec  = eca4
+ * PIT Write:  3, 36  = counter 0, load lsb+msb, mode 3
+ * PIT Write:  0, 00  
+ * PIT Write:  0, 00  = 65536
+ * PIT Write:  3, b6  = counter 2, load lsb+msb, mode 3
+ * PIT Write:  2, 31  
+ * PIT Write:  2, 13  = 1331
+ **/
 
 u8 CAliM1543C::pit_read(u32 address)
 {
@@ -789,6 +860,10 @@ u8 CAliM1543C::pit_read(u32 address)
   data = 0;
   return data;
 }
+
+/**
+ * Write to the programmable interrupt timer ports (40h-43h)
+ **/
 
 void CAliM1543C::pit_write(u32 address, u8 data)
 {
@@ -832,11 +907,17 @@ void CAliM1543C::pit_write(u32 address, u8 data)
 
 #define PIT_FACTOR 5000
 #define PIT_DEC(p) p=(p<PIT_FACTOR?0:p-PIT_FACTOR);
+
+/**
+ * Handle the PIT interrupt.
+ *
+ *  - counter 0 is the 18.2Hz time counter.
+ *  - counter 1 is the ram refresh, we don't care.
+ *  - counter 2 is the speaker and/or generic timer
+ *  .
+ **/
+
 void CAliM1543C::pit_clock() {
- /* Handle the PIT interrupt 
-     counter 0 is the 18.2Hz time counter.
-     counter 1 is the ram refresh, we don't care.
-     counter 2 is the speaker and/or generic timer */
   int i;
   for(i=0;i<3;i++) {
     // decrement the counter.
@@ -873,6 +954,17 @@ void CAliM1543C::pit_clock() {
 
 #define PIT_RATIO 1
 
+/**
+ * Handle all events that need to be handled on a clock-driven basis.
+ *
+ * This is a slow-clocked device, which means this DoClock isn't called as often as the CPU's DoClock.
+ * Do the following:
+ *  - Generate the 1024 Hz clock interrupt at IRQ_H 2 on the CPU's.
+ *  - Handle keyboard clock.
+ *  - Handle PIT clock.
+ *  .
+ **/
+
 int CAliM1543C::DoClock()
 {
   static int interrupt_factor=0;
@@ -881,8 +973,8 @@ int CAliM1543C::DoClock()
   kbd_clock();
 #if 0
   // this isn't ready yet.
-  if(state.toy_stored_data[0x0b] & 0x40 &&
-     interrupt_factor++ > 10000) {
+  if(state.toy_stored_data[0x0b] & 0x40 && interrupt_factor++ > 10000) 
+  {
     //printf("Issuing RTC Interrupt\n");
     pic_interrupt(1,0);
     state.toy_stored_data[0x0c] |= 0xf0; // mark that the interrupt has happened.
@@ -905,6 +997,10 @@ int CAliM1543C::DoClock()
 #define PIC_INIT_1 2
 #define PIC_INIT_2 3
 
+/**
+ * Read a byte from one of the programmable interrupt controller's registers.
+ **/
+
 u8 CAliM1543C::pic_read(int index, u32 address)
 {
   u8 data;
@@ -921,10 +1017,18 @@ u8 CAliM1543C::pic_read(int index, u32 address)
   return data;
 }
 
+/**
+ * Read a byte from the edge/level register of one of the programmable interrupt controllers.
+ **/
+
 u8 CAliM1543C::pic_read_edge_level(int index)
 {
   return state.pic_edge_level[index];
 }
+
+/**
+ * Read the interrupt vector during a PCI IACK cycle.
+ **/
 
 u8 CAliM1543C::pic_read_vector()
 {
@@ -963,6 +1067,10 @@ u8 CAliM1543C::pic_read_vector()
     return state.pic_intvec[0]+7;
   return 0;
 }
+
+/**
+ * Write a byte to one of the programmable interrupt controller's registers.
+ **/
 
 void CAliM1543C::pic_write(int index, u32 address, u8 data)
 {
@@ -1040,13 +1148,20 @@ void CAliM1543C::pic_write(int index, u32 address, u8 data)
     }
 }
 
+/**
+ * Write a byte to the edge/level register of one of the programmable interrupt controllers.
+ **/
+
 void CAliM1543C::pic_write_edge_level(int index, u8 data)
 {
   state.pic_edge_level[index] = data;
 }
 
-
 #define DEBUG_EXPR (index!=0 || (intno != 0 && intno > 4))
+
+/**
+ * Assert an interrupt on one of the programmable interrupt controllers.
+ **/
 
 void CAliM1543C::pic_interrupt(int index, int intno)
 {
@@ -1089,6 +1204,10 @@ void CAliM1543C::pic_interrupt(int index, int intno)
     cSystem->interrupt(55,true);
 }
 
+/**
+ * De-assert an interrupt on one of the programmable interrupt controllers.
+ **/
+
 void CAliM1543C::pic_deassert(int index, int intno)
 {
   if (!(state.pic_asserted[index] & (1<<intno)))
@@ -1121,6 +1240,7 @@ u8 CAliM1543C::dma_read(int index, u32 address)
  * Write a byte to the dma controller.
  * Not functional.
  **/
+
 void CAliM1543C::dma_write(int index, u32 address, u8 data)
 {
   printf("DMA Write: %x,%x,%x \n",index,address,data);
@@ -1408,6 +1528,10 @@ int CAliM1543C::RestoreState(FILE *f)
   return 0;
 }
 
+/**
+ * Read a byte from one of the parallel port controller's registers.
+ **/
+
 u8 CAliM1543C::lpt_read(u32 address) {
   u8 data = 0;
   switch(address) {
@@ -1429,6 +1553,9 @@ u8 CAliM1543C::lpt_read(u32 address) {
   return data;
 }
 
+/**
+ * Write a byte to one of the parallel port controller's registers.
+ **/
 
 void CAliM1543C::lpt_write(u32 address, u8 data) {
   switch(address) {
@@ -1445,6 +1572,10 @@ void CAliM1543C::lpt_write(u32 address, u8 data) {
     state.lpt_control=data;
   }
 }
+
+/**
+ * Reset keyboard internals.
+ **/
 
 void CAliM1543C::kbd_resetinternals(bool powerup)
 {
@@ -1466,6 +1597,10 @@ void CAliM1543C::kbd_resetinternals(bool powerup)
     state.kbd_internal_buffer.repeat_rate = 0x0b; // 10.9 chars/sec
   }
 }
+
+/**
+ * Enqueue a byte (scancode) into the keyboard buffer.
+ **/
 
 void CAliM1543C::kbd_enQ(u8 scancode)
 {
@@ -1491,28 +1626,32 @@ void CAliM1543C::kbd_enQ(u8 scancode)
   state.kbd_internal_buffer.buffer[tail] = scancode;
   state.kbd_internal_buffer.num_elements++;
 
-  if (!state.kbd_controller.outb && state.kbd_controller.kbd_clock_enabled) {
+  if (!state.kbd_controller.status.outb && state.kbd_controller.kbd_clock_enabled) {
     state.kbd_controller.timer_pending = 1;
     return;
   }
 }
 
+/**
+ * Read a byte from keyboard port 60.
+ **/
+
 u8 CAliM1543C::kbd_60_read()
 {
   u8 val;
 /* output buffer */
-    if (state.kbd_controller.auxb) { /* mouse byte available */
+    if (state.kbd_controller.status.auxb) { /* mouse byte available */
       val = state.kbd_controller.aux_output_buffer;
       state.kbd_controller.aux_output_buffer = 0;
-      state.kbd_controller.outb = 0;
-      state.kbd_controller.auxb = 0;
+      state.kbd_controller.status.outb = 0;
+      state.kbd_controller.status.auxb = 0;
       state.kbd_controller.irq12_requested = 0;
 
       if (state.kbd_controller_Qsize) {
         unsigned i;
         state.kbd_controller.aux_output_buffer = state.kbd_controller_Q[0];
-        state.kbd_controller.outb = 1;
-        state.kbd_controller.auxb = 1;
+        state.kbd_controller.status.outb = 1;
+        state.kbd_controller.status.auxb = 1;
         if (state.kbd_controller.allow_irq12)
           state.kbd_controller.irq12_requested = 1;
         for (i=0; i<state.kbd_controller_Qsize-1; i++) {
@@ -1529,18 +1668,18 @@ u8 CAliM1543C::kbd_60_read()
 #endif
       return val;
     }
-    else if (state.kbd_controller.outb) { /* kbd byte available */
+    else if (state.kbd_controller.status.outb) { /* kbd byte available */
       val = state.kbd_controller.kbd_output_buffer;
-      state.kbd_controller.outb = 0;
-      state.kbd_controller.auxb = 0;
+      state.kbd_controller.status.outb = 0;
+      state.kbd_controller.status.auxb = 0;
       state.kbd_controller.irq1_requested = 0;
       state.kbd_controller.bat_in_progress = 0;
 
       if (state.kbd_controller_Qsize) {
         unsigned i;
         state.kbd_controller.aux_output_buffer = state.kbd_controller_Q[0];
-        state.kbd_controller.outb = 1;
-        state.kbd_controller.auxb = 1;
+        state.kbd_controller.status.outb = 1;
+        state.kbd_controller.status.auxb = 1;
         if (state.kbd_controller.allow_irq1)
           state.kbd_controller.irq1_requested = 1;
         for (i=0; i<state.kbd_controller_Qsize-1; i++) {
@@ -1569,21 +1708,29 @@ u8 CAliM1543C::kbd_60_read()
     }
 }
 
+/**
+ * Read a byte from keyboard port 64
+ **/
+
 u8 CAliM1543C::kbd_64_read()
 {
   u8 val;
 /* status register */
-    val = (state.kbd_controller.pare << 7)  |
-          (state.kbd_controller.tim  << 6)  |
-          (state.kbd_controller.auxb << 5)  |
-          (state.kbd_controller.keyl << 4)  |
-          (state.kbd_controller.c_d  << 3)  |
-          (state.kbd_controller.sysf << 2)  |
-          (state.kbd_controller.inpb << 1)  |
-          (state.kbd_controller.outb << 0);
-    state.kbd_controller.tim = 0;
+    val = (state.kbd_controller.status.pare << 7)  |
+          (state.kbd_controller.status.tim  << 6)  |
+          (state.kbd_controller.status.auxb << 5)  |
+          (state.kbd_controller.status.keyl << 4)  |
+          (state.kbd_controller.status.c_d  << 3)  |
+          (state.kbd_controller.status.sysf << 2)  |
+          (state.kbd_controller.status.inpb << 1)  |
+          (state.kbd_controller.status.outb << 0);
+    state.kbd_controller.status.tim = 0;
     return val;
 }
+
+/**
+ * Write a byte to keyboard port 60.
+ **/
 
 void CAliM1543C::kbd_60_write(u8 value)
 {
@@ -1592,7 +1739,7 @@ void CAliM1543C::kbd_60_write(u8 value)
       if (state.kbd_controller.expecting_port60h) {
         state.kbd_controller.expecting_port60h = 0;
         // data byte written last to 0x60
-        state.kbd_controller.c_d = 0;
+        state.kbd_controller.status.c_d = 0;
 #if defined(DEBUG_KBD)
         if (state.kbd_controller.inpb)
           printf("write to port 60h, not ready for write   \n");
@@ -1606,14 +1753,14 @@ void CAliM1543C::kbd_60_write(u8 value)
             scan_convert = (value >> 6) & 0x01;
             disable_aux      = (value >> 5) & 0x01;
             disable_keyboard = (value >> 4) & 0x01;
-            state.kbd_controller.sysf = (value >> 2) & 0x01;
+            state.kbd_controller.status.sysf = (value >> 2) & 0x01;
             state.kbd_controller.allow_irq1  = (value >> 0) & 0x01;
             state.kbd_controller.allow_irq12 = (value >> 1) & 0x01;
             set_kbd_clock_enable(!disable_keyboard);
             set_aux_clock_enable(!disable_aux);
-            if (state.kbd_controller.allow_irq12 && state.kbd_controller.auxb)
+            if (state.kbd_controller.allow_irq12 && state.kbd_controller.status.auxb)
               state.kbd_controller.irq12_requested = 1;
-            else if (state.kbd_controller.allow_irq1  && state.kbd_controller.outb)
+            else if (state.kbd_controller.allow_irq1  && state.kbd_controller.status.outb)
               state.kbd_controller.irq1_requested = 1;
 
 #if defined(DEBUG_KBD)
@@ -1660,7 +1807,7 @@ void CAliM1543C::kbd_60_write(u8 value)
           }
       } else {
         // data byte written last to 0x60
-        state.kbd_controller.c_d = 0;
+        state.kbd_controller.status.c_d = 0;
         state.kbd_controller.expecting_port60h = 0;
         /* pass byte to keyboard */
         /* ??? should conditionally pass to mouse device here ??? */
@@ -1672,6 +1819,10 @@ void CAliM1543C::kbd_60_write(u8 value)
       kbd_clock();
 }
 
+/**
+ * Write a byte to keyboard port 64.
+ **/
+
 void CAliM1543C::kbd_64_write(u8 value)
 {
   static int kbd_initialized=0;
@@ -1679,7 +1830,7 @@ void CAliM1543C::kbd_64_write(u8 value)
 
 // control register
       // command byte written last to 0x64
-      state.kbd_controller.c_d = 1;
+      state.kbd_controller.status.c_d = 1;
       state.kbd_controller.last_comm = value;
       // most commands NOT expecting port60 write next
       state.kbd_controller.expecting_port60h = 0;
@@ -1690,7 +1841,7 @@ void CAliM1543C::kbd_64_write(u8 value)
           BX_DEBUG(("get keyboard command byte"));
 #endif
           // controller output buffer must be empty
-          if (state.kbd_controller.outb) {
+          if (state.kbd_controller.status.outb) {
 #if defined(DEBUG_KBD)
             BX_ERROR(("kbd: OUTB set and command 0x%02x encountered", value));
 #endif
@@ -1701,7 +1852,7 @@ void CAliM1543C::kbd_64_write(u8 value)
             ((!state.kbd_controller.aux_clock_enabled) << 5) |
             ((!state.kbd_controller.kbd_clock_enabled) << 4) |
             (0 << 3) |
-            (state.kbd_controller.sysf << 2) |
+            (state.kbd_controller.status.sysf << 2) |
             (state.kbd_controller.allow_irq12 << 1) |
             (state.kbd_controller.allow_irq1  << 0);
           kbd_controller_enQ(command_byte, 0);
@@ -1740,7 +1891,7 @@ void CAliM1543C::kbd_64_write(u8 value)
           break;
         case 0xa9: // Test Mouse Port
           // controller output buffer must be empty
-          if (state.kbd_controller.outb) {
+          if (state.kbd_controller.status.outb) {
             printf("kbd: OUTB set and command 0x%02x encountered", value);
             break;
           }
@@ -1752,21 +1903,21 @@ void CAliM1543C::kbd_64_write(u8 value)
 #endif
 	  if (kbd_initialized == 0) {
 	    state.kbd_controller_Qsize = 0;
-	    state.kbd_controller.outb = 0;
+	    state.kbd_controller.status.outb = 0;
 	    kbd_initialized++;
 	  }
           // controller output buffer must be empty
-          if (state.kbd_controller.outb) {
+          if (state.kbd_controller.status.outb) {
             BX_ERROR(("kbd: OUTB set and command 0x%02x encountered", value));
             break;
           }
 	  // (mch) Why is this commented out??? Enabling
-          state.kbd_controller.sysf = 1; // self test complete
+          state.kbd_controller.status.sysf = 1; // self test complete
           kbd_controller_enQ(0x55, 0); // controller OK
           break;
         case 0xab: // Interface Test
           // controller output buffer must be empty
-          if (state.kbd_controller.outb) {
+          if (state.kbd_controller.status.outb) {
             BX_PANIC(("kbd: OUTB set and command 0x%02x encountered", value));
             break;
           }
@@ -1791,7 +1942,7 @@ void CAliM1543C::kbd_64_write(u8 value)
           break;
         case 0xc0: // read input port
           // controller output buffer must be empty
-          if (state.kbd_controller.outb) {
+          if (state.kbd_controller.status.outb) {
             BX_PANIC(("kbd: OUTB set and command 0x%02x encountered", value));
             break;
           }
@@ -1803,7 +1954,7 @@ void CAliM1543C::kbd_64_write(u8 value)
           BX_DEBUG(("io write to port 64h, command d0h (partial)"));
 #endif
           // controller output buffer must be empty
-          if (state.kbd_controller.outb) {
+          if (state.kbd_controller.status.outb) {
             BX_PANIC(("kbd: OUTB set and command 0x%02x encountered", value));
             break;
           }
@@ -1880,6 +2031,10 @@ void CAliM1543C::kbd_64_write(u8 value)
       kbd_clock();
 }
 
+/**
+ * Enqueue a byte into one of the keyboard controller's output buffers.
+ **/
+
 void CAliM1543C::kbd_controller_enQ(u8 data, unsigned source)
 {
   // source is 0 for keyboard, 1 for mouse
@@ -1890,7 +2045,7 @@ void CAliM1543C::kbd_controller_enQ(u8 data, unsigned source)
 
   // see if we need to Q this byte from the controller
   // remember this includes mouse bytes.
-  if (state.kbd_controller.outb) {
+  if (state.kbd_controller.status.outb) {
     if (state.kbd_controller_Qsize >= BX_KBD_CONTROLLER_QSIZE)
       FAILURE("controller_enq(): controller_Q full!");
     state.kbd_controller_Q[state.kbd_controller_Qsize++] = data;
@@ -1901,37 +2056,47 @@ void CAliM1543C::kbd_controller_enQ(u8 data, unsigned source)
   // the Q is empty
   if (source == 0) { // keyboard
     state.kbd_controller.kbd_output_buffer = data;
-    state.kbd_controller.outb = 1;
-    state.kbd_controller.auxb = 0;
-    state.kbd_controller.inpb = 0;
+    state.kbd_controller.status.outb = 1;
+    state.kbd_controller.status.auxb = 0;
+    state.kbd_controller.status.inpb = 0;
     if (state.kbd_controller.allow_irq1)
       state.kbd_controller.irq1_requested = 1;
   } else { // mouse
     state.kbd_controller.aux_output_buffer = data;
-    state.kbd_controller.outb = 1;
-    state.kbd_controller.auxb = 1;
-    state.kbd_controller.inpb = 0;
+    state.kbd_controller.status.outb = 1;
+    state.kbd_controller.status.auxb = 1;
+    state.kbd_controller.status.inpb = 0;
     if (state.kbd_controller.allow_irq12)
       state.kbd_controller.irq12_requested = 1;
   }
 }
 
+/**
+ * Enable or disable the keyboard clock.
+ **/
+
 void CAliM1543C::set_kbd_clock_enable(u8   value)
 {
   bool prev_kbd_clock_enabled;
 
-  if (value==0) {
+  if (value==0) 
+  {
     state.kbd_controller.kbd_clock_enabled = 0;
-  } else {
+  } 
+  else 
+  {
     /* is another byte waiting to be sent from the keyboard ? */
     prev_kbd_clock_enabled = state.kbd_controller.kbd_clock_enabled;
     state.kbd_controller.kbd_clock_enabled = 1;
 
-    if (prev_kbd_clock_enabled==0 && state.kbd_controller.outb==0) {
+    if (prev_kbd_clock_enabled==0 && state.kbd_controller.status.outb==0)
       state.kbd_controller.timer_pending = 1;
-    }
   }
 }
+
+/**
+ * Enable or disable the mouse clock.
+ **/
 
 void CAliM1543C::set_aux_clock_enable(u8   value)
 {
@@ -1940,16 +2105,23 @@ void CAliM1543C::set_aux_clock_enable(u8   value)
 #if defined(DEBUG_KBD)
   BX_DEBUG(("set_aux_clock_enable(%u)", (unsigned) value));
 #endif
-  if (value==0) {
+  if (value==0) 
+  {
     state.kbd_controller.aux_clock_enabled = 0;
-  } else {
+  } 
+  else 
+  {
     /* is another byte waiting to be sent from the keyboard ? */
     prev_aux_clock_enabled = state.kbd_controller.aux_clock_enabled;
     state.kbd_controller.aux_clock_enabled = 1;
-    if (prev_aux_clock_enabled==0 && state.kbd_controller.outb==0)
+    if (prev_aux_clock_enabled==0 && state.kbd_controller.status.outb==0)
       state.kbd_controller.timer_pending = 1;
   }
 }
+
+/**
+ * Send a byte from controller to keyboard
+ **/
 
 void CAliM1543C::kbd_ctrl_to_kbd(u8 value)
 {
@@ -2027,7 +2199,7 @@ void CAliM1543C::kbd_ctrl_to_kbd(u8 value)
 
     case 0x05: // ???
       // (mch) trying to get this to work...
-      state.kbd_controller.sysf = 1;
+      state.kbd_controller.status.sysf = 1;
       kbd_enQ_imm(0xfe);
       break;
 
@@ -2136,25 +2308,33 @@ void CAliM1543C::kbd_ctrl_to_kbd(u8 value)
   }
 }
 
+/**
+ * enqueue scancode in multibyte internal keyboard buffer 
+ **/
+
 void CAliM1543C::kbd_enQ_imm(u8 val)
 {
   int tail;
 
-  if (state.kbd_internal_buffer.num_elements >= BX_KBD_ELEMENTS) {
+  if (state.kbd_internal_buffer.num_elements >= BX_KBD_ELEMENTS) 
+  {
     BX_PANIC(("internal keyboard buffer full (imm)"));
     return;
   }
 
-  /* enqueue scancode in multibyte internal keyboard buffer */
   tail = (state.kbd_internal_buffer.head + state.kbd_internal_buffer.num_elements) %
     BX_KBD_ELEMENTS;
 
   state.kbd_controller.kbd_output_buffer = val;
-  state.kbd_controller.outb = 1;
+  state.kbd_controller.status.outb = 1;
 
   if (state.kbd_controller.allow_irq1)
     state.kbd_controller.irq1_requested = 1;
 }
+
+/**
+ * Send a byte from controller to mouse
+ **/
 
 void CAliM1543C::kbd_ctrl_to_mouse(u8 value)
 {
@@ -2403,22 +2583,32 @@ void CAliM1543C::kbd_ctrl_to_mouse(u8 value)
   }
 }
 
+/**
+ * Put a (3/4 byte) mouse packet into the mouse buffer.
+ **/
+
 bool CAliM1543C::mouse_enQ_packet(u8 b1, u8 b2, u8 b3, u8 b4)
 {
   int bytes = 3;
   if (state.mouse.im_mode) bytes = 4;
 
-  if ((state.mouse_internal_buffer.num_elements + bytes) >= BX_MOUSE_BUFF_SIZE) {
+  if ((state.mouse_internal_buffer.num_elements + bytes) >= BX_MOUSE_BUFF_SIZE) 
+  {
     return(0); /* buffer doesn't have the space */
   }
 
   mouse_enQ(b1);
   mouse_enQ(b2);
   mouse_enQ(b3);
-  if (state.mouse.im_mode) mouse_enQ(b4);
+  if (state.mouse.im_mode) 
+    mouse_enQ(b4);
 
   return(1);
 }
+
+/**
+ * Put a byte into the mouse buffer.
+ **/
 
 void CAliM1543C::mouse_enQ(u8 mouse_data)
 {
@@ -2440,11 +2630,15 @@ void CAliM1543C::mouse_enQ(u8 mouse_data)
   state.mouse_internal_buffer.buffer[tail] = mouse_data;
   state.mouse_internal_buffer.num_elements++;
 
-  if (!state.kbd_controller.outb && state.kbd_controller.aux_clock_enabled) {
+  if (!state.kbd_controller.status.outb && state.kbd_controller.aux_clock_enabled) {
     state.kbd_controller.timer_pending = 1;
     return;
   }
 }
+
+/**
+ * Determine what IRQ's need to be asserted.
+ **/
 
 unsigned CAliM1543C::kbd_periodic()
 {
@@ -2466,7 +2660,7 @@ unsigned CAliM1543C::kbd_periodic()
     return(retval);
   }
 
-  if (state.kbd_controller.outb) {
+  if (state.kbd_controller.status.outb) {
     return(retval);
   }
 
@@ -2478,7 +2672,7 @@ unsigned CAliM1543C::kbd_periodic()
 #endif
     state.kbd_controller.kbd_output_buffer =
       state.kbd_internal_buffer.buffer[state.kbd_internal_buffer.head];
-    state.kbd_controller.outb = 1;
+    state.kbd_controller.status.outb = 1;
     // commented out since this would override the current state of the
     // mouse buffer flag - no bug seen - just seems wrong (das)
     //    state.kbd_controller.auxb = 0;
@@ -2496,8 +2690,8 @@ unsigned CAliM1543C::kbd_periodic()
       state.kbd_controller.aux_output_buffer =
 	state.mouse_internal_buffer.buffer[state.mouse_internal_buffer.head];
 
-      state.kbd_controller.outb = 1;
-      state.kbd_controller.auxb = 1;
+      state.kbd_controller.status.outb = 1;
+      state.kbd_controller.status.auxb = 1;
       state.mouse_internal_buffer.head = (state.mouse_internal_buffer.head + 1) %
 	BX_MOUSE_BUFF_SIZE;
       state.mouse_internal_buffer.num_elements--;
@@ -2512,6 +2706,10 @@ unsigned CAliM1543C::kbd_periodic()
   }
   return(retval);
 }
+
+/**
+ * Create a mouse packet and send it to the controller if needed.
+ **/
 
 void CAliM1543C::create_mouse_packet(bool force_enq)
 {
@@ -2578,13 +2776,22 @@ void CAliM1543C::create_mouse_packet(bool force_enq)
   mouse_enQ_packet(b1, b2, b3, b4);
 }
 
+/**
+ * Keyboard clock. Handle events on a clocked basis.
+ *
+ * Do the following:
+ *  - Let the GUI (if available) handle any pending events.
+ *  - Check if interrupts need to be asserted.
+ *  - Assert interrupts as needed.
+ *  .
+ **/
+
 void CAliM1543C::kbd_clock()
 {
   unsigned retval;
 
-#ifdef USE_CONSOLE
-  bx_gui->handle_events();
-#endif
+  if (bx_gui)
+    bx_gui->handle_events();
 
   retval=kbd_periodic();
 
