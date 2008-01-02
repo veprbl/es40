@@ -1,5 +1,5 @@
 /* ES40 emulator.
- * Copyright (C) 2007 by the ES40 Emulator Project
+ * Copyright (C) 2007-2008 by the ES40 Emulator Project
  *
  * WWW    : http://sourceforge.net/projects/es40
  * E-mail : camiel@camicom.com
@@ -27,6 +27,11 @@
  * \file
  * Contains the definitions for the emulated Cirrus CL GD-5434 Video Card device.
  *
+ * $Id: Cirrus.h,v 1.6 2008/01/02 08:36:17 iamcamiel Exp $
+ *
+ * X-1.6        Camiel Vanderhoeven                             02-JAN-2008
+ *      Cleanup.
+ *
  * X-1.5        Camiel Vanderhoeven                             28-DEC-2007
  *      Keep the compiler happy.
  *
@@ -48,19 +53,15 @@
 #define INCLUDED_Cirrus_H_
 
 #include "VGA.h"
-#include "Configurator.h"
-
-#include <stdlib.h>
-
 #include "gui/vga.h"
-
-/**
- * Cirrus Video Card
- **/
 
 /* video card has 4M of ram */
 #define VIDEO_RAM_SIZE 22
 #define CRTC_MAX 0x57
+
+/**
+ * \brief Cirrus Video Card
+ **/
 
 class CCirrus : public CVGA
 {
@@ -131,7 +132,8 @@ private:
     void vga_mem_write(u32 addr, u8 value);
     u8 vga_mem_read(u32 addr);
 
-    struct SCirrusState {
+    /// The state structure contains all elements that need to be saved to the statefile
+    struct SCirrus_state {
 //      u8 disabled;
 
 //      u8 framebuffer[1<<VIDEO_RAM_SIZE];
@@ -156,7 +158,7 @@ private:
       unsigned x_tilesize;
       unsigned y_tilesize;
 
-     struct {
+     struct SCirrus_attr{
        bool  flip_flop; /* 0 = address, 1 = data-write */
        unsigned address;  /* register number */
        bool  video_enabled;
@@ -165,7 +167,7 @@ private:
        u8    color_plane_enable;
        u8    horiz_pel_panning;
        u8    color_select;
-       struct {
+       struct SCirrus_mode{
          bool graphics_alpha;
          bool display_type;
          bool enable_line_graphics;
@@ -176,7 +178,7 @@ private:
          } mode_ctrl;
        } attribute_ctrl;
 
-    struct {
+    struct SCirrus_misc {
        bool color_emulation;  // 1=color emulation, base address = 3Dx
                                  // 0=mono emulation,  base address = 3Bx
        bool enable_ram;       // enable CPU access to video memory if set
@@ -192,7 +194,7 @@ private:
                                  //   3 - 480 lines
        } misc_output;
     
-    struct {
+    struct SCirrus_seq{
        u8   index;
        u8   map_mask;
        bool map_mask_bit[4];
@@ -205,13 +207,13 @@ private:
        bool chain_four;
        } sequencer;
 
-     struct {
+     struct SCirus_pel {
        u8 write_data_register;
        u8 write_data_cycle; /* 0, 1, 2 */
        u8 read_data_register;
        u8 read_data_cycle; /* 0, 1, 2 */
        u8 dac_state;
-       struct {
+       struct SCirrus_peldata {
          u8 red;
          u8 green;
          u8 blue;
@@ -219,7 +221,7 @@ private:
        u8 mask;
        } pel;
 
-     struct {
+     struct SCirrus_gfx {
        u8   index;
        u8   set_reset;
        u8   enable_set_reset;
@@ -243,58 +245,11 @@ private:
        u8   latch[4];
        } graphics_ctrl;
 
-     struct {
+     struct SCirrus_crtc {
        u8   address;
        u8   reg[0x20];
        bool write_protect;
        } CRTC;
-      // generic register range.  Basically, we've got to
-      // cover 0x3c0 -> 0x3df or 32 addresses.
-      u8 port_data[32];
-
-      // this macro allows us to write things like
-      // VGA_PORT(0x3c0) = data; 
-      // without having to do the math every time.
-#define VGA_PORT(id) state.port_data[id-VGA_BASE]
-
-      // indexed ports
-      u8 crtc_index;
-      u64 crtc_data[CRTC_MAX];
-
-      // pallette information 
-      u8 pel_mode;
-#define PEL_MODE_READ 3
-#define PEL_MODE_WRITE 0
-      u8 pel_data_count;
-      u8 pel_data[256][3];
-
-      // this is the attribute controller.
-      u8 p3c0_mode;
-#define P3C0_ADDRESS 0
-#define P3C0_DATA 0
-      u8 p3c0_index;
-      u8 p3c0_data[20];      
-
-
-      // sequencer
-      u8 seq_data[8];
-
-      // graphics
-      u8 graphics_data[9];
-
-      u8  video_mode;
-#define MODE_TEXT 0
-
-      u64 cursor_ttl;
-#define BLINK_RATE 1
-
-      u8 reg_3c2;
-
-      u64 refresh_ttl;
-#define REFRESH_RATE 100
-
-//      SDL_Surface *screen;
-
     } state;
 };
 

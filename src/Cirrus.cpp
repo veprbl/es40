@@ -1,5 +1,5 @@
 /* ES40 emulator.
- * Copyright (C) 2007 by the ES40 Emulator Project
+ * Copyright (C) 2007-2008 by the ES40 Emulator Project
  *
  * WWW    : http://sourceforge.net/projects/es40
  * E-mail : camiel@camicom.com
@@ -26,6 +26,11 @@
 /**
  * \file
  * Contains the code for the emulated Cirrus CL GD-5434 Video Card device.
+ *
+ * $Id: Cirrus.cpp,v 1.10 2008/01/02 08:36:16 iamcamiel Exp $
+ *
+ * X-1.10       Camiel Vanderhoeven                             02-JAN-2008
+ *      Cleanup.
  *
  * X-1.9        Camiel Vanderhoeven                             30-DEC-2007
  *      Print file id on initialization.
@@ -60,12 +65,6 @@
 #include "System.h"
 #include "AliM1543C.h"
 #include "gui/gui.h"
-
-#ifndef _WIN32
-#include "unistd.h"
-#include "pthread.h"
-#include "signal.h"
-#endif
 
 #define VGA_TRACE_FEATURE 1
 
@@ -197,12 +196,6 @@ CCirrus::CCirrus(CConfigurator * cfg, CSystem * c, int pcibus, int pcidev): CVGA
     add_legacy_mem(4,0xa0000,128*1024);
 
     ResetPCI();
-
-    state.crtc_data[0x0a]=12;  // cursor size
-    state.crtc_data[0x0b]=15;
-
-    state.video_mode = MODE_TEXT;
-    state.cursor_ttl = BLINK_RATE;
 
     bios_message_size = 0;
     bios_message[0] = '\0';
@@ -393,7 +386,7 @@ CCirrus::CCirrus(CConfigurator * cfg, CSystem * c, int pcibus, int pcidev): CVGA
     pthread_create(&screen_refresh_handle_cirrus,NULL,refresh_proc_cirrus,this);
 #endif
 
-  printf("%s: $Id: Cirrus.cpp,v 1.9 2007/12/30 15:10:22 iamcamiel Exp $\n",devid_string);
+  printf("%s: $Id: Cirrus.cpp,v 1.10 2008/01/02 08:36:16 iamcamiel Exp $\n",devid_string);
 }
 
 CCirrus::~CCirrus()
@@ -2785,7 +2778,7 @@ void CCirrus::vga_mem_write(u32 addr, u8 value)
     if (state.sequencer.map_mask & 0x04) {
       if ((offset & 0xe000) == state.charmap_address) {
         //printf("Updating character map %04x with %02x...\n  ", (offset & 0x1fff), new_val[2]);
-        bx_gui->set_text_charbyte((offset & 0x1fff), new_val[2]);
+        bx_gui->set_text_charbyte((u16)(offset & 0x1fff), new_val[2]);
       }
       plane2[offset] = new_val[2];
     }

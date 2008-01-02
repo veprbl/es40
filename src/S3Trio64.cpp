@@ -1,7 +1,8 @@
 /* ES40 emulator.
- * Copyright (C) 2007 by Brian Wheeler
+ * Copyright (C) 2007-2008 by the ES40 Emulator Project
  *
- * E-mail : bdwheele@indiana.edu
+ * WWW    : http://sourceforge.net/projects/es40
+ * E-mail : camiel@camicom.com
  * 
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -25,6 +26,11 @@
 /**
  * \file
  * Contains the code for emulated S3 Trio 64 Video Card device.
+ *
+ * $Id: S3Trio64.cpp,v 1.10 2008/01/02 08:36:17 iamcamiel Exp $
+ *
+ * X-1.10       Camiel Vanderhoeven                             02-JAN-2008
+ *      Cleanup.
  *
  * X-1.9        Camiel Vanderhoeven                             30-DEC-2007
  *      Print file id on initialization.
@@ -64,12 +70,6 @@
 #include "System.h"
 #include "AliM1543C.h"
 #include "gui/gui.h"
-
-#ifndef _WIN32
-#include "unistd.h"
-#include "pthread.h"
-#include "signal.h"
-#endif
 
 static unsigned old_iHeight = 0, old_iWidth = 0, old_MSL = 0;
 
@@ -196,12 +196,6 @@ CS3Trio64::CS3Trio64(CConfigurator * cfg, CSystem * c, int pcibus, int pcidev): 
     add_legacy_mem(4,0xa0000,128*1024);
 
     ResetPCI();
-
-    state.crtc_data[0x0a]=12;  // cursor size
-    state.crtc_data[0x0b]=15;
-
-    state.video_mode = MODE_TEXT;
-    state.cursor_ttl = BLINK_RATE;
 
     bios_message_size = 0;
     bios_message[0] = '\0';
@@ -393,7 +387,7 @@ CS3Trio64::CS3Trio64(CConfigurator * cfg, CSystem * c, int pcibus, int pcidev): 
     pthread_create(&screen_refresh_handle_s3,NULL,refresh_proc_s3,this);
 #endif
 
-  printf("%s: $Id: S3Trio64.cpp,v 1.9 2007/12/30 15:10:22 iamcamiel Exp $\n",devid_string);
+  printf("%s: $Id: S3Trio64.cpp,v 1.10 2008/01/02 08:36:17 iamcamiel Exp $\n",devid_string);
 }
 
 CS3Trio64::~CS3Trio64()
@@ -634,13 +628,13 @@ u32 CS3Trio64::rom_read(u32 address, int dsize)
     switch (dsize)
       {
       case 8:
-	data = (u64)(*((u8*)x))&0xff;
+	data = (u32)(*((u8*)x))&0xff;
 	break;
       case 16:
-	data = (u64)(*((u16*)x))&0xffff;
+	data = (u32)(*((u16*)x))&0xffff;
 	break;
       case 32:
-	data = (u64)(*((u32*)x))&0xffffffff;
+	data = (u32)(*((u32*)x))&0xffffffff;
 	break;
       }
     //printf("S3 rom read: %" LL "x, %d, %" LL "x\n", address, dsize,data);
@@ -2765,7 +2759,7 @@ void CS3Trio64::vga_mem_write(u32 addr, u8 value)
     if (state.sequencer.map_mask & 0x04) {
       if ((offset & 0xe000) == state.charmap_address) {
         //printf("Updating character map %04x with %02x...\n  ", (offset & 0x1fff), new_val[2]);
-        bx_gui->set_text_charbyte((offset & 0x1fff), new_val[2]);
+        bx_gui->set_text_charbyte((u16)(offset & 0x1fff), new_val[2]);
       }
       plane2[offset] = new_val[2];
     }

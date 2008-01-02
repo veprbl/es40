@@ -1,7 +1,8 @@
 /* ES40 emulator.
- * Copyright (C) 2007 by Brian Wheeler
+ * Copyright (C) 2007-2008 by the ES40 Emulator Project
  *
- * E-mail : bdwheele@indiana.edu
+ * WWW    : http://sourceforge.net/projects/es40
+ * E-mail : camiel@camicom.com
  * 
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -25,6 +26,11 @@
 /**
  * \file
  * Contains the definitions for emulated S3 Trio 64 Video Card device.
+ *
+ * $Id: S3Trio64.h,v 1.7 2008/01/02 08:36:17 iamcamiel Exp $
+ *
+ * X-1.7        Camiel Vanderhoeven                             02-JAN-2008
+ *      Cleanup.
  *
  * X-1.6        Camiel Vanderhoeven                             28-DEC-2007
  *      Keep the compiler happy.
@@ -54,10 +60,6 @@
 #define INCLUDED_S3Trio64_H_
 
 #include "VGA.h"
-#include "Configurator.h"
-
-#include <stdlib.h>
-#include <SDL.h>
 #include "gui/vga.h"
 
 /* video card has 4M of ram */
@@ -66,7 +68,7 @@
 #define VGA_BASE 0x3b0
 
 /**
- * S3 Trio 64 Video Card
+ * \brief S3 Trio 64 Video Card
  **/
 
 class CS3Trio64 : public CVGA
@@ -138,13 +140,8 @@ private:
     void vga_mem_write(u32 addr, u8 value);
     u8 vga_mem_read(u32 addr);
 
-    struct SS3Trio64State {
-//      u8 disabled;
-
-//      u8 framebuffer[1<<VIDEO_RAM_SIZE];
-//      u8 legacybuffer[131072];
-//      u64 video_base;
-
+    /// The state structure contains all elements that need to be saved to the statefile.
+    struct SS3_state {
       bool vga_enabled;
       bool  vga_mem_updated;
       u16 charmap_address;
@@ -153,7 +150,6 @@ private:
       unsigned line_offset;
       unsigned line_compare;
       unsigned vertical_display_end;
-//      u8 vga_memory[256 * 1024];
       u8 text_snapshot[32 * 1024]; // current text snapshot
       bool vga_tile_updated[BX_NUM_X_TILES][BX_NUM_Y_TILES];
       u8 *memory;
@@ -163,7 +159,7 @@ private:
       unsigned x_tilesize;
       unsigned y_tilesize;
 
-     struct {
+     struct SS3_attr {
        bool  flip_flop; /* 0 = address, 1 = data-write */
        unsigned address;  /* register number */
        bool  video_enabled;
@@ -172,7 +168,7 @@ private:
        u8    color_plane_enable;
        u8    horiz_pel_panning;
        u8    color_select;
-       struct {
+       struct SS3_mode {
          bool graphics_alpha;
          bool display_type;
          bool enable_line_graphics;
@@ -183,7 +179,7 @@ private:
          } mode_ctrl;
        } attribute_ctrl;
 
-    struct {
+    struct SS3_misc {
        bool color_emulation;  // 1=color emulation, base address = 3Dx
                                  // 0=mono emulation,  base address = 3Bx
        bool enable_ram;       // enable CPU access to video memory if set
@@ -199,7 +195,7 @@ private:
                                  //   3 - 480 lines
        } misc_output;
     
-    struct {
+    struct SS3_seq{
        u8   index;
        u8   map_mask;
        bool map_mask_bit[4];
@@ -212,13 +208,13 @@ private:
        bool chain_four;
        } sequencer;
 
-     struct {
+     struct SS3_pel {
        u8 write_data_register;
        u8 write_data_cycle; /* 0, 1, 2 */
        u8 read_data_register;
        u8 read_data_cycle; /* 0, 1, 2 */
        u8 dac_state;
-       struct {
+       struct SS3_pel_data {
          u8 red;
          u8 green;
          u8 blue;
@@ -226,7 +222,7 @@ private:
        u8 mask;
        } pel;
 
-     struct {
+     struct SS3_gfx {
        u8   index;
        u8   set_reset;
        u8   enable_set_reset;
@@ -250,59 +246,11 @@ private:
        u8   latch[4];
        } graphics_ctrl;
 
-     struct {
+     struct SS3_crtc {
        u8   address;
        u8   reg[0x20];
        bool write_protect;
        } CRTC;
-      // generic register range.  Basically, we've got to
-      // cover 0x3c0 -> 0x3df or 32 addresses.
-      u8 port_data[32];
-
-      // this macro allows us to write things like
-      // VGA_PORT(0x3c0) = data; 
-      // without having to do the math every time.
-#define VGA_PORT(id) state.port_data[id-VGA_BASE]
-
-      // indexed ports
-      u8 crtc_index;
-      u64 crtc_data[CRTC_MAX];
-
-
-      // pallette information 
-      u8 pel_mode;
-#define PEL_MODE_READ 3
-#define PEL_MODE_WRITE 0
-      u8 pel_data_count;
-      u8 pel_data[256][3];
-
-      // this is the attribute controller.
-      u8 p3c0_mode;
-#define P3C0_ADDRESS 0
-#define P3C0_DATA 0
-      u8 p3c0_index;
-      u8 p3c0_data[20];      
-
-
-      // sequencer
-      u8 seq_data[8];
-
-      // graphics
-      u8 graphics_data[9];
-
-      u8  video_mode;
-#define MODE_TEXT 0
-
-      u64 cursor_ttl;
-#define BLINK_RATE 1
-
-      u8 reg_3c2;
-
-      u64 refresh_ttl;
-#define REFRESH_RATE 100
-
-//      SDL_Surface *screen;
-
     } state;
 };
 
