@@ -1,5 +1,5 @@
 /* ES40 emulator.
- * Copyright (C) 2007 by the ES40 Emulator Project
+ * Copyright (C) 2007-2008 by the ES40 Emulator Project
  *
  * Website: http://sourceforge.net/projects/es40
  * E-mail : camiel@camicom.com
@@ -27,6 +27,11 @@
  * \file 
  * Contains the code for the CPU tracing engine.
  * This will become the debugging engine (interactive debugger) soon.
+ *
+ * $Id: TraceEngine.cpp,v 1.31 2008/01/02 08:54:48 iamcamiel Exp $
+ *
+ * X-1.32       Camiel Vanderhoeven                             02-JAN-2008
+ *      Avoid compiler warnings
  *
  * X-1.31       Camiel Vanderhoeven                             10-DEC-2007
  *      Changes to make the TraceEngine work again after recent changes.
@@ -582,7 +587,6 @@ void CTraceEngine::run_script(char * filename)
 {
   char s[100][100];
   int i;
-  bool u;
 
 #if !defined(LS_SLAVE)
 
@@ -628,7 +632,7 @@ void CTraceEngine::run_script(char * filename)
       if (!strcmp(s[i],"TERM"))
         break;
 #else 
-      u = false;
+      bool u = false;
       for (j=0; j<100; )
       {
   	  fscanf(f,"%c",&c);
