@@ -1,5 +1,5 @@
 /* ES40 emulator.
- * Copyright (C) 2007 by the ES40 Emulator Project
+ * Copyright (C) 2007-2008 by the ES40 Emulator Project
  *
  * WWW    : http://sourceforge.net/projects/es40
  * E-mail : camiel@camicom.com
@@ -27,6 +27,11 @@
  * \file
  * Contains code to use a RAM disk.
  *
+ * $Id: DiskRam.cpp,v 1.8 2008/01/02 09:42:42 iamcamiel Exp $
+ *
+ * X-1.8        Camiel Vanderhoeven                             02-JAN-2008
+ *      Cleanup.
+ *
  * X-1.7        Camiel Vanderhoeven                             28-DEC-2007
  *      Throw exceptions rather than just exiting when errors occur.
  *
@@ -51,7 +56,6 @@
 
 #include "StdAfx.h" 
 #include "DiskRam.h"
-#include "Configurator.h"
 
 CDiskRam::CDiskRam(CConfigurator * cfg, CDiskController * c, int idebus, int idedev) : CDisk(cfg,c,idebus,idedev)
 {
