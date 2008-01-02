@@ -1,5 +1,5 @@
 /* ES40 emulator.
- * Copyright (C) 2007 by the ES40 Emulator Project
+ * Copyright (C) 2007-2008 by the ES40 Emulator Project
  *
  * WWW    : http://sourceforge.net/projects/es40
  * E-mail : camiel@camicom.com
@@ -26,6 +26,11 @@
 /** 
  * \file
  * Contains the code for the emulated Serial Port devices.
+ *
+ * $Id: Serial.cpp,v 1.35 2008/01/02 08:51:13 iamcamiel Exp $
+ *
+ * X-1.35       Camiel Vanderhoeven                             02-JAN-2008
+ *      Cleanup. 
  *
  * X-1.34       Camiel Vanderhoeven                             30-DEC-2007
  *      Print file id on initialization.
@@ -148,15 +153,6 @@
 #include "System.h"
 #include "AliM1543C.h"
 
-#include <stdlib.h>
-#include <ctype.h>
-
-#if defined(_WIN32)
-#include <process.h>
-#else
-#include <sys/wait.h>
-#endif
-
 #include "lockstep.h"
 
 #define RECV_TICKS 10
@@ -175,8 +171,6 @@ CSerial::CSerial(CConfigurator * cfg, CSystem * c, u16 number) : CSystemComponen
 {
   u16 base = myCfg->get_int_value("port",8000+number);
   char s[1000];
-  char s2[200];
-  char * argv[20];
   char * nargv = s;
   int i = 0;
   
@@ -214,6 +208,9 @@ CSerial::CSerial(CConfigurator * cfg, CSystem * c, u16 number) : CSystemComponen
   printf("%s: Waiting for connection on port %d.\n",devid_string,base);
 
 #if !defined(LS_SLAVE)
+  char s2[200];
+  char * argv[20];
+
   strncpy(s, cfg->get_text_value("action",""),999);
   s[999] = '\0';
   //printf("%s: Specified : %s\n",devid_string,s);
@@ -326,7 +323,7 @@ CSerial::CSerial(CConfigurator * cfg, CSystem * c, u16 number) : CSystemComponen
   state.bMSR = 0x30; // CTS, DSR
   state.bIIR = 0x01; // no interrupt
 
-  printf("%s: $Id: Serial.cpp,v 1.34 2007/12/30 15:10:22 iamcamiel Exp $\n",devid_string);
+  printf("%s: $Id: Serial.cpp,v 1.35 2008/01/02 08:51:13 iamcamiel Exp $\n",devid_string);
 }
 
 /**
