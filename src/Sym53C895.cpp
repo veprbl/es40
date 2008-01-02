@@ -1,5 +1,5 @@
 /* ES40 emulator.
- * Copyright (C) 2007 by the ES40 Emulator Project
+ * Copyright (C) 2007-2008 by the ES40 Emulator Project
  *
  * WWW    : http://sourceforge.net/projects/es40
  * E-mail : camiel@camicom.com
@@ -26,6 +26,11 @@
 /**
  * \file
  * Contains the code for the emulated Symbios SCSI controller.
+ *
+ * $Id: Sym53C895.cpp,v 1.15 2008/01/02 08:52:45 iamcamiel Exp $
+ *
+ * X-1.15       Camiel Vanderhoeven                             02-JAN-2008
+ *      Avoid compiler warnings.
  *
  * X-1.14       Camiel Vanderhoeven                             30-DEC-2007
  *      Print file id on initialization.
@@ -378,7 +383,7 @@ CSym53C895::CSym53C895(CConfigurator * cfg, CSystem * c, int pcibus, int pcidev)
   for (int i=0;i<16;i++)
     state.per_target[i].block_size = 512;
 
-  printf("%s: $Id: Sym53C895.cpp,v 1.14 2007/12/30 15:10:22 iamcamiel Exp $\n",devid_string);
+  printf("%s: $Id: Sym53C895.cpp,v 1.15 2008/01/02 08:52:45 iamcamiel Exp $\n",devid_string);
 }
 
 CSym53C895::~CSym53C895()
@@ -982,7 +987,7 @@ u8 CSym53C895::read_b_scratcha(int reg)
   if (TB_R8(CTEST2,SRTCH))
   {
     //printf("SYM: SCRATCHA from PCI\n");
-    return (pci_state.config_data[0][4]>>(reg*8)) & 0xff;
+    return (u8)(pci_state.config_data[0][4]>>(reg*8)) & 0xff;
   }
   else
     return state.regs.reg8[R_SCRATCHA+reg];
@@ -993,7 +998,7 @@ u8 CSym53C895::read_b_scratchb(int reg)
   if (TB_R8(CTEST2,SRTCH))
   {
     //printf("SYM: SCRATCHB from PCI\n");
-    return (pci_state.config_data[0][5]>>(reg*8)) & 0xff;
+    return (u8)(pci_state.config_data[0][5]>>(reg*8)) & 0xff;
   }
   else
     return state.regs.reg8[R_SCRATCHB+reg];
@@ -1356,7 +1361,7 @@ int CSym53C895::execute()
           int oper = (R8(DCMD)>>0) & 7;
           bool use_data8_sfbr = (GET_DBC()>>23) & 1;
           int reg_address = ((GET_DBC()>>16) & 0x7f); //| (GET_DBC() & 0x80); // manual is unclear about bit 7.
-          u8 imm_data = (GET_DBC()>>8) & 0xff;
+          u8 imm_data = (u8)(GET_DBC()>>8) & 0xff;
           u8 op_data;
 
           //printf("SYM: INS = R/W (opc %d, oper %d, use %d, add %d, imm %02x\n"
@@ -1374,7 +1379,7 @@ int CSym53C895::execute()
             }
             else
             {
-              op_data = ReadMem_Bar(0,1,reg_address,8);
+              op_data = (u8)ReadMem_Bar(0,1,reg_address,8);
               printf("SYM: %08x: reg%02x (%02x) ",R32(DSP)-8,reg_address,op_data);
             }
           }
@@ -1592,7 +1597,7 @@ int CSym53C895::execute()
             for (int i=0; i<byte_count;i++)
             {
               u64 ma = cSystem->PCI_Phys(myPCIBus,memaddr+i);
-              u8 dat = ReadMem_Bar(0,1,regaddr+i,8);
+              u8 dat = (u8)ReadMem_Bar(0,1,regaddr+i,8);
               printf("SYM: %02x <- reg%02x\n",dat,regaddr+i);
               cSystem->WriteMem(ma,8,dat);
             }
@@ -2061,9 +2066,9 @@ int CSym53C895::do_command()
 	PT.dati[q+2] = 0;	/*  nr of blocks, mid  */
 	PT.dati[q+3] = 0;	/*  nr of blocks, low */
 	PT.dati[q+4] = 0x00;	/*  reserved  */
-    PT.dati[q+5] = (PT.block_size >> 16) & 255;
-	PT.dati[q+6] = (PT.block_size >>  8) & 255;
-	PT.dati[q+7] = (PT.block_size >>  0) & 255;
+    PT.dati[q+5] = (u8)(PT.block_size >> 16) & 255;
+	PT.dati[q+6] = (u8)(PT.block_size >>  8) & 255;
+	PT.dati[q+7] = (u8)(PT.block_size >>  0) & 255;
 	q += 8;
 
     PT.stat_len = 1;
@@ -2207,15 +2212,15 @@ int CSym53C895::do_command()
       break;
 	}
 
-    PT.dati[0] = ((PTD->get_byte_size()/PT.block_size) >> 24) & 255;
-	PT.dati[1] = ((PTD->get_byte_size()/PT.block_size) >> 16) & 255;
-	PT.dati[2] = ((PTD->get_byte_size()/PT.block_size) >>  8) & 255;
-	PT.dati[3] = ((PTD->get_byte_size()/PT.block_size) >>  0) & 255;
+    PT.dati[0] = (u8)((PTD->get_byte_size()/PT.block_size) >> 24) & 255;
+	PT.dati[1] = (u8)((PTD->get_byte_size()/PT.block_size) >> 16) & 255;
+	PT.dati[2] = (u8)((PTD->get_byte_size()/PT.block_size) >>  8) & 255;
+	PT.dati[3] = (u8)((PTD->get_byte_size()/PT.block_size) >>  0) & 255;
 
-	PT.dati[4] = (PT.block_size >> 24) & 255;
-	PT.dati[5] = (PT.block_size >> 16) & 255;
-	PT.dati[6] = (PT.block_size >>  8) & 255;
-	PT.dati[7] = (PT.block_size >>  0) & 255;
+	PT.dati[4] = (u8)(PT.block_size >> 24) & 255;
+	PT.dati[5] = (u8)(PT.block_size >> 16) & 255;
+	PT.dati[6] = (u8)(PT.block_size >>  8) & 255;
+	PT.dati[7] = (u8)(PT.block_size >>  0) & 255;
 
     PT.dati_len = 8;
 
