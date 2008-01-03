@@ -30,7 +30,10 @@
  * or project specific include files that are used frequently, but
  * are changed infrequently.
  *
- * $Id: StdAfx.h,v 1.20 2008/01/02 09:24:12 iamcamiel Exp $
+ * $Id: StdAfx.h,v 1.21 2008/01/03 12:24:35 iamcamiel Exp $
+ *
+ * X-1.20       Fang Zhe                                        03-JAN-2008
+ *      Help compilation on Mac OS X and FreeBSD.
  *
  * X-1.19       Camiel Vanderhoeven                             02-JAN-2008
  *      Cleanup. 
@@ -141,7 +144,9 @@ inline void sleep_ms(int ms)
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#if !defined(__APPLE__)  && !defined(__FreeBSD__)
 #include <malloc.h>
+#endif
 #include <time.h>
 #include <ctype.h>
 
