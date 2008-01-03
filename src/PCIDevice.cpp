@@ -1,5 +1,5 @@
 /* ES40 emulator.
- * Copyright (C) 2007 by the ES40 Emulator Project
+ * Copyright (C) 2007-2008 by the ES40 Emulator Project
  *
  * WWW    : http://sourceforge.net/projects/es40
  * E-mail : camiel@camicom.com
@@ -26,6 +26,11 @@
 /**
  * \file
  * Contains the code for the PCI device class.
+ *
+ * $Id: PCIDevice.cpp,v 1.9 2008/01/03 12:55:00 iamcamiel Exp $
+ *
+ * X-1.9        Camiel Vanderhoeven                             03-JAN-2008
+ *      Attempt to make PCI base device endianess-correct.
  *
  * X-1.8        Camiel Vanderhoeven                             29-DEC-2007
  *      Avoid referencing uninitialized data.
@@ -80,8 +85,16 @@ CPCIDevice::~CPCIDevice(void)
 
 void CPCIDevice::add_function(int func, u32 data[64], u32 mask[64])
 {
-  memcpy(this->std_config_data[func],data,64*sizeof(u32));
-  memcpy(this->std_config_mask[func],mask,64*sizeof(u32));
+  memcpy(std_config_data[func],data,64*sizeof(u32));
+  memcpy(std_config_mask[func],mask,64*sizeof(u32));
+#if defined(ES40_BIG_ENDIAN)
+  int i;
+  for (i=0;i<64;i++)
+  {
+    std_config_data[func][i] = endian_32(std_config_data[func][i]);
+    std_config_mask[func][i] = endian_32(std_config_mask[func][i]);
+  }
+#endif
   device_at[func] = true;
 }
 
@@ -113,13 +126,13 @@ u32 CPCIDevice::config_read(int func, u32 address, int dsize)
   switch (dsize)
     {
     case 8:
-      data = *x & 0xff;
+      data = endian_8(*x)
       break;
     case 16:
-      data = (*((u16*)x)) & 0xffff;
+      data = endian_16(*((u16*)x));
       break;
     case 32:
-      data = (*((u32*)x));
+      data = endian_32(*((u32*)x));
       break;
     }
 
@@ -149,18 +162,21 @@ void CPCIDevice::config_write(int func, u32 address, int dsize, u32 data)
   switch (dsize)
     {
     case 8:
+      data = endian_8(data);
       old_data = (*x) & 0xff;
       mask     = (*y) & 0xff;
       new_data = (old_data & ~mask) | data & mask;
       *x = (u8) new_data;
       break;
     case 16:
+      data = endian_16(data);
       old_data = (*((u16*)x)) & 0xffff;
       mask     = (*((u16*)y)) & 0xffff;
       new_data = (old_data & ~mask) | data & mask;
       *((u16*)x) = (u16) new_data;
       break;
     case 32:
+      data = endian_32(data);
       old_data = (*((u32*)x));
       mask     = (*((u32*)y));
       new_data = (old_data & ~mask) | data & mask;
@@ -178,10 +194,10 @@ void CPCIDevice::config_write(int func, u32 address, int dsize, u32 data)
       case 0x1c:
       case 0x20:
       case 0x24:
-        register_bar(func,(address-0x10)/4, new_data, mask);
+        register_bar(func,(address-0x10)/4, endian_32(new_data), endian_32(mask));
         break;
       case 0x30:
-        register_bar(func,6, new_data, mask);
+        register_bar(func,6, endian_32(new_data), endian_32(mask));
         break;
       }
   config_write_custom(func,address,dsize,old_data,new_data,data);
@@ -233,13 +249,13 @@ void CPCIDevice::ResetPCI()
       memcpy(pci_state.config_data[i],std_config_data[i],64 * sizeof(u32));
       memcpy(pci_state.config_mask[i],std_config_mask[i],64 * sizeof(u32));
 
-      config_write(i, 0x10, 32, pci_state.config_data[i][4]);
-      config_write(i, 0x14, 32, pci_state.config_data[i][5]);
-      config_write(i, 0x18, 32, pci_state.config_data[i][6]);
-      config_write(i, 0x1c, 32, pci_state.config_data[i][7]);
-      config_write(i, 0x20, 32, pci_state.config_data[i][8]);
-      config_write(i, 0x24, 32, pci_state.config_data[i][9]);
-      config_write(i, 0x30, 32, pci_state.config_data[i][12]);
+      config_write(i, 0x10, 32, endian_32(pci_state.config_data[i][4]));
+      config_write(i, 0x14, 32, endian_32(pci_state.config_data[i][5]));
+      config_write(i, 0x18, 32, endian_32(pci_state.config_data[i][6]));
+      config_write(i, 0x1c, 32, endian_32(pci_state.config_data[i][7]));
+      config_write(i, 0x20, 32, endian_32(pci_state.config_data[i][8]));
+      config_write(i, 0x24, 32, endian_32(pci_state.config_data[i][9]));
+      config_write(i, 0x30, 32, endian_32(pci_state.config_data[i][12]));
     }
   }
 }
@@ -260,12 +276,12 @@ u64 CPCIDevice::ReadMem(int index, u64 address, int dsize)
   
   if (index < PCI_RANGE_BASE)
   {
-    if (dev_range_is_io[index] && !(pci_state.config_data[0][1]&1))
+    if (dev_range_is_io[index] && !(pci_state.config_data[0][1]&endian_32(1)))
     {
       printf("%s(%s) Legacy IO access with IO disabled from PCI config.\n",myCfg->get_myName(), myCfg->get_myValue());
       return 0;
     }
-    if (!dev_range_is_io[index] && !(pci_state.config_data[0][1]&2))
+    if (!dev_range_is_io[index] && !(pci_state.config_data[0][1]&endian_32(2)))
     {
       printf("%s(%s) Legacy memory access with memory disabled from PCI config.\n",myCfg->get_myName(), myCfg->get_myValue());
       return 0;
@@ -282,12 +298,12 @@ u64 CPCIDevice::ReadMem(int index, u64 address, int dsize)
   if (bar==7)
     return config_read(func,(u32)address,dsize);
 
-  if (pci_range_is_io[func][bar] && !(pci_state.config_data[func][1]&1))
+  if (pci_range_is_io[func][bar] && !(pci_state.config_data[func][1]&endian_32(1)))
   {
     printf("%s(%s).%d PCI IO access with IO disabled from PCI config.\n",myCfg->get_myName(), myCfg->get_myValue(), func);
     return 0;
   }
-  if (!pci_range_is_io[func][bar] && !(pci_state.config_data[func][1]&2))
+  if (!pci_range_is_io[func][bar] && !(pci_state.config_data[func][1]&endian_32(2)))
   {
     printf("%s(%s).%d PCI memory access with memory disabled from PCI config.\n",myCfg->get_myName(), myCfg->get_myValue(), func);
     return 0;
@@ -317,12 +333,12 @@ void CPCIDevice::WriteMem(int index, u64 address, int dsize, u64 data)
   
   if (index < PCI_RANGE_BASE)
   {
-    if (dev_range_is_io[index] && !(pci_state.config_data[0][1]&1))
+    if (dev_range_is_io[index] && !(pci_state.config_data[0][1]&endian_32(1)))
     {
       printf("%s(%s) Legacy IO access with IO disabled from PCI config.\n",myCfg->get_myName(), myCfg->get_myValue());
       return;
     }
-    if (!dev_range_is_io[index] && !(pci_state.config_data[0][1]&2))
+    if (!dev_range_is_io[index] && !(pci_state.config_data[0][1]&endian_32(2)))
     {
       printf("%s(%s) Legacy memory access with memory disabled from PCI config.\n",myCfg->get_myName(), myCfg->get_myValue());
       return;
@@ -342,12 +358,12 @@ void CPCIDevice::WriteMem(int index, u64 address, int dsize, u64 data)
     return;
   }
 
-  if (pci_range_is_io[func][bar] && !(pci_state.config_data[func][1]&1))
+  if (pci_range_is_io[func][bar] && !(pci_state.config_data[func][1]&endian_32(1)))
   {
     printf("%s(%s).%d PCI IO access with IO disabled from PCI config.\n",myCfg->get_myName(), myCfg->get_myValue(), func);
     return;
   }
-  if (!pci_range_is_io[func][bar] && !(pci_state.config_data[func][1]&2))
+  if (!pci_range_is_io[func][bar] && !(pci_state.config_data[func][1]&endian_32(2)))
   {
     printf("%s(%s).%d PCI memory access with memory disabled from PCI config.\n",myCfg->get_myName(), myCfg->get_myValue(), func);
     return;
@@ -357,9 +373,9 @@ void CPCIDevice::WriteMem(int index, u64 address, int dsize, u64 data)
 
 bool CPCIDevice::do_pci_interrupt(int func, bool asserted)
 {
-  if ((pci_state.config_data[func][0x0f] & 0xff) != 0xff)
+  if ((endian_32(pci_state.config_data[func][0x0f]) & 0xff) != 0xff)
   {
-    cSystem->interrupt(pci_state.config_data[func][0x0f] & 0xff, asserted);
+    cSystem->interrupt(endian_32(pci_state.config_data[func][0x0f]) & 0xff, asserted);
     return true;
   }
   else
