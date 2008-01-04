@@ -36,7 +36,10 @@
  * \file 
  * Contains the definitions for the emulated DEC 21143 NIC device.
  *
- * $Id: DEC21143.h,v 1.10 2008/01/02 09:30:18 iamcamiel Exp $
+ * $Id: DEC21143.h,v 1.11 2008/01/04 21:27:11 iamcamiel Exp $
+ *
+ * X-1.11       David Hittner                                   04-JAN-2008
+ *      MAC address configurable.
  *
  * X-1.10       Camiel Vanderhoeven                             02-JAN-2008
  *      Comments.
@@ -83,6 +86,11 @@
 
 /**
  * \brief Emulated DEC 21143 NIC device.
+ *
+ * Documentation consulted:
+ *  - 21143 PCI/Cardbus 10/100Mb/s Ethernet LAN Controller Hardware Reference Manual  [HRM].
+ *    (http://download.intel.com/design/network/manuals/27807401.pdf)
+ *  .
  **/
 
 class CDEC21143 : public CPCIDevice  
@@ -104,6 +112,7 @@ class CDEC21143 : public CPCIDevice
   void receive_process();
 
  private:
+  static int nic_num;
 #if defined(_WIN32)
   HANDLE receive_process_handle;
 #else

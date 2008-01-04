@@ -36,7 +36,10 @@
  * \file 
  * Contains the code for the emulated DEC 21143 NIC device.
  *
- * $Id: DEC21143.cpp,v 1.23 2008/01/02 12:34:20 iamcamiel Exp $
+ * $Id: DEC21143.cpp,v 1.24 2008/01/04 21:27:11 iamcamiel Exp $
+ *
+ * X-1.24       David Hittner                                   04-JAN-2008
+ *      MAC address configurable.
  *
  * X-1.23       Camiel Vanderhoeven                             02-JAN-2008
  *      Ignore OPMODE_OM (loopback mode) bits.
@@ -185,6 +188,8 @@ u32 dec21143_cfg_mask[64] = {
         0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
 };
 
+int CDEC21143::nic_num = 0;
+
 /**
  * Constructor.
  **/
@@ -195,13 +200,10 @@ CDEC21143::CDEC21143(CConfigurator * confg, CSystem * c, int pcibus, int pcidev)
   u_int inum, i=0;
   char errbuf[PCAP_ERRBUF_SIZE];
   char * cfg;
-  int decnet_major;
-  int decnet_minor;
 
   add_function(0,dec21143_cfg_data,dec21143_cfg_mask);
 
   cfg = myCfg->get_text_value("adapter");
-
   if (cfg)
   {
     if ( (fp= pcap_open_live(cfg,
@@ -258,17 +260,61 @@ CDEC21143::CDEC21143(CConfigurator * confg, CSystem * c, int pcibus, int pcidev)
       FAILURE("Error opening adapter");
   }
 
-  cfg = myCfg->get_text_value("decnet","1.1");
-  decnet_major = atoi(cfg);
-  cfg = strchr(cfg,'.')+1;
-  decnet_minor = atoi(cfg);
-
-  state.mac[0] = 0xaa;
+  // set default mac = Digital ethernet prefix: 08-00-2B + hexified "ES40" + nic number
+  state.mac[0] = 0x08;
   state.mac[1] = 0x00;
-  state.mac[2] = 0x04;
-  state.mac[3] = 0x00;
-  state.mac[4] = decnet_minor & 0xff;
-  state.mac[5] = ((decnet_minor >> 8) & 0x03) | ((decnet_major << 2) & 0xfc);
+  state.mac[2] = 0x2B;
+  state.mac[3] = 0xE5;
+  state.mac[4] = 0x40;
+  state.mac[5] = nic_num++;
+
+  // set assigned mac
+  cfg = myCfg->get_text_value("mac");
+  if (cfg) {
+	const char* mac_chars = "0123456789abcdefABCDEF-.:";
+	const char* hex_chars = "0123456789abcdefABCDEF";
+	const char* hex_scanf = "%hx";
+	bool mac_replaced = false;
+	if ((strlen(cfg) == 17) && (strspn(cfg, mac_chars) == 17)) {
+	  char newmac[18];
+	  strcpy(newmac, cfg);
+	  newmac[2] = newmac[5] = newmac[8] = newmac[11] = newmac[14] = 0;
+	  if ((strspn(&newmac[0],  hex_chars) == 2) &&
+		  (strspn(&newmac[3],  hex_chars) == 2) &&
+		  (strspn(&newmac[6],  hex_chars) == 2) &&
+		  (strspn(&newmac[9],  hex_chars) == 2) &&
+		  (strspn(&newmac[12], hex_chars) == 2) &&
+		  (strspn(&newmac[15], hex_chars) == 2)) {
+			short unsigned int num;
+			sscanf(&newmac[0], hex_scanf, &num);
+			state.mac[0] = num & 0xff;
+			sscanf(&newmac[3], hex_scanf, &num);
+			state.mac[1] = num & 0xff;
+			sscanf(&newmac[6], hex_scanf, &num);
+			state.mac[2] = num & 0xff;
+			sscanf(&newmac[9], hex_scanf, &num);
+			state.mac[3] = num & 0xff;
+			sscanf(&newmac[12], hex_scanf, &num);
+			state.mac[4] = num & 0xff;
+			sscanf(&newmac[15], hex_scanf, &num);
+			state.mac[5] = num & 0xff;
+			mac_replaced = true;
+	  }
+	}
+	if (mac_replaced) {
+	    printf("\n%%NIC-I-MACSET: MAC set to %s\m", cfg);
+	} else {
+		printf("\n%%NIC-F-BADMAC: Illegal MAC address: %s\n", cfg);
+		printf("\n%%NIC-I-MACFORMAT: MAC should have xx-xx-xx-xx-xx-xx format.\n");
+		FAILURE("NIC error");
+	}
+  } else {
+	  char mac[18];
+	  sprintf(mac, "%02X-%02X-%02X-%02X-%02X-%02X",
+		  state.mac[0], state.mac[1], state.mac[2],
+		  state.mac[3], state.mac[4], state.mac[5]);
+	  printf("\n%%NIC-I-MACDEFAULT: MAC defaulted to %s\n", mac);
+  }
 
   c->RegisterClock(this, true);
 
@@ -287,7 +333,7 @@ CDEC21143::CDEC21143(CConfigurator * confg, CSystem * c, int pcibus, int pcidev)
   pthread_create(&receive_process_handle, NULL, recv_proc, this);
 #endif
 
-  printf("%s: $Id: DEC21143.cpp,v 1.23 2008/01/02 12:34:20 iamcamiel Exp $\n",devid_string);
+  printf("%s: $Id: DEC21143.cpp,v 1.24 2008/01/04 21:27:11 iamcamiel Exp $\n",devid_string);
 }
 
 /**
