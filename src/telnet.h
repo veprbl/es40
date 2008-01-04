@@ -25,10 +25,15 @@
 
 /** 
  * \file
- * Contains TCP/IP declarations used by the serial port emulator, network
- * emulation, and lock-step code.
+ * Contains TCP/IP declarations used by the serial port emulator and lock-step
+ * code. Different OS'es need different header files included, and some OS'es
+ * miss certain functions or macro's we need. In this file, we try to take 
+ * away most of these differences.
  *
- * $Id: telnet.h,v 1.8 2008/01/04 19:31:28 iamcamiel Exp $
+ * $Id: telnet.h,v 1.9 2008/01/04 20:02:18 iamcamiel Exp $
+ *
+ * X-1.9        Camiel Vanderhoeven                             04-JAN-2008
+ *      Comments.
  *
  * X-1.8        Fang Zhe                                        04-JAN-2008
  *      Include sys/socket.h on Apple OS X.
