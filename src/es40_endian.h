@@ -27,7 +27,11 @@
  * \file
  * Contains macro's for byte-swapping on big-endian host architectures.
  *
- * $Id: es40_endian.h,v 1.4 2008/01/03 12:55:00 iamcamiel Exp $
+ * $Id: es40_endian.h,v 1.5 2008/01/04 10:56:54 iamcamiel Exp $
+ *
+ * X-1.5        Camiel Vanderhoeven                             04-JAN-2008
+ *      Added swap_xx macro's for use in places where bytes need to be 
+ *      swapped regardless of endianess.
  *
  * X-1.4        Camiel Vanderhoeven                             03-JAN-2008
  *      Attempt to make PCI base device endianess-correct.
@@ -82,9 +86,7 @@
 
 #endif // !defined(ES40_LITTLE_ENDIAN) && !defined(ES40_BIG_ENDIAN)
 
-#if defined(ES40_BIG_ENDIAN)
-
-#define endian_64(x) (  (((x)&X64(00000000000000ff))<<56) |    \
+#define swap_64(x) (  (((x)&X64(00000000000000ff))<<56) |    \
                         (((x)&X64(000000000000ff00))<<40) |    \
                         (((x)&X64(0000000000ff0000))<<24) |    \
                         (((x)&X64(00000000ff000000))<<8)  |    \
@@ -93,15 +95,23 @@
                         (((x)&X64(00ff000000000000))>>40) |    \
                         (((x)&X64(ff00000000000000))>>56)   )
 
-#define endian_32(x) (  (((x)&0x000000ff)<<24) |               \
+#define swap_32(x) (  (((x)&0x000000ff)<<24) |               \
                         (((x)&0x0000ff00)<<8)  |               \
                         (((x)&0x00ff0000)>>8)  |               \
                         (((x)&0xff000000)>>24)   )
                         
-#define endian_16(x) (  (((x)&0x00ff)<<8)  |                   \
+#define swap_16(x) (  (((x)&0x00ff)<<8)  |                   \
                         (((x)&0xff00)>>8)    )
 
-#define endian_8(x) ((x) & 0xff)
+#define swap_8(x) ((x) & 0xff)
+
+
+#if defined(ES40_BIG_ENDIAN)
+
+#define endian_64(x) swap_64(x)
+#define endian_32(x) swap_32(x)
+#define endian_16(x) swap_16(x)
+#define endian_8(x)  swap_8(x)
 
 #else // defined(ES40_BIG_ENDIAN)
 
