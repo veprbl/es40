@@ -27,7 +27,10 @@
  * \file
  * Contains definitions to use a file as a disk image.
  *
- * $Id: DiskFile.h,v 1.4 2008/01/02 09:30:19 iamcamiel Exp $
+ * $Id: DiskFile.h,v 1.5 2008/01/04 22:11:22 iamcamiel Exp $
+ *
+ * X-1.5        Camiel Vanderhoeven                             04-JAN-2008
+ *      64-bit file I/O.
  *
  * X-1.4        Camiel Vanderhoeven                             02-JAN-2008
  *      Comments.
@@ -57,11 +60,11 @@ public:
   CDiskFile(CConfigurator * cfg, CDiskController * c, int idebus, int idedev);
   virtual ~CDiskFile(void);
 
-  virtual bool seek_block(unsigned long block);
+  virtual bool seek_block(off_t_large block);
   virtual size_t read_blocks(void * dest, size_t blocks);
   virtual size_t write_blocks(void * src, size_t blocks);
 
-  virtual bool seek_byte(unsigned long byte);
+  virtual bool seek_byte(off_t_large byte);
   virtual size_t read_bytes(void * dest, size_t bytes);
   virtual size_t write_bytes(void * src, size_t bytes);
 

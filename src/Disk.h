@@ -27,7 +27,10 @@
  * \file
  * Contains definitions for the disk base class.
  *
- * $Id: Disk.h,v 1.6 2008/01/02 09:30:19 iamcamiel Exp $
+ * $Id: Disk.h,v 1.7 2008/01/04 22:11:22 iamcamiel Exp $
+ *
+ * X-1.7        Camiel Vanderhoeven                             04-JAN-2008
+ *      64-bit file I/O.
  *
  * X-1.6        Camiel Vanderhoeven                             02-JAN-2008
  *      Comments.
@@ -63,20 +66,20 @@ public:
   CDisk(CConfigurator * cfg, CDiskController * c, int idebus, int idedev);
   virtual ~CDisk(void);
  
-  virtual bool seek_block(unsigned long lba) = 0;
+  virtual bool seek_block(off_t_large lba) = 0;
   virtual size_t read_blocks(void * dest, size_t blocks) = 0;
   virtual size_t write_blocks(void * src, size_t blocks) = 0;
 
-  virtual bool seek_byte(unsigned long byte) = 0;
+  virtual bool seek_byte(off_t_large byte) = 0;
   virtual size_t read_bytes(void * dest, size_t bytes) = 0;
   virtual size_t write_bytes(void * src, size_t bytes) = 0;
 
-  unsigned long get_lba_size()  { return lba_size; };
-  unsigned long get_byte_size()  { return byte_size; };
-  unsigned long get_chs_size()  { return cylinders*heads*sectors; };
-  unsigned long get_cylinders() { return cylinders; };
-  unsigned long get_heads()     { return heads; };
-  unsigned long get_sectors()   { return sectors; };
+  off_t_large get_lba_size()  { return lba_size; };
+  off_t_large get_byte_size()  { return byte_size; };
+  off_t_large get_chs_size()  { return cylinders*heads*sectors; };
+  long get_cylinders() { return cylinders; };
+  long get_heads()     { return heads; };
+  long get_sectors()   { return sectors; };
 
   char * get_serial()  { return serial_number; };
   char * get_model()   { return model_number;  };
@@ -100,12 +103,12 @@ protected:
   bool read_only;
   bool is_cdrom;
 
-  unsigned long lba_size; 
-  unsigned long byte_size;
-  unsigned long byte_pos;
-  unsigned long cylinders;
-  unsigned long heads;
-  unsigned long sectors;
+  off_t_large lba_size; 
+  off_t_large byte_size;
+  off_t_large byte_pos;
+  long cylinders;
+  long heads;
+  long sectors;
 };
 
 #endif //!defined(__DISK_H__)

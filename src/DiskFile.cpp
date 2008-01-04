@@ -27,7 +27,10 @@
  * \file
  * Contains code to use a file as a disk image.
  *
- * $Id: DiskFile.cpp,v 1.8 2008/01/02 09:43:34 iamcamiel Exp $
+ * $Id: DiskFile.cpp,v 1.9 2008/01/04 22:11:22 iamcamiel Exp $
+ *
+ * X-1.9        Camiel Vanderhoeven                             04-JAN-2008
+ *      64-bit file I/O.
  *
  * X-1.8        Camiel Vanderhoeven                             02-JAN-2008
  *      Cleanup.
@@ -78,15 +81,15 @@ CDiskFile::CDiskFile(CConfigurator * cfg, CDiskController * c, int idebus, int i
   }
 
   // determine size...
-  fseek(handle,0,SEEK_END);
-  lba_size=ftell(handle)/512;
+  fseek_large(handle,0,SEEK_END);
+  lba_size=ftell_large(handle)/512;
   byte_size = lba_size * 512;
-  fseek(handle,0,0);
-  byte_pos = ftell(handle);
+  fseek_large(handle,0,SEEK_SET);
+  byte_pos = ftell_large(handle);
 
   sectors = 32;
   heads = 8;
-  cylinders = (lba_size/sectors/heads);
+  cylinders = (long)(lba_size/sectors/heads);
 
   unsigned long chs_size = sectors*cylinders*heads;
   if (chs_size<lba_size)
@@ -103,7 +106,7 @@ CDiskFile::~CDiskFile(void)
   fclose(handle);
 }
 
-bool CDiskFile::seek_block(unsigned long lba)
+bool CDiskFile::seek_block(off_t_large lba)
 {
   if (lba >=lba_size)
   {
@@ -111,8 +114,8 @@ bool CDiskFile::seek_block(unsigned long lba)
     throw((int)1);
   }
 
-  fseek(handle,lba*512,0);
-  byte_pos = ftell(handle);
+  fseek_large(handle,lba*512,SEEK_SET);
+  byte_pos = ftell_large(handle);
 
   return true;
 }
@@ -121,7 +124,7 @@ size_t CDiskFile::read_blocks(void *dest, size_t blocks)
 {
   size_t r;
   r = fread(dest,512,blocks,handle);
-  byte_pos = ftell(handle);
+  byte_pos = ftell_large(handle);
   return r;
 }
 
@@ -132,11 +135,11 @@ size_t CDiskFile::write_blocks(void * src, size_t blocks)
 
   size_t r;
   r = fwrite(src,512,blocks,handle);
-  byte_pos = ftell(handle);
+  byte_pos = ftell_large(handle);
   return r;
 }
 
-bool CDiskFile::seek_byte(unsigned long byte)
+bool CDiskFile::seek_byte(off_t_large byte)
 {
   if (byte >=byte_size)
   {
@@ -144,8 +147,8 @@ bool CDiskFile::seek_byte(unsigned long byte)
     throw((int)1);
   }
 
-  fseek(handle,byte,0);
-  byte_pos = ftell(handle);
+  fseek_large(handle,byte,SEEK_SET);
+  byte_pos = ftell_large(handle);
 
   return true;
 }
@@ -154,7 +157,7 @@ size_t CDiskFile::read_bytes(void *dest, size_t bytes)
 {
   size_t r;
   r = fread(dest,1,bytes,handle);
-  byte_pos = ftell(handle);
+  byte_pos = ftell_large(handle);
   return r;
 }
 
@@ -165,6 +168,6 @@ size_t CDiskFile::write_bytes(void * src, size_t bytes)
 
   size_t r;
   r = fwrite(src,1,bytes,handle);
-  byte_pos = ftell(handle);
+  byte_pos = ftell_large(handle);
   return r;
 }
