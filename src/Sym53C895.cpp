@@ -27,7 +27,10 @@
  * \file
  * Contains the code for the emulated Symbios SCSI controller.
  *
- * $Id: Sym53C895.cpp,v 1.15 2008/01/02 08:52:45 iamcamiel Exp $
+ * $Id: Sym53C895.cpp,v 1.16 2008/01/04 22:16:48 iamcamiel Exp $
+ *
+ * X-1.16       Camiel Vanderhoeven                             04-JAN-2008
+ *      Less messages fprint'ed.
  *
  * X-1.15       Camiel Vanderhoeven                             02-JAN-2008
  *      Avoid compiler warnings.
@@ -383,7 +386,7 @@ CSym53C895::CSym53C895(CConfigurator * cfg, CSystem * c, int pcibus, int pcidev)
   for (int i=0;i<16;i++)
     state.per_target[i].block_size = 512;
 
-  printf("%s: $Id: Sym53C895.cpp,v 1.15 2008/01/02 08:52:45 iamcamiel Exp $\n",devid_string);
+  printf("%s: $Id: Sym53C895.cpp,v 1.16 2008/01/04 22:16:48 iamcamiel Exp $\n",devid_string);
 }
 
 CSym53C895::~CSym53C895()
@@ -616,7 +619,7 @@ void CSym53C895::WriteMem_Bar(int func,int bar, u32 address, int dsize, u32 data
         case R_SSTAT0:  // 0D
         case R_SSTAT1:  // 0E
         case R_SSTAT2:  // 0F
-          printf("SYM: Write to read-only memory at %02x. FreeBSD driver cache test.\n" ,address);
+          //printf("SYM: Write to read-only memory at %02x. FreeBSD driver cache test.\n" ,address);
           break;
         default:
           printf("SYM: Write 8 bits to unknown memory at %02x with %08x.\n",address,data);
@@ -826,8 +829,8 @@ void CSym53C895::write_b_scntl1(u8 value)
 
   R8(SCNTL1) = value;
 
-  if (TB_R8(SCNTL1,CON) != old_con)
-    printf("SYM: Don't know how to forcibly connect or disconnect\n");
+//  if (TB_R8(SCNTL1,CON) != old_con)
+//    printf("SYM: Don't know how to forcibly connect or disconnect\n");
 
   if (TB_R8(SCNTL1,RST) != old_rst)
   {
@@ -838,7 +841,7 @@ void CSym53C895::write_b_scntl1(u8 value)
 
     SB_R8(SSTAT0,RST,!old_rst);
 
-    printf("SYM: %s SCSI bus reset.\n",old_rst?"end":"start");
+//    printf("SYM: %s SCSI bus reset.\n",old_rst?"end":"start");
 
     if (!old_rst)
       RAISE(SIST0,RST);
@@ -866,27 +869,27 @@ void CSym53C895::write_b_istat(u8 value)
 
   if (TB_R8(ISTAT,ABRT))
   {
-    printf("SYM: Aborting on request.\n");
+//    printf("SYM: Aborting on request.\n");
     RAISE(DSTAT,ABRT);
   }
 
   if (TB_R8(ISTAT,SRST) && !old_srst)
   {
-    printf("SYM: Resetting on request.\n");
+//    printf("SYM: Resetting on request.\n");
     chip_reset();
   }
 
-  if (TB_R8(ISTAT,SEM) != old_sem)
-    printf("SYM: SEM %s.\n",old_sem?"reset":"set");
+//  if (TB_R8(ISTAT,SEM) != old_sem)
+//    printf("SYM: SEM %s.\n",old_sem?"reset":"set");
 
-  if (TB_R8(ISTAT,SIGP) != old_sigp)
-    printf("SYM: SIGP %s.\n",old_sigp?"reset":"set");
+//  if (TB_R8(ISTAT,SIGP) != old_sigp)
+//    printf("SYM: SIGP %s.\n",old_sigp?"reset":"set");
 
   if (TB_R8(ISTAT,SIGP))
   {
     if (state.wait_reselect)
     {
-      printf("SYM: SIGP while wait_reselect. Jumping...\n");
+//      printf("SYM: SIGP while wait_reselect. Jumping...\n");
       R32(DSP) = state.wait_jump;
       state.wait_reselect = false;
       state.executing = true;
@@ -902,7 +905,7 @@ u8 CSym53C895::read_b_ctest2()
   SB_R8(CTEST2, CM,   pci_state.config_data[0][5]!=0);
   SB_R8(CTEST2, SIGP, TB_R8(ISTAT, SIGP));
   SB_R8(ISTAT,  SIGP, false);
-  printf("SYM: SIGP cleared by CTEST2 read.\n");
+//  printf("SYM: SIGP cleared by CTEST2 read.\n");
 
   return R8(CTEST2);
 }
@@ -1008,8 +1011,8 @@ void CSym53C895::write_b_stest2(u8 value)
 {
   WRM_R8(STEST2,value);
 
-  if (value & R_STEST2_ROF)
-    printf("SYM: Don't know how to reset SCSI offset!\n");
+//  if (value & R_STEST2_ROF)
+//    printf("SYM: Don't know how to reset SCSI offset!\n");
 
   if (TB_R8(STEST2,LOW))
     FAILURE("SYM: I don't like LOW level mode");
@@ -1047,7 +1050,7 @@ int CSym53C895::DoClock()
   if (state.wait_reselect && PT.disconnected)
   {
     // reselection
-    printf("SYM: Reselection!\n");
+    //printf("SYM: Reselection!\n");
     //printf(">");
     //getchar();
     state.executing = true;
@@ -1071,16 +1074,16 @@ int CSym53C895::DoClock()
     if (!TB_R8(SCNTL2,SDU))
     {
       // disconnect expected
-      printf("SYM: Disconnect expected. stopping disconnect timer at %d.\n",state.disconnected);
+      //printf("SYM: Disconnect expected. stopping disconnect timer at %d.\n",state.disconnected);
       state.disconnected = 0;
       return 0;
     }
     state.disconnected--;
     if (!state.disconnected)
     {
-      printf("SYM: Disconnect unexpected. raising interrupt!\n");
-      printf(">");
-      getchar();
+      //printf("SYM: Disconnect unexpected. raising interrupt!\n");
+      //printf(">");
+      //getchar();
       RAISE(SIST0,UDC);
       return 0;
     }
@@ -1103,7 +1106,7 @@ int CSym53C895::execute()
     // single step mode
     if (TB_R8(DCNTL,SSM))
     {
-      printf("SYM: Single step...\n");
+      //printf("SYM: Single step...\n");
       RAISE(DSTAT,SSI);
     }
 
@@ -1142,7 +1145,7 @@ int CSym53C895::execute()
         if (state.phase < 0 && state.select_timeout)
         {
           // selection timeout...?
-          printf("Phase check... selection time-out!\n");
+          //printf("Phase check... selection time-out!\n");
           RAISE(SIST1,STO); // select time-out
           state.select_timeout = false;
           return 0;
@@ -1150,7 +1153,7 @@ int CSym53C895::execute()
 
         if (state.phase < 0 && state.disconnected)
         {
-          printf("Phase check... disconnected!\n");
+          //printf("Phase check... disconnected!\n");
           state.disconnected = 1;
           R32(DSP)-=8;
           return 0;
@@ -1185,21 +1188,21 @@ int CSym53C895::execute()
             start = R32(DSPS);
             count = GET_DBC();
           }
-          printf("SYM: %08x: MOVE Start/count %x, %x\n",R32(DSP)-8,start,count);
+          //printf("SYM: %08x: MOVE Start/count %x, %x\n",R32(DSP)-8,start,count);
           R32(DNAD) = start;
           SET_DBC(count); // page 5-32
           if (count==0)
           {
-            printf("SYM: Count equals zero!\n");
+            //printf("SYM: Count equals zero!\n");
             RAISE(DSTAT,IID); // page 5-32
             return 0;
           }
           if (state.phase == 0 && PT.dato_to_disk)
           {
-            printf("SYM.%d PHASE %d: write %d bytes (%d blocks) to disk.\n",GET_DEST(),state.phase,count,count/PT.block_size);
+            //printf("SYM.%d PHASE %d: write %d bytes (%d blocks) to disk.\n",GET_DEST(),state.phase,count,count/PT.block_size);
             if (count>PT.dato_len)
             {
-              printf("SYM: attempt to write more bytes than expected.\n");
+              //printf("SYM: attempt to write more bytes than expected.\n");
               count = PT.dato_len;
             }
             cmda0 = cSystem->PCI_Phys(myPCIBus,R32(DNAD));
@@ -1215,7 +1218,7 @@ int CSym53C895::execute()
           }
           else if (state.phase == 1 && PT.dati_off_disk)
           {
-            printf("SYM.%d PHASE %d: read %d bytes (%d blocks) from disk.\n",GET_DEST(),state.phase,count,count/PT.block_size);
+            //printf("SYM.%d PHASE %d: read %d bytes (%d blocks) from disk.\n",GET_DEST(),state.phase,count,count/PT.block_size);
             cmda0 = cSystem->PCI_Phys(myPCIBus,R32(DNAD));
             void * dptr = cSystem->PtrToMem(cmda0);
             PTD->read_bytes(dptr,count);
@@ -1227,7 +1230,7 @@ int CSym53C895::execute()
           }
           else
           {
-            printf("SYM.%d PHASE %d: ",GET_DEST(),state.phase);
+            //printf("SYM.%d PHASE %d: ",GET_DEST(),state.phase);
             for (i=0;i<count;i++)
             {
               u8 dat;
@@ -1239,18 +1242,18 @@ int CSym53C895::execute()
                   dat = byte_from_target();
                   if (i==0)
                     R8(SFBR) = dat;
-                  printf("%02x ",dat);
+                  //printf("%02x ",dat);
                   cSystem->WriteMem(cmda0,8,dat);
                 }
                 else
                 {
                   dat = (u8)cSystem->ReadMem(cmda0,8);
-                  printf("%02x ",dat);
+                  //printf("%02x ",dat);
                   byte_to_target(dat);
                 }
               }
             }
-            printf("\n");
+            //printf("\n");
             end_xfer();
           }
           return 0;
@@ -1295,21 +1298,20 @@ int CSym53C895::execute()
           switch(opcode)
           {
           case 0:
-            printf("SYM: %08x: SELECT %d.\n", R32(DSP)-8,destination);
+            //printf("SYM: %08x: SELECT %d.\n", R32(DSP)-8,destination);
             select_target(destination);
             return 0;
           case 1:
-            printf("SYM: %08x: WAIT DISCONNECT\n", R32(DSP)-8);
+            //printf("SYM: %08x: WAIT DISCONNECT\n", R32(DSP)-8);
             // maybe we need to do more??
             state.phase = -1;
             return 0;
 
           case 2:
-            printf("SYM: %08x: WAIT RESELECT\n", R32(DSP)-8);
-            //reselect never happens for now...
+            //printf("SYM: %08x: WAIT RESELECT\n", R32(DSP)-8);
             if (TB_R8(ISTAT,SIGP))
             {
-              printf("SYM: SIGP set before wait reselect; jumping!\n");
+              //printf("SYM: SIGP set before wait reselect; jumping!\n");
               R32(DSP) = dest_addr;
             }
             else
@@ -1321,7 +1323,7 @@ int CSym53C895::execute()
             return 0;
 
           case 3:
-            printf("SYM: %08x: SET %s%s%s%s\n",R32(DSP)-8,sc_carry?"carry ":"",sc_target?"target ":"",sc_ack?"ack ":"",sc_atn?"atn ":"");
+            //printf("SYM: %08x: SET %s%s%s%s\n",R32(DSP)-8,sc_carry?"carry ":"",sc_target?"target ":"",sc_ack?"ack ":"",sc_atn?"atn ":"");
             if (sc_ack) SB_R8(SOCL,ACK,true);
             if (sc_atn)
             {
@@ -1337,7 +1339,7 @@ int CSym53C895::execute()
             if (sc_carry) state.alu.carry = true;
             return 0;
           case 4:
-            printf("SYM: %08x: CLEAR %s%s%s%s\n",R32(DSP)-8,sc_carry?"carry ":"",sc_target?"target ":"",sc_ack?"ack ":"",sc_atn?"atn ":"");
+            //printf("SYM: %08x: CLEAR %s%s%s%s\n",R32(DSP)-8,sc_carry?"carry ":"",sc_target?"target ":"",sc_ack?"ack ":"",sc_atn?"atn ":"");
             if (sc_ack) SB_R8(SOCL,ACK,false);
             if (sc_atn)
             {
@@ -1375,12 +1377,12 @@ int CSym53C895::execute()
             if (opcode==5 || reg_address==0x08)
             {
               op_data = R8(SFBR);
-              printf("SYM: %08x: sfbr (%02x) ",R32(DSP)-8,op_data);
+              //printf("SYM: %08x: sfbr (%02x) ",R32(DSP)-8,op_data);
             }
             else
             {
               op_data = (u8)ReadMem_Bar(0,1,reg_address,8);
-              printf("SYM: %08x: reg%02x (%02x) ",R32(DSP)-8,reg_address,op_data);
+              //printf("SYM: %08x: reg%02x (%02x) ",R32(DSP)-8,reg_address,op_data);
             }
           }
 
@@ -1390,54 +1392,54 @@ int CSym53C895::execute()
           {
           case 0:
             op_data = imm_data;
-            printf("SYM: %08x: %02x ",R32(DSP)-8,imm_data);
+            //printf("SYM: %08x: %02x ",R32(DSP)-8,imm_data);
             break;
           case 1:
             tmp16 = (op_data << 1) + (state.alu.carry?1:0);
             state.alu.carry = (tmp16>>8) & 1;
             op_data = tmp16 & 0xff;
-            printf("<< 1 = %02x ",op_data);
+            //printf("<< 1 = %02x ",op_data);
             break;
           case 2:
             op_data |= imm_data;
-            printf("| %02x = %02x ",imm_data,op_data);
+            //printf("| %02x = %02x ",imm_data,op_data);
             break;
           case 3:
             op_data ^= imm_data;
-            printf("^ %02x = %02x ",imm_data,op_data);
+            //printf("^ %02x = %02x ",imm_data,op_data);
             break;
           case 4:
             op_data &= imm_data;
-            printf("& %02x = %02x ",imm_data,op_data);
+            //printf("& %02x = %02x ",imm_data,op_data);
             break;
           case 5:
             tmp16 = (op_data >> 1) + (state.alu.carry?0x80:0x00);
             state.alu.carry = op_data & 1;
             op_data = tmp16 & 0xff;
-            printf(">> 1 = %02x ",op_data);
+            //printf(">> 1 = %02x ",op_data);
             break;
           case 6:
             tmp16 = op_data + imm_data;
             state.alu.carry = (tmp16>0xff);
             op_data = tmp16 & 0xff;
-            printf("+ %02x = %02x (carry %d) ",imm_data,op_data,state.alu.carry);
+            //printf("+ %02x = %02x (carry %d) ",imm_data,op_data,state.alu.carry);
             break;
           case 7:
             tmp16 = op_data + imm_data + (state.alu.carry?1:0);
             state.alu.carry = (tmp16>0xff);
             op_data = tmp16 & 0xff;
-            printf("+ %02x (w/carry) = %02x (carry %d) ",imm_data,op_data,state.alu.carry);
+            //printf("+ %02x (w/carry) = %02x (carry %d) ",imm_data,op_data,state.alu.carry);
             break;
           }
 
           if (opcode==6 || reg_address==0x08)
           {
-            printf("-> sfbr.\n");
+            //printf("-> sfbr.\n");
             R8(SFBR) = op_data;
           }
           else
           {
-            printf("-> reg%02x.\n",reg_address);
+            //printf("-> reg%02x.\n",reg_address);
             WriteMem_Bar(0,1,reg_address,8,op_data);
           }
 
@@ -1468,10 +1470,10 @@ int CSym53C895::execute()
         if (relative)
           dest_addr = R32(DSP) + sext_32(R32(DSPS),24);
 
-        printf("SYM: %08x: if (",R32(DSP)-8);
+        //printf("SYM: %08x: if (",R32(DSP)-8);
         if (carry_test)
         {
-          printf("(%scarry)",jump_if?"":"!");
+          //printf("(%scarry)",jump_if?"":"!");
           do_it = (state.alu.carry == jump_if);
         }
         else if (cmp_data || cmp_phase)
@@ -1479,19 +1481,19 @@ int CSym53C895::execute()
           do_it = true;
           if (cmp_data)
           {
-            printf("((data & 0x%02x) %s 0x%02x)", (~cmp_mask) & 0xff, jump_if?"==":"!=", cmp_dat &~cmp_mask);
+            //printf("((data & 0x%02x) %s 0x%02x)", (~cmp_mask) & 0xff, jump_if?"==":"!=", cmp_dat &~cmp_mask);
             if (((R8(SFBR) & ~cmp_mask)==(cmp_dat & ~cmp_mask)) != jump_if)
               do_it = false;
-            if (cmp_phase)
-              printf(" && ");
+            //if (cmp_phase)
+            //  printf(" && ");
           }
           if (cmp_phase)
           {
-            printf("(phase %s %d)",jump_if?"==":"!=", scsi_phase);
+            //printf("(phase %s %d)",jump_if?"==":"!=", scsi_phase);
             if (state.phase < 0 && state.select_timeout)
             {
               // selection timeout...?
-              printf("Phase check... selection time-out!\n");
+              //printf("Phase check... selection time-out!\n");
               RAISE(SIST1,STO); // select time-out
               state.select_timeout = false;
               return 0;
@@ -1506,42 +1508,42 @@ int CSym53C895::execute()
           do_it = jump_if;
         }
 
-        printf(") ");
+        //printf(") ");
         switch(opcode)
         {
         case 0:
-          printf("jump %x\n",R32(DSPS));
+          //printf("jump %x\n",R32(DSPS));
           if (do_it)
           {
-            printf("SYM: Jumping %08x...\n",dest_addr);
+            //printf("SYM: Jumping %08x...\n",dest_addr);
             R32(DSP) = dest_addr;
           }
           return 0;
           break;
         case 1:
-          printf("call %d\n",R32(DSPS));
+          //printf("call %d\n",R32(DSPS));
           if (do_it)
           {
-            printf("SYM: Calling %08x...\n",dest_addr);
+            //printf("SYM: Calling %08x...\n",dest_addr);
             R32(TEMP) = R32(DSP);
             R32(DSP) = dest_addr;
           }
           return 0;
           break;
         case 2:
-          printf("return %d\n",R32(DSPS));
+          //printf("return %d\n",R32(DSPS));
           if (do_it)
           {
-            printf("SYM: Returning %08x...\n",R32(TEMP));
+            //printf("SYM: Returning %08x...\n",R32(TEMP));
             R32(DSP) = R32(TEMP);
           }
           return 0;
           break;
         case 3:
-          printf("interrupt%s.\n",interrupt_fly?" on the fly":"");
+          //printf("interrupt%s.\n",interrupt_fly?" on the fly":"");
           if (do_it)
           {
-            printf("SYM: Interrupt with vector %x...\n",R32(DSPS));
+            //printf("SYM: Interrupt with vector %x...\n",R32(DSPS));
 
             if (interrupt_fly)
               RAISE(ISTAT,INTF);
@@ -1576,29 +1578,29 @@ int CSym53C895::execute()
 
           if (is_load)
           {
-            printf("SYM: %08x: Load reg%02x", R32(DSP)-8,regaddr);
-            if(byte_count>1)
-              printf("..%02x", regaddr+byte_count-1);
-            printf("from %x.\n",memaddr);
+            //printf("SYM: %08x: Load reg%02x", R32(DSP)-8,regaddr);
+            //if(byte_count>1)
+            //  printf("..%02x", regaddr+byte_count-1);
+            //printf("from %x.\n",memaddr);
             for (int i=0; i<byte_count;i++)
             {
               u64 ma = cSystem->PCI_Phys(myPCIBus,memaddr+i);
               u8 dat = (u8)cSystem->ReadMem(ma,8);
-              printf("SYM: %02x -> reg%02x\n",dat,regaddr+i);
+              //printf("SYM: %02x -> reg%02x\n",dat,regaddr+i);
               WriteMem_Bar(0,1,regaddr+i,8,dat);
             }
           }
           else
           {
-            printf("SYM: %08x: Store reg%02x", R32(DSP)-8,regaddr);
-            if(byte_count>1)
-              printf("..%02x", regaddr+byte_count-1);
-            printf("to %x.\n",memaddr);
+            //printf("SYM: %08x: Store reg%02x", R32(DSP)-8,regaddr);
+            //if(byte_count>1)
+            //  printf("..%02x", regaddr+byte_count-1);
+            //printf("to %x.\n",memaddr);
             for (int i=0; i<byte_count;i++)
             {
               u64 ma = cSystem->PCI_Phys(myPCIBus,memaddr+i);
               u8 dat = (u8)ReadMem_Bar(0,1,regaddr+i,8);
-              printf("SYM: %02x <- reg%02x\n",dat,regaddr+i);
+              //printf("SYM: %02x <- reg%02x\n",dat,regaddr+i);
               cSystem->WriteMem(ma,8,dat);
             }
           }
@@ -1610,7 +1612,7 @@ int CSym53C895::execute()
           cmda0 = cSystem->PCI_Phys(myPCIBus, R32(DSP));
           R32(DSP) += 4;
           u32 temp_shadow = (u32)cSystem->ReadMem(cmda0,32);
-          printf("SYM: %08x: Memory Move %06x bytes from %08x to %08x.\n",R32(DSP)-8,GET_DBC(),R32(DSPS),temp_shadow);
+          //printf("SYM: %08x: Memory Move %06x bytes from %08x to %08x.\n",R32(DSP)-8,GET_DBC(),R32(DSPS),temp_shadow);
           cmda0 = cSystem->PCI_Phys(myPCIBus, R32(DSPS));
           cmda1 = cSystem->PCI_Phys(myPCIBus, temp_shadow);
 
@@ -1843,7 +1845,7 @@ void CSym53C895::end_xfer()
   // if data in and can disconnect...
   if (state.phase!=7 && newphase==1 && PT.will_disconnect && !PT.disconnected)
   {
-    printf("SYM: Disconnecting now...\n");
+    //printf("SYM: Disconnecting now...\n");
     PT.disconnected = true;
     PT.disconnect_phase = newphase;
     newphase = 7; // msg in
@@ -1851,11 +1853,11 @@ void CSym53C895::end_xfer()
 
   if (newphase != state.phase)
   {
-    printf("SYM: Transition from phase %d to phase %d.\n",state.phase,newphase);
+    //printf("SYM: Transition from phase %d to phase %d.\n",state.phase,newphase);
 
     if (newphase==-1)
     {
-      printf("SYM: Disconnect. Timer started!\n");
+      //printf("SYM: Disconnect. Timer started!\n");
       // disconnect. generate interrupt?
       state.disconnected = 20;
     }
@@ -1907,32 +1909,32 @@ int CSym53C895::do_command()
 
   PT.cmd_sent = true;
 
-  printf("SYM.%d: %d-byte command ",GET_DEST(),PT.cmd_len);
-  for (unsigned int x=0;x<PT.cmd_len;x++) printf("%02x ",PT.cmd[x]);
-  printf("\n");
+  //printf("SYM.%d: %d-byte command ",GET_DEST(),PT.cmd_len);
+  //for (unsigned int x=0;x<PT.cmd_len;x++) printf("%02x ",PT.cmd[x]);
+  //printf("\n");
 
   if (PT.cmd_len<1)
     return 0;
 
   if (PT.cmd[1] & 0xe0)
   {
-    printf("SYM: LUN selected...\n");
+    //printf("SYM: LUN selected...\n");
     PT.lun_selected = true;
   }
 
   if (PT.lun_selected && PT.cmd[0] != SCSICMD_INQUIRY && PT.cmd[0] != SCSICMD_REQUEST_SENSE)
   {
     printf("SYM: LUN not supported!\n");
-    printf(">");
-    getchar();
+    //printf(">");
+    //getchar();
   }
 
   switch(PT.cmd[0])
   {
   case SCSICMD_TEST_UNIT_READY:
-    printf("SYM.%d: TEST UNIT READY.\n",GET_DEST());
-    if (PT.cmd_len != 6)
-	  printf("Weird cmd_len=%d.\n", PT.cmd_len);
+    //printf("SYM.%d: TEST UNIT READY.\n",GET_DEST());
+    //if (PT.cmd_len != 6)
+	//  printf("Weird cmd_len=%d.\n", PT.cmd_len);
 	if (PT.cmd[1] != 0x00) 
     {
       printf("SYM: Don't know how to handle TEST UNIT READY with cmd[1]=0x%02x.\n", PT.cmd[1]);
@@ -1949,14 +1951,14 @@ int CSym53C895::do_command()
 
   case SCSICMD_INQUIRY:
     {
-      printf("SYM.%d: INQUIRY.\n",GET_DEST());
-      if (PT.cmd_len != 6)
-	    printf("Weird cmd_len=%d.\n", PT.cmd_len);
+      //printf("SYM.%d: INQUIRY.\n",GET_DEST());
+      //if (PT.cmd_len != 6)
+	  //  printf("Weird cmd_len=%d.\n", PT.cmd_len);
 	  if ((PT.cmd[1] & 0x1e) != 0x00) 
       {
         printf("SYM: Don't know how to handle INQUIRY with cmd[1]=0x%02x.\n", PT.cmd[1]);
-        printf(">");
-        getchar();
+        //printf(">");
+        //getchar();
         break;
 	  }
       u8 qual_dev = PT.lun_selected ? 0x7F : (PTD->cdrom() ? 0x05 : 0x00);
@@ -1979,9 +1981,9 @@ int CSym53C895::do_command()
         }
         else
         {
-          printf("Don't know format for vital product data page %02x!!\n",PT.cmd[2]);
-          printf(">");
-          getchar();
+          //printf("Don't know format for vital product data page %02x!!\n",PT.cmd[2]);
+          //printf(">");
+          //getchar();
           PT.dati[1] = PT.cmd[2]; // page code
           PT.dati[2] = 0x00; // reserved
         }
@@ -2025,7 +2027,7 @@ int CSym53C895::do_command()
 
   case SCSICMD_MODE_SENSE:
   case SCSICMD_MODE_SENSE10:	
-    printf("SYM.%d: MODE SENSE.\n",GET_DEST());
+    //printf("SYM.%d: MODE SENSE.\n",GET_DEST());
 	q = 4; retlen = PT.cmd[4];
 	switch (PT.cmd_len) {
 	case 6:	break;
@@ -2049,7 +2051,7 @@ int CSym53C895::do_command()
 
 	pagecode = PT.cmd[2] & 0x3f;
 
-	printf("[ MODE SENSE pagecode=%i ]\n", pagecode);
+	//printf("[ MODE SENSE pagecode=%i ]\n", pagecode);
 
 	/*  4 bytes of header for 6-byte command,
 	    8 bytes of header for 10-byte command.  */
@@ -2142,13 +2144,13 @@ int CSym53C895::do_command()
 	break;
 
   case SCSICMD_PREVENT_ALLOW_REMOVE:
-    if (PT.cmd_len != 6)
-	  printf("Weird cmd_len=%d.\n", PT.cmd_len);
+    //if (PT.cmd_len != 6)
+	//  printf("Weird cmd_len=%d.\n", PT.cmd_len);
 
-    if (PT.cmd[4] & 1)
-      printf("SYM.%d: PREVENT MEDIA REMOVAL.\n",GET_DEST());
-    else
-      printf("SYM.%d: ALLOW MEDIA REMOVAL.\n",GET_DEST());
+    //if (PT.cmd[4] & 1)
+    //  printf("SYM.%d: PREVENT MEDIA REMOVAL.\n",GET_DEST());
+    //else
+    //  printf("SYM.%d: ALLOW MEDIA REMOVAL.\n",GET_DEST());
     
     PT.stat_len = 1;
     PT.stat[0] = 0;
@@ -2163,8 +2165,7 @@ int CSym53C895::do_command()
     if (PT.dato_len==0)
       return 2;
 
-    printf("SYM.%d: MODE SELECT.\n",GET_DEST());
-
+    //printf("SYM.%d: MODE SELECT.\n",GET_DEST());
 
     if (   PT.cmd_len == 6 
         && PT.dato_len == 12 
@@ -2179,7 +2180,7 @@ int CSym53C895::do_command()
         && PT.dato[8] == 0x00) // reserved
     {
       PT.block_size = (PT.dato[9]<<16) | (PT.dato[10]<<8) | PT.dato[11];
-      printf("SYM%d: Block size set to %d.\n",GET_DEST(),PT.block_size);
+      //printf("SYM%d: Block size set to %d.\n",GET_DEST(),PT.block_size);
     }
     else
     {
@@ -2203,9 +2204,9 @@ int CSym53C895::do_command()
 	break;
 
   case SCSIBLOCKCMD_READ_CAPACITY:
-    printf("SYM.%d: READ CAPACITY.\n",GET_DEST());
-    if (PT.cmd_len != 10)
-	  printf("Weird cmd_len=%d.\n", PT.cmd_len);
+    //printf("SYM.%d: READ CAPACITY.\n",GET_DEST());
+    //if (PT.cmd_len != 10)
+	//  printf("Weird cmd_len=%d.\n", PT.cmd_len);
 	if (PT.cmd[8] & 1) 
     {
       printf("SYM: Don't know how to handle READ CAPACITY with PMI bit set.\n");
@@ -2234,16 +2235,16 @@ int CSym53C895::do_command()
 
   case SCSICMD_READ:
   case SCSICMD_READ_10:
-    printf("SYM.%d: READ.\n",GET_DEST());
+    //printf("SYM.%d: READ.\n",GET_DEST());
     if (PT.disconnect_priv)
     {
-      printf("SYM: Will disconnect before returning read data.\n");
+      //printf("SYM: Will disconnect before returning read data.\n");
       PT.will_disconnect = true;
     }
     if (PT.cmd[0] == SCSICMD_READ)
     {
-      if (PT.cmd_len != 6)
-	    printf("Weird cmd_len=%d.\n", PT.cmd_len);
+      //if (PT.cmd_len != 6)
+	  //  printf("Weird cmd_len=%d.\n", PT.cmd_len);
 	  /*
 	   *  bits 4..0 of cmd[1], and cmd[2] and cmd[3]
 	   *  hold the logical block address.
@@ -2259,8 +2260,8 @@ int CSym53C895::do_command()
 	} 
     else 
     {
-      if (PT.cmd_len != 10)
-	    printf("Weird cmd_len=%d.\n", PT.cmd_len);
+      //if (PT.cmd_len != 10)
+	  //  printf("Weird cmd_len=%d.\n", PT.cmd_len);
 	  /*
 	   *  cmd[2..5] hold the logical block address.
 	   *  cmd[7..8] holds the number of logical
@@ -2291,17 +2292,17 @@ int CSym53C895::do_command()
     PT.dati_len = retlen * PT.block_size;
     PT.dati_off_disk = true;
 
-	printf("SYM.%d READ  ofs=%d size=%d\n", GET_DEST(), ofs, retlen);
+	//printf("SYM.%d READ  ofs=%d size=%d\n", GET_DEST(), ofs, retlen);
     //getchar();
 	break;
 
   case SCSICMD_WRITE:
   case SCSICMD_WRITE_10:
-    printf("SYM.%d: WRITE.\n",GET_DEST());
+    //printf("SYM.%d: WRITE.\n",GET_DEST());
     if (PT.cmd[0] == SCSICMD_WRITE)
     {
-      if (PT.cmd_len != 6)
-	    printf("Weird cmd_len=%d.\n", PT.cmd_len);
+      //if (PT.cmd_len != 6)
+	  //  printf("Weird cmd_len=%d.\n", PT.cmd_len);
 	  /*
 	   *  bits 4..0 of cmd[1], and cmd[2] and cmd[3]
 	   *  hold the logical block address.
@@ -2317,8 +2318,8 @@ int CSym53C895::do_command()
 	} 
     else 
     {
-      if (PT.cmd_len != 10)
-	    printf("Weird cmd_len=%d.\n", PT.cmd_len);
+      //if (PT.cmd_len != 10)
+	  //  printf("Weird cmd_len=%d.\n", PT.cmd_len);
 	  /*
 	   *  cmd[2..5] hold the logical block address.
 	   *  cmd[7..8] holds the number of logical
@@ -2348,14 +2349,14 @@ int CSym53C895::do_command()
     PT.dato_len = retlen * PT.block_size;
     PT.dato_to_disk = true;
 
-	printf("SYM.%d WRITE  ofs=%d size=%d\n", GET_DEST(), ofs, retlen);
+	//printf("SYM.%d WRITE  ofs=%d size=%d\n", GET_DEST(), ofs, retlen);
     //getchar();
 	break;
 
   case SCSICMD_SYNCHRONIZE_CACHE:
-    printf("SYM.%d: SYNCHRONIZE CACHE.\n",GET_DEST());
-    if (PT.cmd_len != 10)
-	  printf("Weird cmd_len=%d.\n", PT.cmd_len);
+    //printf("SYM.%d: SYNCHRONIZE CACHE.\n",GET_DEST());
+    //if (PT.cmd_len != 10)
+	//  printf("Weird cmd_len=%d.\n", PT.cmd_len);
     
     PT.stat_len = 1;
     PT.stat[0] = 0;
@@ -2366,9 +2367,9 @@ int CSym53C895::do_command()
     break;
 
   case SCSICDROM_READ_TOC:
-    printf("SYM.%d: CDROM READ TOC.\n",GET_DEST());
-    if (PT.cmd_len != 10)
-	  printf("Weird cmd_len=%d.\n", PT.cmd_len);
+    //printf("SYM.%d: CDROM READ TOC.\n",GET_DEST());
+    //if (PT.cmd_len != 10)
+	//  printf("Weird cmd_len=%d.\n", PT.cmd_len);
 
     retlen = PT.cmd[7]*256 + PT.cmd[8];
 
@@ -2407,8 +2408,8 @@ int CSym53C895::do_command()
 
   default:
     printf("SYM: Unknown SCSI command 0x%02x.\n",PT.cmd[0]);
-    printf(">");
-    getchar();
+    //printf(">");
+    //getchar();
     throw((int)1);
   }
   return 0;
@@ -2425,16 +2426,16 @@ int CSym53C895::do_message()
     if (PT.msgo[msg] & 0x80)
     {
       // identify
-      printf("SYM.%d: MSG: identify.\n",GET_DEST());
+      //printf("SYM.%d: MSG: identify.\n",GET_DEST());
       if (PT.msgo[msg] & 0x40)
       {
-        printf("SYM.%d: MSG: disconnect priv.\n",GET_DEST());
+        //printf("SYM.%d: MSG: disconnect priv.\n",GET_DEST());
         PT.disconnect_priv = true;
       }
       if (PT.msgo[msg] & 0x07)
       {
       // LUN...
-        printf("SYM.%d: MSG: LUN selected.\n",GET_DEST());
+        //printf("SYM.%d: MSG: LUN selected.\n",GET_DEST());
         PT.lun_selected = true;
       }
       msg++;
@@ -2444,14 +2445,14 @@ int CSym53C895::do_message()
       switch (PT.msgo[msg])
       {
       case 0x01:
-        printf("SYM.%d: MSG: extended.\n",GET_DEST());
+        //printf("SYM.%d: MSG: extended.\n",GET_DEST());
         msglen = PT.msgo[msg+1];
         msg += 2;
         switch (PT.msgo[msg])
         {
         case 0x01:
 			{
-          printf("SYM.%d: MSG: SDTR.\n",GET_DEST());
+          //printf("SYM.%d: MSG: SDTR.\n",GET_DEST());
           PT.msgi_len = msglen+2;
           PT.msgi[0] = 0x01;
           PT.msgi[1] = msglen;
@@ -2461,7 +2462,7 @@ int CSym53C895::do_message()
           break;
         case 0x03:
 			{
-          printf("SYM.%d: MSG: WDTR.\n",GET_DEST());
+          //printf("SYM.%d: MSG: WDTR.\n",GET_DEST());
           PT.msgi_len = msglen+2;
           PT.msgi[0] = 0x01;
           PT.msgi[1] = msglen;
@@ -2493,7 +2494,7 @@ int CSym53C895::do_message()
 void CSym53C895::set_interrupt(int reg, u8 interrupt)
 {
   //
-  printf("set interrupt %02x, %02x.\n",reg,interrupt);
+  //printf("set interrupt %02x, %02x.\n",reg,interrupt);
 
   switch(reg)
   {
@@ -2618,7 +2619,7 @@ void CSym53C895::eval_interrupts()
 
   if (will_assert != state.irq_asserted)
   {
-    printf("  doing...%d\n",will_assert);
+    //printf("  doing...%d\n",will_assert);
     do_pci_interrupt(0,will_assert);
     state.irq_asserted = will_assert;
   }

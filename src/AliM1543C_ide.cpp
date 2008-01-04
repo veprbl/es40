@@ -27,7 +27,10 @@
  * \file
  * Contains the code for the emulated Ali M1543C IDE chipset part.
  *		
- * $Id: AliM1543C_ide.cpp,v 1.16 2008/01/02 08:28:22 iamcamiel Exp $
+ * $Id: AliM1543C_ide.cpp,v 1.17 2008/01/04 22:16:48 iamcamiel Exp $
+ *
+ * X-1.17       Camiel Vanderhoeven                             04-JAN-2008
+ *      Less messages fprint'ed.
  *
  * X-1.16       Camiel Vanderhoeven                             02-JAN-2008
  *      Avoid compiler warnings.
@@ -203,7 +206,7 @@ CAliM1543C_ide::CAliM1543C_ide(CConfigurator * cfg, CSystem * c, int pcibus, int
   
   ResetPCI();
 
-  printf("%s: $Id: AliM1543C_ide.cpp,v 1.16 2008/01/02 08:28:22 iamcamiel Exp $\n",devid_string);
+  printf("%s: $Id: AliM1543C_ide.cpp,v 1.17 2008/01/04 22:16:48 iamcamiel Exp $\n",devid_string);
 }
 
 CAliM1543C_ide::~CAliM1543C_ide()
@@ -345,7 +348,7 @@ u32 CAliM1543C_ide::ide_command_read(int index, u32 address, int dsize)
   case 0:
     if (!SEL_STATUS(index).drq) 
     {
-      printf("IDE%d port 0 read with drq == 0: last command was %02xh\n", index, SEL_STATUS(index).current_command);
+      //printf("IDE%d port 0 read with drq == 0: last command was %02xh\n", index, SEL_STATUS(index).current_command);
       return 0;
     }
     switch(SEL_STATUS(index).current_command)
@@ -395,10 +398,10 @@ u32 CAliM1543C_ide::ide_command_read(int index, u32 address, int dsize)
       case 16:
         data = state.ide_data[index][state.ide_data_ptr[index]++];
       }
-      printf("Reading %d bytes from ATAPI Packet: %x \n",dsize/8,data);
+      //printf("Reading %d bytes from ATAPI Packet: %x \n",dsize/8,data);
       if (state.ide_data_ptr[index]>=(state.ide_atapi_size[index]/2))
       {
-	    printf("--Reached end of packet data. (point e)\n");
+	    //printf("--Reached end of packet data. (point e)\n");
         SEL_STATUS(index).busy = false;
         SEL_STATUS(index).drive_ready = true;
         SEL_STATUS(index).seek_complete = true;
@@ -408,7 +411,7 @@ u32 CAliM1543C_ide::ide_command_read(int index, u32 address, int dsize)
 	    SEL_STATUS(index).drq = false;
 	    raise_interrupt(index);
       } else {
-	    printf("--More packet data pending.\n");
+	    //printf("--More packet data pending.\n");
       }
       break;
 
@@ -505,7 +508,7 @@ void CAliM1543C_ide::ide_command_write(int index, u32 address, int dsize, u32 da
       break;
 
     case 0xa0: // packet
-      printf("Writing %d bytes to ATAPI Packet: %x \n",dsize/8,data);
+      //printf("Writing %d bytes to ATAPI Packet: %x \n",dsize/8,data);
       switch(dsize)
       {
       case 32:
@@ -518,7 +521,7 @@ void CAliM1543C_ide::ide_command_write(int index, u32 address, int dsize, u32 da
 
       if(state.ide_data_ptr[index] >= 6) 
       {
-	    printf("Packet is complete (1153R18 pg 236).\n");
+	    //printf("Packet is complete (1153R18 pg 236).\n");
 	    SEL_STATUS(index).busy = true;
 	    SEL_STATUS(index).drq = false;
 
@@ -526,25 +529,25 @@ void CAliM1543C_ide::ide_command_write(int index, u32 address, int dsize, u32 da
 	    switch(state.ide_data[index][0] & 0xff) 
         {
 	    case 0x00: // test unit ready.
-	      printf("ATAPI: Test unit ready.\n");
+	      //printf("ATAPI: Test unit ready.\n");
 	      ATAPI_OK(index);
 	      break;
 	    case 0x1e: // prevent/allow medium removal
 	      // we're really ignoring this since the emulator
 	      // doesn't even have an ejectable cd :)
-	      printf("ATAPI: lock/unlock door\n");
+	      //printf("ATAPI: lock/unlock door\n");
 	      ATAPI_OK(index);
 	      break;
 
 	    case 0x25: // CDVD Capacity
-	      printf("ATAPI: get capacity\n");
+	      //printf("ATAPI: get capacity\n");
 	      *(u32 *)&state.ide_data[index][0] = SEL_DISK(index)->get_lba_size();
 	      *(u32 *)&state.ide_data[index][2] = 2048;
 	      ATAPI_OK_DATA(index,8);
 	      break;
 
 	    case 0x5a: // mode sense
-	      printf("ATAPI: mode sense PC: %x, page: %x\n", (state.ide_data[index][1] & 0xc0)>>6, state.ide_data[index][1]&0x3f);
+	      //printf("ATAPI: mode sense PC: %x, page: %x\n", (state.ide_data[index][1] & 0xc0)>>6, state.ide_data[index][1]&0x3f);
 	      switch((state.ide_data[index][1] & 0xc0) >> 6) 
           {
 	      case 0: // current values
@@ -647,7 +650,7 @@ void CAliM1543C_ide::ide_command_write(int index, u32 address, int dsize, u32 da
     case 0x08: // reset drive (DRST) (ATAPI)
       if (!SEL_DISK(index))
       {
-        printf("Disk %d.%d not present, aborting.\n",index,state.ide_selected[index]);
+        //printf("Disk %d.%d not present, aborting.\n",index,state.ide_selected[index]);
         command_aborted(index,(u8)data);
         break;
       }
@@ -667,7 +670,7 @@ void CAliM1543C_ide::ide_command_write(int index, u32 address, int dsize, u32 da
     case 0xa0: // packet send
       if (!SEL_DISK(index))
       {
-        printf("Disk %d.%d not present, aborting.\n",index,state.ide_selected[index]);
+        //printf("Disk %d.%d not present, aborting.\n",index,state.ide_selected[index]);
         command_aborted(index,(u8)data);
         break;
       }
@@ -676,7 +679,7 @@ void CAliM1543C_ide::ide_command_write(int index, u32 address, int dsize, u32 da
 	    command_aborted(index,(u8)data);
 	    break;
       }
-      printf("%%IDE-I-ATAPI: Packet Send Command\n");
+      //printf("%%IDE-I-ATAPI: Packet Send Command\n");
       SEL_STATUS(index).busy = false;
       SEL_STATUS(index).drq=true;
       SEL_STATUS(index).current_command = (u8)data;
@@ -687,7 +690,7 @@ void CAliM1543C_ide::ide_command_write(int index, u32 address, int dsize, u32 da
     case 0xa1: // identify packet device (ATAPI)
       if (!SEL_DISK(index))
       {
-        printf("Disk %d.%d not present, aborting.\n",index,state.ide_selected[index]);
+        //printf("Disk %d.%d not present, aborting.\n",index,state.ide_selected[index]);
         command_aborted(index,(u8)data);
         break;
       }
@@ -696,7 +699,7 @@ void CAliM1543C_ide::ide_command_write(int index, u32 address, int dsize, u32 da
 	    command_aborted(index,(u8)data);
 	    break;
       }
-      printf("%%IDE-I-ATAPI: Identify Packet Device\n");
+      //printf("%%IDE-I-ATAPI: Identify Packet Device\n");
       
 	  size_t i;
 	  char serial_number[21];
@@ -765,7 +768,7 @@ void CAliM1543C_ide::ide_command_write(int index, u32 address, int dsize, u32 da
 
     case 0xa2: // service
 //#ifdef DEBUG_IDE
-      printf("%%IDE-I-ATAPI: ATAPI service command.\n");
+      //printf("%%IDE-I-ATAPI: ATAPI service command.\n");
 //#endif
       command_aborted(index,(u8)data);
       break;
@@ -780,7 +783,7 @@ void CAliM1543C_ide::ide_command_write(int index, u32 address, int dsize, u32 da
         SEL_STATUS(index).drq = false;
         SEL_STATUS(index).err = true;
         raise_interrupt(index);
-        printf("calibrate drive: disk ata%d-%d not present\n", index,state.ide_selected[index]);
+        //printf("calibrate drive: disk ata%d-%d not present\n", index,state.ide_selected[index]);
         break;
       }
 
@@ -868,11 +871,11 @@ void CAliM1543C_ide::ide_command_write(int index, u32 address, int dsize, u32 da
 
 	case 0x91:			// SET TRANSLATION
 //#ifdef DEBUG_IDE
-      printf("%%IDE-I-SETTRANS: Set IDE translation\n");
+      //printf("%%IDE-I-SETTRANS: Set IDE translation\n");
 //#endif
       if (!SEL_DISK(index))
       {
-        printf("init drive params: ide%d.%d not present\n",index,state.ide_selected[index]);
+        //printf("init drive params: ide%d.%d not present\n",index,state.ide_selected[index]);
         SEL_STATUS(index).busy = false;
         SEL_STATUS(index).drive_ready = true;
         SEL_STATUS(index).drq = false;
@@ -888,7 +891,7 @@ void CAliM1543C_ide::ide_command_write(int index, u32 address, int dsize, u32 da
     case 0xc6: // SET MULTIPLE MODE
       if (SEL_DISK(index)->cdrom())
       {
-        printf("set multiple mode issued to non-disk\n");
+        //printf("set multiple mode issued to non-disk\n");
         command_aborted(index, (u8)data);
       } 
       else if ((SEL_PER_DRIVE(index).sector_count > MAX_MULTIPLE_SECTORS) ||
@@ -897,7 +900,7 @@ void CAliM1543C_ide::ide_command_write(int index, u32 address, int dsize, u32 da
       {
         command_aborted(index, (u8)data);
       } else {
-        printf("set multiple mode: sectors=%d", SEL_PER_DRIVE(index).sector_count);
+        //printf("set multiple mode: sectors=%d", SEL_PER_DRIVE(index).sector_count);
         //SEL_STATUS(index).multiple_sectors = SEL_PER_DRIVE(index).sector_count;
         SEL_STATUS(index).busy = false;
         SEL_STATUS(index).drive_ready = true;
@@ -934,11 +937,11 @@ void CAliM1543C_ide::ide_command_write(int index, u32 address, int dsize, u32 da
 
     case 0xec:
 //#ifdef DEBUG_IDE
-	  printf("%%IDE-I-IDENTIFY: Identify IDE disk %d.%d   \n",index,state.ide_selected[index]);
+	  //printf("%%IDE-I-IDENTIFY: Identify IDE disk %d.%d   \n",index,state.ide_selected[index]);
 //#endif
       if (!SEL_DISK(index))
       {
-        printf("Disk %d.%d not present, aborting.\n",index,state.ide_selected[index]);
+        //printf("Disk %d.%d not present, aborting.\n",index,state.ide_selected[index]);
         command_aborted(index,(u8)data);
         break;
       }
@@ -967,7 +970,7 @@ void CAliM1543C_ide::ide_command_write(int index, u32 address, int dsize, u32 da
           {
             case 0x00: // PIO default
             case 0x01: // PIO mode
-              printf("ide%d.%d: set transfer mode to PIO", index, state.ide_selected[index]);
+              //printf("ide%d.%d: set transfer mode to PIO", index, state.ide_selected[index]);
               //SEL_STATUS(index).mdma_mode = 0x00;
               //SEL_STATUS(index).udma_mode = 0x00;
               SEL_STATUS(index).drive_ready = true;
@@ -975,7 +978,7 @@ void CAliM1543C_ide::ide_command_write(int index, u32 address, int dsize, u32 da
               raise_interrupt(index);
               break;
             case 0x04: // MDMA mode
-              printf("ide%d.%d: set transfer mode to MDMA%d", index, state.ide_selected[index],mode);
+              //printf("ide%d.%d: set transfer mode to MDMA%d", index, state.ide_selected[index],mode);
               //SEL_STATUS(index).mdma_mode = 1 << mode;
               //SEL_STATUS(index).udma_mode = 0x00;
               SEL_STATUS(index).drive_ready = true;
@@ -983,7 +986,7 @@ void CAliM1543C_ide::ide_command_write(int index, u32 address, int dsize, u32 da
               raise_interrupt(index);
               break;
             case 0x08: // UDMA mode
-              printf("ide%d.%d: set transfer mode to UDMA%d", index, state.ide_selected[index],mode);
+              //printf("ide%d.%d: set transfer mode to UDMA%d", index, state.ide_selected[index],mode);
               //SEL_STATUS(index).mdma_mode = 0x00;
               //SEL_STATUS(index).udma_mode = 1 << mode;
               SEL_STATUS(index).drive_ready = true;
@@ -991,7 +994,7 @@ void CAliM1543C_ide::ide_command_write(int index, u32 address, int dsize, u32 da
               raise_interrupt(index);
               break;
             default:
-              printf("ide%d.%d: set transfer mode to UNKNOWN %02x-%02x", index, state.ide_selected[index],type,mode);
+              //printf("ide%d.%d: set transfer mode to UNKNOWN %02x-%02x", index, state.ide_selected[index],type,mode);
               raise_interrupt(index);
               command_aborted(index, (u8)data);
             }
@@ -1003,16 +1006,16 @@ void CAliM1543C_ide::ide_command_write(int index, u32 address, int dsize, u32 da
         case 0x55: //  Disable look-ahead cache.
         case 0xCC: // Enable and
         case 0x66: //  Disable reverting to power-on default
-          printf("ide%d.%d: SET FEATURES subcommand 0x%02x not supported, but returning success",
-          index,state.ide_selected[index],SEL_PER_DRIVE(index).features);
+          //printf("ide%d.%d: SET FEATURES subcommand 0x%02x not supported, but returning success",
+          //index,state.ide_selected[index],SEL_PER_DRIVE(index).features);
           SEL_STATUS(index).drive_ready = true;
           SEL_STATUS(index).seek_complete = true;
           raise_interrupt(index);
           break;
 
         default:
-          printf("ide%d.%d: SET FEATURES with unknown subcommand: 0x%02x",
-            index,state.ide_selected[index],SEL_PER_DRIVE(index).features);
+          //printf("ide%d.%d: SET FEATURES with unknown subcommand: 0x%02x",
+          //index,state.ide_selected[index],SEL_PER_DRIVE(index).features);
           command_aborted(index, (u8)data);
       }
       break;
@@ -1039,8 +1042,8 @@ void CAliM1543C_ide::ide_command_write(int index, u32 address, int dsize, u32 da
 */
     default:
       printf("IDE: Unknown command: %02x!\n",data);
-      printf("Press enter to continue>");
-      getchar();
+      //printf("Press enter to continue>");
+      //getchar();
       command_aborted(index, (u8)data);
     }
   }
@@ -1080,7 +1083,7 @@ void CAliM1543C_ide::ide_control_write(int index, u32 address, u32 data)
 
   TRC_DEV4("%%IDE-I-WRITCRTL: write port %d on IDE control %d: 0x%02x\n",  (u32)(address),index, data);
 //#ifdef DEBUG_IDE
-  printf("%%IDE-I-WRITCTRL: write port %d on IDE control %d: 0x%02x\n",  (u32)(address),index, data);
+  //printf("%%IDE-I-WRITCTRL: write port %d on IDE control %d: 0x%02x\n",  (u32)(address),index, data);
 //#endif
 
   prev_reset = state.ide_control[index].reset;
@@ -1089,7 +1092,7 @@ void CAliM1543C_ide::ide_control_write(int index, u32 address, u32 data)
 
   if (!prev_reset && state.ide_control[index].reset)
   {
-    printf("IDE reset on index %d started.\n",index);
+    //printf("IDE reset on index %d started.\n",index);
     
     state.ide_status[index][0].busy = true;
     state.ide_status[index][0].drive_ready = false;
@@ -1112,7 +1115,7 @@ void CAliM1543C_ide::ide_control_write(int index, u32 address, u32 data)
   }
   else if (prev_reset && !state.ide_control[index].reset)
   {
-    printf("IDE reset on index %d ended.\n",index);
+    //printf("IDE reset on index %d ended.\n",index);
     state.ide_status[index][0].busy = false;
     state.ide_status[index][0].drive_ready = true;
     state.ide_status[index][1].busy = false;
@@ -1485,7 +1488,7 @@ void CAliM1543C_ide::identify_drive(int index)
 
 void CAliM1543C_ide::command_aborted(int index, u8 command)
 {
-  printf("ide%d.%d aborting on command 0x%02x \n", index, state.ide_selected[index], command);
+  //printf("ide%d.%d aborting on command 0x%02x \n", index, state.ide_selected[index], command);
   SEL_STATUS(index).current_command = 0;
   SEL_STATUS(index).busy = false;
   SEL_STATUS(index).drive_ready = true;
