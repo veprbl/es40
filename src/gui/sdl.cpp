@@ -34,7 +34,10 @@
  * Contains the code for the bx_sdl_gui_c class used for interfacing with
  * SDL.
  *
- * $Id: sdl.cpp,v 1.11 2008/01/04 19:27:32 iamcamiel Exp $
+ * $Id: sdl.cpp,v 1.12 2008/01/05 14:58:06 iamcamiel Exp $
+ *
+ * X-1.12       Fang Zhe                                        05-JAN-2008
+ *      Last patch was applied incompletely.
  *
  * X-1.11       Fang Zhe                                        04-JAN-2008
  *      Improved compatibility with Apple OS X; keyboard works now.
@@ -71,7 +74,8 @@
 #include "../Configurator.h"
 
 #ifdef __APPLE__
-#include <dlfcn.h>
+#include <WebKit/CarbonUtils.h>
+#include <ApplicationServices/ApplicationServices.h>
 #endif
 
 #define _MULTI_THREAD
