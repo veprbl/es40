@@ -30,7 +30,10 @@
  * or project specific include files that are used frequently, but
  * are changed infrequently.
  *
- * $Id: StdAfx.h,v 1.23 2008/01/04 22:09:31 iamcamiel Exp $
+ * $Id: StdAfx.h,v 1.24 2008/01/05 14:58:38 iamcamiel Exp $
+ *
+ * X-1.24       Fang Zhe                                        05-JAN-2008
+ *      Do 64-bit file I/O properly for FreeBSD and OS X.
  *
  * X-1.23       Camiel Vanderhoeven                             04-JAN-2008
  *      Put in definitions to handle 64-bit file I/O OS-independently.
@@ -185,10 +188,17 @@ inline char printable(char c)
 
 // Different OS'es define different functions to access 64-bit files
 #if defined(_WIN32)
+// Windows obviously does things differently...
 #define fopen_large fopen
 #define fseek_large _fseeki64
 #define ftell_large _ftelli64
 #define off_t_large __int64
+#elif defined(__APPLE__) || defined(__FreeBSD__)
+// OS X and FreeBSD do 64-bit access by default, and don't have the 64-bit versions
+#define fopen_large fopen
+#define fseek_large fseeko
+#define ftell_large ftello
+#define off_t_large off_t
 #else
 #define fopen_large fopen64
 #define fseek_large fseeko64
