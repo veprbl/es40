@@ -27,7 +27,10 @@
  * \file
  * Contains the code for the configuration file interpreter.
  *
- * $Id: Configurator.cpp,v 1.7 2008/01/02 08:39:17 iamcamiel Exp $
+ * $Id: Configurator.cpp,v 1.8 2008/01/05 21:19:31 iamcamiel Exp $
+ *
+ * X-1.8        Camiel Vanderhoeven                             05-JAN-2008
+ *      Added CDiskDevice class.
  *
  * X-1.7        Camiel Vanderhoeven                             02-JAN-2008
  *      Better handling of configuration errors.
@@ -62,6 +65,7 @@
 #include "AliM1543C_ide.h"
 #include "AliM1543C_usb.h"
 #include "DiskFile.h"
+#include "DiskDevice.h"
 #include "DiskRam.h"
 #include "Port80.h"
 #include "S3Trio64.h"
@@ -489,6 +493,7 @@ classinfo classes[] =
   {"dec21143",c_dec21143,               IS_PCI |                    IS_NIC  },
   {"sym53c895", c_sym53c895,            IS_PCI |           HAS_DISK         },
   {"file",    c_file,                                      IS_DISK          },
+  {"device",  c_device,                                    IS_DISK          },
   {"ramdisk", c_ramdisk,                                   IS_DISK          },
   {"sdl",     c_sdl,     N_P |                                      IS_GUI  },
   {0,         c_none,    0                                                  }
@@ -665,6 +670,10 @@ void CConfigurator::initialize()
 
   case c_file:
     myDevice = new CDiskFile(this,(CDiskController *)pParent->get_device(),idebus,idedev);
+    break;
+
+  case c_device:
+    myDevice = new CDiskDevice(this,(CDiskController *)pParent->get_device(),idebus,idedev);
     break;
 
   case c_ramdisk:
