@@ -27,7 +27,10 @@
  * \file
  * Contains code to use a RAM disk.
  *
- * $Id: DiskRam.cpp,v 1.10 2008/01/06 10:34:47 iamcamiel Exp $
+ * $Id: DiskRam.cpp,v 1.11 2008/01/06 13:00:31 iamcamiel Exp $
+ *
+ * X-1.11       Camiel Vanderhoeven                             06-JAN-2008
+ *      Set default blocksize to 2048 for cd-rom devices.
  *
  * X-1.10       Camiel Vanderhoeven                             06-JAN-2008
  *      Support changing the block size (required for SCSI, ATAPI).
@@ -73,13 +76,12 @@ CDiskRam::CDiskRam(CConfigurator * cfg, CDiskController * c, int idebus, int ide
 
   sectors = 32;
   heads = 8;
-  block_size = 512;
 
   calc_cylinders();
 
   model_number=myCfg->get_text_value("model_number","ES40RAMDISK");
 
-  printf("%s: Mounted RAMDISK, %" LL "d blocks, %" LL "d/%d/%d.\n",devid_string,byte_size/512,cylinders,heads,sectors);
+  printf("%s: Mounted RAMDISK, %" LL "d %d-byte blocks, %" LL "d/%d/%d.\n",devid_string,byte_size/block_size,block_size,cylinders,heads,sectors);
 }
 
 CDiskRam::~CDiskRam(void)

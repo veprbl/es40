@@ -27,7 +27,10 @@
  * \file
  * Contains code to use a raw device as a disk image.
  *
- * $Id: DiskDevice.cpp,v 1.2 2008/01/06 10:34:47 iamcamiel Exp $
+ * $Id: DiskDevice.cpp,v 1.3 2008/01/06 13:00:31 iamcamiel Exp $
+ *
+ * X-1.3        Camiel Vanderhoeven                             06-JAN-2008
+ *      Set default blocksize to 2048 for cd-rom devices.
  *
  * X-1.2        Camiel Vanderhoeven                             06-JAN-2008
  *      Support changing the block size (required for SCSI, ATAPI).
@@ -87,20 +90,20 @@ CDiskDevice::CDiskDevice(CConfigurator * cfg, CDiskController * c, int idebus, i
 
   // determine size...
 #if defined(_WIN32)
-  DISK_GEOMETRY_EX x;
+  DISK_GEOMETRY x;
   DWORD bytesret;
 
-  if (!DeviceIoControl(handle, IOCTL_DISK_GET_DRIVE_GEOMETRY_EX, NULL, 0, &x, sizeof(x), &bytesret, NULL))
+  if (!DeviceIoControl(handle, IOCTL_DISK_GET_DRIVE_GEOMETRY, NULL, 0, &x, sizeof(x), &bytesret, NULL))
   {
     printf("%s: Could not get drive geometry for %s!\n",devid_string,filename);
     printf("%s: Error %ld.\n",devid_string,GetLastError());
     throw((int)1);
   }
 
-  sectors = x.Geometry.SectorsPerTrack;
-  heads = x.Geometry.TracksPerCylinder;
-  byte_size = x.DiskSize.QuadPart;
-  dev_block_size = x.Geometry.BytesPerSector;
+  sectors = x.SectorsPerTrack;
+  heads = x.TracksPerCylinder;
+  byte_size = x.Cylinders.QuadPart * x.TracksPerCylinder * x.SectorsPerTrack * x.BytesPerSector;
+  dev_block_size = x.BytesPerSector;
 
   LARGE_INTEGER a;
   a.QuadPart = 0;
@@ -115,12 +118,11 @@ CDiskDevice::CDiskDevice(CConfigurator * cfg, CDiskController * c, int idebus, i
   heads = 8;
 #endif
 
-  block_size = 512;
   calc_cylinders();
 
   model_number=myCfg->get_text_value("model_number",filename);
 
-  printf("%s: Mounted device %s, %" LL "d blocks, %" LL "d/%d/%d.\n",devid_string,filename,byte_size/512,cylinders,heads,sectors);
+  printf("%s: Mounted device %s, %" LL "d %d-byte blocks, %" LL "d/%d/%d.\n",devid_string,filename,byte_size/block_size,block_size,cylinders,heads,sectors);
 }
 
 CDiskDevice::~CDiskDevice(void)

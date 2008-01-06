@@ -27,7 +27,10 @@
  * \file
  * Contains code for the disk base class.
  *
- * $Id: Disk.cpp,v 1.7 2008/01/06 10:34:47 iamcamiel Exp $
+ * $Id: Disk.cpp,v 1.8 2008/01/06 13:00:31 iamcamiel Exp $
+ *
+ * X-1.8        Camiel Vanderhoeven                             06-JAN-2008
+ *      Set default blocksize to 2048 for cd-rom devices.
  *
  * X-1.7        Camiel Vanderhoeven                             06-JAN-2008
  *      Support changing the block size (required for SCSI, ATAPI).
@@ -78,6 +81,8 @@ CDisk::CDisk(CConfigurator * cfg, CDiskController * ctrl, int idebus, int idedev
   revision_number = myCfg->get_text_value("rev_num", "0.0");
   read_only = myCfg->get_bool_value("read_only");
   is_cdrom = myCfg->get_bool_value("cdrom");
+
+  block_size = is_cdrom?2048:512;
 
   if (!myCtrl->register_disk(this,myBus,myDev))
   {
