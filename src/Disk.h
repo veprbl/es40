@@ -27,7 +27,10 @@
  * \file
  * Contains definitions for the disk base class.
  *
- * $Id: Disk.h,v 1.7 2008/01/04 22:11:22 iamcamiel Exp $
+ * $Id: Disk.h,v 1.8 2008/01/06 10:34:47 iamcamiel Exp $
+ *
+ * X-1.8        Camiel Vanderhoeven                             06-JAN-2008
+ *      Support changing the block size (required for SCSI, ATAPI).
  *
  * X-1.7        Camiel Vanderhoeven                             04-JAN-2008
  *      64-bit file I/O.
@@ -66,18 +69,21 @@ public:
   CDisk(CConfigurator * cfg, CDiskController * c, int idebus, int idedev);
   virtual ~CDisk(void);
  
-  virtual bool seek_block(off_t_large lba) = 0;
-  virtual size_t read_blocks(void * dest, size_t blocks) = 0;
-  virtual size_t write_blocks(void * src, size_t blocks) = 0;
-
   virtual bool seek_byte(off_t_large byte) = 0;
   virtual size_t read_bytes(void * dest, size_t bytes) = 0;
   virtual size_t write_bytes(void * src, size_t bytes) = 0;
 
-  off_t_large get_lba_size()  { return lba_size; };
+  bool seek_block(off_t_large lba) { return seek_byte(lba*block_size); };
+  size_t read_blocks(void * dest, size_t blocks) { return read_bytes(dest, blocks*block_size)/block_size; };
+  size_t write_blocks(void * src, size_t blocks) { return write_bytes(src, blocks*block_size)/block_size; };
+
+  size_t get_block_size() { return block_size; };
+  void set_block_size(size_t bs) { block_size = bs; calc_cylinders(); };
+
+  off_t_large get_lba_size()  { return byte_size/block_size; };
   off_t_large get_byte_size()  { return byte_size; };
   off_t_large get_chs_size()  { return cylinders*heads*sectors; };
-  long get_cylinders() { return cylinders; };
+  off_t_large get_cylinders() { return cylinders; };
   long get_heads()     { return heads; };
   long get_sectors()   { return sectors; };
 
@@ -88,6 +94,8 @@ public:
   bool ro()            { return read_only; };
   bool rw()            { return !read_only; };
   bool cdrom()         { return is_cdrom; };
+
+  void calc_cylinders();
 
 protected:
   CConfigurator * myCfg;
@@ -103,12 +111,12 @@ protected:
   bool read_only;
   bool is_cdrom;
 
-  off_t_large lba_size; 
   off_t_large byte_size;
   off_t_large byte_pos;
-  long cylinders;
+  off_t_large cylinders;
   long heads;
   long sectors;
+  size_t block_size;
 };
 
 #endif //!defined(__DISK_H__)

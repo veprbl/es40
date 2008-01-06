@@ -27,7 +27,10 @@
  * \file
  * Contains code to use a file as a disk image.
  *
- * $Id: DiskFile.cpp,v 1.9 2008/01/04 22:11:22 iamcamiel Exp $
+ * $Id: DiskFile.cpp,v 1.10 2008/01/06 10:34:47 iamcamiel Exp $
+ *
+ * X-1.10       Camiel Vanderhoeven                             06-JAN-2008
+ *      Support changing the block size (required for SCSI, ATAPI).
  *
  * X-1.9        Camiel Vanderhoeven                             04-JAN-2008
  *      64-bit file I/O.
@@ -82,61 +85,25 @@ CDiskFile::CDiskFile(CConfigurator * cfg, CDiskController * c, int idebus, int i
 
   // determine size...
   fseek_large(handle,0,SEEK_END);
-  lba_size=ftell_large(handle)/512;
-  byte_size = lba_size * 512;
+  byte_size=ftell_large(handle);
   fseek_large(handle,0,SEEK_SET);
   byte_pos = ftell_large(handle);
 
   sectors = 32;
   heads = 8;
-  cylinders = (long)(lba_size/sectors/heads);
+  block_size = 512;
 
-  unsigned long chs_size = sectors*cylinders*heads;
-  if (chs_size<lba_size)
-    cylinders++;
+  calc_cylinders();
 
   model_number=myCfg->get_text_value("model_number",filename);
 
-  printf("%s: Mounted file %s, %d blocks, %d/%d/%d.\n",devid_string,filename,lba_size,cylinders,heads,sectors);
+  printf("%s: Mounted file %s, %" LL "d blocks, %" LL "d/%d/%d.\n",devid_string,filename,byte_size/512,cylinders,heads,sectors);
 }
 
 CDiskFile::~CDiskFile(void)
 {
   printf("%s: Closing file.\n",devid_string);
   fclose(handle);
-}
-
-bool CDiskFile::seek_block(off_t_large lba)
-{
-  if (lba >=lba_size)
-  {
-    printf("%s: Seek beyond end of file!\n",devid_string);
-    throw((int)1);
-  }
-
-  fseek_large(handle,lba*512,SEEK_SET);
-  byte_pos = ftell_large(handle);
-
-  return true;
-}
-
-size_t CDiskFile::read_blocks(void *dest, size_t blocks)
-{
-  size_t r;
-  r = fread(dest,512,blocks,handle);
-  byte_pos = ftell_large(handle);
-  return r;
-}
-
-size_t CDiskFile::write_blocks(void * src, size_t blocks)
-{
-  if (read_only)
-    return 0;
-
-  size_t r;
-  r = fwrite(src,512,blocks,handle);
-  byte_pos = ftell_large(handle);
-  return r;
 }
 
 bool CDiskFile::seek_byte(off_t_large byte)

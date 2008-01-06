@@ -27,7 +27,10 @@
  * \file
  * Contains definitions to use a raw device as a disk image.
  *
- * $Id: DiskDevice.h,v 1.1 2008/01/05 21:18:17 iamcamiel Exp $
+ * $Id: DiskDevice.h,v 1.2 2008/01/06 10:34:47 iamcamiel Exp $
+ *
+ * X-1.2        Camiel Vanderhoeven                             06-JAN-2008
+ *      Support changing the block size (required for SCSI, ATAPI).
  *
  * X-1.1        Camiel Vanderhoeven                             05-JAN-2008
  *      Initial version in CVS.
@@ -48,10 +51,6 @@ public:
   CDiskDevice(CConfigurator * cfg, CDiskController * c, int idebus, int idedev);
   virtual ~CDiskDevice(void);
 
-  virtual bool seek_block(off_t_large block);
-  virtual size_t read_blocks(void * dest, size_t blocks);
-  virtual size_t write_blocks(void * src, size_t blocks);
-
   virtual bool seek_byte(off_t_large byte);
   virtual size_t read_bytes(void * dest, size_t bytes);
   virtual size_t write_bytes(void * src, size_t bytes);
@@ -61,11 +60,12 @@ protected:
   HANDLE handle;
   char * buffer;
   size_t buffer_size;
+  size_t dev_block_size;
 #else
   FILE * handle;
 #endif
   char * filename;
-  size_t block_size;
+
 
 };
 

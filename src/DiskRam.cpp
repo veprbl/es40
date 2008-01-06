@@ -27,7 +27,10 @@
  * \file
  * Contains code to use a RAM disk.
  *
- * $Id: DiskRam.cpp,v 1.9 2008/01/04 22:11:22 iamcamiel Exp $
+ * $Id: DiskRam.cpp,v 1.10 2008/01/06 10:34:47 iamcamiel Exp $
+ *
+ * X-1.10       Camiel Vanderhoeven                             06-JAN-2008
+ *      Support changing the block size (required for SCSI, ATAPI).
  *
  * X-1.9        Camiel Vanderhoeven                             04-JAN-2008
  *      64-bit file I/O.
@@ -62,30 +65,21 @@
 
 CDiskRam::CDiskRam(CConfigurator * cfg, CDiskController * c, int idebus, int idedev) : CDisk(cfg,c,idebus,idedev)
 {
-  lba_size = myCfg->get_int_value("size",512)*2*1024;
-  byte_size = lba_size * 512;
+  byte_size = myCfg->get_int_value("size",512)*1024*1024;
 
-  ramdisk = malloc(lba_size*512);
-
-  if (!ramdisk)
-  {
-    printf("%s: Could not allocate %d MB!\n",devid_string,lba_size/2*1024);
-    throw((int)1);
-  }
+  CHECK_ALLOCATION(ramdisk = malloc(byte_size));
 
   byte_pos = 0;
 
   sectors = 32;
   heads = 8;
-  cylinders = (long)(lba_size/sectors/heads);
+  block_size = 512;
 
-  unsigned long chs_size = sectors*cylinders*heads;
-  if (chs_size<lba_size)
-    cylinders++;
+  calc_cylinders();
 
   model_number=myCfg->get_text_value("model_number","ES40RAMDISK");
 
-  printf("%s: Mounted RAMDISK, %d blocks, %d/%d/%d.\n",devid_string,lba_size,cylinders,heads,sectors);
+  printf("%s: Mounted RAMDISK, %" LL "d blocks, %" LL "d/%d/%d.\n",devid_string,byte_size/512,cylinders,heads,sectors);
 }
 
 CDiskRam::~CDiskRam(void)
@@ -96,48 +90,6 @@ CDiskRam::~CDiskRam(void)
     free(ramdisk);
     ramdisk = 0;
   }
-}
-
-bool CDiskRam::seek_block(off_t_large lba)
-{
-  if (lba >=lba_size)
-  {
-    printf("%s: Seek beyond end of file!\n",devid_string);
-    throw((int)1);
-  }
-
-  byte_pos = lba*512;
-  return true;
-}
-
-size_t CDiskRam::read_blocks(void *dest, size_t blocks)
-{
-  if (byte_pos >=byte_size)
-    return 0;
-
-  while (byte_pos + (blocks*512) >= byte_size)
-    blocks--;
-
-  memcpy(dest,&(((char*)ramdisk)[byte_pos]),blocks*512);
-  byte_pos += (unsigned long)blocks*512;
-  return blocks;
-}
-
-size_t CDiskRam::write_blocks(void * src, size_t blocks)
-{
-  if (read_only)
-    return 0;
-
-  if (byte_pos >=byte_size)
-    return 0;
-
-  while (byte_pos + (blocks*512) >= byte_size)
-    blocks--;
-
-  memcpy(&(((char*)ramdisk)[byte_pos]),src,blocks*512);
-  byte_pos += (unsigned long)blocks*512;
-  return blocks;
-
 }
 
 bool CDiskRam::seek_byte(off_t_large byte)

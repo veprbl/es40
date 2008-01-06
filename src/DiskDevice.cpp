@@ -27,7 +27,10 @@
  * \file
  * Contains code to use a raw device as a disk image.
  *
- * $Id: DiskDevice.cpp,v 1.1 2008/01/05 21:18:17 iamcamiel Exp $
+ * $Id: DiskDevice.cpp,v 1.2 2008/01/06 10:34:47 iamcamiel Exp $
+ *
+ * X-1.2        Camiel Vanderhoeven                             06-JAN-2008
+ *      Support changing the block size (required for SCSI, ATAPI).
  *
  * X-1.1        Camiel Vanderhoeven                             05-JAN-2008
  *      Initial version in CVS.
@@ -95,34 +98,29 @@ CDiskDevice::CDiskDevice(CConfigurator * cfg, CDiskController * c, int idebus, i
   }
 
   sectors = x.Geometry.SectorsPerTrack;
-  cylinders = x.Geometry.Cylinders.QuadPart * x.Geometry.BytesPerSector / 512;
   heads = x.Geometry.TracksPerCylinder;
-  lba_size = x.DiskSize.QuadPart/512;
-  byte_size = lba_size * 512;
-  block_size = x.Geometry.BytesPerSector;
+  byte_size = x.DiskSize.QuadPart;
+  dev_block_size = x.Geometry.BytesPerSector;
 
   LARGE_INTEGER a;
   a.QuadPart = 0;
   SetFilePointerEx(handle, a, (PLARGE_INTEGER) &byte_pos, FILE_BEGIN); 
 #else
   fseek_large(handle,0,SEEK_END);
-  lba_size=ftell_large(handle)/512;
-  byte_size = lba_size * 512;
+  byte_size=ftell_large(handle);
   fseek_large(handle,0,SEEK_SET);
   byte_pos = ftell_large(handle);
 
   sectors = 32;
   heads = 8;
-  cylinders = lba_size/sectors/heads;
-
-  off_t_large chs_size = sectors*cylinders*heads;
-  if (chs_size<lba_size)
-    cylinders++;
 #endif
+
+  block_size = 512;
+  calc_cylinders();
 
   model_number=myCfg->get_text_value("model_number",filename);
 
-  printf("%s: Mounted device %s, %" LL "d blocks, %" LL "d/%d/%d.\n",devid_string,filename,lba_size,cylinders,heads,sectors);
+  printf("%s: Mounted device %s, %" LL "d blocks, %" LL "d/%d/%d.\n",devid_string,filename,byte_size/512,cylinders,heads,sectors);
 }
 
 CDiskDevice::~CDiskDevice(void)
@@ -134,50 +132,6 @@ CDiskDevice::~CDiskDevice(void)
 #else
   if (handle)
     fclose(handle);
-#endif
-}
-
-bool CDiskDevice::seek_block(off_t_large lba)
-{
-  if (lba >=lba_size)
-  {
-    printf("%s: Seek beyond end of file!\n",devid_string);
-    throw((int)1);
-  }
-
-#if defined(_WIN32)
-  byte_pos = lba * 512;
-#else
-  fseek_large(handle,lba*512,SEEK_SET);
-  byte_pos = ftell_large(handle);
-#endif
-  return true;
-}
-
-size_t CDiskDevice::read_blocks(void *dest, size_t blocks)
-{
-#if defined(_WIN32)
-  return read_bytes(dest,blocks*512)/512;
-#else
-  size_t r;
-  r = fread(dest,512,blocks,handle);
-  byte_pos = ftell_large(handle);
-  return r;
-#endif
-}
-
-size_t CDiskDevice::write_blocks(void * src, size_t blocks)
-{
-  if (read_only)
-    return 0;
-
-#if defined(_WIN32)
-  return write_bytes(src,blocks*512)/512;
-#else
-  size_t r;
-  r = fwrite(src,512,blocks,handle);
-  byte_pos = ftell_large(handle);
-  return r;
 #endif
 }
 
@@ -201,36 +155,42 @@ bool CDiskDevice::seek_byte(off_t_large byte)
 
 size_t CDiskDevice::read_bytes(void *dest, size_t bytes)
 {
+//  printf("%s: read %d bytes @ %" LL "d.\n",devid_string,bytes,byte_pos);
 #if defined(_WIN32)
-  size_t byte_from = (byte_pos/block_size)*block_size;  
-  size_t byte_to   = (((byte_pos+bytes-1)/block_size)+1)*block_size;
+  off_t_large byte_from = (byte_pos/dev_block_size)*dev_block_size;  
+  off_t_large byte_to   = (((byte_pos+bytes-1)/dev_block_size)+1)*dev_block_size;
+  DWORD byte_len = (DWORD)(byte_to - byte_from);
+  DWORD byte_off = (DWORD)(byte_pos - byte_from);
   LARGE_INTEGER a;
   DWORD r;
 
-  if (byte_to-byte_from > buffer_size)
+  if (byte_len > buffer_size)
   {
-    CHECK_REALLOCATION(buffer,byte_to-byte_from,char);
-    buffer_size = byte_to-byte_from;
+    buffer_size = byte_len;
+    CHECK_REALLOCATION(buffer,realloc(buffer,buffer_size),char);
+//    printf("%s: buffer enlarged to %d bytes.\n",devid_string,buffer_size);
   }
 
   a.QuadPart = byte_from;
   SetFilePointerEx(handle, a, NULL, FILE_BEGIN);
 
-  ReadFile(handle,buffer,byte_to-byte_from,&r,NULL);
+  ReadFile(handle,buffer,byte_len,&r,NULL);
 
-  if (r != (byte_to-byte_from))
-    printf("%s: Tried to read %d bytes from pos %ld, but could only read %d bytes!\n",devid_string,bytes,byte_from,r);
+  if (r != (byte_len))
+  {
+    printf("%s: Tried to read %d bytes from pos %" LL "d, but could only read %d bytes!\n",devid_string,byte_len,byte_from,r);
+    printf("%s: Error %ld.\n",devid_string,GetLastError());
+  }
 
-  memcpy(dest,buffer+byte_pos-byte_from,bytes);
+  memcpy(dest,buffer+byte_off,bytes);
   byte_pos += bytes;
-
-  r = bytes;
+  return bytes;
 #else
   size_t r;
   r = fread(dest,1,bytes,handle);
   byte_pos = ftell_large(handle);
-#endif
   return r;
+#endif
 }
 
 size_t CDiskDevice::write_bytes(void * src, size_t bytes)
@@ -239,15 +199,17 @@ size_t CDiskDevice::write_bytes(void * src, size_t bytes)
     return 0;
 
 #if defined(_WIN32)
-  size_t byte_from = (byte_pos/block_size)*block_size;  
-  size_t byte_to   = (((byte_pos+bytes-1)/block_size)+1)*block_size;
+  off_t_large byte_from = (byte_pos/dev_block_size)*dev_block_size;  
+  off_t_large byte_to   = (((byte_pos+bytes-1)/dev_block_size)+1)*dev_block_size;
+  DWORD byte_len = (DWORD)(byte_to - byte_from);
+  DWORD byte_off = (DWORD)(byte_pos - byte_from);
   LARGE_INTEGER a;
   DWORD r;
 
-  if (byte_to-byte_from > buffer_size)
+  if (byte_len > buffer_size)
   {
-    CHECK_REALLOCATION(buffer,byte_to-byte_from,char);
-    buffer_size = byte_to-byte_from;
+    buffer_size = byte_len;
+    CHECK_REALLOCATION(buffer,realloc(buffer,buffer_size),char);
   }
 
   if (byte_from != byte_pos)
@@ -256,50 +218,49 @@ size_t CDiskDevice::write_bytes(void * src, size_t bytes)
     // from disk first so we don't corrupt the disk
     a.QuadPart = byte_from;
     SetFilePointerEx(handle, a, NULL, FILE_BEGIN);
-    ReadFile(handle,buffer,block_size,&r,NULL);
-    if (r != (block_size))
+    ReadFile(handle,buffer,(DWORD)dev_block_size,&r,NULL);
+    if (r != (dev_block_size))
     {
-      printf("%s: Tried to read %d bytes from pos %ld, but could only read %d bytes!\n",devid_string,block_size,byte_from,r);
+      printf("%s: Tried to read %d bytes from pos %" LL "d, but could only read %d bytes!\n",devid_string,dev_block_size,byte_from,r);
       FAILURE("Error during device write operation. Terminating to avoid disk corruption.");
     }
   }
 
-  if ((byte_to != byte_pos+bytes) && (byte_to-byte_from>block_size))
+  if ((byte_to != byte_pos+bytes) && (byte_to-byte_from>dev_block_size))
   {
     // we don't write the entire last block, so we read it 
     // from disk first so we don't corrupt the disk
-    a.QuadPart = byte_to-block_size;
+    a.QuadPart = byte_to-dev_block_size;
     SetFilePointerEx(handle, a, NULL, FILE_BEGIN);
-    ReadFile(handle,buffer+byte_to-byte_from-block_size,block_size,&r,NULL);
-    if (r != (block_size))
+    ReadFile(handle,buffer+byte_len-dev_block_size,(DWORD)dev_block_size,&r,NULL);
+    if (r != (dev_block_size))
     {
-      printf("%s: Tried to read %d bytes from pos %ld, but could only read %d bytes!\n",devid_string,block_size,byte_to-block_size,r);
+      printf("%s: Tried to read %d bytes from pos %" LL "d, but could only read %d bytes!\n",devid_string,dev_block_size,byte_to-dev_block_size,r);
       FAILURE("Error during device write operation. Terminating to avoid disk corruption.");
     }
   }
 
   // add the data we're writing to the buffer
-  memcpy(buffer+byte_pos-byte_from,src,bytes);
+  memcpy(buffer+byte_off,src,bytes);
   
   a.QuadPart = byte_from;
   SetFilePointerEx(handle, a, NULL, FILE_BEGIN);
 
   // and write the buffer to disk
-  WriteFile(handle,buffer,byte_to-byte_from,&r,NULL);
+  WriteFile(handle,buffer,byte_len,&r,NULL);
 
-  if (r != (byte_to-byte_from))
+  if (r != byte_len)
   {
-    printf("%s: Tried to write %d bytes to pos %ld, but could only write %d bytes!\n",devid_string,bytes,byte_from,r);
+    printf("%s: Tried to write %d bytes to pos %" LL "d, but could only write %d bytes!\n",devid_string,byte_len,byte_from,r);
     FAILURE("Error during device write operation. Terminating to avoid disk corruption.");
   }
 
   byte_pos += bytes;
-
-  r = bytes;
+  return bytes;
 #else
   size_t r;
   r = fwrite(src,1,bytes,handle);
   byte_pos = ftell_large(handle);
-#endif
   return r;
+#endif
 }
