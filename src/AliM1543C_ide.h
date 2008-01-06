@@ -27,7 +27,10 @@
  * \file
  * Contains the definitions for the emulated Ali M1543C IDE chipset part.
  *
- * $Id: AliM1543C_ide.h,v 1.10 2008/01/02 09:30:18 iamcamiel Exp $
+ * $Id: AliM1543C_ide.h,v 1.11 2008/01/06 10:38:32 iamcamiel Exp $
+ *
+ * X-1.11       Camiel Vanderhoeven                             06-JAN-2008
+ *      Leave changing the blocksize to the disk itself.
  *
  * X-1.10       Camiel Vanderhoeven                             02-JAN-2008
  *      Comments.
@@ -72,11 +75,11 @@
 /**
  * \brief Emulated IDE part of ALi M1543C multi-function device.
  *
- * Known shortcomings:
- *   - disk images are not checked for size, so size is not always correctly 
- *     reported.
- *   - IDE disks can be read but not written.
- *   .
+ * Documentation consulted:
+ *  - Ali M1543C B1 South Bridge Version 1.20 (http://mds.gotdns.com/sensors/docs/ali/1543dScb1-120.pdf)
+ *  - AT Attachment with Packet Interface - 5 (ATA/ATAPI-5) (http://www.t13.org/Documents/UploadedDocuments/project/d1321r3-ATA-ATAPI-5.pdf)
+ *  - Programming Interface for Bus Master IDE COntroller (http://suif.stanford.edu/%7Ecsapuntz/specs/idems100.ps)
+ *  .
  **/
 
 class CAliM1543C_ide : public CDiskController  

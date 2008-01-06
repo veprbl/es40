@@ -27,7 +27,10 @@
  * \file
  * Contains the code for the emulated Symbios SCSI controller.
  *
- * $Id: Sym53C895.cpp,v 1.16 2008/01/04 22:16:48 iamcamiel Exp $
+ * $Id: Sym53C895.cpp,v 1.17 2008/01/06 10:38:32 iamcamiel Exp $
+ *
+ * X-1.17       Camiel Vanderhoeven                             06-JAN-2008
+ *      Leave changing the blocksize to the disk itself.
  *
  * X-1.16       Camiel Vanderhoeven                             04-JAN-2008
  *      Less messages fprint'ed.
@@ -383,10 +386,7 @@ CSym53C895::CSym53C895(CConfigurator * cfg, CSystem * c, int pcibus, int pcidev)
   R8(CTEST3) = (u8)(pci_state.config_data[0][2]<<4) & R_CTEST3_REV; // Chip rev.
   R8(STEST4) = 0xC0 | 0x20; // LVD SCSI, Freq. Locked
 
-  for (int i=0;i<16;i++)
-    state.per_target[i].block_size = 512;
-
-  printf("%s: $Id: Sym53C895.cpp,v 1.16 2008/01/04 22:16:48 iamcamiel Exp $\n",devid_string);
+  printf("%s: $Id: Sym53C895.cpp,v 1.17 2008/01/06 10:38:32 iamcamiel Exp $\n",devid_string);
 }
 
 CSym53C895::~CSym53C895()
@@ -2068,9 +2068,9 @@ int CSym53C895::do_command()
 	PT.dati[q+2] = 0;	/*  nr of blocks, mid  */
 	PT.dati[q+3] = 0;	/*  nr of blocks, low */
 	PT.dati[q+4] = 0x00;	/*  reserved  */
-    PT.dati[q+5] = (u8)(PT.block_size >> 16) & 255;
-	PT.dati[q+6] = (u8)(PT.block_size >>  8) & 255;
-	PT.dati[q+7] = (u8)(PT.block_size >>  0) & 255;
+    PT.dati[q+5] = (u8)(PTD->get_block_size() >> 16) & 255;
+	PT.dati[q+6] = (u8)(PTD->get_block_size() >>  8) & 255;
+	PT.dati[q+7] = (u8)(PTD->get_block_size() >>  0) & 255;
 	q += 8;
 
     PT.stat_len = 1;
@@ -2100,8 +2100,8 @@ int CSym53C895::do_command()
         PT.dati[q + 11] = (u8)PTD->get_sectors();
 
 		/*  12,13 = physical sector size  */
-		PT.dati[q + 12] = (u8)(PT.block_size >> 8) & 255;
-		PT.dati[q + 13] = (u8)(PT.block_size >> 0) & 255;
+		PT.dati[q + 12] = (u8)(PTD->get_block_size() >> 8) & 255;
+		PT.dati[q + 13] = (u8)(PTD->get_block_size() >> 0) & 255;
 		break;
 	case 4:		/*  rigid disk geometry page  */
 		PT.dati[q + 0] = pagecode;
@@ -2127,8 +2127,8 @@ int CSym53C895::do_command()
 		PT.dati[q + 5] = (u8)PTD->get_sectors();
 
 		/*  6,7 = data bytes per sector  */
-		PT.dati[q + 6] = (u8)(PT.block_size >> 8) & 255;
-		PT.dati[q + 7] = (u8)(PT.block_size >> 0) & 255;
+		PT.dati[q + 6] = (u8)(PTD->get_block_size() >> 8) & 255;
+		PT.dati[q + 7] = (u8)(PTD->get_block_size() >> 0) & 255;
 
 		PT.dati[q + 8] = (u8)(PTD->get_cylinders() >> 8) & 255;
 		PT.dati[q + 9] = (u8)PTD->get_cylinders() & 255;
@@ -2179,8 +2179,8 @@ int CSym53C895::do_command()
         && PT.dato[7] == 0x00 // all blocks
         && PT.dato[8] == 0x00) // reserved
     {
-      PT.block_size = (PT.dato[9]<<16) | (PT.dato[10]<<8) | PT.dato[11];
-      //printf("SYM%d: Block size set to %d.\n",GET_DEST(),PT.block_size);
+      PTD->set_block_size( (PT.dato[9]<<16) | (PT.dato[10]<<8) | PT.dato[11] );
+      //printf("SYM%d: Block size set to %d.\n",GET_DEST(),PTD->get_block_size());
     }
     else
     {
@@ -2213,15 +2213,15 @@ int CSym53C895::do_command()
       break;
 	}
 
-    PT.dati[0] = (u8)((PTD->get_byte_size()/PT.block_size) >> 24) & 255;
-	PT.dati[1] = (u8)((PTD->get_byte_size()/PT.block_size) >> 16) & 255;
-	PT.dati[2] = (u8)((PTD->get_byte_size()/PT.block_size) >>  8) & 255;
-	PT.dati[3] = (u8)((PTD->get_byte_size()/PT.block_size) >>  0) & 255;
+    PT.dati[0] = (u8)((PTD->get_lba_size()) >> 24) & 255;
+	PT.dati[1] = (u8)((PTD->get_lba_size()) >> 16) & 255;
+	PT.dati[2] = (u8)((PTD->get_lba_size()) >>  8) & 255;
+	PT.dati[3] = (u8)((PTD->get_lba_size()) >>  0) & 255;
 
-	PT.dati[4] = (u8)(PT.block_size >> 24) & 255;
-	PT.dati[5] = (u8)(PT.block_size >> 16) & 255;
-	PT.dati[6] = (u8)(PT.block_size >>  8) & 255;
-	PT.dati[7] = (u8)(PT.block_size >>  0) & 255;
+	PT.dati[4] = (u8)(PTD->get_block_size() >> 24) & 255;
+	PT.dati[5] = (u8)(PTD->get_block_size() >> 16) & 255;
+	PT.dati[6] = (u8)(PTD->get_block_size() >>  8) & 255;
+	PT.dati[7] = (u8)(PTD->get_block_size() >>  0) & 255;
 
     PT.dati_len = 8;
 
@@ -2281,15 +2281,15 @@ int CSym53C895::do_command()
     PT.msgi_ptr = 0;
 
     /* Within bounds? */
-    if (((ofs+retlen)*PT.block_size) > PTD->get_byte_size())
+    if ((ofs+retlen) > PTD->get_lba_size())
     {
       PT.stat[0] = 0x02; // check condition
       break;
     }
 
 	/*  Return data:  */
-    PTD->seek_byte(ofs * PT.block_size);
-    PT.dati_len = retlen * PT.block_size;
+    PTD->seek_block(ofs);
+    PT.dati_len = retlen * PTD->get_block_size();
     PT.dati_off_disk = true;
 
 	//printf("SYM.%d READ  ofs=%d size=%d\n", GET_DEST(), ofs, retlen);
@@ -2338,15 +2338,15 @@ int CSym53C895::do_command()
     PT.msgi_ptr = 0;
 
     /* Within bounds? */
-    if (((ofs+retlen)*PT.block_size) > PTD->get_byte_size())
+    if (((ofs+retlen)) > PTD->get_lba_size())
     {
       PT.stat[0] = 0x02; // check condition
       break;
     }
 
 	/*  Return data:  */
-    PTD->seek_byte(ofs * PT.block_size);
-    PT.dato_len = retlen * PT.block_size;
+    PTD->seek_block(ofs);
+    PT.dato_len = retlen * PTD->get_block_size();
     PT.dato_to_disk = true;
 
 	//printf("SYM.%d WRITE  ofs=%d size=%d\n", GET_DEST(), ofs, retlen);

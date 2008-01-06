@@ -27,18 +27,21 @@
  * \file
  * Contains the definitions for the emulated Symbios SCSI controller.
  *
- * $Id: Sym53C895.h,v 1.9 2008/01/02 09:30:20 iamcamiel Exp $
+ * $Id: Sym53C895.h,v 1.10 2008/01/06 10:38:32 iamcamiel Exp $
  *
- * X-1.12       Camiel Vanderhoeven                             02-JAN-2008
+ * X-1.10       Camiel Vanderhoeven                             06-JAN-2008
+ *      Leave changing the blocksize to the disk itself.
+ *
+ * X-1.9        Camiel Vanderhoeven                             02-JAN-2008
  *      Comments.
  *
- * X-1.11       Camiel Vanderhoeven                             28-DEC-2007
+ * X-1.8        Camiel Vanderhoeven                             28-DEC-2007
  *      Keep the compiler happy.
  *
- * X-1.10       Camiel Vanderhoeven                             20-DEC-2007
+ * X-1.7        Camiel Vanderhoeven                             20-DEC-2007
  *      Do reselection on read commands.
  *
- * X-1.9        Camiel Vanderhoeven                             19-DEC-2007
+ * X-1.6        Camiel Vanderhoeven                             19-DEC-2007
  *      Allow for different blocksizes.
  *
  * X-1.5        Camiel Vanderhoeven                             18-DEC-2007
@@ -66,6 +69,13 @@
  * \brief Symbios Sym53C895 SCSI disk controller.					 
  *
  * \bug Exception below ASTDEL during OpenVMS boot when booting from SCSI.
+ *
+ * Documentation consulted:
+ *  - SCSI 2
+ *    (http://www.t10.org/ftp/t10/drafts/s2/s2-r10l.pdf)
+ *  - SYM53C895 PCI-Ultra2 SCSI I/O Processor
+ *    (http://www.datasheet4u.com/html/S/Y/M/SYM53C895_LSILogic.pdf.html)
+ *  .
  **/
 
 class CSym53C895 : public CDiskController  
@@ -185,7 +195,7 @@ class CSym53C895 : public CDiskController
       bool reselected;
       int disconnect_phase;
 
-      u32 block_size;
+//      u32 block_size;
     } per_target[16];
 
 
