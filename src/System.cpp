@@ -27,7 +27,10 @@
  * \file 
  * Contains the code for the emulated Typhoon Chipset devices.
  *
- * $Id: System.cpp,v 1.50 2008/01/07 16:41:19 iamcamiel Exp $
+ * $Id: System.cpp,v 1.51 2008/01/07 16:55:17 iamcamiel Exp $
+ *
+ * X-1.51       Camiel Vanderhoeven                             07-JAN-2008
+ *      Corrected error in last update; csr reg. 0x600, not 0600...
  *
  * X-1.50       Camiel Vanderhoeven                             07-JAN-2008
  *      DMA scatter/gather access. Split out some things.
@@ -317,7 +320,7 @@ CSystem::CSystem(CConfigurator * cfg)
 
   CHECK_ALLOCATION(memory = calloc(1<<iNumMemoryBits,1));
 
-  printf("%s(%s): $Id: System.cpp,v 1.50 2008/01/07 16:41:19 iamcamiel Exp $\n",cfg->get_myName(),cfg->get_myValue());
+  printf("%s(%s): $Id: System.cpp,v 1.51 2008/01/07 16:55:17 iamcamiel Exp $\n",cfg->get_myName(),cfg->get_myValue());
 }
 
 /**
@@ -571,6 +574,7 @@ u64 lastport;
  *
  * The system address space is divided as shown in the following table:
  *
+ * \code
  * +-------------------+--------+-------------------------------+---------------------------------+
  * | Space             | Size   | System Address <43:0>         | Comments                        |
  * +-------------------+--------+-------------------------------+---------------------------------+
@@ -626,7 +630,7 @@ u64 lastport;
  * | Reserved          | 8172GB | 804.0000.0000 – FFF.FFFF.FFFF | Bits <42:35> are don’t cares if |
  * |                   |        |                               | bit <43> is asserted.           |
  * +-------------------+--------+-------------------------------+---------------------------------+
- *
+ * \endcode
  **/
 
 void CSystem::WriteMem(u64 address, int dsize, u64 data)
@@ -1308,6 +1312,8 @@ u64 CSystem::pchip_csr_read(int num, u32 a)
     return state.p_PERR[num];
   case 0x400:
     return state.p_PERRMASK[num];
+  case 0x800: // PCI reset
+    return 0;
   default:
     printf("Unknown PCHIP %d CSR %07x read attempted.\n",num,a);
     return 0;
@@ -1435,7 +1441,7 @@ void CSystem::cchip_csr_write(u32 a, u64 data)
 
   case 0x200:
   case 0x240:
-  case 0600:
+  case 0x600:
   case 0x640:
 	state.c_DIM[((a>>10)&2)|((a>>6)&1)] = data;
 	return;
@@ -1469,8 +1475,13 @@ u8 CSystem::tig_read(u32 a)
 	case 0x8000180:
 	  // Arbiter revision
 	  return 0xfe;
+    case 0x000: // unknown, but used by SRM...
+    case 0x480:
+      return 0;
 	case 0x040:
 	  return state.tig_FwWrite;
+    case 0x100: // soft reset
+      return 0;
 	case 0x3c0:
 	  return state.tig_HaltA;
 	case 0x5c0:
@@ -1485,6 +1496,9 @@ void CSystem::tig_write(u32 a, u8 data)
 {
   switch(a)
   {
+    case 0x000: // unknown, but used by SRM...
+    case 0x480:
+      return;
   case 0x3c0:
     state.tig_HaltA = data;
     return;
