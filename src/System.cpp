@@ -27,7 +27,10 @@
  * \file 
  * Contains the code for the emulated Typhoon Chipset devices.
  *
- * $Id: System.cpp,v 1.49 2008/01/02 08:53:41 iamcamiel Exp $
+ * $Id: System.cpp,v 1.50 2008/01/07 16:41:19 iamcamiel Exp $
+ *
+ * X-1.50       Camiel Vanderhoeven                             07-JAN-2008
+ *      DMA scatter/gather access. Split out some things.
  *
  * X-1.49       Camiel Vanderhoeven                             02-JAN-2008
  *      Cleanup. 
@@ -272,13 +275,15 @@ CSystem::CSystem(CConfigurator * cfg)
   state.c_TRR = X64(0000000000003103);
   state.c_TDR = X64(F37FF37FF37FF37F);
 
-  state.d_STR = X64(2525252525252525);
+  state.d_STR = 0x25;
 
   state.p_PCTL[0] = X64(0000104401440081);
   state.p_PCTL[1] = X64(0000504401440081);
 
   state.p_PERRMASK[0] = 0;
   state.p_PERRMASK[1] = 0;
+  state.p_PERR[0] = 0;
+  state.p_PERR[1] = 0;
   state.p_PLAT[0] = 0;
   state.p_PLAT[1] = 0;
   state.p_TBA [0][0] = 0;
@@ -312,7 +317,7 @@ CSystem::CSystem(CConfigurator * cfg)
 
   CHECK_ALLOCATION(memory = calloc(1<<iNumMemoryBits,1));
 
-  printf("%s(%s): $Id: System.cpp,v 1.49 2008/01/02 08:53:41 iamcamiel Exp $\n",cfg->get_myName(),cfg->get_myValue());
+  printf("%s(%s): $Id: System.cpp,v 1.50 2008/01/07 16:41:19 iamcamiel Exp $\n",cfg->get_myName(),cfg->get_myValue());
 }
 
 /**
@@ -543,8 +548,85 @@ u64 lastport;
 #endif
 
 /**
- * Write 8, 4, 2 or 1 byte(s) to a 64-bit system address. This could be memory,
- * or some device.
+ * \brief Write 8, 4, 2 or 1 byte(s) to a 64-bit system address. This could be memory,
+ * internal chipset registers, nothing or some device.
+ *
+ * Source: HRM, 10.1.1:
+ *
+ * System Space and Address Map
+ *
+ * The system address space is divided into two parts: system memory and PIO. This division
+ * is indicated by physical memory bit <43> = 1 for PIO accesses from the CPU, and
+ * by the PTP bit in the window registers for PTP accesses from the Pchip. While the operating
+ * system may choose bit <40> instead of bit <43> to represent PIO space, bit <43>
+ * is used throughout this chapter. In general, bits <42:35> are don’t cares if bit <43> is
+ * asserted.
+ *
+ * There is 16GB of PIO space available on the 21272 chipset with 8GB assigned to each
+ * Pchip. The Pchip supports up to bit <34> (35 bits total) of system address. However, the
+ * Version 1 Cchip only supports 4GB of system memory (32 bits total). As described in
+ * Chapter 6, the CAPbus protocol between the Pchip and Cchip does support up to bit
+ * <34>, as does the Cchip’s interface to the CPU. The Typhoon Cchip supports 32GB of
+ * system memory (35 bits total).
+ *
+ * The system address space is divided as shown in the following table:
+ *
+ * +-------------------+--------+-------------------------------+---------------------------------+
+ * | Space             | Size   | System Address <43:0>         | Comments                        |
+ * +-------------------+--------+-------------------------------+---------------------------------+
+ * | System memory     |    4GB | 000.0000.0000 – 000.FFFF.FFFF | Cacheable and prefetchable.     |
+ * +-------------------+--------+-------------------------------+---------------------------------+
+ * | Reserved          | 8188GB | 001.0000.0000 – 7FF.FFFF.FFFF | —                               |
+ * +-------------------+--------+-------------------------------+---------------------------------+
+ * | Pchip0 PCI memory |    4GB | 800.0000.0000 – 800.FFFF.FFFF | Linear addressing.              |
+ * +-------------------+--------+-------------------------------+---------------------------------+
+ * | TIGbus            |    1GB | 801.0000.0000 – 801.3FFF.FFFF | addr<5:0> = 0. Single byte      |
+ * |                   |        |                               | valid in quadword access.       |
+ * |                   |        |                               | 16MB accessible.                |
+ * +-------------------+--------+-------------------------------+---------------------------------+
+ * | Reserved          |    1GB | 801.4000.0000 – 801.7FFF.FFFF | —                               |
+ * +-------------------+--------+-------------------------------+---------------------------------+
+ * | Pchip0 CSRs       |  256MB | 801.8000.0000 – 801.8FFF.FFFF | addr<5:0> = 0. Quadword access. |
+ * +-------------------+--------+-------------------------------+---------------------------------+
+ * | Reserved          |  256MB | 801.9000.0000 – 801.9FFF.FFFF | —                               |
+ * +-------------------+--------+-------------------------------+---------------------------------+
+ * | Cchip CSRs        |  256MB | 801.A000.0000 – 801.AFFF.FFFF | addr<5:0> = 0. Quadword access. |
+ * +-------------------+--------+-------------------------------+---------------------------------+
+ * | Dchip CSRs        |  256MB | 801.B000.0000 – 801.BFFF.FFFF | addr<5:0> = 0. All eight bytes  |
+ * |                   |        |                               | in quadword access must be      |
+ * |                   |        |                               | identical.                      |
+ * +-------------------+--------+-------------------------------+---------------------------------+
+ * | Reserved          |  768MB | 801.C000.0000 – 801.EFFF.FFFF | —                               |
+ * | Reserved          |  128MB | 801.F000.0000 – 801.F7FF.FFFF | —                               |
+ * +-------------------+--------+-------------------------------+---------------------------------+
+ * | Pchip 0 PCI IACK  |   64MB | 801.F800.0000 – 801.FBFF.FFFF | Linear addressing.              |
+ * +-------------------+--------+-------------------------------+---------------------------------+
+ * | Pchip0 PCI I/O    |   32MB | 801.FC00.0000 – 801.FDFF.FFFF | Linear addressing.              |
+ * +-------------------+--------+-------------------------------+---------------------------------+
+ * | Pchip0 PCI conf   |   16MB | 801.FE00.0000 – 801.FEFF.FFFF | Linear addressing.              |
+ * +-------------------+--------+-------------------------------+---------------------------------+
+ * | Reserved          |   16MB | 801.FF00.0000 – 801.FFFF.FFFF | —                               |
+ * +-------------------+--------+-------------------------------+---------------------------------+
+ * | Pchip1 PCI memory |    4GB | 802.0000.0000 – 802.FFFF.FFFF | Linear addressing.              |
+ * +-------------------+--------+-------------------------------+---------------------------------+
+ * | Reserved          |    2GB | 803.0000.0000 – 803.7FFF.FFFF | —                               |
+ * +-------------------+--------+-------------------------------+---------------------------------+
+ * | Pchip1 CSRs       |  256MB | 803.8000.0000 – 803.8FFF.FFFF | addr<5:0> = 0, quadword access. |
+ * +-------------------+--------+-------------------------------+---------------------------------+
+ * | Reserved          | 1536MB | 803.9000.0000 – 803.EFFF.FFFF | —                               |
+ * | Reserved          |  128MB | 803.F000.0000 – 803.F7FF.FFFF | —                               |
+ * +-------------------+--------+-------------------------------+---------------------------------+
+ * | Pchip 1 PCI IACK  |   64MB | 803.F800.0000 – 803.FBFF.FFFF | Linear addressing.              |
+ * +-------------------+--------+-------------------------------+---------------------------------+
+ * | Pchip1 PCI I/O    |   32MB | 803.FC00.0000 – 803.FDFF.FFFF | Linear addressing.              |
+ * +-------------------+--------+-------------------------------+---------------------------------+
+ * | Pchip1 PCI conf   |   16MB | 803.FE00.0000 – 803.FEFF.FFFF | Linear addressing.              |
+ * +-------------------+--------+-------------------------------+---------------------------------+
+ * | Reserved          |   16MB | 803.FF00.0000 – 803.FFFF.FFFF | —                               |
+ * | Reserved          | 8172GB | 804.0000.0000 – FFF.FFFF.FFFF | Bits <42:35> are don’t cares if |
+ * |                   |        |                               | bit <43> is asserted.           |
+ * +-------------------+--------+-------------------------------+---------------------------------+
+ *
  **/
 
 void CSystem::WriteMem(u64 address, int dsize, u64 data)
@@ -560,178 +642,48 @@ void CSystem::WriteMem(u64 address, int dsize, u64 data)
 
   a = address & X64(00000807ffffffff);
 
-  if (a>>iNumMemoryBits)
+  if (a>>iNumMemoryBits) // non-memory
+  {
+    // check registered device memory ranges
+    for(i=0;i<iNumMemories;i++) 
     {
+	  if (   (a >= asMemories[i]->base)
+	       && (a < asMemories[i]->base + asMemories[i]->length) ) 
+      {
+	    asMemories[i]->component->WriteMem(asMemories[i]->index, a-asMemories[i]->base, dsize, data);
+	    return;
+	  }
+    }
 
-      // non-memory...
-      for(i=0;i<iNumMemories;i++) {
-	if (   (a >= asMemories[i]->base)
-	       && (a < asMemories[i]->base + asMemories[i]->length) ) {
-	  asMemories[i]->component->WriteMem(asMemories[i]->index, a-asMemories[i]->base, dsize, data);
-	  return;
-	}
-      }
+    if (a>=X64(00000801A0000000) && a<=X64(00000801AFFFFFFF))
+    {
+      cchip_csr_write((u32)a&0xFFFFFFF,data);
+      return;
+    }
 
-      switch (a)
-	{
-        case X64(00000801a0000000): // CSC
-	  state.c_CSC        &= ~X64(0777777fff3f0000);
-	  state.c_CSC |= (data & X64(0777777fff3f0000));
-	  return;
-	case X64(00000801a0000080): // MISC
-	  state.c_MISC |= (data & X64(00000f0000f0f000));	// W1S
-	  state.c_MISC &=~(data & X64(0000000010000ff0));	// W1C
-	  if       (data & X64(0000000001000000))
-	    state.c_MISC &=~        X64(0000000000ff0000);	//Arbitration Clear
-	  if    (!(state.c_MISC & X64(00000000000f0000)))
-	    state.c_MISC |= (data & X64(00000000000f0000));	//Arbitration try
+    if (a>=X64(0000080180000000) && a<=X64(000008018FFFFFFF))
+    {
+      pchip_csr_write(0,(u32)a&0xFFFFFFF,data);
+      return;
+    }
+  
+    if (a>=X64(0000080380000000) && a<=X64(000008038FFFFFFF))
+    {
+      pchip_csr_write(1,(u32)a&0xFFFFFFF,data);
+      return;
+    }
 
-	  // stop interval timer interrupt
-	  if        (data & X64(00000000000000f0))
-	    {
-	      for (i=0;i<iNumCPUs;i++)
-		{
-		  if (data & (X64(10)<<i))
-                    {
-		      acCPUs[i]->irq_h(2,false);
-		      //                        printf("*** TIMER interrupt cleared for CPU %d\n",i);
-                    }
-		}
-	    }			
-	  return;
+    if (a>=X64(00000801B0000000) && a<=X64(00000801BFFFFFFF))
+    {
+      dchip_csr_write((u32)a&0xFFFFFFF,(u8)data&0xff);
+      return;
+    }
 
-	case X64(00000801a0000200):
-	  state.c_DIM[0] = data;
-	  return;
-	case X64(00000801a0000240):
-	  state.c_DIM[1] = data;
-	  return;
-	case X64(00000801a0000600):
-	  state.c_DIM[2] = data;
-	  return;
-	case X64(00000801a0000640):
-	  state.c_DIM[3] = data;
-	  return;
-
-        case X64(0000080180000000):
-	  state.p_WSBA[0][0] = data & X64(00000000fff00003);
-	  return;
-        case X64(0000080180000040):
-	  state.p_WSBA[0][1] = data & X64(00000000fff00003);
-	  return;
-        case X64(0000080180000080):
-	  state.p_WSBA[0][2] = data & X64(00000000fff00003);
-	  return;
-        case X64(00000801800000c0):
-	  state.p_WSBA[0][3] = data & X64(00000080fff00001) | 2;
-	  return;
-        case X64(0000080380000000):
-	  state.p_WSBA[1][0] = data & X64(00000000fff00003);
-	  return;
-        case X64(0000080380000040):
-	  state.p_WSBA[1][1] = data & X64(00000000fff00003);
-	  return;
-        case X64(0000080380000080):
-	  state.p_WSBA[1][2] = data & X64(00000000fff00003);
-	  return;
-        case X64(00000803800000c0):
-	  state.p_WSBA[1][3] = data & X64(00000080fff00001) | 2;
-	  return;
-        case X64(0000080180000100):
-	  state.p_WSM[0][0] = data & X64(00000000fff00000);
-	  return;
-        case X64(0000080180000140):
-	  state.p_WSM[0][1] = data & X64(00000000fff00000);
-	  return;
-        case X64(0000080180000180):
-	  state.p_WSM[0][2] = data & X64(00000000fff00000);
-	  return;
-        case X64(00000801800001c0):
-	  state.p_WSM[0][3] = data & X64(00000000fff00000);
-	  return;
-        case X64(0000080380000100):
-	  state.p_WSM[1][0] = data & X64(00000000fff00000);
-	  return;
-        case X64(0000080380000140):
-	  state.p_WSM[1][1] = data & X64(00000000fff00000);
-	  return;
-        case X64(0000080380000180):
-	  state.p_WSM[1][2] = data & X64(00000000fff00000);
-	  return;
-        case X64(00000803800001c0):
-	  state.p_WSM[1][3] = data & X64(00000000fff00000);
-	  return;
-        case X64(0000080180000200):
-	  state.p_TBA[0][0] = data & X64(00000007fffffc00);
-	  return;
-        case X64(0000080180000240):
-	  state.p_TBA[0][1] = data & X64(00000007fffffc00);
-	  return;
-        case X64(0000080180000280):
-	  state.p_TBA[0][2] = data & X64(00000007fffffc00);
-	  return;
-        case X64(00000801800002c0):
-	  state.p_TBA[0][3] = data & X64(00000007fffffc00);
-	  return;
-        case X64(0000080380000200):
-	  state.p_TBA[1][0] = data & X64(00000007fffffc00);
-	  return;
-        case X64(0000080380000240):
-	  state.p_TBA[1][1] = data & X64(00000007fffffc00);
-	  return;
-        case X64(0000080380000280):
-	  state.p_TBA[1][2] = data & X64(00000007fffffc00);
-	  return;
-        case X64(00000803800002c0):
-	  state.p_TBA[1][3] = data & X64(00000007fffffc00);
-	  return;
-	case X64(0000080180000300):
-	  state.p_PCTL[0] &=         X64(ffffe300f0300000);
-	  state.p_PCTL[0] |= (data & X64(00001cff0fcfffff));
-	  return;
-	case X64(0000080380000300):
-	  state.p_PCTL[1] &=         X64(ffffe300f0300000);
-	  state.p_PCTL[1] |= (data & X64(00001cff0fcfffff));
-	  return;
-	case X64(0000080180000340):
-	  state.p_PLAT[0] = data;
-	  return;
-	case X64(0000080380000340):
-	  state.p_PLAT[1] = data;
-	  return;		
-	case X64(0000080180000400):
-	  state.p_PERRMASK[0] = data;
-	  return;
-	case X64(0000080380000400):
-	  state.p_PERRMASK[1] = data;
-	  return;
-	case X64(00000801300003c0):
-	  state.tig_HaltA = (u8)(data&0xff);
-	  return;
-	case X64(00000801300005c0):
-	  state.tig_HaltB = (u8)(data&0xff);
-	  return;
-	case X64(0000080130000040):
-	  state.tig_FwWrite = (u8)(data&0xff);
-	  return;
-	case X64(0000080130000100):
-	  // soft reset
-	  printf("Soft reset: %02x\n",(int)data);
-	  return;
-	  //PERROR registers
-	case X64(00000801800003c0):
-	case X64(00000803800003c0):
-	  //TLBIA
-	case X64(00000801800004c0):
-	case X64(00000803800004c0):
-          return;
-	  // PCI reset
-	case X64(0000080180000800):
-	case X64(0000080380000800):
-          for(i=0;i<iNumComponents;i++)
-            acComponents[i]->ResetPCI();
-	  return;
-	default:
+    if (a>=X64(0000080130000000) && a<=X64(000008013FFFFFFF))
+    {
+      tig_write((u32)a&0xFFFFFFF,(u8)data);
+      return;
+    }
       if (a>=X64(801fc000000) && a<X64(801fe000000))
       {
         // Unused PCI I/O space
@@ -764,7 +716,6 @@ void CSystem::WriteMem(u64 address, int dsize, u64 data)
 	printf("%%MEM-I-WRUNKNWN: Attempt to write %d bytes (%016" LL "x) from unknown address %011" LL "x\n",dsize/8,data,a);
 #endif
 	  return;
-	}
     }
 
 
@@ -777,54 +728,96 @@ void CSystem::WriteMem(u64 address, int dsize, u64 data)
       *((u8 *) p) = (u8) data;
       break;
     case 16:
-#if defined(ALIGN_MEM_ACCESS)
-      if (address&1)
-      {
-        t64 = endian_64( (u64) data );
-        *p     = (t64 >> 8) & 0xff;
-        *(p+1) =  t64       & 0xff;
-      }  
-      else
-#endif
       *((u16 *) p) = endian_16( (u16) data );
       break;
     case 32:
-#if defined(ALIGN_MEM_ACCESS)
-      if (address&3)
-      {
-        t32 = endian_32( (u32) data );
-        *p     = (t32 >> 24) & 0xff;
-        *(p+1) = (t32 >> 16) & 0xff;
-        *(p+2) = (t32 >>  8) & 0xff;
-        *(p+3) =  t32        & 0xff;
-      }  
-      else
-#endif
-        *((u32 *) p) = endian_32( (u32) data );
+      *((u32 *) p) = endian_32( (u32) data );
       break;
     default:
-#if defined(ALIGN_MEM_ACCESS)
-      if (address&7)
-      {
-        t64 = endian_64( (u64) data );
-        *p     = (t64 >> 56) & 0xff;
-        *(p+1) = (t64 >> 48) & 0xff;
-        *(p+2) = (t64 >> 40) & 0xff;
-        *(p+3) = (t64 >> 32) & 0xff;
-        *(p+4) = (t64 >> 24) & 0xff;
-        *(p+5) = (t64 >> 16) & 0xff;
-        *(p+6) = (t64 >>  8) & 0xff;
-        *(p+7) =  t64        & 0xff;
-      }  
-      else
-#endif
-        *((u64 *) p) = endian_64( (u64) data );
+      *((u64 *) p) = endian_64( (u64) data );
     }
 }
 
 /**
- * Read 8, 4, 2 or 1 byte(s) from a 64-bit system address. This could be memory,
- * or some device.
+ * \brief Read 8, 4, 2 or 1 byte(s) from a 64-bit system address. This could be memory,
+ * internal chipset registers, nothing or some device.
+ *
+ * Source: HRM, 10.1.1:
+ *
+ * System Space and Address Map
+ *
+ * The system address space is divided into two parts: system memory and PIO. This division
+ * is indicated by physical memory bit <43> = 1 for PIO accesses from the CPU, and
+ * by the PTP bit in the window registers for PTP accesses from the Pchip. While the operating
+ * system may choose bit <40> instead of bit <43> to represent PIO space, bit <43>
+ * is used throughout this chapter. In general, bits <42:35> are don’t cares if bit <43> is
+ * asserted.
+ *
+ * There is 16GB of PIO space available on the 21272 chipset with 8GB assigned to each
+ * Pchip. The Pchip supports up to bit <34> (35 bits total) of system address. However, the
+ * Version 1 Cchip only supports 4GB of system memory (32 bits total). As described in
+ * Chapter 6, the CAPbus protocol between the Pchip and Cchip does support up to bit
+ * <34>, as does the Cchip’s interface to the CPU. The Typhoon Cchip supports 32GB of
+ * system memory (35 bits total).
+ *
+ * The system address space is divided as shown in the following table:
+ *
+ * +-------------------+--------+-------------------------------+---------------------------------+
+ * | Space             | Size   | System Address <43:0>         | Comments                        |
+ * +-------------------+--------+-------------------------------+---------------------------------+
+ * | System memory     |    4GB | 000.0000.0000 – 000.FFFF.FFFF | Cacheable and prefetchable.     |
+ * +-------------------+--------+-------------------------------+---------------------------------+
+ * | Reserved          | 8188GB | 001.0000.0000 – 7FF.FFFF.FFFF | —                               |
+ * +-------------------+--------+-------------------------------+---------------------------------+
+ * | Pchip0 PCI memory |    4GB | 800.0000.0000 – 800.FFFF.FFFF | Linear addressing.              |
+ * +-------------------+--------+-------------------------------+---------------------------------+
+ * | TIGbus            |    1GB | 801.0000.0000 – 801.3FFF.FFFF | addr<5:0> = 0. Single byte      |
+ * |                   |        |                               | valid in quadword access.       |
+ * |                   |        |                               | 16MB accessible.                |
+ * +-------------------+--------+-------------------------------+---------------------------------+
+ * | Reserved          |    1GB | 801.4000.0000 – 801.7FFF.FFFF | —                               |
+ * +-------------------+--------+-------------------------------+---------------------------------+
+ * | Pchip0 CSRs       |  256MB | 801.8000.0000 – 801.8FFF.FFFF | addr<5:0> = 0. Quadword access. |
+ * +-------------------+--------+-------------------------------+---------------------------------+
+ * | Reserved          |  256MB | 801.9000.0000 – 801.9FFF.FFFF | —                               |
+ * +-------------------+--------+-------------------------------+---------------------------------+
+ * | Cchip CSRs        |  256MB | 801.A000.0000 – 801.AFFF.FFFF | addr<5:0> = 0. Quadword access. |
+ * +-------------------+--------+-------------------------------+---------------------------------+
+ * | Dchip CSRs        |  256MB | 801.B000.0000 – 801.BFFF.FFFF | addr<5:0> = 0. All eight bytes  |
+ * |                   |        |                               | in quadword access must be      |
+ * |                   |        |                               | identical.                      |
+ * +-------------------+--------+-------------------------------+---------------------------------+
+ * | Reserved          |  768MB | 801.C000.0000 – 801.EFFF.FFFF | —                               |
+ * | Reserved          |  128MB | 801.F000.0000 – 801.F7FF.FFFF | —                               |
+ * +-------------------+--------+-------------------------------+---------------------------------+
+ * | Pchip 0 PCI IACK  |   64MB | 801.F800.0000 – 801.FBFF.FFFF | Linear addressing.              |
+ * +-------------------+--------+-------------------------------+---------------------------------+
+ * | Pchip0 PCI I/O    |   32MB | 801.FC00.0000 – 801.FDFF.FFFF | Linear addressing.              |
+ * +-------------------+--------+-------------------------------+---------------------------------+
+ * | Pchip0 PCI conf   |   16MB | 801.FE00.0000 – 801.FEFF.FFFF | Linear addressing.              |
+ * +-------------------+--------+-------------------------------+---------------------------------+
+ * | Reserved          |   16MB | 801.FF00.0000 – 801.FFFF.FFFF | —                               |
+ * +-------------------+--------+-------------------------------+---------------------------------+
+ * | Pchip1 PCI memory |    4GB | 802.0000.0000 – 802.FFFF.FFFF | Linear addressing.              |
+ * +-------------------+--------+-------------------------------+---------------------------------+
+ * | Reserved          |    2GB | 803.0000.0000 – 803.7FFF.FFFF | —                               |
+ * +-------------------+--------+-------------------------------+---------------------------------+
+ * | Pchip1 CSRs       |  256MB | 803.8000.0000 – 803.8FFF.FFFF | addr<5:0> = 0, quadword access. |
+ * +-------------------+--------+-------------------------------+---------------------------------+
+ * | Reserved          | 1536MB | 803.9000.0000 – 803.EFFF.FFFF | —                               |
+ * | Reserved          |  128MB | 803.F000.0000 – 803.F7FF.FFFF | —                               |
+ * +-------------------+--------+-------------------------------+---------------------------------+
+ * | Pchip 1 PCI IACK  |   64MB | 803.F800.0000 – 803.FBFF.FFFF | Linear addressing.              |
+ * +-------------------+--------+-------------------------------+---------------------------------+
+ * | Pchip1 PCI I/O    |   32MB | 803.FC00.0000 – 803.FDFF.FFFF | Linear addressing.              |
+ * +-------------------+--------+-------------------------------+---------------------------------+
+ * | Pchip1 PCI conf   |   16MB | 803.FE00.0000 – 803.FEFF.FFFF | Linear addressing.              |
+ * +-------------------+--------+-------------------------------+---------------------------------+
+ * | Reserved          |   16MB | 803.FF00.0000 – 803.FFFF.FFFF | —                               |
+ * | Reserved          | 8172GB | 804.0000.0000 – FFF.FFFF.FFFF | Bits <42:35> are don’t cares if |
+ * |                   |        |                               | bit <43> is asserted.           |
+ * +-------------------+--------+-------------------------------+---------------------------------+
+ *
  **/
 
 u64 CSystem::ReadMem(u64 address, int dsize)
@@ -834,131 +827,31 @@ u64 CSystem::ReadMem(u64 address, int dsize)
   u8 * p;
 
   a = address & X64(00000807ffffffff);
-  if (a>>iNumMemoryBits)
+  if (a>>iNumMemoryBits) // Non Memory
+  {
+    // check registered device memory ranges
+    for(i=0;i<iNumMemories;i++) 
     {
-      // Non memory
-      for(i=0;i<iNumMemories;i++) {
-	if (   (a >= asMemories[i]->base)
-	       && (a < asMemories[i]->base + asMemories[i]->length) ) {
-	  return asMemories[i]->component->ReadMem(asMemories[i]->index, a-asMemories[i]->base, dsize);
+      if (   (a >= asMemories[i]->base)
+	      && (a < asMemories[i]->base + asMemories[i]->length) )
+	    return asMemories[i]->component->ReadMem(asMemories[i]->index, a-asMemories[i]->base, dsize);
 	}
-      }
 
-      switch (a)
-	{
+    if (a>=X64(00000801A0000000) && a<=X64(00000801AFFFFFFF))
+      return cchip_csr_read((u32)a&0xFFFFFFF);
 
-	  // PError registers
-	case X64(00000801800003c0):
-	case X64(00000803800003c0):
+    if (a>=X64(0000080180000000) && a<=X64(000008018FFFFFFF))
+      return pchip_csr_read(0,(u32)a&0xFFFFFFF);
+  
+    if (a>=X64(0000080380000000) && a<=X64(000008038FFFFFFF))
+      return pchip_csr_read(1,(u32)a&0xFFFFFFF);
 
-        case X64(00000801a0000000):
-	  return state.c_CSC;
-	case X64(00000801a0000080):
-	  return state.c_MISC;
-	case X64(00000801a0000100):
-	  return   ((u64)(iNumMemoryBits-23)<<12); //size
-	case X64(00000801a0000140):
-	case X64(00000801a0000180):
-	case X64(00000801a00001c0):
-	  return 0;
-	  // WE PUT ALL OUR MEMORY IN A SINGLE ARRAY FOR NOW...
-	  // memory arrays
-	  //			return   0x300				// twice-split
-	  //				   | ((iNumMemoryBits-25)<<12) //size
-	  //				   | ( (((a>>6)&3)<<(iNumMemoryBits-2)) & 0x7ff000000);	// address
+    if (a>=X64(00000801B0000000) && a<=X64(00000801BFFFFFFF))
+      return dchip_csr_read((u32)a&0xFFFFFFF) * X64(0101010101010101);
 
-	case X64(00000801a0000200):
-	  return state.c_DIM[0];
-	case X64(00000801a0000240):
-	  return state.c_DIM[1];
-	case X64(00000801a0000600):
-	  return state.c_DIM[2];
-	case X64(00000801a0000640):
-	  return state.c_DIM[3];
-        case X64(00000801a0000280):
-	  return state.c_DRIR & state.c_DIM[0];
-        case X64(00000801a00002c0):
-	  return state.c_DRIR & state.c_DIM[1];
-        case X64(00000801a0000680):
-	  return state.c_DRIR & state.c_DIM[2];
-        case X64(00000801a00006c0):
-	  return state.c_DRIR & state.c_DIM[3];
-        case X64(00000801a0000300):
-	  return state.c_DRIR;
+    if (a>=X64(0000080130000000) && a<=X64(000008013FFFFFFF))
+      return tig_read((u32)a&0xFFFFFFF);
 
-	case X64(0000080180000300):
-	  return state.p_PCTL[0];
-	case X64(0000080380000300):
-	  return state.p_PCTL[1];
-	case X64(0000080180000400):
-	  return state.p_PERRMASK[0];
-	case X64(0000080380000400):
-	  return state.p_PERRMASK[1];
-
-        case X64(0000080180000000):
-	  return state.p_WSBA[0][0];
-        case X64(0000080180000040):
-	  return state.p_WSBA[0][1];
-        case X64(0000080180000080):
-	  return state.p_WSBA[0][2];
-        case X64(00000801800000c0):
-	  return state.p_WSBA[0][3];
-        case X64(0000080380000000):
-	  return state.p_WSBA[1][0];
-        case X64(0000080380000040):
-	  return state.p_WSBA[1][1];
-        case X64(0000080380000080):
-	  return state.p_WSBA[1][2];
-        case X64(00000803800000c0):
-	  return state.p_WSBA[1][3];
-        case X64(0000080180000100):
-	  return state.p_WSM[0][0];
-        case X64(0000080180000140):
-	  return state.p_WSM[0][1];
-        case X64(0000080180000180):
-	  return state.p_WSM[0][2];
-        case X64(00000801800001c0):
-	  return state.p_WSM[0][3];
-        case X64(0000080380000100):
-	  return state.p_WSM[1][0];
-        case X64(0000080380000140):
-	  return state.p_WSM[1][1];
-        case X64(0000080380000180):
-	  return state.p_WSM[1][2];
-        case X64(00000803800001c0):
-	  return state.p_WSM[1][3];
-        case X64(0000080180000200):
-	  return state.p_TBA[0][0];
-        case X64(0000080180000240):
-	  return state.p_TBA[0][1];
-        case X64(0000080180000280):
-	  return state.p_TBA[0][2];
-        case X64(00000801800002c0):
-	  return state.p_TBA[0][3];
-        case X64(0000080380000200):
-	  return state.p_TBA[1][0];
-        case X64(0000080380000240):
-	  return state.p_TBA[1][1];
-        case X64(0000080380000280):
-	  return state.p_TBA[1][2];
-        case X64(00000803800002c0):
-	  return state.p_TBA[1][3];
-
-	case X64(00000801b0000880):
-	  // DCHIP revisions
-	  return X64(0101010101010101);
-
-	case X64(0000080138000180):
-	  // Arbiter revision
-	  return 0xfe;
-	case X64(0000080130000040):
-	  return state.tig_FwWrite;
-	case X64(00000801300003c0):
-	  return state.tig_HaltA;
-	case X64(00000801300005c0):
-	  return state.tig_HaltB;
-
-	default:
       if (   (a>=X64(801fe000000) && a<X64(801ff000000))
           || (a>=X64(803fe000000) && a<X64(803ff000000)) )
       {
@@ -1006,7 +899,6 @@ u64 CSystem::ReadMem(u64 address, int dsize)
 	return 0x00;
 
 	  //			return 0x77; // 7f
-	}
     }
 
   p = (u8*)memory + a;
@@ -1016,37 +908,599 @@ u64 CSystem::ReadMem(u64 address, int dsize)
     case 8:
       return *((u8 *) p);
     case 16:
-#if defined(ALIGN_MEM_ACCESS)
-      if (address&1)
-        return endian_16( *p | ( *(p+1) << 8 ) );
-      else
-#endif
-        return endian_16( *((u16 *) p) );
+      return endian_16( *((u16 *) p) );
     case 32:
-#if defined(ALIGN_MEM_ACCESS)
-      if (address&3)
-        return endian_32( *p | 
-                          ( *(p+1) << 8 )  | 
-                          ( *(p+2) << 16 ) | 
-                          ( *(p+3) << 24 ) );
-      else
-#endif
-        return endian_32( *((u32 *) p) );
+      return endian_32( *((u32 *) p) );
     default:
-#if defined(ALIGN_MEM_ACCESS)
-      if (address&7)
-        return endian_64(   (u64)(*p) | 
-                          ( (u64)(*(p+1)) <<  8 ) | 
-                          ( (u64)(*(p+2)) << 16 ) | 
-                          ( (u64)(*(p+3)) << 24 ) |
-                          ( (u64)(*(p+4)) << 32 ) | 
-                          ( (u64)(*(p+5)) << 40 ) | 
-                          ( (u64)(*(p+6)) << 48 ) | 
-                          ( (u64)(*(p+7)) << 56 ) );
-      else
-#endif
-        return endian_64( *((u64 *) p) );
+      return endian_64( *((u64 *) p) );
     }
+}
+
+/**
+ * \brief Read one of the PCHIP registers.
+ *
+ * Source: HRM, 10.2.5:
+ *
+ * \code
+ * +-------------+---------------+------+----+
+ * |Register     | Address       | Type | ## |
+ * +-------------+---------------+------+----+
+ * | P0–WSBA0    | 801.8000.0000 | RW   | 00 |
+ * | P0–WSBA1    | 801.8000.0040 | RW   | 01 |
+ * | P0–WSBA2    | 801.8000.0080 | RW   | 02 |
+ * | P0–WSBA3    | 801.8000.00C0 | RW   | 03 |
+ * +-------------+---------------+------+----+
+ * | P0–WSM0     | 801.8000.0100 | RW   | 04 |
+ * | P0–WSM1     | 801.8000.0140 | RW   | 05 |
+ * | P0–WSM2     | 801.8000.0180 | RW   | 06 |
+ * | P0–WSM3     | 801.8000.01C0 | RW   | 07 |
+ * +-------------+---------------+------+----+
+ * | P0–TBA0     | 801.8000.0200 | RW   | 08 |
+ * | P0–TBA1     | 801.8000.0240 | RW   | 09 |
+ * | P0–TBA2     | 801.8000.0280 | RW   | 0A |
+ * | P0–TBA3     | 801.8000.02C0 | RW   | 0B |
+ * +-------------+---------------+------+----+
+ * | P0–PCTL     | 801.8000.0300 | RW   | 0C |
+ * +-------------+---------------+------+----+
+ * | P0–PLAT     | 801.8000.0340 | RW   | 0D |
+ * +-------------+---------------+------+----+
+ * | P0–RES      | 801.8000.0380 | RW   | 0E |
+ * +-------------+---------------+------+----+
+ * | P0–PERROR   | 801.8000.03C0 | RW   | 0F |
+ * | P0–PERRMASK | 801.8000.0400 | RW   | 10 |
+ * | P0–PERRSET  | 801.8000.0440 | WO   | 11 |
+ * +-------------+---------------+------+----+
+ * | P0–TLBIV    | 801.8000.0480 | WO   | 12 |
+ * | P0–TLBIA    | 801.8000.04C0 | WO   | 13 |
+ * +-------------+---------------+------+----+
+ * | P0–PMONCTL  | 801.8000.0500 | RW   | 14 |
+ * | P0–PMONCNT  | 801.8000.0540 | RO   | 15 |
+ * +-------------+---------------+------+----+
+ * | P0-SPRST    | 801.8000.0800 | WO   | 20 |
+ * +-------------+---------------+------+----+
+ * \endcode
+ *
+ * Window Space Base Address Register (WSBAn – RW)
+ * 
+ * Because the information in the WSBAn registers and WSMn registers
+ * is used to compare against the PCI address, a clock-domain crossing (from
+ * i_sysclk to i_pclko<7:0>) is made when these registers are written. Therefore, for a
+ * period of several clock cycles, a window is disabled when its contents are disabled. If
+ * PCI bus activity, which accesses the window in question, is not stopped before updating
+ * that window, the Pchip might fail to respond with b_devsel_l when it should. This
+ * would result in a master abort condition on the PCI bus. Therefore, before a window
+ * (base or mask) is updated, all PCI activity accessing that window must be stopped, even
+ * if only some activity is being added or deleted.
+ * 
+ * The contents of the window may be read back to confirm that the update has taken
+ * place. Then PCI activity through that window can be resumed.
+ *
+ * \code
+ * +-------+---------+---------+------+--------------------------+
+ * | Field | Bits    | Type    | Init | Description              |
+ * +-------+---------+---------+------+--------------------------+
+ * | RES   | <63:40> | MBZ,RAZ | 0    | Reserved                 |
+ * +-------+---------+---------+------+--------------------------+
+ * | DAC   | <39>    | RW      | 0    | DAC enable (WSBA3 only!) |
+ * +-------+---------+---------+------+--------------------------+
+ * | RES   | <38:32> | MBZ,RAZ | 0    | Reserved                 |
+ * +-------+---------+---------+------+--------------------------+
+ * | ADDR  | <31:20> | RW      | 0    | Base address (not used   |
+ * |       |         |         |      | DAC enable = 1)          |
+ * +-------+---------+---------+------+--------------------------+
+ * | RES   | <19:2>  | MBZ,RAZ | 0    | Reserved                 |
+ * +-------+---------+---------+------+--------------------------+
+ * | SG    | <1>     | RW      | 0    | Scatter-gather           |
+ * +-------+---------+---------+------+--------------------------+
+ * | ENA   | <0>     | RW      | 0    | Enable                   |
+ * +-------+---------+---------+------+--------------------------+
+ * \endcode
+ *
+ * Window Space Mask Register (WSM0, WSM1, WSM2, WSM3 – RW)
+ *
+ * \code
+ * +-------+---------+---------+------+--------------------------+
+ * | Field | Bits    | Type    | Init | Description              |
+ * +-------+---------+---------+------+--------------------------+
+ * | RES   | <63:32> | MBZ,RAZ | 0    | Reserved                 |
+ * +-------+---------+---------+------+--------------------------+
+ * | AM    | <31:20> | RW      | 0    | Address mask             |
+ * +-------+---------+---------+------+--------------------------+
+ * | RES   | <19:0>  | MBZ,RAZ | 0    | Reserved                 |
+ * +-------+---------+---------+------+--------------------------+
+ * \endcode
+ *
+ * Translated Base Address Register (TBAn – RW)
+ *
+ * \code
+ * +-------+---------+---------+------+--------------------------+
+ * | Field | Bits    | Type    | Init | Description              |
+ * +-------+---------+---------+------+--------------------------+
+ * | RES   | <63:35> | MBZ,RAZ | 0    | Reserved                 |
+ * +-------+---------+---------+------+--------------------------+
+ * | ADDR  | <34:10> | RW      | 0    | Translated base address  |
+ * |       |         |         |      | (if DAC enable = 1, bits |
+ * |       |         |         |      | <34:22> are the PT Origin|
+ * |       |         |         |      | address <34:22> and bits |
+ * |       |         |         |      | <21:10> are ignored)     |
+ * +-------+---------+---------+------+--------------------------+
+ * | RES   | <9:0>   | MBZ,RAZ | 0    | Reserved                 |
+ * +-------+---------+---------+------+--------------------------+
+ * \encode
+ *
+ * Pchip Control Register (PCTL – RW)
+ *
+ * \code
+ * +---------+---------+---------+------+-------------------------------------+
+ * | Field   | Bits    | Type    | Init | Description                         |
+ * +---------+---------+---------+------+-------------------------------------+
+ * | RES     | <63:48> | MBZ,RAZ | 0    | Reserved.                           |
+ * +---------+---------+---------+------+-------------------------------------+
+ * | PID     | <47:46> | RO      | 1)   | Pchip ID.                           |
+ * +---------+---------+---------+------+-------------------------------------+
+ * | RPP     | <45>    | RO      | 2)   | Remote Pchip present.               |
+ * +---------+---------+---------+------+-------------------------------------+
+ * | PTEVRFY | <44>    | RW      |      | PTE verify for DMA read.            |
+ * |         |         |         |      |   Val Description                   |
+ * |         |         |         |      |   0   If TLB miss, then make DMA    |
+ * |         |         |         |      |       read request as soon as possi-|
+ * |         |         |         |      |       ble and discard data if PTE   |
+ * |         |         |         |      |       was not valid – could cause   |
+ * |         |         |         |      |       Cchip nonexistent mem. error. |
+ * |         |         |         |      |   1   If TLB miss, then delay read  |
+ * |         |         |         |      |       request until PTE is verified |
+ * |         |         |         |      |       as valid – no request if not  |
+ * |         |         |         |      |       valid.                        |
+ * +---------+---------+---------+------+-------------------------------------+
+ * | FDWDIS  | <43>    | RW      |      | Fast DMA read cache block wrap      |
+ * |         |         |         |      | request disable.                    |
+ * |         |         |         |      |   Val Description                   |
+ * |         |         |         |      |   0   Normal operation.             |
+ * |         |         |         |      |   1   Reserved for testing purposes |
+ * |         |         |         |      |       only.                         |
+ * +---------+---------+---------+------+-------------------------------------+
+ * | FDSDIS  | <42>    | RW      |      | Fast DMA start and SGTE request     |
+ * |         |         |         |      | disable.                            |
+ * |         |         |         |      |   Val Description                   |
+ * |         |         |         |      |   0   Normal operation.             |
+ * |         |         |         |      |   1   Reserved for testing purposes |
+ * |         |         |         |      |       only.                         |
+ * +---------+---------+---------+------+-------------------------------------+
+ * | PCLKX   | <41:40> | RO      | 3)   | PCI clock frequency multiplier      |
+ * |         |         |         |      |   Val Multiplier                    |
+ * |         |         |         |      |   0   x6                            |
+ * |         |         |         |      |   1   x4                            |
+ * |         |         |         |      |   2   x5                            |
+ * |         |         |         |      |   3   Reserved                      |
+ * +---------+---------+---------+------+-------------------------------------+
+ * | PTPMAX  | <39:36> | RW      | 2    | Maximum PTP requests to Cchip from  |
+ * |         |         |         |      | both Pchips until returned on       |
+ * |         |         |         |      | CAPbus, modulo 16 (minimum = 2)     |
+ * |         |         |         |      | (use 4 for pass 1 Cchip and Dchip). |
+ * +---------+---------+---------+------+-------------------------------------+
+ * | CRQMAX  | <35:32> | RW      | 1    | Maximum requests to Cchip from both |
+ * |         |         |         |      | Pchips until Ack, modulo 16 (use 4  |
+ * |         |         |         |      | for Cchip). (Use 3 or less for      |
+ * |         |         |         |      | Typhoon because there is one less   |
+ * |         |         |         |      | skid buffer in the C4 chip.)        |
+ * +---------+---------+---------+------+-------------------------------------+
+ * | REV     | <31:24> | RO      | 0    | In conjunction with the state of    |
+ * |         |         |         |      | PMONCTL<0>, this field indicates    |
+ * |         |         |         |      | the revision of the Pchip.          |
+ * +---------+---------+---------+------+-------------------------------------+
+ * | CDQMAX  | <23:20> | RW      | 1    | Maximum data transfers to Dchips    |
+ * |         |         |         |      | from both Pchips until Ack, modulo  |
+ * |         |         |         |      | 16 (use 4 for Dchip). Must be same  |
+ * |         |         |         |      | as Cchip CSR CSC<FPQPMAX>.          |
+ * +---------+---------+---------+------+-------------------------------------+
+ * | PADM    | <19>    | RW      | 4)   | PADbus mode.                        |
+ * |         |         |         |      |   Val Mode                          |
+ * |         |         |         |      |   0   8-nibble, 8-check bit mode    |
+ * |         |         |         |      |   1   4-byte, 4-check bit mode      |
+ * +---------+---------+---------+------+-------------------------------------+
+ * | ECCEN   | <18>    | RW      | 0    | ECC enable for DMA and SGTE access. |
+ * +---------+---------+---------+------+-------------------------------------+
+ * | RES     | <17:16> | MBZ,RAZ | 0    | Reserved.                           |
+ * +---------+---------+---------+------+-------------------------------------+
+ * | PPRI    | <15>    |         | 0    | Arbiter prio group for the Pchip.   |
+ * +---------+---------+---------+------+-------------------------------------+
+ * | PRIGRP  | <14:8>  | RW      | 0    | Arbiter prio group; one bit per PCI |
+ * |         |         |         |      | slot with bits <14:8> corresponding |
+ * |         |         |         |      | to input b_req_l<6:0>.              |
+ * |         |         |         |      |   Val Group                         |
+ * |         |         |         |      |   0   Low-priority group            |
+ * |         |         |         |      |   1   High-priority group           |
+ * +---------+---------+---------+------+-------------------------------------+
+ * | ARBENA  | <7>     | RW      | 0    | Internal arbiter enable.            |
+ * +---------+---------+---------+------+-------------------------------------+
+ * | MWIN    | <6>     | RW      | 0    | Monster window enable.              |
+ * +---------+---------+---------+------+-------------------------------------+
+ * | HOLE    | <5>     | RW      | 0    | 512KB-to-1MB window hole enable.    |
+ * +---------+---------+---------+------+-------------------------------------+
+ * | TGTLAT  | <4>     | RW      | 0    | Target latency timers enable.       |
+ * |         |         |         |      |   Val Mode                          |
+ * |         |         |         |      |   0   Retry/disconnect after 128    |
+ * |         |         |         |      |       PCI clocks without data.      |
+ * |         |         |         |      |   1   Retry initial request after   |
+ * |         |         |         |      |       32 PCI clocks without data;   |
+ * |         |         |         |      |       disconnect subsequent trans-  |
+ * |         |         |         |      |       fers after 8 PCI clocks       |
+ * |         |         |         |      |       without data.                 |
+ * +---------+---------+---------+------+-------------------------------------+
+ * | CHAINDIS| <3>     | RW      | 0    | Disable chaining.                   |
+ * +---------+---------+---------+------+-------------------------------------+
+ * | THDIS   | <2>     | RW      | 0    | Disable antithrash mechan. for TLB. |
+ * |         |         |         |      |   Val Mode                          |
+ * |         |         |         |      |   0   Normal operation              |
+ * |         |         |         |      |   1   Testing purposes only         |
+ * +---------+---------+---------+------+-------------------------------------+
+ * | FBTB    | <1>     | RW      | 0    | Fast back-to-back enable.           |
+ * +---------+---------+---------+------+-------------------------------------+
+ * | FDSC    | <0>     | RW      | 0    | Fast discard enable.                |
+ * |         |         |         |      |   Val Mode                          |
+ * |         |         |         |      |   0   Discard data if no retry      |
+ * |         |         |         |      |       after 215 PCI clocks.         |
+ * |         |         |         |      |   1   Discard data if no retry      |
+ * |         |         |         |      |       after 210 PCI clocks.         |
+ * +---------+---------+---------+------+-------------------------------------+
+ *
+ * 1) This field is initialized from the PID pins.
+ * 2) This field is initialized from the assertion of CREQRMT_L pin at system reset.
+ * 3) This field is initialized from the PCI i_pclkdiv<1:0> pins.
+ * 4) This field is initialized from a decode of the b_cap<1:0> pins.
+ * \endcode
+ *
+ * Pchip Error Register (PERROR – RW)
+ *
+ * If any of bits <11:0> are set, then this entire register is frozen and the Pchip output
+ * signal b_error is asserted. Only bit <0> can be set after that. All other values will
+ * be held until all of bits <11:0> are clear. When an error is detected and one of bits
+ * <11:0> becomes set, the associated information is captured in bits <63:16> of this
+ * register. After the information is captured, the INV bit is cleared, but the information
+ * is not valid and should not be used if INV is set.
+ * 
+ * In rare circumstances involving more than one error, INV may remain set because the
+ * Pchip cannot correctly capture the SYN, CMD, or ADDR field.
+ * 
+ * Furthermore, if software reads PERROR in a polling loop, or reads PERROR before the
+ * Pchip’s error signal is reflected in the Cchip’s DRIR CSR, the INV bit may also be set.
+ * 
+ * To avoid the latter condition, read PERROR only after receiving an IRQ0 interrupt,
+ * then read the Cchip DIR CSR to determine that this Pchip has detected an error.
+ * 
+ * \code
+ * +---------+---------+---------+------+-------------------------------------+
+ * | Field   | Bits    | Type    | Init | Description                         |
+ * +---------+---------+---------+------+-------------------------------------+
+ * | SYN     | <63:56> | RO      | 0    | errors ECC syndrome if CRE or UECC. |
+ * +---------+---------+---------+------+-------------------------------------+
+ * | CMD     | <55:52> | RO      | 0    | PCI command of transaction when     |
+ * |         |         |         |      | error detected if not CRE and not   |
+ * |         |         |         |      | UECC. If CRE or UECC, then:         |
+ * |         |         |         |      |   Val    Command                    |
+ * |         |         |         |      |   0000   DMA read                   |
+ * |         |         |         |      |   0001   DMA RMW                    |
+ * |         |         |         |      |   0011   SGTE read                  |
+ * |         |         |         |      |   Others Reserved                   |
+ * +---------+---------+---------+------+-------------------------------------+
+ * | INV     | <51>    | RO Rev1 | 0    | Info Not Valid – only meaningful    |
+ * |         |         | RAZ Rev0|      | when one of bits <11:0> is set.     |
+ * |         |         |         |      | Indicates validity of <SYN>, <CMD>, |
+ * |         |         |         |      | and <ADDR> fields.                  |
+ * |         |         |         |      |   Val Mode                          |
+ * |         |         |         |      |   0   Info fields are valid.        |
+ * |         |         |         |      |   1   Info fields are not valid.    |
+ * +---------+---------+---------+------+-------------------------------------+
+ * | ADDR    | <50:16> | RO      | 0    | If CRE or UECC, then ADDR<50:19> =  |
+ * |         |         |         |      | system address <34:3> of erroneous  |
+ * |         |         |         |      | quadword and ADDR<18:16> = 0.       |
+ * |         |         |         |      | If not CRE and not UECC, then       |
+ * |         |         |         |      | ADDR<50:48> = 0; ADDR<47:18> = star-|
+ * |         |         |         |      | ting PCI address <31:2> of trans-   |
+ * |         |         |         |      | action when error was detected;     |
+ * |         |         |         |      | ADDR<17:16> = 00 --> not a DAC      |
+ * |         |         |         |      |                      operation;     |
+ * |         |         |         |      | ADDR<17:16> = 01 --> via DAC SG     |
+ * |         |         |         |      |                      Window 3;      |
+ * |         |         |         |      | ADDR<17> = 1 --> via Monster Window |
+ * +---------+---------+---------+------+-------------------------------------+
+ * | RES     | <15:12> | MBZ,RAZ | 0    | Reserved.                           |
+ * +---------+---------+---------+------+-------------------------------------+
+ * | CRE     | <11>    | R,W1C   | 0    | Correctable ECC error.              |
+ * +---------+---------+---------+------+-------------------------------------+
+ * | UECC    | <10>    | R,W1C   | 0    | Uncorrectable ECC error.            |
+ * +---------+---------+---------+------+-------------------------------------+
+ * | RES     | <9>     | MBZ,RAZ | 0    | Reserved.                           |
+ * +---------+---------+---------+------+-------------------------------------+
+ * | NDS     | <8>     | R,W1C   | 0    | No b_devsel_l as PCI master.        |
+ * +---------+---------+---------+------+-------------------------------------+
+ * | RDPE    | <7>     | R,W1C   | 0    | PCI read data parity error as PCI   |
+ * |         |         |         |      | master.                             |
+ * +---------+---------+---------+------+-------------------------------------+
+ * | TA      | <6>     | R,W1C   | 0    | Target abort as PCI master.         |
+ * +---------+---------+---------+------+-------------------------------------+
+ * | APE     | <5>     | R,W1C   | 0    | Address parity error detected as    |
+ * |         |         |         |      | potential PCI target.               |
+ * +---------+---------+---------+------+-------------------------------------+
+ * | SGE     | <4>     | R,W1C   | 0    | Scatter-gather had invalid page     |
+ * |         |         |         |      | table entry.                        |
+ * +---------+---------+---------+------+-------------------------------------+
+ * | DCRTO   | <3>     | R,W1C   | 0    | Delayed completion retry timeout as |
+ * |         |         |         |      | PCI target.                         |
+ * +---------+---------+---------+------+-------------------------------------+
+ * | PERR    | <2>     | R,W1C   | 0    | b_perr_l sampled asserted.          |
+ * +---------+---------+---------+------+-------------------------------------+
+ * | SERR    | <1>     | R,W1C   | 0    | b_serr_l sampled asserted.          |
+ * +---------+---------+---------+------+-------------------------------------+
+ * | LOST    | <0>     | R,W1C   | 0    | Lost an error because it was detec- |
+ * |         |         |         |      | ted after this register was frozen, |
+ * |         |         |         |      | or while in the process of clearing |
+ * |         |         |         |      | this register.                      |
+ * +---------+---------+---------+------+-------------------------------------+
+ * \endcode
+ * 
+ * Pchip Error Mask Register (PERRMASK – RW)
+ *
+ * If any of the MASK bits have the value 0, they prevent the setting of the corresponding
+ * bit in the PERROR register, regardless of the detection of errors or writing to PERRSET.
+ *
+ * The default is for all errors to be disabled.
+ *
+ * Beside masking the reporting of errors in PERROR, certain bits of PERRMASK have
+ * the following additional effects:
+ *   - If PERRMASK<RDPE> = 0, the Pchip ignores read data parity as the PCI master.
+ *   - If PERRMASK<PERR> = 0, the Pchip ignores write data parity as the PCI target.
+ *   - If PERRMASK<APE> = 0, the Pchip ignores address parity.
+ *   .
+ *
+ * \code
+ * +---------+---------+---------+------+-------------------------------------+
+ * | Field   | Bits    | Type    | Init | Description                         |
+ * +---------+---------+---------+------+-------------------------------------+
+ * | RES     | <63:12> | MBZ,RAZ | 0    | Reserved                            |
+ * +---------+---------+---------+------+-------------------------------------+
+ * | MASK    | <11:0>  | RW      | 0    | PERROR register bit enables         |
+ * +---------+---------+---------+------+-------------------------------------+
+ * \endcode
+ *
+ * Pchip Master Latency Register (PLAT – RW)
+ *
+ * Bits <15:8> are the master latency timer.
+ *
+ * Translation Buffer Invalidate Virtual Register (TLBIV – WO)
+ *
+ * A write to this register invalidates all scatter-gather TLB entries that correspond to PCI
+ * addresses whose bits <31:16> and bit 39 match the value written in bits <19:4> and 27
+ * respectively. This invalidates up to eight PTEs at a time, which are the
+ * number that can be defined in one 21264 cache block (64 bytes). Because a single TLB
+ * PCI tag covers four entries, at most two tags are actually invalidated. PTE bits <22:4>
+ * correspond to system address bits <34:16> – where PCI<34:32> must be zeros for scatter-
+ * gather window hits – in generating the resulting system address, providing 8-page
+ * (8KB) granularity.
+ * 
+ * Translation Buffer Invalidate All Register (TLBIA – WO)
+ *
+ * A write to this register invalidates the scatter-gather TLB. The value written is ignored.
+ **/
+
+u64 CSystem::pchip_csr_read(int num, u32 a)
+{
+  switch (a)
+  {
+  case 0x000:
+  case 0x040:
+  case 0x080:
+  case 0x0c0:
+    return state.p_WSBA[num][(a>>6)&3];
+  case 0x100:
+  case 0x140:
+  case 0x180:
+  case 0x1c0:
+    return state.p_WSM[num][(a>>6)&3];
+  case 0x200:
+  case 0x240:
+  case 0x280:
+  case 0x2c0:
+    return state.p_TBA[num][(a>>6)&3];
+  case 0x300:
+    return state.p_PCTL[num];
+  case 0x3c0:
+    return state.p_PERR[num];
+  case 0x400:
+    return state.p_PERRMASK[num];
+  default:
+    printf("Unknown PCHIP %d CSR %07x read attempted.\n",num,a);
+    return 0;
+  }
+}
+
+/**
+ * \brief Write one of the PCHIP registers.
+ *
+ * For a description of the PCHIP registers, see pchip_csr_read.
+ **/
+
+void CSystem::pchip_csr_write(int num, u32 a, u64 data)
+{
+  switch (a)
+  {
+  case 0x000:
+  case 0x040:
+  case 0x080:
+    state.p_WSBA[num][(a>>6)&3] = data & X64(00000000fff00003);
+    return;
+  case 0x0c0:
+    state.p_WSBA[num][3] = data & X64(00000080fff00001) | 2;
+	return;
+  case 0x100:
+  case 0x140:
+  case 0x180:
+  case 0x1c0:
+	state.p_WSM[num][(a>>6)&3] = data & X64(00000000fff00000);
+	return;
+  case 0x200:
+  case 0x240:
+  case 0x280:
+  case 0x2c0:
+    state.p_TBA[num][(a>>6)&3] = data & X64(00000007fffffc00);
+    return;
+  case 0x300:
+	state.p_PCTL[num] &=         X64(ffffe300f0300000);
+    state.p_PCTL[num] |= (data & X64(00001cff0fcfffff));
+    return;
+  case 0x340:
+    state.p_PLAT[num] = data;
+    return;
+  case 0x3c0: // PERR
+    return;
+  case 0x400:
+	state.p_PERRMASK[num] = data;
+	return;
+  case 0x480: // TLBIV
+  case 0x4c0: // TLBIA
+    return;
+  case 0x800: // PCI reset
+    for(int i=0;i<iNumComponents;i++)
+      acComponents[i]->ResetPCI();
+    return;
+  default:
+    printf("Unknown PCHIP %d CSR %07x write with %016" LL "x attempted.\n",num,a,data);
+  }
+}
+
+u64 CSystem::cchip_csr_read(u32 a)
+{
+  switch(a)
+  {
+  case 0x000:
+    return state.c_CSC;
+  case 0x080:
+    return state.c_MISC;
+
+  case 0x100:
+    // WE PUT ALL OUR MEMORY IN A SINGLE ARRAY FOR NOW...
+    return   ((u64)(iNumMemoryBits-23)<<12); //size
+  case 0x140:
+  case 0x180:
+  case 0x1c0:
+    // WE PUT ALL OUR MEMORY IN A SINGLE ARRAY FOR NOW...
+    return 0;
+
+  case 0x200:
+  case 0x240:
+  case 0x600:
+  case 0x640:
+    return state.c_DIM[((a>>10)&2)|((a>>6)&1)];
+  case 0x280:
+  case 0x2c0:
+  case 0x680:
+  case 0x6c0:
+    return state.c_DRIR & state.c_DIM[((a>>10)&2)|((a>>6)&1)];
+  case 0x300:
+    return state.c_DRIR;
+  default:
+    printf("Unknown CCHIP CSR %07x read attempted.\n",a);
+    return 0;
+  }
+}
+
+void CSystem::cchip_csr_write(u32 a, u64 data)
+{
+  switch(a)
+  {
+  case 0x000: // CSC
+	state.c_CSC        &= ~X64(0777777fff3f0000);
+	state.c_CSC |= (data & X64(0777777fff3f0000));
+	return;
+  case 0x080: // MISC
+	state.c_MISC |= (data & X64(00000f0000f0f000));	// W1S
+	state.c_MISC &=~(data & X64(0000000010000ff0));	// W1C
+	if       (data & X64(0000000001000000))
+	  state.c_MISC &=~        X64(0000000000ff0000);	//Arbitration Clear
+	if    (!(state.c_MISC & X64(00000000000f0000)))
+	  state.c_MISC |= (data & X64(00000000000f0000));	//Arbitration try
+    // stop interval timer interrupt
+    if        (data & X64(00000000000000f0))
+    {
+      for (int i=0;i<iNumCPUs;i++)
+      {
+	    if (data & (X64(10)<<i))
+        {
+	      acCPUs[i]->irq_h(2,false);
+	      //printf("*** TIMER interrupt cleared for CPU %d\n",i);
+        }
+   	  }
+	}			
+	return;
+
+  case 0x200:
+  case 0x240:
+  case 0600:
+  case 0x640:
+	state.c_DIM[((a>>10)&2)|((a>>6)&1)] = data;
+	return;
+  default:
+    printf("Unknown CCHIP CSR %07x write with %016" LL "x attempted.\n",a,data);
+  }
+}
+
+u8 CSystem::dchip_csr_read(u32 a)
+{
+  switch(a)
+  {
+	case 0x880:
+	  // DCHIP revisions
+	  return 0x01;
+  default:
+    printf("Unknown DCHIP CSR %07x read attempted.\n",a);
+    return 0;
+  }
+}
+
+void CSystem::dchip_csr_write(u32 a, u8 data)
+{
+  printf("Unknown DCHIP CSR %07x write with %02x attempted.\n",a,data);
+}
+
+u8 CSystem::tig_read(u32 a)
+{
+  switch(a)
+  {
+	case 0x8000180:
+	  // Arbiter revision
+	  return 0xfe;
+	case 0x040:
+	  return state.tig_FwWrite;
+	case 0x3c0:
+	  return state.tig_HaltA;
+	case 0x5c0:
+	  return state.tig_HaltB;
+  default:
+    printf("Unknown TIG %07x read attempted.\n",a);
+    return 0;
+  }
+}
+
+void CSystem::tig_write(u32 a, u8 data)
+{
+  switch(a)
+  {
+  case 0x3c0:
+    state.tig_HaltA = data;
+    return;
+  case 0x5c0:
+    state.tig_HaltB = data;
+	return;
+  case 0x040:
+	state.tig_FwWrite = data;
+	return;
+  case 0x100:
+	// soft reset
+	printf("Soft reset: %02x\n",data);
+	return;
+  default:
+    printf("Unknown TIG %07x write with %02x attempted.\n",a,data);
+  }
 }
 
 /**
@@ -1068,10 +1522,7 @@ int CSystem::LoadROM()
   {
     f = fopen(myCfg->get_text_value("rom.srm","cl67srmrom.exe"),"rb");
     if (!f)
-    {
-      printf("%%SYS-F-NOROM: No original or decompressed ROM image found!\n");
-      return -1;
-    }
+      FAILURE("No original or decompressed SRM ROM image found");
     printf("%%SYS-I-READROM: Reading original ROM image from %s.\n", myCfg->get_text_value("rom.srm","cl67srmrom.exe"));
     for(i=0;i<0x240;i++)
     {
@@ -1079,10 +1530,7 @@ int CSystem::LoadROM()
       fread(&scratch,1,1,f);
     }
     if (feof(f))
-    {
-      printf("%%SYS-F-2SMALL: File is too short to be a ROM image!\n");
-      return -1;
-    }
+      FAILURE("File is too short to be a SRM ROM image");
     buffer = PtrToMem(0x900000);
     while (!feof(f))
       fread(buffer++,1,1,f);
@@ -1151,19 +1599,92 @@ int CSystem::LoadROM()
   WriteMem(X64(8bc94),32,0xe7e00000);       // memory test (00)
 #endif
 
-
-  // THIS SRM REPLACEMENT IS INCOMPATIBLE WITH SCSI!!
-#if !defined(SRM_NO_IDE)
-//  WriteMem(X64(b66c0),32,0x00123401);       // SRM_READ_IDE_DISK
-//  WriteMem(X64(b66c4),32,0x6bfa8001);       // JMP r31, r26
-#endif
-
   printf("%%SYS-I-ROMLOADED: ROM Image loaded successfully!\n");
   return 0;
 }
  
 /**
- * Assert or deassert one of 64 possible interrupt lines on the Tsunami chipset.
+ * \brief Assert or deassert one of 64 possible interrupt lines on the Tsunami chipset.
+ *
+ * Source: HRM, 6.3:
+ *
+ * TIGbus and Interrupts
+ *
+ * The TIGbus supports miscellaneous system logic such as flash ROM and
+ * interrupt inputs. The Cchip TIG controller polls interrupts continuously
+ * except when a read or write to flash is requested. The 64 possible interrupt inputs are
+ * polled eight at a time by selecting a byte with the b_tia<2:0> pins, and asserting
+ * b_toe_l to allow the selected byte to be driven onto b_td<7:0>. Using the polled interrupts,
+ * the Cchip calculates the b_irq values that should be delivered to the CPUs. When
+ * any change occurs in these b_irq values, the Cchip drives the b_irq<3:0> data for both
+ * CPUs onto b_td<7:0>, and asserts signal b_tis to strobe it into a register on the module.
+ * If there is no flash read or write outstanding, the polling process is repeated. If there
+ * is a flash read or write outstanding, it is serviced between interrupt reads after any pending
+ * b_irq updates. Thus, the rounds of interrupt polling are not atomic, but the b_irq
+ * values reflect the most recently polled interrupts. Furthermore, b_irq<1> may be artificially
+ * suppressed for one full polling loop using the CSR bit MISC<DEVSUP>.
+ * [...]
+ *
+ * Device and Error Interrupt Delivery – b_irq<1:0>
+ *
+ * As interrupts are read into the Cchip through the TIGbus, the corresponding bits are set
+ * in DRIR. These bits are ANDed with the mask bits in DIMn and then placed in DIRn. If
+ * any bits are set in DIRn<55:0>, then CPUn is interrupted using CPU pin b_irq<1>.
+ * 
+ * Interrupt bits <62:58> cause b_irq<0> to be asserted and are intended for use as error
+ * signals. Assertion of interrupt bits <62:58> causes b_irq<0> to be asserted. Interrupt
+ * bits <62:61> can be used for Pchip 0 and Pchip 1 errors, respectively. Interrupt bit <63>
+ * is special because it is not read from the TIGbus, but is internally generated as the
+ * Cchip detected error interrupt (currently used only for NXM requests). Assertion of
+ * interrupt bit <63> causes b_irq<0> to be asserted. See Chapter 10 for descriptions of
+ * the interrupt-related CSRs (DRIR, DIMn, DIRn, and MISC). A full mask register for
+ * each CPU allows software to decide whether to send each of the 64 possible interrupts
+ * to either or both CPUs.
+ *
+ * After handling all known outstanding interrupts, software may suppress b_irq<1>
+ * device interrupts to allow the Cchip’s polling mechanism to detect the updated (deasserted)
+ * value of the interrupt lines from the PCI devices and thereby avoid giving the
+ * CPU “stale” interrupts, which require passive release. The field MISC<DEVSUP> is
+ * provided for this purpose. When a CPU writes a one to its bit in MISC<DEVSY> the
+ * Cchip deasserts b_irq<1> to that CPU (regardless of the value in the DIRn) until it has
+ * completed an entire polling loop. When the Cchip has completed an entire polling loop,
+ * b_irq<1> will again reflect the value of DIRn<55:00>.
+ *
+ * Interval Timer Interrupts – b_irq<2>
+ *
+ * The interval timer interrupts the Cchip through a dedicated pin, i_intim_l, and is
+ * asserted low. When the Cchip sees an asserting (falling) edge of this pin, it asserts
+ * MISC<ITINTR> for both CPUs. Pin b_irq<2> remains asserted for each CPU
+ * <ITINTR>. When the CPU has finished handling the interrupt, it writes a one to its
+ * MISC<ITINTR> bit to clear it. Software can suppress interval timer interrupts for n
+ * cycles by writing n into IICn.
+ * 
+ * This table shows TIG Interrupts and IRQ Lines
+ *
+ * \code
+ * +---------------+-----------------+--------+----------------------------------------+
+ * | TIG Interrupt | Assertion Level | irq<n> | Use                                    |
+ * +---------------+-----------------+--------+----------------------------------------+
+ * |            63 | N/A             | irq<0> | N/C (internally generated Cchip error) |
+ * |               |                 |        |     (currently NXM only)               |
+ * +---------------+-----------------+--------+----------------------------------------+
+ * |         62:58 | High            | irq<0> | Errors (Pchips, and so on)             |
+ * |               |                 |        | Recommended:                           |
+ * |               |                 |        |   * Bit <62> – Pchip0 error            |
+ * |               |                 |        |   * Bit <61> – Pchip1 error            |
+ * +---------------+-----------------+--------+----------------------------------------+
+ * |         57:56 | N/A             | N/A    | Reserved                               |
+ * +---------------+-----------------+--------+----------------------------------------+
+ * |          55:0 | Low             | irq<1> | PCI devices (level sensitive)          |
+ * +---------------+-----------------+--------+----------------------------------------+
+ * \endcode
+ *
+ * It is not clear from the documentation how exactly the interval timer is connected
+ * to the CChip. It looks like this is tied to the interrupt-line from the real-time
+ * clock (TOY), as the periodic interval rate for the TOY is set to 1024 Hz by SRM.
+ * 1024 Hz is the frequency of the system timer interrupt according to the OpenVMS Alpha
+ * Internals and Data Structures Handbook.
+ *
  **/
 
 void CSystem::interrupt(int number, bool assert)
@@ -1179,14 +1700,14 @@ void CSystem::interrupt(int number, bool assert)
     }
   else if (assert)
     {
-      //        if (!(state.c_DRIR & (1i64<<number)))
-      //            printf("%%TYP-I-INTERRUPT: Interrupt %d asserted.\n",number);
+//    if (!(state.c_DRIR & (1i64<<number)))
+//      printf("%%TYP-I-INTERRUPT: Interrupt %d asserted.\n",number);
       state.c_DRIR |= (X64(1)<<number);
     }
   else
     {
-      //        if (state.c_DRIR & (1i64<<number))
-      //            printf("%%TYP-I-INTERRUPT: Interrupt %d deasserted.\n",number);
+//    if (state.c_DRIR & (1i64<<number))
+//      printf("%%TYP-I-INTERRUPT: Interrupt %d deasserted.\n",number);
       state.c_DRIR &= ~(X64(1)<<number);
     }
   for (i=0;i<iNumCPUs;i++)
@@ -1201,43 +1722,293 @@ void CSystem::interrupt(int number, bool assert)
       else
 	acCPUs[i]->irq_h(0,false);
     }
-
 }
 
 /**
- * Translate a 32-bit address coming off the PCI bus into a 
+ * \brief Translate a 32-bit address coming off the PCI bus into a 
  * 64-bit system address. Used by PCI devices when accessing
  * memory (or other PCI devices) as bus master.
+ *
+ * Source: HRM, 10.1.4:
+ *
+ * DMA Address Translation (PCI-to-System)
+ * The 21272 chipset supports some PCI commands as a target and does not support
+ * (ignores) others as a target. The Pchip does not respond as a target when it acts as a PCI
+ * master.
+ *
+ * The Pchip ignores all of the following commands as a target:
+ *  - Interrupt acknowledge
+ *  - Special cycle
+ *  - I/O read
+ *  - I/O write
+ *  - Configuration read
+ *  - Configuration write
+ *  .
+ *
+ * The Pchips may respond to the following commands as a target:
+ *  - Memory read
+ *  - Memory read line
+ *  - Memory write
+ *  - Memory write and invalidate
+ *  - Memory read multiple
+ *  - Dual-address cycle: This command is accepted by the Pchip when the address lies
+ *    inside the DMA monster window.
+ *
+ * There are two kinds of DMA address translation: direct mapped and scatter-gather
+ * mapped. Each type starts by comparing the incoming PCI address with the monster
+ * window (if it is enabled and if it is a DAC), and with the four window base and window
+ * mask registers (the window base registers also have an enable window bit and a scatter-gather
+ * enable bit). This process is shown in the next figure:
+ *
+ * \code
+ *              31       n n-1      20 19    13 12       0
+ *             +----------+-----------+--------+----------+
+ * PCI Address |    Peripheral Page Number     |  Offset  |
+ *             +----------+-----------+--------+----------+
+ *             |<-------->|
+ *                  ^
+ *                  +-----------> COMPARE ----> Hit
+ *                  v
+ *             |<-------->|
+ *              31       n n-1      20
+ * Window Base +----------+-----------+
+ * Register    |          |   xxxx    |
+ *             +----------+-----------+
+ *              31       n n-1      20
+ * Window Mask +----------+-----------+
+ * Register    |   0000   |   1111    | (Determines n)
+ *             +----------+-----------+
+ * \endcode
+ *
+ * If the address resides in one of the windows, and the window is enabled, then if the
+ * scatter-gather enable bit is set, the translation is as described for
+ * PCI_Phys_scatter_gather. Otherwise, the translation described for PCI_Phys_direct_mapped
+ * is used.
+ *
+ * In addition, if the matching window has the PTP bit set, then the result of the address
+ * translation is treated as if it had bit <43> set. That is, it is treated like a PIO address
+ * from the CPU. Otherwise, the address is a system memory address.
+ *
+ * Window Hole
+ *
+ * All window registers are simultaneously subject to a hole that inhibits matching, under
+ * the control of the PCTL<HOLE> CSR bit described in Section 10.2.5.4. If that bit is
+ * set, the hole is enabled in all windows and has the following extent:
+ *  - From PCI address base 512K (address<31:0> = 0008.0000)
+ *  - To PCI address limit 1M–1 (address<31:0> = 000F.FFFF)
+ *  .
+ *
+ * If enabled, the hole applies whether or not the PTP bit is set for the window.
+ *
+ * The documentation is not explicit on this, but the assumption was made that if an address
+ * coming off the PCI-bus is not matched, the Pchip doesn't respond to that address, and it
+ * is up to other PCI devices to respond to the address. So, if no match is found, we
+ * treat the address as an address on the local PCI bus.
+ *
+ * \todo The documentation mentions a PTP bit set for a window, but the register descriptions
+ *       don't show a PTP bit in one of the three registers (WSBA, WSM and TBA). So, for now,
+ *       we can only do peer-to-peer through a scatter-gather PTE.
+ *
+ * \todo Dual-Acces-Cycle (DAC) access from the PCI bus is not supported. If a device is ever
+ *       added that uses this, we should probably support it.
  **/
 
-u64 CSystem::PCI_Phys(int pcibus, u64 address)
+u64 CSystem::PCI_Phys(int pcibus, u32 address)
 {
   u64 a;
   int j;
 
-//      printf("-------------- PCI MEMORY ACCESS FOR PCI HOSE %d --------------\n", pcibus);
-//  //Step through windows
-//  	for(j=0;j<4;j++)
-//  	{
-//        printf("WSBA%d: %016" LL "x WSM: %016" LL "x TBA: %016" LL "x\n",
-//          j,state.p_WSBA[pcibus][j], state.p_WSM[pcibus][j], state.p_TBA[pcibus][j]);
-//      }
-//    printf("--------------------------------------------------------------\n");
-    
+#if defined(DEBUG_PCI)
+  printf("-------------- PCI MEMORY ACCESS FOR PCI HOSE %d --------------\n", pcibus);
   //Step through windows
   for(j=0;j<4;j++)
   {
-    if (      (state.p_WSBA[pcibus][j] & 1)									// window enabled...
-      && ! ((address ^ state.p_WSBA[pcibus][j]) & 0xfff00000 & ~state.p_WSM[pcibus][j]))	// address in range...
-	{
-      if (state.p_WSBA[pcibus][j] & 2)
-        FAILURE("Don't know how to handle scatter-gather yet!!");
-	  a = (address & ((state.p_WSM[pcibus][j] & X64(fff00000)) | 0xfffff)) + (state.p_TBA[pcibus][j] & X64(3fffc0000));
-//	  printf("PCI memory address %08x translated to %016"LL "x\n",address, a);
-      return a;
-	}
+    printf("WSBA%d: %016" LL "x WSM: %016" LL "x TBA: %016" LL "x\n",
+    j,state.p_WSBA[pcibus][j], state.p_WSM[pcibus][j], state.p_TBA[pcibus][j]);
   }
+  printf("HOLE: %s\n", test_bit_64(state.p_PCTL[pcibus], 5)?"enabled":"disabled");
+  printf("--------------------------------------------------------------\n");
+#endif
+
+  if (   !test_bit_64(state.p_PCTL[pcibus], 5) // hole disabled
+      || (address < 0x00080000) || (address > 0x000fffff)) // or address outside hole
+  {
+   
+    //Step through windows
+    for(j=0;j<4;j++)
+    {
+      if (      (state.p_WSBA[pcibus][j] & 1)									// window enabled...
+        && ! ((address ^ state.p_WSBA[pcibus][j]) & 0xfff00000 & ~state.p_WSM[pcibus][j]))	// address in range...
+	  {
+        if (state.p_WSBA[pcibus][j] & 2)
+        {
+          try
+          {
+            a = PCI_Phys_scatter_gather(address, state.p_WSM[pcibus][j], state.p_TBA[pcibus][j]);
+          }
+          catch (char)
+          {
+            // window disabled...
+            // not matched; treat as local PCI bus address
+            return X64(80000000000) | (pcibus * X64(200000000)) | (u64)address;
+          }
+        }
+        else
+          a = PCI_Phys_direct_mapped(address, state.p_WSM[pcibus][j], state.p_TBA[pcibus][j]);
+#if defined(DEBUG_PCI)
+	    printf("PCI memory address %08x translated to %016"LL "x\n",address, a);
+#endif
+        return a;
+	  }
+    }
+  }
+  // not matched; treat as local PCI bus address
   return X64(80000000000) | (pcibus * X64(200000000)) | (u64)address;
+}
+
+/**
+ * Translate a 32-bit address coming off the PCI bus into a 64-bit
+ * system address using direct-mapped DMA address translation.
+ *
+ * Source: HRM, 10.1.4.2:
+ *
+ * Direct-Mapped DMA Address Translation
+ *
+ * Direct-mapped addressing uses a base address register, a translated base address (TBA)
+ * register, and a mask register. The block of PCI addresses at base address, of a size as
+ * determined by the mask register, is translated to a block of addresses at translated base
+ * address. Values in the WSMn field other than those shown produce
+ * unspecified results.
+ *
+ * \code
+ * +-------------+----------------+---------------------------+
+ * | Window Size | WSMn<31:20>    | Translated Address <34:0> |
+ * +-------------+----------------+---------------------------+
+ * |         1MB | 0000.0000.0000 | TBA<34:20>:ad<19:0>       |
+ * +-------------+----------------+---------------------------+
+ * |         2MB | 0000.0000.0001 | TBA<34:21>:ad<20:0>       |
+ * +-------------+----------------+---------------------------+
+ * |         4MB | 0000.0000.0011 | TBA<34:22>:ad<21:0>       |
+ * +-------------+----------------+---------------------------+
+ * |         8MB | 0000.0000.0111 | TBA<34:23>:ad<22:0>       |
+ * |        ...  |           ...  |                ...        |
+ * |         2GB | 0111.1111.1111 | TBA<34:31>:ad<30:0>       |
+ * +-------------+----------------+---------------------------+
+ * |         4GB |            N/A | 000:ad<31:0> (monster     |
+ * |             |                | window only)              |
+ * +-------------+----------------+---------------------------+
+ * \endcode
+ **/
+
+u64 CSystem::PCI_Phys_direct_mapped(u32 address, u64 wsm, u64 tba)
+{
+  u64 a;
+
+  tba &= ~(wsm & make_mask_64(31,20));
+  
+  a = (address & ((wsm & make_mask_64(31,20)) | make_mask_64(19,0)))
+    | (tba & make_mask_64(34,20));
+
+  return a;
+}
+
+/**
+ * Translate a 32-bit address coming off the PCI bus into a 64-bit
+ * system address using scatter-gather DMA address translation.
+ *
+ * If address can't be matched (PTE is invalid), an exception of type char
+ * is thrown. The calling function should catch the exception, and do
+ * The Right Thing(tm): treat the address as a local PCI-bus address.
+ *
+ * Source: HRM, 10.1.4.3:
+ *
+ * Scatter-Gather DMA Address Translation
+ *
+ * Scatter-gather addressing uses a base address register, a mask register, a translated base
+ * address register, and a page table entry (PTE) in system memory. An 8KB page of PCI
+ * addresses at base address is translated to an 8KB page of system addresses through one
+ * level of indirection. The PTE contains the address of the 8KB page.
+ * [...]
+ * At TBA is a region (of size SG PTE AREA) of PTEs, each of which is eight bytes. Bits
+ * <22:1> of the PTE become bits <34:13> (the 8KB page) of the system address, and bits
+ * <12:0> of the PCI address become bits <12:0> (the page offset) of the system address.
+ *
+ * The following table shows how the address of the page table entry (to be used as part of the final
+ * system address) is generated. Values in the WSM field other than those shown produce
+ * unspecified results.
+ *
+ * \code
+ * +-------------+-------------+----------------+----------------------+
+ * | Window Size | SG PTE AREA | WSMn<31:20>    | PTE Address <34:3>   |
+ * +-------------+-------------+----------------+----------------------+
+ * |         1MB |         1KB | 0000.0000.0000 | TBA<34:10>:ad<19:13> |
+ * +-------------+-------------+----------------+----------------------+
+ * |         2MB |         2KB | 0000.0000.0001 | TBA<34:11>:ad<20:13> |
+ * +-------------+-------------+----------------+----------------------+
+ * |         4MB |         4KB | 0000.0000.0011 | TBA<34:12>:ad<21:13> |
+ * +-------------+-------------+----------------+----------------------+
+ * |         8MB |         8KB | 0000.0000.0111 | TBA<34:13>:ad<22:13> |
+ * |        ...  |        ...  |           ...  |                ...   |
+ * |         2GB |         2MB | 0111.1111.1111 | TBA<34:21>:ad<30:13> |
+ * +-------------+-------------+----------------+----------------------+
+ * |         4GB |         4MB |            N/A | TBA<34:22>:ad<31:13> |
+ * |             |             |                | (Window 3 in DAC     |
+ * |             |             |                | mode only)           |
+ * +-------------+-------------+----------------+----------------------+
+ * \endcode
+ *
+ * The following figure shows the structure of a page table entry in memory. If either bit <31> or
+ * bit <28> is set, the address is interpreted as being a peer-to-peer address.
+ *
+ * \code
+ *  63               32 31 30 29 28 27      23 22                   1 0
+ * +-------------------+--+-----+--+----------+----------------------+-+
+ * |                   |PP|     |PP|          | Page Address <34:13> |V|
+ * +-------------------+--+-----+--+----------+----------------------+-+
+ *                                                                    +--> V = valid bit
+ * \endcode
+ *
+ * The last figure shows how a page table entry is used in conjunction with an incoming PCI
+ * address to generate a system address.
+ *
+ * \code
+ *        PTE <22:1>              PCI address <12:0>
+ *             |                         |  
+ *  34         v              13 12      v         0
+ * +----------------------------+-------------------+
+ * |   Page addres <34:13>      |  Offset <12:0>    |
+ * +----------------------------+-------------------+
+ * \endcode
+ **/
+
+u64 CSystem::PCI_Phys_scatter_gather(u32 address, u64 wsm, u64 tba)
+{
+  u64 pte_a, pte, a;
+
+
+  pte_a = ((   address 
+            & ((wsm & make_mask_64(31,20)) | make_mask_64(19,13))
+          ) >> 10) // ad part of pte address
+        | (  tba 
+           & make_mask_64(34,10) 
+           & ~((wsm>>10) & make_mask_64(31,20))
+           );                          // tba part of pte address
+
+  pte = ReadMem(pte_a,64);
+  if (pte & 1)
+  {
+    a = ((pte<<12) & make_mask_64(34,13))
+      | (address   & make_mask_64(12,0));
+
+    if (test_bit_64(pte,28) || test_bit_64(pte,31)) // peer-to-peer
+      a |= (X64(1)<<43); // PIO access.
+      
+    return a;
+  }
+  else
+  {
+    throw((char)'0');
+  }
 }
 
 /**

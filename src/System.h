@@ -27,7 +27,10 @@
  * \file 
  * Contains the definitions for the emulated Typhoon Chipset devices.
  *
- * $Id: System.h,v 1.20 2008/01/02 09:30:20 iamcamiel Exp $
+ * $Id: System.h,v 1.21 2008/01/07 16:41:19 iamcamiel Exp $
+ *
+ * X-1.21       Camiel Vanderhoeven                             07-JAN-2008
+ *      DMA scatter/gather access. Split out some things.
  *
  * X-1.20       Camiel Vanderhoeven                             02-JAN-2008
  *      Comments.
@@ -107,9 +110,6 @@
 
 #define MAX_COMPONENTS 100
 
-
-//#define PROFILE 1
-
 #if defined(PROFILE)
 #define PROFILE_FROM      X64(8000)
 #define PROFILE_TO        X64(1a81c0)
@@ -147,7 +147,14 @@ struct SConfig {
 };
 
 /**
- * \brief Emulated Typhoon 21172 chipset.
+ * \brief Emulated Typhoon 21272 chipset.
+ *
+ * Documentation consulted:
+ *  - Tsunami/Typhoon 21272 Chipset Hardware Reference Manual  [HRM].
+ *    (http://download.majix.org/dec/tsunami_typhoon_21272_hrm.pdf)
+ *  - AlphaServer ES40 and AlphaStation ES40 Service Guide [SG].
+ *    (http://www.dec-store.com/PD_00158.aspx)
+ *  .
  **/
 
 class CSystem  
@@ -158,7 +165,9 @@ class CSystem
   unsigned int get_memory_bits();
   void RestoreState(char * fn);
   void SaveState(char * fn);
-  u64 PCI_Phys(int pcibus, u64 address);
+  u64 PCI_Phys(int pcibus, u32 address);
+  u64 PCI_Phys_direct_mapped(u32 address, u64 wsm, u64 tba);
+  u64 PCI_Phys_scatter_gather(u32 address, u64 wsm, u64 tba);
   void interrupt(int number, bool assert);
   int LoadROM();
   u64 ReadMem(u64 address, int dsize);
@@ -193,6 +202,16 @@ class CSystem
   void set_c_dim(int ProcNum,u64 value);
 
 private:
+
+  u64 cchip_csr_read(u32 address);
+  void cchip_csr_write(u32 address, u64 data);
+  u64 pchip_csr_read(int num, u32 address);
+  void pchip_csr_write(int num, u32 address, u64 data);
+  u8  dchip_csr_read(u32 address);
+  void dchip_csr_write(u32 address, u8 data);
+  u8  tig_read(u32 address);
+  void tig_write(u32 address, u8 data);
+
   int iNumCPUs;
 
   /// The state structure contains all elements that need to be saved to the statefile.
@@ -201,6 +220,7 @@ private:
     u8  tig_HaltA;
     u8  tig_HaltB;
     u64 p_PLAT[2];
+    u64 p_PERR[2];
     u64 p_PERRMASK[2];
     u64 p_PCTL[2];
     u64 c_DIM[4];
@@ -212,7 +232,7 @@ private:
     u64 p_WSBA[2][4];
     u64 p_WSM[2][4];
     u64 p_TBA[2][4];
-    u64 d_STR;
+    u8 d_STR;
   } state;
   void * memory;
   //	void * memmap;
