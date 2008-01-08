@@ -27,7 +27,10 @@
  * \file 
  * Contains the definitions for the emulated Typhoon Chipset devices.
  *
- * $Id: System.h,v 1.21 2008/01/07 16:41:19 iamcamiel Exp $
+ * $Id: System.h,v 1.22 2008/01/08 16:43:00 iamcamiel Exp $
+ *
+ * X-1.22       Camiel Vanderhoeven                             08-JAN-2008
+ *      Split out chipset registers.
  *
  * X-1.21       Camiel Vanderhoeven                             07-JAN-2008
  *      DMA scatter/gather access. Split out some things.
@@ -150,11 +153,19 @@ struct SConfig {
  * \brief Emulated Typhoon 21272 chipset.
  *
  * Documentation consulted:
- *  - Tsunami/Typhoon 21272 Chipset Hardware Reference Manual  [HRM].
- *    (http://download.majix.org/dec/tsunami_typhoon_21272_hrm.pdf)
- *  - AlphaServer ES40 and AlphaStation ES40 Service Guide [SG].
- *    (http://www.dec-store.com/PD_00158.aspx)
+ *  - Tsunami/Typhoon 21272 Chipset Hardware Reference Manual  [HRM] (http://download.majix.org/dec/tsunami_typhoon_21272_hrm.pdf)
+ *  - AlphaServer ES40 and AlphaStation ES40 Service Guide [SG] (http://www.dec-store.com/PD_00158.aspx)
+ *  - Tru64 include file dc104x.h [T64] (http://samy.pl/packet/MISC/tru64/usr/include/alpha/dc104x.h)
  *  .
+ *
+ * The ES40 emulator has the following chipset configuration:
+ *   - 1 x 21274-C1 Cchip (controller chip) – The Cchip controls the other chips in the
+ *     chipset, as well as the DRAM memory array in a system. The Cchip interfaces with
+ *     the CPU’s command and address buses.
+ *   - 8 x 21274-D1 Dchip (data slice chip) – The Dchips interface with the system data
+ *     bus and provide the data path between the CPU, DRAM memory, and the Pchip(s).
+ *   - 2 x 21272-P1 Pchip (peripheral interface chip) – The interface to the PCI bus.
+ *   .
  **/
 
 class CSystem  
@@ -216,23 +227,178 @@ private:
 
   /// The state structure contains all elements that need to be saved to the statefile.
   struct SSys_state {
-    u8  tig_FwWrite;
-    u8  tig_HaltA;
-    u8  tig_HaltB;
-    u64 p_PLAT[2];
-    u64 p_PERR[2];
-    u64 p_PERRMASK[2];
-    u64 p_PCTL[2];
-    u64 c_DIM[4];
-    u64 c_DRIR;
-    u64 c_MISC;
-    u64 c_CSC;
-    u64 c_TRR;
-    u64 c_TDR;
-    u64 p_WSBA[2][4];
-    u64 p_WSM[2][4];
-    u64 p_TBA[2][4];
-    u8 d_STR;
+
+    /**
+     * TIGbus state data
+     *
+     * More details in: HRM, 6.3; T64. Detailed information is hard to find...
+     *
+     * The TIGbus (TTL Integrated Glue Logic) is the interface between the chipset and
+     * the interrupt controller, flash ROM, and possibly some other system components.
+     **/
+    struct SSys_tig {
+      u8  FwWrite;
+      u8  HaltA;
+      u8  HaltB;
+    } tig;
+
+    /**
+     * CCHIP state data
+     *
+     * More details in: HRM, 1.2.1.
+     *
+     * The 21274-C1 Cchip (controller chip) is the heart of the ES40's Typhoon chipset. It
+     * interfaces directly with the CPU's through the System address ports, it issues
+     * controls to the Dchips (data slice chips) and Pchips (peripheral interface chips)
+     * using the Dchip control ports, and the CAPbus (C-And-P-chip bus). It controls memory
+     * using the DRAM command and address ports. It also controls the TIGbus.
+     **/
+    struct SSys_cchip {
+      /**
+       * DIM: Device Interrupt Mask Registers.
+       *
+       * These mask registers control which interrupts are allowed to go through to the
+       * CPUs. No interrupt in DRIR will get through to the masked interrupt registers (and on
+       * to interrupt the CPUs) unless the corresponding mask bit is set in DIMn. All bits are initialized
+       * to 0 at reset.
+       **/
+      u64 dim[4];
+      /**
+       * DRIR: Device Raw Interrupt Request Register.
+       *
+       * DRIR indicates which of the 64 possible device interrupts is asserted.
+       *
+       * \code
+       * +---------+---------+---------+------+-------------------------------------+
+       * | Field   | Bits    | Type    | Init | Description                         |
+       * +---------+---------+---------+------+-------------------------------------+
+       * | ERR     | <63:58> | RO      | 0    | IRQ0 error interrupts               |
+       * |         |         |         |      |    <63> Chip detected MISC<NXM>     |
+       * |         |         |         |      |    <62> hookup to Pchip0 error      |
+       * |         |         |         |      |    <61> hookup to Pchip1 errror     |
+       * +---------+---------+---------+------+-------------------------------------+
+       * | RES     | <57:56> | RO      | 0    | Reserved                            |
+       * +---------+---------+---------+------+-------------------------------------+
+       * | DEV     | <55:0>  | RO      | 0    | PCI interrupts pending to the CPU   |
+       * +---------+---------+---------+------+-------------------------------------+
+       * \endcode
+       *
+       * Combined with DIM[n] to form DIR[n]:
+       *
+       * DIR: Device Interrupt Request Registers.
+       *
+       * These registers indicate which interrupts are pending to the CPUs. If a raw request
+       * bit is set and the corresponding mask bit is set, then the corresponding bit in this register
+       * will be set and the appropriate CPU will be interrupted.
+       **/
+      u64 drir;
+      /**
+       * Miscellaneous Register (MISC – RW).
+       * 
+       * +---------+---------+---------+------+-------------------------------------+
+       * | Field   | Bits    | Type    | Init | Description                         |
+       * +---------+---------+---------+------+-------------------------------------+
+       * | RES     | <63:44> | MBZ,RAZ | 0    | Reserved.                           |
+       * | DEVSUP  | <43:40> | WO      | 0    | Suppress IRQ1 interrupts to the CPU |
+       * |         |         |         |      | corresponding to a 1 in this field  |
+       * |         |         |         |      | until the interrupt polling machine |
+       * |         |         |         |      | has completed a poll of all PCI     |
+       * |         |         |         |      | devices.                            |
+       * +---------+---------+---------+------+-------------------------------------+
+       * | REV     | <39:32> | RO      | 8    | Latest revision of Cchip            |
+       * +---------+---------+---------+------+-------------------------------------+
+       * | NXS     | <31:29> | RO      | 0    | NXM source – Device that caused NXM |
+       * |         |         |         |      | – UNPREDICTABLE if NXM is not set.  |
+       * |         |         |         |      |   Value Source                      |
+       * |         |         |         |      |   0..3  CPU 0..3                    |
+       * |         |         |         |      |   4..5  Pchip 0..1                  |
+       * +---------+---------+---------+------+-------------------------------------+
+       * | NXM     | <28>    | R,W1C   | 0    | Nonexistent memory address detected.|
+       * |         |         |         |      | Sets DRIR<63> and locks the NXS     |
+       * |         |         |         |      | field until it is cleared.          |
+       * +---------+---------+---------+------+-------------------------------------+
+       * | RES     | <27:25> | MBZ,RAZ | 0    | Reserved.                           |
+       * +---------+---------+---------+------+-------------------------------------+
+       * | ACL     | <24>    | WO      | 0    | Arbitration clear – writing a 1 to  |
+       * |         |         |         |      | this bit clears ABT and ABW fields. |
+       * +---------+---------+---------+------+-------------------------------------+
+       * | ABT     | <23:20> | R,W1S   | 0    | Arbitration try – writing a 1 to    |
+       * |         |         |         |      | these bits sets them.               |
+       * +---------+---------+---------+------+-------------------------------------+
+       * | ABW     | <19:16> | R,W1S   | 0    | Arbitration won – writing a 1 to    |
+       * |         |         |         |      | these bits sets them unless one is  |
+       * |         |         |         |      | already set, in which case the      |
+       * |         |         |         |      | write is ignored.                   |
+       * +---------+---------+---------+------+-------------------------------------+
+       * | IPREQ   | <15:12> | WO      | 0    | Interprocessor interrupt request –  |
+       * |         |         |         |      | write a 1 to the bit corresponding  |
+       * |         |         |         |      | to the CPU you want to interrupt.   |
+       * |         |         |         |      | Writing a 1 here sets the corres-   |
+       * |         |         |         |      | ponding bit in IPINTR.              |
+       * +---------+---------+---------+------+-------------------------------------+
+       * | IPINTR  | <11:8>  | R,W1C   | 0    | Interprocessor interrupt pending –  |
+       * |         |         |         |      | one bit per CPU. Pin irq<3> is      |
+       * |         |         |         |      | asserted to the CPU corresponding   |
+       * |         |         |         |      | to a 1 in this field.               |
+       * +---------+---------+---------+------+-------------------------------------+
+       * | ITINTR  | <7:4>   | R,W1C   | 0    | Interval timer interrupt pending –  |
+       * |         |         |         |      | one bit per CPU. Pin irq<2> is      |
+       * |         |         |         |      | asserted to the CPU corresponding   |
+       * |         |         |         |      | to a 1 in this field.               |
+       * +---------+---------+---------+------+-------------------------------------+
+       * | RES     | <3:2>   | MBZ,RAZ | 0    | Reserved.                           |
+       * +---------+---------+---------+------+-------------------------------------+
+       * | CPUID   | <1:0>   | RO      |      | ID of the CPU performing the read.  |
+       * +---------+---------+---------+------+-------------------------------------+
+       * \endcode
+       **/
+      u64 misc;
+      u64 csc;
+    } cchip;
+
+    /**
+     * DCHIP state data
+     *
+     * More details in: HRM, 1.2.2.
+     *
+     * The ES40 contains eight 21274-D1 Dchips (data slice chips). Each Dchip is
+     * responsible for handling 8 bits of the 64-bit data bus (in the ES40, other configurations
+     * using less Dchips are possible). Each Dchip interfaces with the Cchip for control,
+     * with each of the Pchips, with each of the CPU's and with each of the DRAM arrays.
+     **/
+    struct SSys_dchip
+    {
+      u8 drev;
+      u8 dsc;
+      u8 dsc2;
+      u8 str;
+    } dchip;
+
+    /**
+     * PCHIP state data
+     *
+     * More details in: HRM, 1.2.3.
+     *
+     * The ES40 contains two 21272-P1 Pchips (peripheral interface chips). Each Pchip
+     * controls one 64-bit PCI bus, and interfaces it to the Cchip and the Dchips.
+     *
+     * On PIO transfers from the CPU's (or PTP transfers from the other PCI bus), the Pchip
+     * acts as bus master on the PCI bus.
+     *
+     * On DMA or PTP transfers from a PCI device, the Pchip acts as target on the PCI bus.
+     * To determine on which addresses to respond, each Pchip contains 4 DMA/PTP windows,
+     * that support both direct mapped and scatter-gather DMA/PTP memory access.
+     **/
+    struct SSys_pchip {
+      u64 plat;
+      u64 perr;
+      u64 perrmask;
+      u64 pctl;
+      u64 wsba[4];
+      u64 wsm[4];
+      u64 tba[4];
+    } pchip [2];
+
   } state;
   void * memory;
   //	void * memmap;
@@ -259,22 +425,22 @@ private:
 
 inline u64 CSystem::get_c_misc()
 {
-  return state.c_MISC;
+  return state.cchip.misc;
 }
 
 inline u64 CSystem::get_c_dir(int ProcNum)
 {
-  return state.c_DRIR & state.c_DIM[ProcNum];
+  return state.cchip.drir & state.cchip.dim[ProcNum];
 }
 
 inline u64 CSystem::get_c_dim(int ProcNum)
 {
-  return state.c_DIM[ProcNum];
+  return state.cchip.dim[ProcNum];
 }
 
 inline void CSystem::set_c_dim(int ProcNum,u64 value)
 {
-  state.c_DIM[ProcNum] = value;
+  state.cchip.dim[ProcNum] = value;
 }
 
 extern CSystem * theSystem;

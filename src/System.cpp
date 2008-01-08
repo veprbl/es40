@@ -27,7 +27,10 @@
  * \file 
  * Contains the code for the emulated Typhoon Chipset devices.
  *
- * $Id: System.cpp,v 1.51 2008/01/07 16:55:17 iamcamiel Exp $
+ * $Id: System.cpp,v 1.52 2008/01/08 16:43:00 iamcamiel Exp $
+ *
+ * X-1.52       Camiel Vanderhoeven                             08-JAN-2008
+ *      Split out chipset registers.
  *
  * X-1.51       Camiel Vanderhoeven                             07-JAN-2008
  *      Corrected error in last update; csr reg. 0x600, not 0600...
@@ -250,6 +253,8 @@ char * dbg_strptr = debug_string;
 
 CSystem::CSystem(CConfigurator * cfg)
 {
+  int i;
+
   if (theSystem != 0)
     FAILURE("More than one system!!");
   theSystem = this;
@@ -268,59 +273,33 @@ CSystem::CSystem(CConfigurator * cfg)
   iSSCycles = 0;
 #endif
 
-  state.c_MISC = X64(0000000800000000);
-  state.c_DIM[0] = 0;
-  state.c_DIM[1] = 0;
-  state.c_DIM[2] = 0;
-  state.c_DIM[3] = 0;
-  state.c_DRIR = 0;
-  state.c_CSC = X64(0042444014157803);
-  state.c_TRR = X64(0000000000003103);
-  state.c_TDR = X64(F37FF37FF37FF37F);
+  for (i=0;i<4;i++)
+    state.cchip.dim[i] = 0;
+  state.cchip.drir = 0;
+  state.cchip.misc = X64(0000000800000000);
+  state.cchip.csc  = X64(3142444014157803);
 
-  state.d_STR = 0x25;
+  state.dchip.drev = 0x01;
+  state.dchip.dsc  = 0x43;
+  state.dchip.dsc2 = 0x03;
+  state.dchip.str  = 0x25;
 
-  state.p_PCTL[0] = X64(0000104401440081);
-  state.p_PCTL[1] = X64(0000504401440081);
+  // initialize pchip data
+  for (i=0;i<2;i++)
+  {
+    memset(&state.pchip[i], 0, sizeof(struct SSys_state::SSys_pchip));
+    state.pchip[i].wsba[3] = 2;
+  }
+  state.pchip[0].pctl = X64(0000104401440081);
+  state.pchip[1].pctl = X64(0000504401440081);
 
-  state.p_PERRMASK[0] = 0;
-  state.p_PERRMASK[1] = 0;
-  state.p_PERR[0] = 0;
-  state.p_PERR[1] = 0;
-  state.p_PLAT[0] = 0;
-  state.p_PLAT[1] = 0;
-  state.p_TBA [0][0] = 0;
-  state.p_WSBA[0][0] = 0;
-  state.p_WSM [0][0] = 0;
-  state.p_TBA [0][1] = 0;
-  state.p_WSBA[0][1] = 0;
-  state.p_WSM [0][1] = 0;
-  state.p_TBA [0][2] = 0;
-  state.p_WSBA[0][2] = 0;
-  state.p_WSM [0][2] = 0;
-  state.p_TBA [0][3] = 0;
-  state.p_WSBA[0][3] = 2;
-  state.p_WSM [0][3] = 0;
-  state.p_TBA [1][0] = 0;
-  state.p_WSBA[1][0] = 0;
-  state.p_WSM [1][0] = 0;
-  state.p_TBA [1][1] = 0;
-  state.p_WSBA[1][1] = 0;
-  state.p_WSM [1][1] = 0;
-  state.p_TBA [1][2] = 0;
-  state.p_WSBA[1][2] = 0;
-  state.p_WSM [1][2] = 0;
-  state.p_TBA [1][3] = 0;
-  state.p_WSBA[1][3] = 2;
-  state.p_WSM [1][3] = 0;
-
-  state.tig_FwWrite = 0;
-  state.tig_HaltA   = 0;
-  state.tig_HaltB   = 0;
+  state.tig.FwWrite = 0;
+  state.tig.HaltA   = 0;
+  state.tig.HaltB   = 0;
 
   CHECK_ALLOCATION(memory = calloc(1<<iNumMemoryBits,1));
 
-  printf("%s(%s): $Id: System.cpp,v 1.51 2008/01/07 16:55:17 iamcamiel Exp $\n",cfg->get_myName(),cfg->get_myValue());
+  printf("%s(%s): $Id: System.cpp,v 1.52 2008/01/08 16:43:00 iamcamiel Exp $\n",cfg->get_myName(),cfg->get_myValue());
 }
 
 /**
@@ -683,9 +662,9 @@ void CSystem::WriteMem(u64 address, int dsize, u64 data)
       return;
     }
 
-    if (a>=X64(0000080130000000) && a<=X64(000008013FFFFFFF))
+    if (a>=X64(0000080100000000) && a<=X64(000008013FFFFFFF))
     {
-      tig_write((u32)a&0xFFFFFFF,(u8)data);
+      tig_write((u32)a&0x3FFFFFFF,(u8)data);
       return;
     }
       if (a>=X64(801fc000000) && a<X64(801fe000000))
@@ -853,8 +832,8 @@ u64 CSystem::ReadMem(u64 address, int dsize)
     if (a>=X64(00000801B0000000) && a<=X64(00000801BFFFFFFF))
       return dchip_csr_read((u32)a&0xFFFFFFF) * X64(0101010101010101);
 
-    if (a>=X64(0000080130000000) && a<=X64(000008013FFFFFFF))
-      return tig_read((u32)a&0xFFFFFFF);
+    if (a>=X64(0000080100000000) && a<=X64(000008013FFFFFFF))
+      return tig_read((u32)a&0x3FFFFFFF);
 
       if (   (a>=X64(801fe000000) && a<X64(801ff000000))
           || (a>=X64(803fe000000) && a<X64(803ff000000)) )
@@ -1295,23 +1274,23 @@ u64 CSystem::pchip_csr_read(int num, u32 a)
   case 0x040:
   case 0x080:
   case 0x0c0:
-    return state.p_WSBA[num][(a>>6)&3];
+    return state.pchip[num].wsba[(a>>6)&3];
   case 0x100:
   case 0x140:
   case 0x180:
   case 0x1c0:
-    return state.p_WSM[num][(a>>6)&3];
+    return state.pchip[num].wsm[(a>>6)&3];
   case 0x200:
   case 0x240:
   case 0x280:
   case 0x2c0:
-    return state.p_TBA[num][(a>>6)&3];
+    return state.pchip[num].tba[(a>>6)&3];
   case 0x300:
-    return state.p_PCTL[num];
+    return state.pchip[num].pctl;
   case 0x3c0:
-    return state.p_PERR[num];
+    return state.pchip[num].perr;
   case 0x400:
-    return state.p_PERRMASK[num];
+    return state.pchip[num].perrmask;
   case 0x800: // PCI reset
     return 0;
   default:
@@ -1333,34 +1312,34 @@ void CSystem::pchip_csr_write(int num, u32 a, u64 data)
   case 0x000:
   case 0x040:
   case 0x080:
-    state.p_WSBA[num][(a>>6)&3] = data & X64(00000000fff00003);
+    state.pchip[num].wsba[(a>>6)&3] = data & X64(00000000fff00003);
     return;
   case 0x0c0:
-    state.p_WSBA[num][3] = data & X64(00000080fff00001) | 2;
+    state.pchip[num].wsba[3] = data & X64(00000080fff00001) | 2;
 	return;
   case 0x100:
   case 0x140:
   case 0x180:
   case 0x1c0:
-	state.p_WSM[num][(a>>6)&3] = data & X64(00000000fff00000);
+	state.pchip[num].wsm[(a>>6)&3] = data & X64(00000000fff00000);
 	return;
   case 0x200:
   case 0x240:
   case 0x280:
   case 0x2c0:
-    state.p_TBA[num][(a>>6)&3] = data & X64(00000007fffffc00);
+    state.pchip[num].tba[(a>>6)&3] = data & X64(00000007fffffc00);
     return;
   case 0x300:
-	state.p_PCTL[num] &=         X64(ffffe300f0300000);
-    state.p_PCTL[num] |= (data & X64(00001cff0fcfffff));
+	state.pchip[num].pctl &=         X64(ffffe300f0300000);
+    state.pchip[num].pctl |= (data & X64(00001cff0fcfffff));
     return;
   case 0x340:
-    state.p_PLAT[num] = data;
+    state.pchip[num].plat = data;
     return;
   case 0x3c0: // PERR
     return;
   case 0x400:
-	state.p_PERRMASK[num] = data;
+    state.pchip[num].perrmask = data;
 	return;
   case 0x480: // TLBIV
   case 0x4c0: // TLBIA
@@ -1379,9 +1358,9 @@ u64 CSystem::cchip_csr_read(u32 a)
   switch(a)
   {
   case 0x000:
-    return state.c_CSC;
+    return state.cchip.csc;
   case 0x080:
-    return state.c_MISC;
+    return state.cchip.misc;
 
   case 0x100:
     // WE PUT ALL OUR MEMORY IN A SINGLE ARRAY FOR NOW...
@@ -1396,14 +1375,14 @@ u64 CSystem::cchip_csr_read(u32 a)
   case 0x240:
   case 0x600:
   case 0x640:
-    return state.c_DIM[((a>>10)&2)|((a>>6)&1)];
+    return state.cchip.dim[((a>>10)&2)|((a>>6)&1)];
   case 0x280:
   case 0x2c0:
   case 0x680:
   case 0x6c0:
-    return state.c_DRIR & state.c_DIM[((a>>10)&2)|((a>>6)&1)];
+    return state.cchip.drir & state.cchip.dim[((a>>10)&2)|((a>>6)&1)];
   case 0x300:
-    return state.c_DRIR;
+    return state.cchip.drir;
   default:
     printf("Unknown CCHIP CSR %07x read attempted.\n",a);
     return 0;
@@ -1415,16 +1394,16 @@ void CSystem::cchip_csr_write(u32 a, u64 data)
   switch(a)
   {
   case 0x000: // CSC
-	state.c_CSC        &= ~X64(0777777fff3f0000);
-	state.c_CSC |= (data & X64(0777777fff3f0000));
+	state.cchip.csc        &= ~X64(0777777fff3f0000);
+	state.cchip.csc |= (data & X64(0777777fff3f0000));
 	return;
   case 0x080: // MISC
-	state.c_MISC |= (data & X64(00000f0000f0f000));	// W1S
-	state.c_MISC &=~(data & X64(0000000010000ff0));	// W1C
+	state.cchip.misc |= (data & X64(00000f0000f0f000));	// W1S
+	state.cchip.misc &=~(data & X64(0000000010000ff0));	// W1C
 	if       (data & X64(0000000001000000))
-	  state.c_MISC &=~        X64(0000000000ff0000);	//Arbitration Clear
-	if    (!(state.c_MISC & X64(00000000000f0000)))
-	  state.c_MISC |= (data & X64(00000000000f0000));	//Arbitration try
+	  state.cchip.misc &=~        X64(0000000000ff0000);	//Arbitration Clear
+	if    (!(state.cchip.misc & X64(00000000000f0000)))
+	  state.cchip.misc |= (data & X64(00000000000f0000));	//Arbitration try
     // stop interval timer interrupt
     if        (data & X64(00000000000000f0))
     {
@@ -1443,7 +1422,7 @@ void CSystem::cchip_csr_write(u32 a, u64 data)
   case 0x240:
   case 0x600:
   case 0x640:
-	state.c_DIM[((a>>10)&2)|((a>>6)&1)] = data;
+	state.cchip.dim[((a>>10)&2)|((a>>6)&1)] = data;
 	return;
   default:
     printf("Unknown CCHIP CSR %07x write with %016" LL "x attempted.\n",a,data);
@@ -1454,9 +1433,14 @@ u8 CSystem::dchip_csr_read(u32 a)
 {
   switch(a)
   {
-	case 0x880:
-	  // DCHIP revisions
-	  return 0x01;
+  case 0x800: // DSC
+    return state.dchip.dsc;
+  case 0x840: // STR
+    return state.dchip.str;
+  case 0x880: // DREV
+    return state.dchip.drev;
+  case 0x8c0: // DSC2
+    return state.dchip.dsc2;
   default:
     printf("Unknown DCHIP CSR %07x read attempted.\n",a);
     return 0;
@@ -1468,26 +1452,73 @@ void CSystem::dchip_csr_write(u32 a, u8 data)
   printf("Unknown DCHIP CSR %07x write with %02x attempted.\n",a,data);
 }
 
+/**
+ * Read a byte from the TIGbus
+ *
+ * What information we have is sketchy at best. Following is extracted from T64,
+ * Although we're not 100% sure that this is actually for ES40:
+ *
+ * \code
+ * +-----------------+--------+
+ * | register        | offset |
+ * +-----------------+--------+
+ * | trr             | 000    |
+ * | smir            | 040    | system management IR
+ * | cpuir           | 080    | CPU IR
+ * | psir            | 0c0    | powe supply IR
+ * | mod_info        | 100    |
+ * | clk_info        | 140    |
+ * | chip_info       | 180    |
+ * | tpcr            | 200    |
+ * | pll_data        | 280    |
+ * | pll_clk         | 2c0    |
+ * | ev6_init        | 300    |
+ * | csleep          | 340    |
+ * | smcr            | 380    |
+ * | ttcr            | 3c0    |
+ * | clr_irq5        | 400    |
+ * | clr_irq4        | 440    |
+ * | clr_pwr_flt_det | 480    |
+ * | clr_temp_warn   | 4c0    |
+ * | clr_temp_fail   | 500    |
+ * | ev6_halt        | 5c0    |
+ * | srcr0           | 600    |
+ * | srcr1           | 640    |
+ * | frar0           | 700    |
+ * | frar1           | 740    |
+ * | fwmr0           | 800    |
+ * | fwmr1           | 840    |
+ * | fwmr2           | 880    |
+ * | fwmr3           | 8c0    |
+ * | ipcr0           | a00    | inter-processor communications register for arbiter (?)
+ * | ipcr1           | a40    |
+ * | ipcr2           | a80    |
+ * | ipcr3           | ac0    |
+ * | ipcr4           | b00    |
+ * +-----------------+--------+
+ * \endcode
+ **/
+
 u8 CSystem::tig_read(u32 a)
 {
   switch(a)
   {
-	case 0x8000180:
-	  // Arbiter revision
-	  return 0xfe;
-    case 0x000: // unknown, but used by SRM...
-    case 0x480:
-      return 0;
-	case 0x040:
-	  return state.tig_FwWrite;
-    case 0x100: // soft reset
-      return 0;
-	case 0x3c0:
-	  return state.tig_HaltA;
-	case 0x5c0:
-	  return state.tig_HaltB;
+  case 0x30000000: // trr
+    return 0;
+  case 0x30000040: // smir
+    return state.tig.FwWrite;
+  case 0x30000100: // mod_info
+    return 0;
+  case 0x300003c0: // ttcr
+	return state.tig.HaltA;
+  case 0x30000480: // clr_pwr_flt_det
+    return 0;
+  case 0x300005c0: // ev6_halt
+    return state.tig.HaltB;
+  case 0x38000180: // Arbiter revision
+    return 0xfe;
   default:
-    printf("Unknown TIG %07x read attempted.\n",a);
+    printf("Unknown TIG %08x read attempted.\n",a);
     return 0;
   }
 }
@@ -1496,21 +1527,21 @@ void CSystem::tig_write(u32 a, u8 data)
 {
   switch(a)
   {
-    case 0x000: // unknown, but used by SRM...
-    case 0x480:
-      return;
-  case 0x3c0:
-    state.tig_HaltA = data;
+  case 0x30000000: // trr
     return;
-  case 0x5c0:
-    state.tig_HaltB = data;
+  case 0x30000040: // smir
+	state.tig.FwWrite = data;
 	return;
-  case 0x040:
-	state.tig_FwWrite = data;
-	return;
-  case 0x100:
-	// soft reset
+  case 0x30000100: // mod_info
 	printf("Soft reset: %02x\n",data);
+	return;
+  case 0x300003c0: // ttcr
+    state.tig.HaltA = data;
+    return;
+  case 0x30000480: // clr_pwr_flt_det
+      return;
+  case 0x300005c0: // ev6_halt
+    state.tig.HaltB = data;
 	return;
   default:
     printf("Unknown TIG %07x write with %02x attempted.\n",a,data);
@@ -1708,30 +1739,30 @@ void CSystem::interrupt(int number, bool assert)
   if (number==-1)
     {
       // timer int...
-      state.c_MISC |= 0xf0;
+      state.cchip.misc |= 0xf0;
       for(i=0;i<iNumCPUs;i++)
 	acCPUs[i]->irq_h(2,true);
     }
   else if (assert)
     {
-//    if (!(state.c_DRIR & (1i64<<number)))
+//    if (!(state.cchip.drir & (1i64<<number)))
 //      printf("%%TYP-I-INTERRUPT: Interrupt %d asserted.\n",number);
-      state.c_DRIR |= (X64(1)<<number);
+      state.cchip.drir |= (X64(1)<<number);
     }
   else
     {
-//    if (state.c_DRIR & (1i64<<number))
+//    if (state.cchip.drir & (1i64<<number))
 //      printf("%%TYP-I-INTERRUPT: Interrupt %d deasserted.\n",number);
-      state.c_DRIR &= ~(X64(1)<<number);
+      state.cchip.drir &= ~(X64(1)<<number);
     }
   for (i=0;i<iNumCPUs;i++)
     {
-      if (state.c_DRIR & state.c_DIM[i] & X64(00ffffffffffffff))
+      if (state.cchip.drir & state.cchip.dim[i] & X64(00ffffffffffffff))
 	acCPUs[i]->irq_h(1,true);
       else
 	acCPUs[i]->irq_h(1,false);
 
-      if (state.c_DRIR & state.c_DIM[i] & X64(fc00000000000000))
+      if (state.cchip.drir & state.cchip.dim[i] & X64(fc00000000000000))
 	acCPUs[i]->irq_h(0,true);
       else
 	acCPUs[i]->irq_h(0,false);
@@ -1838,27 +1869,27 @@ u64 CSystem::PCI_Phys(int pcibus, u32 address)
   for(j=0;j<4;j++)
   {
     printf("WSBA%d: %016" LL "x WSM: %016" LL "x TBA: %016" LL "x\n",
-    j,state.p_WSBA[pcibus][j], state.p_WSM[pcibus][j], state.p_TBA[pcibus][j]);
+    j,state.pctl[pcibus].wsba[j], state.pchip[pcibus].wsm[j], state.pchip[pcibus].tba[j]);
   }
-  printf("HOLE: %s\n", test_bit_64(state.p_PCTL[pcibus], 5)?"enabled":"disabled");
+  printf("HOLE: %s\n", test_bit_64(state.pchip[pcibus].pctl, 5)?"enabled":"disabled");
   printf("--------------------------------------------------------------\n");
 #endif
 
-  if (   !test_bit_64(state.p_PCTL[pcibus], 5) // hole disabled
+  if (   !test_bit_64(state.pchip[pcibus].pctl, 5) // hole disabled
       || (address < 0x00080000) || (address > 0x000fffff)) // or address outside hole
   {
    
     //Step through windows
     for(j=0;j<4;j++)
     {
-      if (      (state.p_WSBA[pcibus][j] & 1)									// window enabled...
-        && ! ((address ^ state.p_WSBA[pcibus][j]) & 0xfff00000 & ~state.p_WSM[pcibus][j]))	// address in range...
+      if (      (state.pchip[pcibus].wsba[j] & 1)									// window enabled...
+        && ! ((address ^ state.pchip[pcibus].wsba[j]) & 0xfff00000 & ~state.pchip[pcibus].wsm[j]))	// address in range...
 	  {
-        if (state.p_WSBA[pcibus][j] & 2)
+        if (state.pchip[pcibus].wsba[j] & 2)
         {
           try
           {
-            a = PCI_Phys_scatter_gather(address, state.p_WSM[pcibus][j], state.p_TBA[pcibus][j]);
+            a = PCI_Phys_scatter_gather(address, state.pchip[pcibus].wsm[j], state.pchip[pcibus].tba[j]);
           }
           catch (char)
           {
@@ -1868,7 +1899,7 @@ u64 CSystem::PCI_Phys(int pcibus, u32 address)
           }
         }
         else
-          a = PCI_Phys_direct_mapped(address, state.p_WSM[pcibus][j], state.p_TBA[pcibus][j]);
+          a = PCI_Phys_direct_mapped(address, state.pchip[pcibus].wsm[j], state.pchip[pcibus].tba[j]);
 #if defined(DEBUG_PCI)
 	    printf("PCI memory address %08x translated to %016"LL "x\n",address, a);
 #endif
@@ -2255,7 +2286,7 @@ void CSystem::panic(char *message, int flags)
 
 void CSystem::clear_clock_int(int ProcNum)
 {
-  state.c_MISC &=~(X64(10)<<ProcNum);
+  state.cchip.misc &=~(X64(10)<<ProcNum);
   acCPUs[ProcNum]->irq_h(2,false);
 }
 
