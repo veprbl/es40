@@ -30,7 +30,7 @@
  * You could read the documentation from this file; but it would probably
  * be easier to go to http://es40.sourceforge.net.
  *
- * $Id: dox.cpp,v 1.3 2008/01/08 16:43:44 iamcamiel Exp $
+ * $Id: dox.cpp,v 1.4 2008/01/08 19:07:14 iamcamiel Exp $
  *
  * \author Camiel Vanderhoeven (camiel@camicom.com / http://www.camicom.com)
  **/
@@ -175,4 +175,61 @@
  *  - Ali M1543C B1 South Bridge Version 1.20 (http://mds.gotdns.com/sensors/docs/ali/1543dScb1-120.pdf)
  *  - VGADOC4b (http://home.worldonline.dk/~finth/)
  *  .
+ **/
+
+/**
+ * \page guest_os Guest OS Notes
+ *
+ * Status for various guest OSes under ES40
+ *
+ * \section hp DEC/Compaq/HP OS-es
+ *
+ * \subsection vms OpenVMS
+ * Test 8.3
+ *   - Using newide, all devices are recognized and use DMA mode.
+ *   - There is a permissions violation during install.  Do not abort it, and the
+ *     install will work anyway. (note Camiel: differing results of installation
+ *     reported. A lot seems to depend on timing.
+ *   .
+ *
+ * \subsection tru64 Tru64 Unix
+ * Tested using 5.1B
+ *   - Using the newide device:
+ *       - Only slave devices are recognized
+ *       - DMA is supported
+ *       .
+ *   - Using the ali_ide device
+ *       - devices timeout on probe
+ *   - ES40 crashes if ali_usb device is present, due to incomplete emulation.
+ *   .
+ *
+ * \section free Free OS'es
+ *
+ * \subsection fbsd FreeBSD
+ * Tested with 6.2
+ *   - Using newide:  devices are not probed correctly.
+ *   .
+ *
+ * \subsection nbsd NetBSD
+ * Tested 3.1.1
+ *   - Panics if cirrus device is present.
+ *   - Using newide, all devices are recognized and use DMA mode.
+ *   - Using ali_ide, all devices are recognized and pio mode is used.
+ *   .
+ *
+ * \subsection linux Linux
+ * Tested using Debian 4.0 rc 0, centos 4.2, gentoo 2007.0.
+ * Always boot with "boot <device> -flags 1" when using a serial console.
+ *   - Gentoo + ali_ide: hang after hda size display
+ *   - Gentoo + newide: hang after hda size display
+ *   - Centos:  hangs after serial probe.
+ *   - Debian:  hangs after serial probe.
+ *   .
+ *
+ * \section srm SRM
+ * Ok, its not really an OS, but it acts like one.
+ *   - Cannot boot CDROMs with newide device (timeouts)
+ *   - Cannot boot CDROMs with ali_ide device (segfault)
+ *   .
+ * When booting CDROM-type media, set the disk is cdrom=false.
  **/
