@@ -36,9 +36,12 @@
  * \file 
  * Contains the code for the emulated DEC 21143 NIC device.
  *
- * $Id: DEC21143.cpp,v 1.25 2008/01/05 15:08:44 iamcamiel Exp $
+ * $Id: DEC21143.cpp,v 1.26 2008/01/08 15:58:55 iamcamiel Exp $
  *
- * X-1.25       Fausto                                          05-JAN-2008
+ * X-1.26       Fang Zhe                                        08-JAN-2008
+ *      Avoid compiler warning.
+ *
+ * X-1.25       Fausto Saporito                                 05-JAN-2008
  *      Fixed typo (\m instead of \n).
  *
  * X-1.24       David Hittner                                   04-JAN-2008
@@ -336,7 +339,7 @@ CDEC21143::CDEC21143(CConfigurator * confg, CSystem * c, int pcibus, int pcidev)
   pthread_create(&receive_process_handle, NULL, recv_proc, this);
 #endif
 
-  printf("%s: $Id: DEC21143.cpp,v 1.25 2008/01/05 15:08:44 iamcamiel Exp $\n",devid_string);
+  printf("%s: $Id: DEC21143.cpp,v 1.26 2008/01/08 15:58:55 iamcamiel Exp $\n",devid_string);
 }
 
 /**
@@ -855,7 +858,7 @@ int CDEC21143::dec21143_rx()
 		state.rx.cur_offset = 0;
 	}
 
-    addr = cSystem->PCI_Phys(0,addr&0xffffffff);
+    addr = cSystem->PCI_Phys(0,(u32)addr);
 
     memcpy(descr,cSystem->PtrToMem(addr),sizeof(u32)*4);
 

@@ -27,7 +27,10 @@
  * \file
  * Contains the code for the emulated Ali M1543C IDE chipset part.
  *		
- * $Id: AliM1543C_ide.cpp,v 1.18 2008/01/06 10:38:32 iamcamiel Exp $
+ * $Id: AliM1543C_ide.cpp,v 1.19 2008/01/08 15:58:55 iamcamiel Exp $
+ *
+ * X-1.19       Fang Zhe                                        08-JAN-2008
+ *      Endianess.
  *
  * X-1.18       Camiel Vanderhoeven                             06-JAN-2008
  *      Leave changing the blocksize to the disk itself.
@@ -209,7 +212,7 @@ CAliM1543C_ide::CAliM1543C_ide(CConfigurator * cfg, CSystem * c, int pcibus, int
   
   ResetPCI();
 
-  printf("%s: $Id: AliM1543C_ide.cpp,v 1.18 2008/01/06 10:38:32 iamcamiel Exp $\n",devid_string);
+  printf("%s: $Id: AliM1543C_ide.cpp,v 1.19 2008/01/08 15:58:55 iamcamiel Exp $\n",devid_string);
 }
 
 CAliM1543C_ide::~CAliM1543C_ide()
@@ -358,6 +361,45 @@ u32 CAliM1543C_ide::ide_command_read(int index, u32 address, int dsize)
     {
     case 0x20: // read sector
     case 0x21: // read sector
+#if defined(ES40_BIG_ENDIAN)
+      switch(dsize)
+      {
+      case 32:
+        if (state.ide_sectors[index]) {
+          data = endian_16(state.ide_data[index][state.ide_data_ptr[index]++]);
+          data |= endian_16(state.ide_data[index][state.ide_data_ptr[index]++]) << 16;
+        } else {
+          data = state.ide_data[index][state.ide_data_ptr[index]++];
+          data |= state.ide_data[index][state.ide_data_ptr[index]++] << 16;
+        }
+        break;
+      case 16:
+        if (state.ide_sectors[index])
+          data = endian_16(state.ide_data[index][state.ide_data_ptr[index]++]);
+        else
+          data = state.ide_data[index][state.ide_data_ptr[index]++];
+      }
+      if (state.ide_data_ptr[index]>=256)
+      {
+        SEL_STATUS(index).busy = false;
+        SEL_STATUS(index).drive_ready = true;
+        SEL_STATUS(index).seek_complete = true;
+        SEL_STATUS(index).err = false;
+        state.ide_data_ptr[index] = 0;
+
+        state.ide_sectors[index]--;
+
+        if (state.ide_sectors[index])
+        {
+          SEL_STATUS(index).drq = true;
+          SEL_DISK(index)->read_blocks(&(state.ide_data[index][0]),1);
+          raise_interrupt(index);
+        }
+        else
+          SEL_STATUS(index).drq = false;
+      }
+      break;
+#endif
     case 0xec: // identify
     case 0xa1: // packet identify
       switch(dsize)
@@ -378,7 +420,9 @@ u32 CAliM1543C_ide::ide_command_read(int index, u32 address, int dsize)
         state.ide_data_ptr[index] = 0;
 
         state.ide_sectors[index]--;
-
+#if defined(ES40_BIG_ENDIAN)
+          SEL_STATUS(index).drq = false;
+#else
         if (!state.ide_sectors[index] || (SEL_STATUS(index).current_command == 0xec) || (SEL_STATUS(index).current_command == 0xa1))
           SEL_STATUS(index).drq = false;
         else
@@ -387,6 +431,7 @@ u32 CAliM1543C_ide::ide_command_read(int index, u32 address, int dsize)
           SEL_DISK(index)->read_blocks(&(state.ide_data[index][0]),1);
           raise_interrupt(index);
         }
+#endif
       }
       break;
 
@@ -485,11 +530,11 @@ void CAliM1543C_ide::ide_command_write(int index, u32 address, int dsize, u32 da
       switch(dsize)
       {
       case 32:
-        state.ide_data[index][state.ide_data_ptr[index]++] = (u16)data & 0xffff;
-        state.ide_data[index][state.ide_data_ptr[index]++] = (u16)(data>>16) & 0xffff;
+        state.ide_data[index][state.ide_data_ptr[index]++] = (u16)endian_16(data);
+        state.ide_data[index][state.ide_data_ptr[index]++] = (u16)endian_16(data>>16);
         break;
       case 16:
-        state.ide_data[index][state.ide_data_ptr[index]++] = (u16)data & 0xffff;
+        state.ide_data[index][state.ide_data_ptr[index]++] = (u16)endian_16(data);
       }
       if (state.ide_data_ptr[index]>=256)
       {
@@ -857,9 +902,9 @@ void CAliM1543C_ide::ide_command_write(int index, u32 address, int dsize, u32 da
         state.ide_sectors[index] = 256;
       else
         state.ide_sectors[index] = SEL_PER_DRIVE(index).sector_count;
-      TRC_DEV5("%%IDE-I-READSECT: Read  %3d sectors @ IDE %d.%d LBA %8d\n",SEL_PER_DRIVE(index).sector_count,index,state.ide_selected[index],lba);
+      TRC_DEV5("%%IDE-I-WRITSECT: Write %3d sectors @ IDE %d.%d LBA %8d\n",SEL_PER_DRIVE(index).sector_count,index,state.ide_selected[index],lba);
 #ifdef DEBUG_IDE
-      printf("%%IDE-I-WRITSECT: Write  %3d sectors @ IDE %d.%d LBA %8d\n",SEL_PER_DRIVE(index).sector_count,index,state.ide_selected[index],lba);
+      printf("%%IDE-I-WRITSECT: Write %3d sectors @ IDE %d.%d LBA %8d\n",SEL_PER_DRIVE(index).sector_count,index,state.ide_selected[index],lba);
 #endif
       SEL_STATUS(index).current_command = (u8)data;
 
