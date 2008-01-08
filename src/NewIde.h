@@ -27,6 +27,11 @@
  * \file
  * Contains the definitions for the emulated Ali M1543C IDE chipset part.
  *
+ * $Id: NewIde.h,v 1.2 2008/01/08 22:08:10 iamcamiel Exp $
+ *
+ * X-1.2         Brian wheeler                                   08-JAN-2008
+ *      ATAPI improved.
+ *
  * X-1.1         Brian wheeler                                   08-JAN-2008
  *      Complete rewrite of IDE controller.
  *
@@ -113,14 +118,19 @@ class CNewIde : public CDiskController
       } registers;
       
       struct {
-	bool command_in_progress;
-	int current_command;
-	int command_cycle;
-	bool packet_dma;
-	int packet_phase;
-	u8 packet_command[12];
-	int packet_buffersize;
+	    bool command_in_progress;
+	    int current_command;
+	    int command_cycle;
+	    bool packet_dma;
+	    int packet_phase;
+	    u8 packet_command[12];
+	    int packet_buffersize;
+        u8 packet_sense;
+        u8 packet_asc;
+        u8 packet_ascq;
       } command;
+
+      u8 multiple_size;
     };
     
     
@@ -209,12 +219,7 @@ static char *register_names[] = {
   "STATUS/COMMAND",
 };
 
-
-
-
 /* misc constants */
-
-
 
 /* Packet Protocol Aliases */
 #define DMRD fault
@@ -241,7 +246,17 @@ static char *packet_states[] = {
 #define PACKET_DP34 3
 #define PACKET_DI  4
 
-
-
+/* SCSI SENSE Constants */
+#define SENSE_NONE 0x00
+#define SENSE_RECOVERED_ERROR 0x01
+#define SENSE_NOT_READY 0x02
+#define SENSE_MEDIUM_ERROR 0x03
+#define SENSE_HARDWARE_ERROR 0x04
+#define SENSE_ILLEGAL_REQUEST 0x05
+#define SENSE_UNIT_ATTENTION 0x06
+#define SENSE_DATA_PROTECT 0x07
+#define SENSE_BLANK_CHECK 0x08
+#define SENSE_ABORT_COMMAND 0x0b
+#define SENSE_MISCOMPARE 0x0e
 
 #endif 

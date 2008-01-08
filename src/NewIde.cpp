@@ -27,7 +27,10 @@
  * \file
  * Contains the code for the emulated Ali M1543C IDE chipset part.
  *
- * $Id: NewIde.cpp,v 1.2 2008/01/08 18:55:06 iamcamiel Exp $
+ * $Id: NewIde.cpp,v 1.3 2008/01/08 22:08:10 iamcamiel Exp $
+ *
+ * X-1.3         Brian wheeler                                   08-JAN-2008
+ *      ATAPI improved.
  *
  * X-1.2         Brian wheeler                                   08-JAN-2008
  *      Handle blocksize correctly for ATAPI.
@@ -157,7 +160,6 @@ CNewIde::~CNewIde()
 {
 }
 
-
 void CNewIde::ResetPCI()
 {
   int i,j;
@@ -170,6 +172,8 @@ void CNewIde::ResetPCI()
     
     for (j=0;j<2;j++) {
       REGISTERS(i,j).error=0;
+      COMMAND(i,j).command_in_progress = 0;
+      COMMAND(i,j).command_cycle = 0;
       STATUS(i,j).busy = false;
       STATUS(i,j).drive_ready = false;
       STATUS(i,j).drq = false;
@@ -181,8 +185,6 @@ void CNewIde::ResetPCI()
     }
   }
 }
-
-
 
 static u32 ide_magic1 = 0xB222654D;
 static u32 ide_magic2 = 0xD456222C;
@@ -309,7 +311,7 @@ void CNewIde::WriteMem_Legacy(int index, u32 address, int dsize, u32 data) {
   case SEC_CONTROL:
     channel=1;
   case PRI_CONTROL:
-    ide_command_write(channel,address,dsize,data);
+    ide_control_write(channel,address,data);
     break;
 
   case SEC_BUSMASTER:
@@ -615,7 +617,6 @@ void CNewIde::ide_control_write(int index, u32 address, u32 data)
 
     if (!prev_reset && CONTROLLER(index).reset) {
       printf("IDE reset on index %d started.\n",index);
-      PAUSE("RESET.");
       STATUS(index,0).busy = true;
       STATUS(index,0).drive_ready = false;
       STATUS(index,0).seek_complete = true;
@@ -647,11 +648,10 @@ void CNewIde::ide_control_write(int index, u32 address, u32 data)
     break;
 
   case 1:
-    PAUSE("Wrote to 0x3n7");
+    PAUSE("Wrote to 0x3n7 -- it is read only!");
     break;
   }
 }
-
 
 /**
  * Read from the IDE controller busmaster interface.
@@ -1251,7 +1251,7 @@ int CNewIde::DoClock() {
 	    } else {
 	      printf("Original h: %d, s: %d\n", SEL_DISK(index)->get_heads(), SEL_DISK(index)->get_sectors());
 	      printf("Requested h: %d, s: %d\n", SEL_REGISTERS(index).head_no+1, SEL_REGISTERS(index).sector_count);
-	      PAUSE("INIT DEV PARAMS -- not supported!");
+	      PAUSE("INIT DEV PARAMS -- geometry not supported!");
 	      SEL_STATUS(index).busy=false;
 	      SEL_STATUS(index).drive_ready=true;
 	      SEL_STATUS(index).fault=false;
@@ -1342,12 +1342,27 @@ int CNewIde::DoClock() {
 		  SEL_STATUS(index).busy=true;
 		  SEL_STATUS(index).drq=false;
 
-		  if(SEL_COMMAND(index).command_in_progress) {
-		    switch(SEL_COMMAND(index).packet_command[0]) {
+		  if(SEL_COMMAND(index).command_in_progress) 
+          {
+		    switch(SEL_COMMAND(index).packet_command[0]) 
+            {
 		    case 0x00: // Test Unit Ready
 		      SEL_COMMAND(index).packet_phase = PACKET_DI;
 		      break;
-		      
+
+		      /*
+		    case 0x03: // Request Sense
+		      // SCSI Command: 3 0 0 0 12 0 0 0 0 0 0 0
+		      CONTROLLER(index).data[0]=0xF0; // error + valid
+		      break;
+		      */
+
+		    case 0x1e: // prevent/allow medium removal.
+		      // treat it as a nop, since we can't actually
+		      // remove media anyway
+		      SEL_COMMAND(index).packet_phase = PACKET_DI;
+		      break;
+
 		    case 0x25: // Read capacity
 		      *(u32 *)(&CONTROLLER(index).data[0]) = swap_32(((SEL_DISK(index)->get_lba_size())>>2)-1);
 		      *(u32 *)(&CONTROLLER(index).data[2]) = swap_32(2048);
@@ -1379,7 +1394,42 @@ int CNewIde::DoClock() {
 		      //exit(1);
 		      break;
 		      
+		    case 0x43: // read table of contents
+		      do {
+			    int format = SEL_COMMAND(index).packet_command[2];
 
+			    int track = SEL_COMMAND(index).packet_command[6];
+			    int alloclen = swap_16(SEL_COMMAND(index).packet_command[7]);
+			    int flags = SEL_COMMAND(index).packet_command[9];
+			    int tracks = (alloclen-4)/8;
+
+    			switch(format) {
+			    case 0: // TOC
+			      // we really only have one track, so we fill it in
+			      // directly.
+    			  
+			      // header
+			      CONTROLLER(index).data[0] = swap_16(0x0c);
+			      CONTROLLER(index).data[1] = 0x0000;  
+    			  
+			      // track info
+			      CONTROLLER(index).data[2] = swap_16(0x0004);
+			      CONTROLLER(index).data[3] = 0;
+			      CONTROLLER(index).data[4] = 0;
+			      CONTROLLER(index).data[5] = 0;
+			      SEL_COMMAND(index).packet_phase=PACKET_DP34;
+			      break;
+			    case 1: // session information
+			    case 2: // full toc
+			    case 3: // pma area
+			    case 4: // atip area
+			    case 5: // cd-text
+			    default:
+			      printf("Unhandled format in READ TOC: %x",format);
+			      exit(1);
+			    }
+		      } while(0);
+		      break;
 		    default:
 		      printf("Unhandled SCSI command.\n");
 		      exit(1);
@@ -1389,8 +1439,7 @@ int CNewIde::DoClock() {
 		    SEL_COMMAND(index).packet_phase=PACKET_DI;
 		  }
 		  break;
-		    
-		    
+		    		    
 		case PACKET_DP34:
 		  if(SEL_COMMAND(index).packet_dma) {
 		    // send back via dma
@@ -1400,8 +1449,10 @@ int CNewIde::DoClock() {
 						  (u8 *)(&CONTROLLER(index).data[0]),
 						  SEL_REGISTERS(index).BYTE_COUNT,
 						  false);	
-		      SEL_COMMAND(index).command_in_progress=false;
-		      SEL_COMMAND(index).packet_phase=PACKET_DP2;
+		      //SEL_COMMAND(index).command_in_progress=false;
+		      //SEL_COMMAND(index).packet_phase=PACKET_DP2;
+			  SEL_COMMAND(index).packet_phase = PACKET_DI;
+			  yield=true;
 		    } else {
 		      // the controller isn't ready for DMA yet.
 		      yield=1;
@@ -1418,15 +1469,16 @@ int CNewIde::DoClock() {
 		      yield = true;
 		    } else {
 		      if(SEL_STATUS(index).drq) {
-			printf("Yielding until all PIO data is read.\n");
-			yield = true;  // yield.			    
+			    printf("Yielding until all PIO data is read.\n");
+			    yield = true;  // yield.			    
 		      } else {			
-			// all of the data has been read from the buffer.
-			// for now I assume that it is everything.
-			printf("Finished transferring!\n");
-			SEL_COMMAND(index).packet_phase = PACKET_DP2;
-			SEL_COMMAND(index).command_in_progress=false;
-
+			    // all of the data has been read from the buffer.
+			    // for now I assume that it is everything.
+			    printf("Finished transferring!\n");
+                //SEL_COMMAND(index).command_in_progress=false;
+                //SEL_COMMAND(index).packet_phase=PACKET_DP2;
+   		        SEL_COMMAND(index).packet_phase = PACKET_DI;
+			    yield=true;
 		      }
 		    }
 		  }
@@ -1477,7 +1529,20 @@ int CNewIde::DoClock() {
 	     0xc5: write multiple is mandatory for non-packet (no w/packet)
 	     0xc6: set multiple mode is mandatory for non-packet (no w/packet)
 	   */
-
+	case 0xc6:
+	  if(SEL_DISK(index)->cdrom()) {
+	    command_aborted(index,SEL_COMMAND(index).current_command);
+	  } else {
+	    SEL_PER_DRIVE(index).multiple_size=SEL_REGISTERS(index).sector_count;
+	    SEL_STATUS(index).busy=false;
+	    SEL_STATUS(index).drive_ready=true;
+	    SEL_STATUS(index).fault=false;
+	    SEL_STATUS(index).drq=false;
+	    SEL_STATUS(index).err=false;	
+	    SEL_COMMAND(index).command_in_progress=false;
+	    raise_interrupt(index);
+	  }
+	  break;
 
 	case 0xc8: // read dma
 	case 0xc9: // read dma (old)
