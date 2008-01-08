@@ -27,7 +27,10 @@
  * \file 
  * Contains the code for the emulated Typhoon Chipset devices.
  *
- * $Id: System.cpp,v 1.52 2008/01/08 16:43:00 iamcamiel Exp $
+ * $Id: System.cpp,v 1.53 2008/01/08 19:15:36 iamcamiel Exp $
+ *
+ * X-1.53       Camiel Vanderhoeven                             08-JAN-2008
+ *      Layout of comments.
  *
  * X-1.52       Camiel Vanderhoeven                             08-JAN-2008
  *      Split out chipset registers.
@@ -299,7 +302,7 @@ CSystem::CSystem(CConfigurator * cfg)
 
   CHECK_ALLOCATION(memory = calloc(1<<iNumMemoryBits,1));
 
-  printf("%s(%s): $Id: System.cpp,v 1.52 2008/01/08 16:43:00 iamcamiel Exp $\n",cfg->get_myName(),cfg->get_myValue());
+  printf("%s(%s): $Id: System.cpp,v 1.53 2008/01/08 19:15:36 iamcamiel Exp $\n",cfg->get_myName(),cfg->get_myValue());
 }
 
 /**
@@ -557,56 +560,56 @@ u64 lastport;
  * +-------------------+--------+-------------------------------+---------------------------------+
  * | Space             | Size   | System Address <43:0>         | Comments                        |
  * +-------------------+--------+-------------------------------+---------------------------------+
- * | System memory     |    4GB | 000.0000.0000 – 000.FFFF.FFFF | Cacheable and prefetchable.     |
+ * | System memory     |    4GB | 000.0000.0000 - 000.FFFF.FFFF | Cacheable and prefetchable.     |
  * +-------------------+--------+-------------------------------+---------------------------------+
- * | Reserved          | 8188GB | 001.0000.0000 – 7FF.FFFF.FFFF | —                               |
+ * | Reserved          | 8188GB | 001.0000.0000 - 7FF.FFFF.FFFF | —                               |
  * +-------------------+--------+-------------------------------+---------------------------------+
- * | Pchip0 PCI memory |    4GB | 800.0000.0000 – 800.FFFF.FFFF | Linear addressing.              |
+ * | Pchip0 PCI memory |    4GB | 800.0000.0000 - 800.FFFF.FFFF | Linear addressing.              |
  * +-------------------+--------+-------------------------------+---------------------------------+
- * | TIGbus            |    1GB | 801.0000.0000 – 801.3FFF.FFFF | addr<5:0> = 0. Single byte      |
+ * | TIGbus            |    1GB | 801.0000.0000 - 801.3FFF.FFFF | addr<5:0> = 0. Single byte      |
  * |                   |        |                               | valid in quadword access.       |
  * |                   |        |                               | 16MB accessible.                |
  * +-------------------+--------+-------------------------------+---------------------------------+
- * | Reserved          |    1GB | 801.4000.0000 – 801.7FFF.FFFF | —                               |
+ * | Reserved          |    1GB | 801.4000.0000 - 801.7FFF.FFFF | —                               |
  * +-------------------+--------+-------------------------------+---------------------------------+
- * | Pchip0 CSRs       |  256MB | 801.8000.0000 – 801.8FFF.FFFF | addr<5:0> = 0. Quadword access. |
+ * | Pchip0 CSRs       |  256MB | 801.8000.0000 - 801.8FFF.FFFF | addr<5:0> = 0. Quadword access. |
  * +-------------------+--------+-------------------------------+---------------------------------+
- * | Reserved          |  256MB | 801.9000.0000 – 801.9FFF.FFFF | —                               |
+ * | Reserved          |  256MB | 801.9000.0000 - 801.9FFF.FFFF | —                               |
  * +-------------------+--------+-------------------------------+---------------------------------+
- * | Cchip CSRs        |  256MB | 801.A000.0000 – 801.AFFF.FFFF | addr<5:0> = 0. Quadword access. |
+ * | Cchip CSRs        |  256MB | 801.A000.0000 - 801.AFFF.FFFF | addr<5:0> = 0. Quadword access. |
  * +-------------------+--------+-------------------------------+---------------------------------+
- * | Dchip CSRs        |  256MB | 801.B000.0000 – 801.BFFF.FFFF | addr<5:0> = 0. All eight bytes  |
+ * | Dchip CSRs        |  256MB | 801.B000.0000 - 801.BFFF.FFFF | addr<5:0> = 0. All eight bytes  |
  * |                   |        |                               | in quadword access must be      |
  * |                   |        |                               | identical.                      |
  * +-------------------+--------+-------------------------------+---------------------------------+
- * | Reserved          |  768MB | 801.C000.0000 – 801.EFFF.FFFF | —                               |
- * | Reserved          |  128MB | 801.F000.0000 – 801.F7FF.FFFF | —                               |
+ * | Reserved          |  768MB | 801.C000.0000 - 801.EFFF.FFFF | —                               |
+ * | Reserved          |  128MB | 801.F000.0000 - 801.F7FF.FFFF | —                               |
  * +-------------------+--------+-------------------------------+---------------------------------+
- * | Pchip 0 PCI IACK  |   64MB | 801.F800.0000 – 801.FBFF.FFFF | Linear addressing.              |
+ * | Pchip 0 PCI IACK  |   64MB | 801.F800.0000 - 801.FBFF.FFFF | Linear addressing.              |
  * +-------------------+--------+-------------------------------+---------------------------------+
- * | Pchip0 PCI I/O    |   32MB | 801.FC00.0000 – 801.FDFF.FFFF | Linear addressing.              |
+ * | Pchip0 PCI I/O    |   32MB | 801.FC00.0000 - 801.FDFF.FFFF | Linear addressing.              |
  * +-------------------+--------+-------------------------------+---------------------------------+
- * | Pchip0 PCI conf   |   16MB | 801.FE00.0000 – 801.FEFF.FFFF | Linear addressing.              |
+ * | Pchip0 PCI conf   |   16MB | 801.FE00.0000 - 801.FEFF.FFFF | Linear addressing.              |
  * +-------------------+--------+-------------------------------+---------------------------------+
- * | Reserved          |   16MB | 801.FF00.0000 – 801.FFFF.FFFF | —                               |
+ * | Reserved          |   16MB | 801.FF00.0000 - 801.FFFF.FFFF | —                               |
  * +-------------------+--------+-------------------------------+---------------------------------+
- * | Pchip1 PCI memory |    4GB | 802.0000.0000 – 802.FFFF.FFFF | Linear addressing.              |
+ * | Pchip1 PCI memory |    4GB | 802.0000.0000 - 802.FFFF.FFFF | Linear addressing.              |
  * +-------------------+--------+-------------------------------+---------------------------------+
- * | Reserved          |    2GB | 803.0000.0000 – 803.7FFF.FFFF | —                               |
+ * | Reserved          |    2GB | 803.0000.0000 - 803.7FFF.FFFF | —                               |
  * +-------------------+--------+-------------------------------+---------------------------------+
- * | Pchip1 CSRs       |  256MB | 803.8000.0000 – 803.8FFF.FFFF | addr<5:0> = 0, quadword access. |
+ * | Pchip1 CSRs       |  256MB | 803.8000.0000 - 803.8FFF.FFFF | addr<5:0> = 0, quadword access. |
  * +-------------------+--------+-------------------------------+---------------------------------+
- * | Reserved          | 1536MB | 803.9000.0000 – 803.EFFF.FFFF | —                               |
- * | Reserved          |  128MB | 803.F000.0000 – 803.F7FF.FFFF | —                               |
+ * | Reserved          | 1536MB | 803.9000.0000 - 803.EFFF.FFFF | —                               |
+ * | Reserved          |  128MB | 803.F000.0000 - 803.F7FF.FFFF | —                               |
  * +-------------------+--------+-------------------------------+---------------------------------+
- * | Pchip 1 PCI IACK  |   64MB | 803.F800.0000 – 803.FBFF.FFFF | Linear addressing.              |
+ * | Pchip 1 PCI IACK  |   64MB | 803.F800.0000 - 803.FBFF.FFFF | Linear addressing.              |
  * +-------------------+--------+-------------------------------+---------------------------------+
- * | Pchip1 PCI I/O    |   32MB | 803.FC00.0000 – 803.FDFF.FFFF | Linear addressing.              |
+ * | Pchip1 PCI I/O    |   32MB | 803.FC00.0000 - 803.FDFF.FFFF | Linear addressing.              |
  * +-------------------+--------+-------------------------------+---------------------------------+
- * | Pchip1 PCI conf   |   16MB | 803.FE00.0000 – 803.FEFF.FFFF | Linear addressing.              |
+ * | Pchip1 PCI conf   |   16MB | 803.FE00.0000 - 803.FEFF.FFFF | Linear addressing.              |
  * +-------------------+--------+-------------------------------+---------------------------------+
- * | Reserved          |   16MB | 803.FF00.0000 – 803.FFFF.FFFF | —                               |
- * | Reserved          | 8172GB | 804.0000.0000 – FFF.FFFF.FFFF | Bits <42:35> are don’t cares if |
+ * | Reserved          |   16MB | 803.FF00.0000 - 803.FFFF.FFFF | —                               |
+ * | Reserved          | 8172GB | 804.0000.0000 - FFF.FFFF.FFFF | Bits <42:35> are don’t cares if |
  * |                   |        |                               | bit <43> is asserted.           |
  * +-------------------+--------+-------------------------------+---------------------------------+
  * \endcode
@@ -745,62 +748,63 @@ void CSystem::WriteMem(u64 address, int dsize, u64 data)
  *
  * The system address space is divided as shown in the following table:
  *
+ * \code
  * +-------------------+--------+-------------------------------+---------------------------------+
  * | Space             | Size   | System Address <43:0>         | Comments                        |
  * +-------------------+--------+-------------------------------+---------------------------------+
- * | System memory     |    4GB | 000.0000.0000 – 000.FFFF.FFFF | Cacheable and prefetchable.     |
+ * | System memory     |    4GB | 000.0000.0000 - 000.FFFF.FFFF | Cacheable and prefetchable.     |
  * +-------------------+--------+-------------------------------+---------------------------------+
- * | Reserved          | 8188GB | 001.0000.0000 – 7FF.FFFF.FFFF | —                               |
+ * | Reserved          | 8188GB | 001.0000.0000 - 7FF.FFFF.FFFF | —                               |
  * +-------------------+--------+-------------------------------+---------------------------------+
- * | Pchip0 PCI memory |    4GB | 800.0000.0000 – 800.FFFF.FFFF | Linear addressing.              |
+ * | Pchip0 PCI memory |    4GB | 800.0000.0000 - 800.FFFF.FFFF | Linear addressing.              |
  * +-------------------+--------+-------------------------------+---------------------------------+
- * | TIGbus            |    1GB | 801.0000.0000 – 801.3FFF.FFFF | addr<5:0> = 0. Single byte      |
+ * | TIGbus            |    1GB | 801.0000.0000 - 801.3FFF.FFFF | addr<5:0> = 0. Single byte      |
  * |                   |        |                               | valid in quadword access.       |
  * |                   |        |                               | 16MB accessible.                |
  * +-------------------+--------+-------------------------------+---------------------------------+
- * | Reserved          |    1GB | 801.4000.0000 – 801.7FFF.FFFF | —                               |
+ * | Reserved          |    1GB | 801.4000.0000 - 801.7FFF.FFFF | —                               |
  * +-------------------+--------+-------------------------------+---------------------------------+
- * | Pchip0 CSRs       |  256MB | 801.8000.0000 – 801.8FFF.FFFF | addr<5:0> = 0. Quadword access. |
+ * | Pchip0 CSRs       |  256MB | 801.8000.0000 - 801.8FFF.FFFF | addr<5:0> = 0. Quadword access. |
  * +-------------------+--------+-------------------------------+---------------------------------+
- * | Reserved          |  256MB | 801.9000.0000 – 801.9FFF.FFFF | —                               |
+ * | Reserved          |  256MB | 801.9000.0000 - 801.9FFF.FFFF | —                               |
  * +-------------------+--------+-------------------------------+---------------------------------+
- * | Cchip CSRs        |  256MB | 801.A000.0000 – 801.AFFF.FFFF | addr<5:0> = 0. Quadword access. |
+ * | Cchip CSRs        |  256MB | 801.A000.0000 - 801.AFFF.FFFF | addr<5:0> = 0. Quadword access. |
  * +-------------------+--------+-------------------------------+---------------------------------+
- * | Dchip CSRs        |  256MB | 801.B000.0000 – 801.BFFF.FFFF | addr<5:0> = 0. All eight bytes  |
+ * | Dchip CSRs        |  256MB | 801.B000.0000 - 801.BFFF.FFFF | addr<5:0> = 0. All eight bytes  |
  * |                   |        |                               | in quadword access must be      |
  * |                   |        |                               | identical.                      |
  * +-------------------+--------+-------------------------------+---------------------------------+
- * | Reserved          |  768MB | 801.C000.0000 – 801.EFFF.FFFF | —                               |
- * | Reserved          |  128MB | 801.F000.0000 – 801.F7FF.FFFF | —                               |
+ * | Reserved          |  768MB | 801.C000.0000 - 801.EFFF.FFFF | —                               |
+ * | Reserved          |  128MB | 801.F000.0000 - 801.F7FF.FFFF | —                               |
  * +-------------------+--------+-------------------------------+---------------------------------+
- * | Pchip 0 PCI IACK  |   64MB | 801.F800.0000 – 801.FBFF.FFFF | Linear addressing.              |
+ * | Pchip 0 PCI IACK  |   64MB | 801.F800.0000 - 801.FBFF.FFFF | Linear addressing.              |
  * +-------------------+--------+-------------------------------+---------------------------------+
- * | Pchip0 PCI I/O    |   32MB | 801.FC00.0000 – 801.FDFF.FFFF | Linear addressing.              |
+ * | Pchip0 PCI I/O    |   32MB | 801.FC00.0000 - 801.FDFF.FFFF | Linear addressing.              |
  * +-------------------+--------+-------------------------------+---------------------------------+
- * | Pchip0 PCI conf   |   16MB | 801.FE00.0000 – 801.FEFF.FFFF | Linear addressing.              |
+ * | Pchip0 PCI conf   |   16MB | 801.FE00.0000 - 801.FEFF.FFFF | Linear addressing.              |
  * +-------------------+--------+-------------------------------+---------------------------------+
- * | Reserved          |   16MB | 801.FF00.0000 – 801.FFFF.FFFF | —                               |
+ * | Reserved          |   16MB | 801.FF00.0000 - 801.FFFF.FFFF | —                               |
  * +-------------------+--------+-------------------------------+---------------------------------+
- * | Pchip1 PCI memory |    4GB | 802.0000.0000 – 802.FFFF.FFFF | Linear addressing.              |
+ * | Pchip1 PCI memory |    4GB | 802.0000.0000 - 802.FFFF.FFFF | Linear addressing.              |
  * +-------------------+--------+-------------------------------+---------------------------------+
- * | Reserved          |    2GB | 803.0000.0000 – 803.7FFF.FFFF | —                               |
+ * | Reserved          |    2GB | 803.0000.0000 - 803.7FFF.FFFF | —                               |
  * +-------------------+--------+-------------------------------+---------------------------------+
- * | Pchip1 CSRs       |  256MB | 803.8000.0000 – 803.8FFF.FFFF | addr<5:0> = 0, quadword access. |
+ * | Pchip1 CSRs       |  256MB | 803.8000.0000 - 803.8FFF.FFFF | addr<5:0> = 0, quadword access. |
  * +-------------------+--------+-------------------------------+---------------------------------+
- * | Reserved          | 1536MB | 803.9000.0000 – 803.EFFF.FFFF | —                               |
- * | Reserved          |  128MB | 803.F000.0000 – 803.F7FF.FFFF | —                               |
+ * | Reserved          | 1536MB | 803.9000.0000 - 803.EFFF.FFFF | —                               |
+ * | Reserved          |  128MB | 803.F000.0000 - 803.F7FF.FFFF | —                               |
  * +-------------------+--------+-------------------------------+---------------------------------+
- * | Pchip 1 PCI IACK  |   64MB | 803.F800.0000 – 803.FBFF.FFFF | Linear addressing.              |
+ * | Pchip 1 PCI IACK  |   64MB | 803.F800.0000 - 803.FBFF.FFFF | Linear addressing.              |
  * +-------------------+--------+-------------------------------+---------------------------------+
- * | Pchip1 PCI I/O    |   32MB | 803.FC00.0000 – 803.FDFF.FFFF | Linear addressing.              |
+ * | Pchip1 PCI I/O    |   32MB | 803.FC00.0000 - 803.FDFF.FFFF | Linear addressing.              |
  * +-------------------+--------+-------------------------------+---------------------------------+
- * | Pchip1 PCI conf   |   16MB | 803.FE00.0000 – 803.FEFF.FFFF | Linear addressing.              |
+ * | Pchip1 PCI conf   |   16MB | 803.FE00.0000 - 803.FEFF.FFFF | Linear addressing.              |
  * +-------------------+--------+-------------------------------+---------------------------------+
- * | Reserved          |   16MB | 803.FF00.0000 – 803.FFFF.FFFF | —                               |
- * | Reserved          | 8172GB | 804.0000.0000 – FFF.FFFF.FFFF | Bits <42:35> are don’t cares if |
+ * | Reserved          |   16MB | 803.FF00.0000 - 803.FFFF.FFFF | —                               |
+ * | Reserved          | 8172GB | 804.0000.0000 - FFF.FFFF.FFFF | Bits <42:35> are don’t cares if |
  * |                   |        |                               | bit <43> is asserted.           |
  * +-------------------+--------+-------------------------------+---------------------------------+
- *
+ * \endcode
  **/
 
 u64 CSystem::ReadMem(u64 address, int dsize)
@@ -908,42 +912,42 @@ u64 CSystem::ReadMem(u64 address, int dsize)
  * +-------------+---------------+------+----+
  * |Register     | Address       | Type | ## |
  * +-------------+---------------+------+----+
- * | P0–WSBA0    | 801.8000.0000 | RW   | 00 |
- * | P0–WSBA1    | 801.8000.0040 | RW   | 01 |
- * | P0–WSBA2    | 801.8000.0080 | RW   | 02 |
- * | P0–WSBA3    | 801.8000.00C0 | RW   | 03 |
+ * | P0-WSBA0    | 801.8000.0000 | RW   | 00 |
+ * | P0-WSBA1    | 801.8000.0040 | RW   | 01 |
+ * | P0-WSBA2    | 801.8000.0080 | RW   | 02 |
+ * | P0-WSBA3    | 801.8000.00C0 | RW   | 03 |
  * +-------------+---------------+------+----+
- * | P0–WSM0     | 801.8000.0100 | RW   | 04 |
- * | P0–WSM1     | 801.8000.0140 | RW   | 05 |
- * | P0–WSM2     | 801.8000.0180 | RW   | 06 |
- * | P0–WSM3     | 801.8000.01C0 | RW   | 07 |
+ * | P0-WSM0     | 801.8000.0100 | RW   | 04 |
+ * | P0-WSM1     | 801.8000.0140 | RW   | 05 |
+ * | P0-WSM2     | 801.8000.0180 | RW   | 06 |
+ * | P0-WSM3     | 801.8000.01C0 | RW   | 07 |
  * +-------------+---------------+------+----+
- * | P0–TBA0     | 801.8000.0200 | RW   | 08 |
- * | P0–TBA1     | 801.8000.0240 | RW   | 09 |
- * | P0–TBA2     | 801.8000.0280 | RW   | 0A |
- * | P0–TBA3     | 801.8000.02C0 | RW   | 0B |
+ * | P0-TBA0     | 801.8000.0200 | RW   | 08 |
+ * | P0-TBA1     | 801.8000.0240 | RW   | 09 |
+ * | P0-TBA2     | 801.8000.0280 | RW   | 0A |
+ * | P0-TBA3     | 801.8000.02C0 | RW   | 0B |
  * +-------------+---------------+------+----+
- * | P0–PCTL     | 801.8000.0300 | RW   | 0C |
+ * | P0-PCTL     | 801.8000.0300 | RW   | 0C |
  * +-------------+---------------+------+----+
- * | P0–PLAT     | 801.8000.0340 | RW   | 0D |
+ * | P0-PLAT     | 801.8000.0340 | RW   | 0D |
  * +-------------+---------------+------+----+
- * | P0–RES      | 801.8000.0380 | RW   | 0E |
+ * | P0-RES      | 801.8000.0380 | RW   | 0E |
  * +-------------+---------------+------+----+
- * | P0–PERROR   | 801.8000.03C0 | RW   | 0F |
- * | P0–PERRMASK | 801.8000.0400 | RW   | 10 |
- * | P0–PERRSET  | 801.8000.0440 | WO   | 11 |
+ * | P0-PERROR   | 801.8000.03C0 | RW   | 0F |
+ * | P0-PERRMASK | 801.8000.0400 | RW   | 10 |
+ * | P0-PERRSET  | 801.8000.0440 | WO   | 11 |
  * +-------------+---------------+------+----+
- * | P0–TLBIV    | 801.8000.0480 | WO   | 12 |
- * | P0–TLBIA    | 801.8000.04C0 | WO   | 13 |
+ * | P0-TLBIV    | 801.8000.0480 | WO   | 12 |
+ * | P0-TLBIA    | 801.8000.04C0 | WO   | 13 |
  * +-------------+---------------+------+----+
- * | P0–PMONCTL  | 801.8000.0500 | RW   | 14 |
- * | P0–PMONCNT  | 801.8000.0540 | RO   | 15 |
+ * | P0-PMONCTL  | 801.8000.0500 | RW   | 14 |
+ * | P0-PMONCNT  | 801.8000.0540 | RO   | 15 |
  * +-------------+---------------+------+----+
  * | P0-SPRST    | 801.8000.0800 | WO   | 20 |
  * +-------------+---------------+------+----+
  * \endcode
  *
- * Window Space Base Address Register (WSBAn – RW)
+ * Window Space Base Address Register (WSBAn - RW)
  * 
  * Because the information in the WSBAn registers and WSMn registers
  * is used to compare against the PCI address, a clock-domain crossing (from
@@ -979,7 +983,7 @@ u64 CSystem::ReadMem(u64 address, int dsize)
  * +-------+---------+---------+------+--------------------------+
  * \endcode
  *
- * Window Space Mask Register (WSM0, WSM1, WSM2, WSM3 – RW)
+ * Window Space Mask Register (WSM0, WSM1, WSM2, WSM3 - RW)
  *
  * \code
  * +-------+---------+---------+------+--------------------------+
@@ -993,7 +997,7 @@ u64 CSystem::ReadMem(u64 address, int dsize)
  * +-------+---------+---------+------+--------------------------+
  * \endcode
  *
- * Translated Base Address Register (TBAn – RW)
+ * Translated Base Address Register (TBAn - RW)
  *
  * \code
  * +-------+---------+---------+------+--------------------------+
@@ -1011,7 +1015,7 @@ u64 CSystem::ReadMem(u64 address, int dsize)
  * +-------+---------+---------+------+--------------------------+
  * \encode
  *
- * Pchip Control Register (PCTL – RW)
+ * Pchip Control Register (PCTL - RW)
  *
  * \code
  * +---------+---------+---------+------+-------------------------------------+
@@ -1028,11 +1032,11 @@ u64 CSystem::ReadMem(u64 address, int dsize)
  * |         |         |         |      |   0   If TLB miss, then make DMA    |
  * |         |         |         |      |       read request as soon as possi-|
  * |         |         |         |      |       ble and discard data if PTE   |
- * |         |         |         |      |       was not valid – could cause   |
+ * |         |         |         |      |       was not valid - could cause   |
  * |         |         |         |      |       Cchip nonexistent mem. error. |
  * |         |         |         |      |   1   If TLB miss, then delay read  |
  * |         |         |         |      |       request until PTE is verified |
- * |         |         |         |      |       as valid – no request if not  |
+ * |         |         |         |      |       as valid - no request if not  |
  * |         |         |         |      |       valid.                        |
  * +---------+---------+---------+------+-------------------------------------+
  * | FDWDIS  | <43>    | RW      |      | Fast DMA read cache block wrap      |
@@ -1133,7 +1137,7 @@ u64 CSystem::ReadMem(u64 address, int dsize)
  * 4) This field is initialized from a decode of the b_cap<1:0> pins.
  * \endcode
  *
- * Pchip Error Register (PERROR – RW)
+ * Pchip Error Register (PERROR - RW)
  *
  * If any of bits <11:0> are set, then this entire register is frozen and the Pchip output
  * signal b_error is asserted. Only bit <0> can be set after that. All other values will
@@ -1166,7 +1170,7 @@ u64 CSystem::ReadMem(u64 address, int dsize)
  * |         |         |         |      |   0011   SGTE read                  |
  * |         |         |         |      |   Others Reserved                   |
  * +---------+---------+---------+------+-------------------------------------+
- * | INV     | <51>    | RO Rev1 | 0    | Info Not Valid – only meaningful    |
+ * | INV     | <51>    | RO Rev1 | 0    | Info Not Valid - only meaningful    |
  * |         |         | RAZ Rev0|      | when one of bits <11:0> is set.     |
  * |         |         |         |      | Indicates validity of <SYN>, <CMD>, |
  * |         |         |         |      | and <ADDR> fields.                  |
@@ -1222,7 +1226,7 @@ u64 CSystem::ReadMem(u64 address, int dsize)
  * +---------+---------+---------+------+-------------------------------------+
  * \endcode
  * 
- * Pchip Error Mask Register (PERRMASK – RW)
+ * Pchip Error Mask Register (PERRMASK - RW)
  *
  * If any of the MASK bits have the value 0, they prevent the setting of the corresponding
  * bit in the PERROR register, regardless of the detection of errors or writing to PERRSET.
@@ -1246,22 +1250,22 @@ u64 CSystem::ReadMem(u64 address, int dsize)
  * +---------+---------+---------+------+-------------------------------------+
  * \endcode
  *
- * Pchip Master Latency Register (PLAT – RW)
+ * Pchip Master Latency Register (PLAT - RW)
  *
  * Bits <15:8> are the master latency timer.
  *
- * Translation Buffer Invalidate Virtual Register (TLBIV – WO)
+ * Translation Buffer Invalidate Virtual Register (TLBIV - WO)
  *
  * A write to this register invalidates all scatter-gather TLB entries that correspond to PCI
  * addresses whose bits <31:16> and bit 39 match the value written in bits <19:4> and 27
  * respectively. This invalidates up to eight PTEs at a time, which are the
  * number that can be defined in one 21264 cache block (64 bytes). Because a single TLB
  * PCI tag covers four entries, at most two tags are actually invalidated. PTE bits <22:4>
- * correspond to system address bits <34:16> – where PCI<34:32> must be zeros for scatter-
- * gather window hits – in generating the resulting system address, providing 8-page
+ * correspond to system address bits <34:16> - where PCI<34:32> must be zeros for scatter-
+ * gather window hits - in generating the resulting system address, providing 8-page
  * (8KB) granularity.
  * 
- * Translation Buffer Invalidate All Register (TLBIA – WO)
+ * Translation Buffer Invalidate All Register (TLBIA - WO)
  *
  * A write to this register invalidates the scatter-gather TLB. The value written is ignored.
  **/
@@ -1670,7 +1674,7 @@ int CSystem::LoadROM()
  * suppressed for one full polling loop using the CSR bit MISC<DEVSUP>.
  * [...]
  *
- * Device and Error Interrupt Delivery – b_irq<1:0>
+ * Device and Error Interrupt Delivery - b_irq<1:0>
  *
  * As interrupts are read into the Cchip through the TIGbus, the corresponding bits are set
  * in DRIR. These bits are ANDed with the mask bits in DIMn and then placed in DIRn. If
@@ -1695,7 +1699,7 @@ int CSystem::LoadROM()
  * completed an entire polling loop. When the Cchip has completed an entire polling loop,
  * b_irq<1> will again reflect the value of DIRn<55:00>.
  *
- * Interval Timer Interrupts – b_irq<2>
+ * Interval Timer Interrupts - b_irq<2>
  *
  * The interval timer interrupts the Cchip through a dedicated pin, i_intim_l, and is
  * asserted low. When the Cchip sees an asserting (falling) edge of this pin, it asserts
@@ -1715,8 +1719,8 @@ int CSystem::LoadROM()
  * +---------------+-----------------+--------+----------------------------------------+
  * |         62:58 | High            | irq<0> | Errors (Pchips, and so on)             |
  * |               |                 |        | Recommended:                           |
- * |               |                 |        |   * Bit <62> – Pchip0 error            |
- * |               |                 |        |   * Bit <61> – Pchip1 error            |
+ * |               |                 |        |   * Bit <62> - Pchip0 error            |
+ * |               |                 |        |   * Bit <61> - Pchip1 error            |
  * +---------------+-----------------+--------+----------------------------------------+
  * |         57:56 | N/A             | N/A    | Reserved                               |
  * +---------------+-----------------+--------+----------------------------------------+
@@ -1840,7 +1844,7 @@ void CSystem::interrupt(int number, bool assert)
  * the control of the PCTL<HOLE> CSR bit described in Section 10.2.5.4. If that bit is
  * set, the hole is enabled in all windows and has the following extent:
  *  - From PCI address base 512K (address<31:0> = 0008.0000)
- *  - To PCI address limit 1M–1 (address<31:0> = 000F.FFFF)
+ *  - To PCI address limit 1M-1 (address<31:0> = 000F.FFFF)
  *  .
  *
  * If enabled, the hole applies whether or not the PTP bit is set for the window.

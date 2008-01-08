@@ -27,7 +27,10 @@
  * \file 
  * Contains the definitions for the emulated Typhoon Chipset devices.
  *
- * $Id: System.h,v 1.22 2008/01/08 16:43:00 iamcamiel Exp $
+ * $Id: System.h,v 1.23 2008/01/08 19:15:36 iamcamiel Exp $
+ *
+ * X-1.23       Camiel Vanderhoeven                             08-JAN-2008
+ *      Layout of comments.
  *
  * X-1.22       Camiel Vanderhoeven                             08-JAN-2008
  *      Split out chipset registers.
@@ -159,12 +162,12 @@ struct SConfig {
  *  .
  *
  * The ES40 emulator has the following chipset configuration:
- *   - 1 x 21274-C1 Cchip (controller chip) – The Cchip controls the other chips in the
+ *   - 1 x 21274-C1 Cchip (controller chip) - The Cchip controls the other chips in the
  *     chipset, as well as the DRAM memory array in a system. The Cchip interfaces with
  *     the CPU’s command and address buses.
- *   - 8 x 21274-D1 Dchip (data slice chip) – The Dchips interface with the system data
+ *   - 8 x 21274-D1 Dchip (data slice chip) - The Dchips interface with the system data
  *     bus and provide the data path between the CPU, DRAM memory, and the Pchip(s).
- *   - 2 x 21272-P1 Pchip (peripheral interface chip) – The interface to the PCI bus.
+ *   - 2 x 21272-P1 Pchip (peripheral interface chip) - The interface to the PCI bus.
  *   .
  **/
 
@@ -293,7 +296,7 @@ private:
        **/
       u64 drir;
       /**
-       * Miscellaneous Register (MISC – RW).
+       * Miscellaneous Register (MISC - RW).
        * 
        * +---------+---------+---------+------+-------------------------------------+
        * | Field   | Bits    | Type    | Init | Description                         |
@@ -307,8 +310,8 @@ private:
        * +---------+---------+---------+------+-------------------------------------+
        * | REV     | <39:32> | RO      | 8    | Latest revision of Cchip            |
        * +---------+---------+---------+------+-------------------------------------+
-       * | NXS     | <31:29> | RO      | 0    | NXM source – Device that caused NXM |
-       * |         |         |         |      | – UNPREDICTABLE if NXM is not set.  |
+       * | NXS     | <31:29> | RO      | 0    | NXM source - Device that caused NXM |
+       * |         |         |         |      | - UNPREDICTABLE if NXM is not set.  |
        * |         |         |         |      |   Value Source                      |
        * |         |         |         |      |   0..3  CPU 0..3                    |
        * |         |         |         |      |   4..5  Pchip 0..1                  |
@@ -319,29 +322,29 @@ private:
        * +---------+---------+---------+------+-------------------------------------+
        * | RES     | <27:25> | MBZ,RAZ | 0    | Reserved.                           |
        * +---------+---------+---------+------+-------------------------------------+
-       * | ACL     | <24>    | WO      | 0    | Arbitration clear – writing a 1 to  |
+       * | ACL     | <24>    | WO      | 0    | Arbitration clear - writing a 1 to  |
        * |         |         |         |      | this bit clears ABT and ABW fields. |
        * +---------+---------+---------+------+-------------------------------------+
-       * | ABT     | <23:20> | R,W1S   | 0    | Arbitration try – writing a 1 to    |
+       * | ABT     | <23:20> | R,W1S   | 0    | Arbitration try - writing a 1 to    |
        * |         |         |         |      | these bits sets them.               |
        * +---------+---------+---------+------+-------------------------------------+
-       * | ABW     | <19:16> | R,W1S   | 0    | Arbitration won – writing a 1 to    |
+       * | ABW     | <19:16> | R,W1S   | 0    | Arbitration won - writing a 1 to    |
        * |         |         |         |      | these bits sets them unless one is  |
        * |         |         |         |      | already set, in which case the      |
        * |         |         |         |      | write is ignored.                   |
        * +---------+---------+---------+------+-------------------------------------+
-       * | IPREQ   | <15:12> | WO      | 0    | Interprocessor interrupt request –  |
+       * | IPREQ   | <15:12> | WO      | 0    | Interprocessor interrupt request -  |
        * |         |         |         |      | write a 1 to the bit corresponding  |
        * |         |         |         |      | to the CPU you want to interrupt.   |
        * |         |         |         |      | Writing a 1 here sets the corres-   |
        * |         |         |         |      | ponding bit in IPINTR.              |
        * +---------+---------+---------+------+-------------------------------------+
-       * | IPINTR  | <11:8>  | R,W1C   | 0    | Interprocessor interrupt pending –  |
+       * | IPINTR  | <11:8>  | R,W1C   | 0    | Interprocessor interrupt pending -  |
        * |         |         |         |      | one bit per CPU. Pin irq<3> is      |
        * |         |         |         |      | asserted to the CPU corresponding   |
        * |         |         |         |      | to a 1 in this field.               |
        * +---------+---------+---------+------+-------------------------------------+
-       * | ITINTR  | <7:4>   | R,W1C   | 0    | Interval timer interrupt pending –  |
+       * | ITINTR  | <7:4>   | R,W1C   | 0    | Interval timer interrupt pending -  |
        * |         |         |         |      | one bit per CPU. Pin irq<2> is      |
        * |         |         |         |      | asserted to the CPU corresponding   |
        * |         |         |         |      | to a 1 in this field.               |
