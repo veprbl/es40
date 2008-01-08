@@ -27,7 +27,10 @@
  * \file 
  * Contains the definitions for the ISA part of the emulated Ali M1543C chipset.
  *
- * $Id: AliM1543C.h,v 1.24 2008/01/02 08:25:00 iamcamiel Exp $
+ * $Id: AliM1543C.h,v 1.25 2008/01/08 16:38:08 iamcamiel Exp $
+ *
+ * X-1.25       Camiel Vanderhoeven                             08-JAN-2008
+ *      Comments.
  *
  * X-1.24       Camiel Vanderhoeven                             02-JAN-2008
  *      Comments; moved keyboard status register bits to "status" struct.
@@ -125,6 +128,11 @@
  *
  * The ALi M1543C device provides i/o and glue logic support to the system: 
  * ISA, DMA, Interrupt, Timer, TOY Clock.
+ *
+ * Documentation consulted:
+ *  - Ali M1543C B1 South Bridge Version 1.20
+ *    (http://mds.gotdns.com/sensors/docs/ali/1543dScb1-120.pdf)
+ *  .
  **/
 
 class CAliM1543C : public CPCIDevice

@@ -27,7 +27,10 @@
  * \file
  * Contains the definitions for the emulated Cirrus CL GD-5434 Video Card device.
  *
- * $Id: Cirrus.h,v 1.6 2008/01/02 08:36:17 iamcamiel Exp $
+ * $Id: Cirrus.h,v 1.7 2008/01/08 16:38:11 iamcamiel Exp $
+ *
+ * X-1.7        Camiel Vanderhoeven                             08-JAN-2008
+ *      Comments.
  *
  * X-1.6        Camiel Vanderhoeven                             02-JAN-2008
  *      Cleanup.
@@ -61,6 +64,11 @@
 
 /**
  * \brief Cirrus Video Card
+ *
+ * Documentation consulted:
+ *  - VGADOC4b
+ *   (http://home.worldonline.dk/~finth/)
+ *  .
  **/
 
 class CCirrus : public CVGA

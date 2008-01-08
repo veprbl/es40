@@ -27,7 +27,10 @@
  * \file
  * Contains the definitions for the emulated Ali M1543C USB chipset part.
  *
- * $Id: AliM1543C_usb.h,v 1.3 2008/01/02 09:30:18 iamcamiel Exp $
+ * $Id: AliM1543C_usb.h,v 1.4 2008/01/08 16:38:09 iamcamiel Exp $
+ *
+ * X-1.4        Camiel Vanderhoeven                             08-JAN-2008
+ *      Comments.
  *
  * X-1.3        Camiel Vanderhoeven                             02-JAN-2008
  *      Comments.
@@ -50,6 +53,10 @@
  *
  * \todo This device is just a stub. Not functional yet.
  *
+ * Documentation consulted:
+ *  - Ali M1543C B1 South Bridge Version 1.20
+ *    (http://mds.gotdns.com/sensors/docs/ali/1543dScb1-120.pdf)
+ *  .
  **/
 
 class CAliM1543C_usb : public CPCIDevice  

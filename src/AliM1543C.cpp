@@ -27,7 +27,10 @@
  * \file 
  * Contains the code for the emulated Ali M1543C chipset devices.
  *
- * $Id: AliM1543C.cpp,v 1.49 2008/01/02 08:25:00 iamcamiel Exp $
+ * $Id: AliM1543C.cpp,v 1.50 2008/01/08 16:38:08 iamcamiel Exp $
+ *
+ * X-1.50       Camiel Vanderhoeven                             08-JAN-2008
+ *      Comments.
  *
  * X-1.49       Camiel Vanderhoeven                             02-JAN-2008
  *      Comments; moved keyboard status register bits to a "status" struct.
@@ -338,7 +341,6 @@ CAliM1543C::CAliM1543C(CConfigurator * cfg, CSystem * c, int pcibus, int pcidev)
 
   // Mouse initialization stuff
   state.mouse.captured        = myCfg->get_bool_value("mouse.enabled",true);
-//  state.mouse.type            = SIM->get_param_enum(BXPN_MOUSE_TYPE)->get();
   state.mouse.sample_rate     = 100; // reports per second
   state.mouse.resolution_cpmm = 4;   // 4 counts per millimeter
   state.mouse.scaling         = 1;   /* 1:1 (default) */
@@ -412,7 +414,7 @@ CAliM1543C::CAliM1543C(CConfigurator * cfg, CSystem * c, int pcibus, int pcidev)
     lpt=NULL;
   }
 
-  printf("%s: $Id: AliM1543C.cpp,v 1.49 2008/01/02 08:25:00 iamcamiel Exp $\n",devid_string);
+  printf("%s: $Id: AliM1543C.cpp,v 1.50 2008/01/08 16:38:08 iamcamiel Exp $\n",devid_string);
 }
 
 /**
@@ -562,7 +564,7 @@ void CAliM1543C::WriteMem_Legacy(int index, u32 address, int dsize, u32 data)
 
 /**
  * Enqueue scancode for a keypress or key-release. Used by the GUI implementation
- * to send keypresses to the keyboartd controller.
+ * to send keypresses to the keyboard controller.
  **/
 
 void CAliM1543C::kbd_gen_scancode(u32 key)
