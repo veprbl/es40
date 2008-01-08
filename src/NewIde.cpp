@@ -27,6 +27,11 @@
  * \file
  * Contains the code for the emulated Ali M1543C IDE chipset part.
  *
+ * $Id: NewIde.cpp,v 1.2 2008/01/08 18:55:06 iamcamiel Exp $
+ *
+ * X-1.2         Brian wheeler                                   08-JAN-2008
+ *      Handle blocksize correctly for ATAPI.
+ *
  * X-1.1         Brian wheeler                                   08-JAN-2008
  *      Complete rewrite of IDE controller.
  *
@@ -1097,8 +1102,11 @@ int CNewIde::DoClock() {
 
 	case 0x20: // read with retries
 	case 0x21: // read without retries
-	  if(SEL_REGISTERS(index).sector_count ==0)
-	    SEL_REGISTERS(index).sector_count=256;
+	  if(SEL_COMMAND(index).command_cycle == 0) {	  
+	    // fixup the 0=256 case.
+	    if(SEL_REGISTERS(index).sector_count ==0)
+	      SEL_REGISTERS(index).sector_count=256;
+	  }
 
 	  if(!SEL_STATUS(index).drq) {
 	    // buffer is empty, so lets fill it.
@@ -1362,11 +1370,11 @@ int CNewIde::DoClock() {
 			printf("CD Read LBA: %x, length: %x\n",lba,xfer);
 			
 			SEL_DISK(index)->seek_block(lba);
-			SEL_DISK(index)->read_blocks(&(CONTROLLER(index).data[0]),xfer*4);
+			SEL_DISK(index)->read_blocks(&(CONTROLLER(index).data[0]),xfer);
 			SEL_COMMAND(index).packet_phase=PACKET_DP34;
 			CONTROLLER(index).data_ptr=0;
-			CONTROLLER(index).data_size=xfer*1024;
-			SEL_REGISTERS(index).BYTE_COUNT=2048;
+			CONTROLLER(index).data_size=xfer*(SEL_DISK(index)->get_block_size()/2);
+			SEL_REGISTERS(index).BYTE_COUNT=xfer*SEL_DISK(index)->get_block_size();
 		      } while(0);
 		      //exit(1);
 		      break;
