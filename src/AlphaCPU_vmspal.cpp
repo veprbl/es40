@@ -1,7 +1,7 @@
 /* ES40 emulator.
- * Copyright (C) 2007 by Camiel Vanderhoeven
+ * Copyright (C) 2007-2008 by the ES40 Emulator Project
  *
- * Website: www.camicom.com
+ * Website: http://sourceforge.net/projects/es40
  * E-mail : camiel@camicom.com
  * 
  * This program is free software; you can redistribute it and/or
@@ -28,6 +28,9 @@
  * Contains routines that replace parts of the VMS PALcode for the emulated
  * DecChip 21264CB EV68 Alpha processor. Based on disassembly of original VMS
  * PALcode, HRM, and OpenVMS AXP Internals and Data Structures.
+ *
+ * X-1.5        Camiel Vanderhoeven                             08-JAN-2008
+ *      Removed last references to IDE disk read SRM replacement.
  *
  * X-1.4        Camiel Vanderhoeven                             28-DEC-2007
  *      Keep the compiler happy.
@@ -1608,66 +1611,4 @@ int CAlphaCPU::vmspal_ent_dfault(int flags)
   hw_stq(p21+0x168, p5);
   hw_stq(p21+0x150,p6);
   return vmspal_int_initiate_exception();
-}
-
-/**
- * Replacement for an internal PALcode routine responsible for reading
- * blocks from an IDE disk.
- *
- * Originally located @ b66c0H.
- **/
-
-int CAlphaCPU::vmspal_int_read_ide()
-{
-  u64 filepos_a;
-  u64 filepos;
-  u64 drive;
-  u64 controller;
-  u64 virt = r19;
-  u64 phys;
-  u64 bytes = r17*r18;
-  size_t try_b;
-  size_t ok_b;
-
-  u64 phys_address;
-
-  ldl(r16+0x6c, filepos_a);
-  ldq(filepos_a,filepos);
-
-  ldl(r16+0x68,drive);
-  ldl(drive+0x34,drive);
-  ldl(drive+0x14,drive);
-  ldl(drive,controller);
-  ldl(drive+0xac,drive);
-  ldl(controller+0x21c,controller);
-  controller = (controller&0x80)?0:1;
-
-//  FILE * h = ((CDiskFile *)(theAliIDE->get_disk(controller,drive)))->get_handle();
-
-  theAliIDE->get_disk((int)controller,(int)drive)->seek_byte((unsigned long)filepos);
-//fseek(theAliIDE->get_ide_disk((u32)controller,(u32)drive),(long)filepos,0);
-
-  r0 = 0;
-
-  while(bytes)
-  {
-    if ((virt ^ (virt + bytes)) & X64(ffffffffffffe000))
-      try_b = 0x2000 - ((long)virt & 0x1fff);
-    else
-      try_b = (long)bytes;
-    virt2phys(virt,&phys,ACCESS_WRITE,NULL,0);
-    ok_b  = theAliIDE->get_disk((int)controller,(int)drive)->read_bytes(cSystem->PtrToMem(phys),try_b);
-    //ok_b = fread(cSystem->PtrToMem(phys),1,try_b,h);
-    filepos += ok_b;
-    r0    += ok_b;
-    virt  += ok_b;
-    bytes -=ok_b;
-    if (ok_b != try_b)
-      break;
-  }
-
-  stq(filepos_a, filepos); //theAliIDE->get_disk(controller,drive)->tell_bytes());
-
-  TRC_DEV5("%%SRM-I-READIDE : Read  %3" LL "d sectors @ IDE %d.%d @ LBA %8d\n",r18*r17/512,(u32)controller,(u32)drive,(long)(filepos/512));
-  return 0;
 }

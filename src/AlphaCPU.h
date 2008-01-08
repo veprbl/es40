@@ -28,10 +28,13 @@
  * \file
  * Contains the definitions for the emulated DecChip 21264CB EV68 Alpha processor.
  *
- * $Id: AlphaCPU.h,v 1.33 2008/01/02 17:36:57 iamcamiel Exp $
+ * $Id: AlphaCPU.h,v 1.34 2008/01/08 16:41:24 iamcamiel Exp $
+ *
+ * X-1.33       Camiel Vanderhoeven                             08-JAN-2008
+ *      Removed last references to IDE disk read SRM replacement.
  *
  * X-1.32       Camiel Vanderhoeven                             02-JAN-2008
- *      Possible endianess fix.
+ *      Endianess fix.
  *
  * X-1.31       Camiel Vanderhoeven                             02-JAN-2008
  *      Comments. Undid part of last change because of performance impact.
@@ -176,7 +179,7 @@ struct SICache {
  * A translation buffer entry provides the mapping from a page of virtual memory to a page of physical memory.
  **/
 
-struct STBEntry2 {
+struct STBEntry {
   u64 virt;		        /**< Virtual address of page*/
   u64 phys;		        /**< Physical address of page*/
   u64 match_mask;       /**< The virtual address has to match for these bits to be a hit*/
@@ -205,10 +208,10 @@ struct STBEntry2 {
  *
  * The CPU emulated is the DECchip 21264CB Alpha Processor (EV68).
  * 
- * Documents referred to:
- *	- DS-0026A-TE: Alpha 21264B Microprocessor Hardware Reference Manual [HRM].
- *	  (http://ftp.digital.com/pub/Digital/info/semiconductor/literature/21264hrm.pdf)
- *	- Alpha Architecture Reference Manual, fourth edition [ARM].
+ * Documentation consulted:
+ *  - Alpha 21264/EV68CB and 21264/EV68DC Microprocessor Hardware Reference Manual [HRM] (http://download.majix.org/dec/21264ev68cb_ev68dc_hrm.pdf)
+ *  - DS-0026A-TE: Alpha 21264B Microprocessor Hardware Reference Manual [HRM] (http://ftp.digital.com/pub/Digital/info/semiconductor/literature/21264hrm.pdf)
+ *  - Alpha Architecture Reference Manual, fourth edition [ARM] (http://download.majix.org/dec/alpha_arch_ref.pdf)
  *	.
  **/
 
@@ -332,7 +335,6 @@ class CAlphaCPU : public CSystemComponent
   /* VMS PALcode internal: */
   int vmspal_int_initiate_exception();
   int vmspal_int_initiate_interrupt();
-  int vmspal_int_read_ide();
   
   /// The state structure contains all elements that need to be saved to the statefile
   struct SCPU_state {
@@ -387,7 +389,7 @@ class CAlphaCPU : public CSystemComponent
     struct SICache icache[ICACHE_ENTRIES];  /**< Instruction cache entries [HRM p 2-11] */
     int next_icache;			            /**< Number of next cache entry to use */
     int last_found_icache;                  /**< Number of last cache entry found */
-    struct STBEntry2 tb[2][TB_ENTRIES];     /**< Translation buffer entries */
+    struct STBEntry tb[2][TB_ENTRIES];      /**< Translation buffer entries */
     int next_tb[2];                         /**< Number of next translation buffer entry to use */
     int last_found_tb[2];                   /**< Number of last translation buffer entry found */
     bool lock_flag;

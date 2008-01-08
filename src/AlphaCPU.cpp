@@ -1,5 +1,5 @@
 /* ES40 emulator.
- * Copyright (C) 2007 by the ES40 Emulator Project
+ * Copyright (C) 2007-2008 by the ES40 Emulator Project
  *
  * WWW    : http://sourceforge.net/projects/es40
  * E-mail : camiel@camicom.com
@@ -29,6 +29,9 @@
  *
  * \bug Rounding and trap modes are not used for floating point ops.
  * \bug /V is ignored for integer ops.
+ *
+ * X-1.51       Camiel Vanderhoeven                             08-JAN-2008
+ *      Removed last references to IDE disk read SRM replacement.
  *
  * X-1.50       Camiel Vanderhoeven                             30-DEC-2007
  *      Print file id on initialization.
@@ -397,7 +400,7 @@ CAlphaCPU::CAlphaCPU(CConfigurator * cfg, CSystem * system) : CSystemComponent (
   bListing = false;
 #endif
   
-  printf("%s: $Id: AlphaCPU.cpp,v 1.50 2007/12/30 15:10:22 iamcamiel Exp $\n",devid_string);
+  printf("%s: $Id: AlphaCPU.cpp,v 1.51 2008/01/08 16:41:24 iamcamiel Exp $\n",devid_string);
 }
 
 /**
@@ -601,7 +604,7 @@ int CAlphaCPU::DoClock()
       function = ins&0x1fffffff;
       switch (function)
       {
-        case 0x123401: OP_FNC(vmspal_int_read_ide, NOP);
+//        case 0x123401: OP_FNC(vmspal_int_read_ide, NOP);
 
         default: OP(CALL_PAL,PAL);
       }
