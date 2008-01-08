@@ -27,7 +27,10 @@
 #
 # Makefile for GNU Linux. (And possibly many UNIX'es).
 #
-# $Id: Makefile,v 1.14 2008/01/02 09:49:17 iamcamiel Exp $
+# $Id: Makefile,v 1.15 2008/01/08 22:07:03 iamcamiel Exp $
+#
+# X-1.15		Brian Wheeler      				08-JAN-2008
+#	Added NewIde and DiskDevice
 #
 # X-1.14		Camiel Vanderhoeven				02-JAN-2008
 #	Brought up-to-date.
@@ -90,37 +93,39 @@ LD = g++
 DEPEND = makedepend $(CFLAGS)
 
 OBJS =  AliM1543C.o \
-	  AliM1543C_ide.o \
-	  AliM1543C_usb.o \
+	    AliM1543C_ide.o \
+	    AliM1543C_usb.o \
         AlphaCPU.o \
-	  AlphaCPU_vmspal.o \
+	    AlphaCPU_vmspal.o \
         AlphaSim.o \
-	  Cirrus.o \
-	  Configurator.o \
+	    Cirrus.o \
+	    Configurator.o \
         DEC21143.o \
         Disk.o \
         DiskController.o \
+        DiskDevice.o \
         DiskFile.o \
         DiskRam.o \
         DPR.o \
         es40_debug.o \
         Flash.o \
         FloppyController.o \
-  	  lockstep.o \
-	  PCIDevice.o \
+  	    lockstep.o \
+  	    NewIde.o \
+	    PCIDevice.o \
         Port80.o \
-	  S3Trio64.o \
-	  Serial.o \
+	    S3Trio64.o \
+	    Serial.o \
         StdAfx.o \
         Sym53C895.o \
         SystemComponent.o \
         System.o \
         TraceEngine.o \
-	  VGA.o \
-	  gui/gui.o \
-	  gui/keymap.o \
-	  gui/scancodes.o \
-	  gui/sdl.o
+	    VGA.o \
+	    gui/gui.o \
+	    gui/keymap.o \
+	    gui/scancodes.o \
+	    gui/sdl.o
 
 IDB_OBJS = $(subst .o,.do,$(OBJS))
 LSM_OBJS = $(subst .o,.mao,$(OBJS))
