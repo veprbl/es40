@@ -27,7 +27,12 @@
  * \file
  * Contains the code for the configuration file interpreter.
  *
- * $Id: Configurator.cpp,v 1.8 2008/01/05 21:19:31 iamcamiel Exp $
+ * $Id: Configurator.cpp,v 1.9 2008/01/08 16:49:58 iamcamiel Exp $
+ *
+ * X-1.9        Camiel Vanderhoeven                             08-JAN-2008
+ *      Use Brian Wheeler's CNewIde class instead of the CAliM1543C_ide
+ *      class if HAVE_NEW_IDE is defined. This change will be undone when
+ *      the new ide controller will replace the old standard one.
  *
  * X-1.8        Camiel Vanderhoeven                             05-JAN-2008
  *      Added CDiskDevice class.
@@ -62,7 +67,11 @@
 #include "Flash.h"
 #include "DPR.h"
 #include "AliM1543C.h"
+#if defined(HAVE_NEW_IDE)
+#include "NewIde.h"
+#else
 #include "AliM1543C_ide.h"
+#endif
 #include "AliM1543C_usb.h"
 #include "DiskFile.h"
 #include "DiskDevice.h"
@@ -643,7 +652,11 @@ void CConfigurator::initialize()
     break;
 
   case c_ali_ide:
+#if defined(HAVE_NEW_IDE)
+    myDevice = new CNewIde(this,(CSystem *)pParent->get_device(),pcibus,pcidev);
+#else
     myDevice = new CAliM1543C_ide(this,(CSystem *)pParent->get_device(),pcibus,pcidev);
+#endif
     break;
 
   case c_ali_usb:
