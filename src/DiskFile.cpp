@@ -27,7 +27,10 @@
  * \file
  * Contains code to use a file as a disk image.
  *
- * $Id: DiskFile.cpp,v 1.12 2008/01/09 10:13:58 iamcamiel Exp $
+ * $Id: DiskFile.cpp,v 1.13 2008/01/09 19:18:55 iamcamiel Exp $
+ *
+ * X-1.13       Brian Wheeler                                   09-JAN-2008
+ *      Put filename in disk model number (without path).
  *
  * X-1.12       Camiel Vanderhoeven                             09-JAN-2008
  *      Save disk state to state file.
@@ -102,6 +105,18 @@ CDiskFile::CDiskFile(CConfigurator * cfg, CSystem * sys, CDiskController * c, in
 
   model_number=myCfg->get_text_value("model_number",filename);
 
+  // skip to the filename portion of the path.
+  char *p = model_number;
+#ifdef _WIN32
+  char x = '\\';
+#else
+  char x = '/';
+#endif
+  while(*p) {
+    if(*p==x) model_number=p+1;
+    p++;
+  }
+  
   printf("%s: Mounted file %s, %" LL "d %d-byte blocks, %" LL "d/%d/%d.\n",devid_string,filename,byte_size/state.block_size,state.block_size,cylinders,heads,sectors);
 }
 
