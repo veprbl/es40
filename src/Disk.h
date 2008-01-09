@@ -27,7 +27,10 @@
  * \file
  * Contains definitions for the disk base class.
  *
- * $Id: Disk.h,v 1.8 2008/01/06 10:34:47 iamcamiel Exp $
+ * $Id: Disk.h,v 1.9 2008/01/09 10:13:58 iamcamiel Exp $
+ *
+ * X-1.9        Camiel Vanderhoeven                             09-JAN-2008
+ *      Save disk state to state file.
  *
  * X-1.8        Camiel Vanderhoeven                             06-JAN-2008
  *      Support changing the block size (required for SCSI, ATAPI).
@@ -63,24 +66,26 @@
  * \brief Abstract base class for disks (connects to a CDiskController)
  **/
 
-class CDisk
+class CDisk : public CSystemComponent
 {
 public:
-  CDisk(CConfigurator * cfg, CDiskController * c, int idebus, int idedev);
+  CDisk(CConfigurator * cfg, CSystem * sys, CDiskController * c, int idebus, int idedev);
   virtual ~CDisk(void);
- 
+  virtual int SaveState(FILE * f);
+  virtual int RestoreState(FILE * f);
+
   virtual bool seek_byte(off_t_large byte) = 0;
   virtual size_t read_bytes(void * dest, size_t bytes) = 0;
   virtual size_t write_bytes(void * src, size_t bytes) = 0;
 
-  bool seek_block(off_t_large lba) { return seek_byte(lba*block_size); };
-  size_t read_blocks(void * dest, size_t blocks) { return read_bytes(dest, blocks*block_size)/block_size; };
-  size_t write_blocks(void * src, size_t blocks) { return write_bytes(src, blocks*block_size)/block_size; };
+  bool seek_block(off_t_large lba) { return seek_byte(lba*state.block_size); };
+  size_t read_blocks(void * dest, size_t blocks) { return read_bytes(dest, blocks*state.block_size)/state.block_size; };
+  size_t write_blocks(void * src, size_t blocks) { return write_bytes(src, blocks*state.block_size)/state.block_size; };
 
-  size_t get_block_size() { return block_size; };
-  void set_block_size(size_t bs) { block_size = bs; calc_cylinders(); };
+  size_t get_block_size() { return state.block_size; };
+  void set_block_size(size_t bs) { state.block_size = bs; calc_cylinders(); };
 
-  off_t_large get_lba_size()  { return byte_size/block_size; };
+  off_t_large get_lba_size()  { return byte_size/state.block_size; };
   off_t_large get_byte_size()  { return byte_size; };
   off_t_large get_chs_size()  { return cylinders*heads*sectors; };
   off_t_large get_cylinders() { return cylinders; };
@@ -112,11 +117,15 @@ protected:
   bool is_cdrom;
 
   off_t_large byte_size;
-  off_t_large byte_pos;
   off_t_large cylinders;
   long heads;
   long sectors;
-  size_t block_size;
+  
+  struct SDisk_state
+  {
+    size_t block_size;
+    off_t_large byte_pos;
+  } state;
 };
 
 #endif //!defined(__DISK_H__)

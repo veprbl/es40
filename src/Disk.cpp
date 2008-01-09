@@ -27,7 +27,10 @@
  * \file
  * Contains code for the disk base class.
  *
- * $Id: Disk.cpp,v 1.8 2008/01/06 13:00:31 iamcamiel Exp $
+ * $Id: Disk.cpp,v 1.9 2008/01/09 10:13:58 iamcamiel Exp $
+ *
+ * X-1.9        Camiel Vanderhoeven                             09-JAN-2008
+ *      Save disk state to state file.
  *
  * X-1.8        Camiel Vanderhoeven                             06-JAN-2008
  *      Set default blocksize to 2048 for cd-rom devices.
@@ -57,7 +60,7 @@
 #include "StdAfx.h" 
 #include "Disk.h"
 
-CDisk::CDisk(CConfigurator * cfg, CDiskController * ctrl, int idebus, int idedev)
+CDisk::CDisk(CConfigurator * cfg, CSystem * sys, CDiskController * ctrl, int idebus, int idedev) : CSystemComponent(cfg, sys)
 {
   char * a;
   char * b;
@@ -74,6 +77,7 @@ CDisk::CDisk(CConfigurator * cfg, CDiskController * ctrl, int idebus, int idedev
   c = myCfg->get_myParent()->get_myName();
   d = myCfg->get_myParent()->get_myValue();
 
+  free(devid_string); // we override the default to include the controller.
   CHECK_ALLOCATION(devid_string = (char*) malloc(strlen(a)+strlen(b)+strlen(c)+strlen(d)+6));
   sprintf(devid_string,"%s(%s).%s(%s)",c,d,a,b);
 
@@ -82,7 +86,7 @@ CDisk::CDisk(CConfigurator * cfg, CDiskController * ctrl, int idebus, int idedev
   read_only = myCfg->get_bool_value("read_only");
   is_cdrom = myCfg->get_bool_value("cdrom");
 
-  block_size = is_cdrom?2048:512;
+  state.block_size = is_cdrom?2048:512;
 
   if (!myCtrl->register_disk(this,myBus,myDev))
   {
@@ -98,9 +102,89 @@ CDisk::~CDisk(void)
 
 void CDisk::calc_cylinders()
 {
-  cylinders = byte_size/block_size/sectors/heads;
+  cylinders = byte_size/state.block_size/sectors/heads;
 
-  off_t_large chs_size = sectors*cylinders*heads*block_size;
+  off_t_large chs_size = sectors*cylinders*heads*state.block_size;
   if (chs_size<byte_size)
     cylinders++;
+}
+
+
+static u32 disk_magic1 = 0xD15D15D1;
+static u32 disk_magic2 = 0x15D15D5;
+
+/**
+ * Save state to a Virtual Machine State file.
+ **/
+
+int CDisk::SaveState(FILE *f)
+{
+  long ss = sizeof(state);
+
+  fwrite(&disk_magic1,sizeof(u32),1,f);
+  fwrite(&ss,sizeof(long),1,f);
+  fwrite(&state,sizeof(state),1,f);
+  fwrite(&disk_magic2,sizeof(u32),1,f);
+  printf("%s: %d bytes saved.\n",devid_string,ss);
+  return 0;
+}
+
+/**
+ * Restore state from a Virtual Machine State file.
+ **/
+
+int CDisk::RestoreState(FILE *f)
+{
+  long ss;
+  u32 m1;
+  u32 m2;
+  size_t r;
+
+  r = fread(&m1,sizeof(u32),1,f);
+  if (r!=1)
+  {
+    printf("%s: unexpected end of file!\n",devid_string);
+    return -1;
+  }
+  if (m1 != disk_magic1)
+  {
+    printf("%s: MAGIC 1 does not match!\n",devid_string);
+    return -1;
+  }
+
+  fread(&ss,sizeof(long),1,f);
+  if (r!=1)
+  {
+    printf("%s: unexpected end of file!\n",devid_string);
+    return -1;
+  }
+  if (ss != sizeof(state))
+  {
+    printf("%s: STRUCT SIZE does not match!\n",devid_string);
+    return -1;
+  }
+
+  fread(&state,sizeof(state),1,f);
+  if (r!=1)
+  {
+    printf("%s: unexpected end of file!\n",devid_string);
+    return -1;
+  }
+
+  r = fread(&m2,sizeof(u32),1,f);
+  if (r!=1)
+  {
+    printf("%s: unexpected end of file!\n",devid_string);
+    return -1;
+  }
+  if (m2 != disk_magic2)
+  {
+    printf("%s: MAGIC 1 does not match!\n",devid_string);
+    return -1;
+  }
+
+  calc_cylinders(); // state.block_size may have changed.
+
+  printf("%s: %d bytes restored.\n",devid_string,ss);
+  return 0;
 }

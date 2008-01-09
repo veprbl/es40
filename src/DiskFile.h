@@ -27,7 +27,10 @@
  * \file
  * Contains definitions to use a file as a disk image.
  *
- * $Id: DiskFile.h,v 1.6 2008/01/06 10:34:47 iamcamiel Exp $
+ * $Id: DiskFile.h,v 1.7 2008/01/09 10:13:58 iamcamiel Exp $
+ *
+ * X-1.7        Camiel Vanderhoeven                             09-JAN-2008
+ *      Save disk state to state file.
  *
  * X-1.6        Camiel Vanderhoeven                             06-JAN-2008
  *      Support changing the block size (required for SCSI, ATAPI).
@@ -60,7 +63,7 @@
 class CDiskFile : public CDisk
 {
 public:
-  CDiskFile(CConfigurator * cfg, CDiskController * c, int idebus, int idedev);
+  CDiskFile(CConfigurator * cfg, CSystem * sys, CDiskController * c, int idebus, int idedev);
   virtual ~CDiskFile(void);
 
   virtual bool seek_byte(off_t_large byte);

@@ -27,7 +27,10 @@
  * \file
  * Contains definitions to use a raw device as a disk image.
  *
- * $Id: DiskDevice.h,v 1.2 2008/01/06 10:34:47 iamcamiel Exp $
+ * $Id: DiskDevice.h,v 1.3 2008/01/09 10:13:58 iamcamiel Exp $
+ *
+ * X-1.3        Camiel Vanderhoeven                             09-JAN-2008
+ *      Save disk state to state file.
  *
  * X-1.2        Camiel Vanderhoeven                             06-JAN-2008
  *      Support changing the block size (required for SCSI, ATAPI).
@@ -48,7 +51,7 @@
 class CDiskDevice : public CDisk
 {
 public:
-  CDiskDevice(CConfigurator * cfg, CDiskController * c, int idebus, int idedev);
+  CDiskDevice(CConfigurator * cfg, CSystem * sys, CDiskController * c, int idebus, int idedev);
   virtual ~CDiskDevice(void);
 
   virtual bool seek_byte(off_t_large byte);

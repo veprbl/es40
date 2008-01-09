@@ -27,7 +27,10 @@
  * \file
  * Contains code to use a raw device as a disk image.
  *
- * $Id: DiskDevice.cpp,v 1.3 2008/01/06 13:00:31 iamcamiel Exp $
+ * $Id: DiskDevice.cpp,v 1.4 2008/01/09 10:13:58 iamcamiel Exp $
+ *
+ * X-1.4        Camiel Vanderhoeven                             09-JAN-2008
+ *      Save disk state to state file.
  *
  * X-1.3        Camiel Vanderhoeven                             06-JAN-2008
  *      Set default blocksize to 2048 for cd-rom devices.
@@ -46,7 +49,7 @@
 #include <WinIoCtl.h>
 #endif
 
-CDiskDevice::CDiskDevice(CConfigurator * cfg, CDiskController * c, int idebus, int idedev) : CDisk(cfg,c,idebus,idedev)
+CDiskDevice::CDiskDevice(CConfigurator * cfg, CSystem * sys, CDiskController * c, int idebus, int idedev) : CDisk(cfg,sys,c,idebus,idedev)
 {
   filename = myCfg->get_text_value("device");
   if (!filename)
@@ -107,12 +110,12 @@ CDiskDevice::CDiskDevice(CConfigurator * cfg, CDiskController * c, int idebus, i
 
   LARGE_INTEGER a;
   a.QuadPart = 0;
-  SetFilePointerEx(handle, a, (PLARGE_INTEGER) &byte_pos, FILE_BEGIN); 
+  SetFilePointerEx(handle, a, (PLARGE_INTEGER) &state.byte_pos, FILE_BEGIN); 
 #else
   fseek_large(handle,0,SEEK_END);
   byte_size=ftell_large(handle);
   fseek_large(handle,0,SEEK_SET);
-  byte_pos = ftell_large(handle);
+  state.byte_pos = ftell_large(handle);
 
   sectors = 32;
   heads = 8;
@@ -122,7 +125,7 @@ CDiskDevice::CDiskDevice(CConfigurator * cfg, CDiskController * c, int idebus, i
 
   model_number=myCfg->get_text_value("model_number",filename);
 
-  printf("%s: Mounted device %s, %" LL "d %d-byte blocks, %" LL "d/%d/%d.\n",devid_string,filename,byte_size/block_size,block_size,cylinders,heads,sectors);
+  printf("%s: Mounted device %s, %" LL "d %d-byte blocks, %" LL "d/%d/%d.\n",devid_string,filename,byte_size/state.block_size,state.block_size,cylinders,heads,sectors);
 }
 
 CDiskDevice::~CDiskDevice(void)
@@ -146,10 +149,10 @@ bool CDiskDevice::seek_byte(off_t_large byte)
   }
 
 #if defined(_WIN32)
-  byte_pos = byte;
+  state.byte_pos = byte;
 #else
   fseek_large(handle,byte,SEEK_SET);
-  byte_pos = ftell_large(handle);
+  state.byte_pos = ftell_large(handle);
 #endif
 
   return true;
@@ -157,12 +160,12 @@ bool CDiskDevice::seek_byte(off_t_large byte)
 
 size_t CDiskDevice::read_bytes(void *dest, size_t bytes)
 {
-//  printf("%s: read %d bytes @ %" LL "d.\n",devid_string,bytes,byte_pos);
+//  printf("%s: read %d bytes @ %" LL "d.\n",devid_string,bytes,state.byte_pos);
 #if defined(_WIN32)
-  off_t_large byte_from = (byte_pos/dev_block_size)*dev_block_size;  
-  off_t_large byte_to   = (((byte_pos+bytes-1)/dev_block_size)+1)*dev_block_size;
+  off_t_large byte_from = (state.byte_pos/dev_block_size)*dev_block_size;  
+  off_t_large byte_to   = (((state.byte_pos+bytes-1)/dev_block_size)+1)*dev_block_size;
   DWORD byte_len = (DWORD)(byte_to - byte_from);
-  DWORD byte_off = (DWORD)(byte_pos - byte_from);
+  DWORD byte_off = (DWORD)(state.byte_pos - byte_from);
   LARGE_INTEGER a;
   DWORD r;
 
@@ -185,12 +188,12 @@ size_t CDiskDevice::read_bytes(void *dest, size_t bytes)
   }
 
   memcpy(dest,buffer+byte_off,bytes);
-  byte_pos += bytes;
+  state.byte_pos += bytes;
   return bytes;
 #else
   size_t r;
   r = fread(dest,1,bytes,handle);
-  byte_pos = ftell_large(handle);
+  state.byte_pos = ftell_large(handle);
   return r;
 #endif
 }
@@ -201,10 +204,10 @@ size_t CDiskDevice::write_bytes(void * src, size_t bytes)
     return 0;
 
 #if defined(_WIN32)
-  off_t_large byte_from = (byte_pos/dev_block_size)*dev_block_size;  
-  off_t_large byte_to   = (((byte_pos+bytes-1)/dev_block_size)+1)*dev_block_size;
+  off_t_large byte_from = (state.byte_pos/dev_block_size)*dev_block_size;  
+  off_t_large byte_to   = (((state.byte_pos+bytes-1)/dev_block_size)+1)*dev_block_size;
   DWORD byte_len = (DWORD)(byte_to - byte_from);
-  DWORD byte_off = (DWORD)(byte_pos - byte_from);
+  DWORD byte_off = (DWORD)(state.byte_pos - byte_from);
   LARGE_INTEGER a;
   DWORD r;
 
@@ -214,7 +217,7 @@ size_t CDiskDevice::write_bytes(void * src, size_t bytes)
     CHECK_REALLOCATION(buffer,realloc(buffer,buffer_size),char);
   }
 
-  if (byte_from != byte_pos)
+  if (byte_from != state.byte_pos)
   {
     // we don't write the entire first block, so we read it 
     // from disk first so we don't corrupt the disk
@@ -228,7 +231,7 @@ size_t CDiskDevice::write_bytes(void * src, size_t bytes)
     }
   }
 
-  if ((byte_to != byte_pos+bytes) && (byte_to-byte_from>dev_block_size))
+  if ((byte_to != state.byte_pos+bytes) && (byte_to-byte_from>dev_block_size))
   {
     // we don't write the entire last block, so we read it 
     // from disk first so we don't corrupt the disk
@@ -257,12 +260,12 @@ size_t CDiskDevice::write_bytes(void * src, size_t bytes)
     FAILURE("Error during device write operation. Terminating to avoid disk corruption.");
   }
 
-  byte_pos += bytes;
+  state.byte_pos += bytes;
   return bytes;
 #else
   size_t r;
   r = fwrite(src,1,bytes,handle);
-  byte_pos = ftell_large(handle);
+  state.byte_pos = ftell_large(handle);
   return r;
 #endif
 }

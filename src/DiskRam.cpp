@@ -27,7 +27,10 @@
  * \file
  * Contains code to use a RAM disk.
  *
- * $Id: DiskRam.cpp,v 1.11 2008/01/06 13:00:31 iamcamiel Exp $
+ * $Id: DiskRam.cpp,v 1.12 2008/01/09 10:13:58 iamcamiel Exp $
+ *
+ * X-1.12       Camiel Vanderhoeven                             09-JAN-2008
+ *      Save disk state to state file.
  *
  * X-1.11       Camiel Vanderhoeven                             06-JAN-2008
  *      Set default blocksize to 2048 for cd-rom devices.
@@ -66,13 +69,13 @@
 #include "StdAfx.h" 
 #include "DiskRam.h"
 
-CDiskRam::CDiskRam(CConfigurator * cfg, CDiskController * c, int idebus, int idedev) : CDisk(cfg,c,idebus,idedev)
+CDiskRam::CDiskRam(CConfigurator * cfg, CSystem * sys, CDiskController * c, int idebus, int idedev) : CDisk(cfg,sys,c,idebus,idedev)
 {
   byte_size = myCfg->get_int_value("size",512)*1024*1024;
 
   CHECK_ALLOCATION(ramdisk = malloc(byte_size));
 
-  byte_pos = 0;
+  state.byte_pos = 0;
 
   sectors = 32;
   heads = 8;
@@ -81,7 +84,7 @@ CDiskRam::CDiskRam(CConfigurator * cfg, CDiskController * c, int idebus, int ide
 
   model_number=myCfg->get_text_value("model_number","ES40RAMDISK");
 
-  printf("%s: Mounted RAMDISK, %" LL "d %d-byte blocks, %" LL "d/%d/%d.\n",devid_string,byte_size/block_size,block_size,cylinders,heads,sectors);
+  printf("%s: Mounted RAMDISK, %" LL "d %d-byte blocks, %" LL "d/%d/%d.\n",devid_string,byte_size/state.block_size,state.block_size,cylinders,heads,sectors);
 }
 
 CDiskRam::~CDiskRam(void)
@@ -102,32 +105,32 @@ bool CDiskRam::seek_byte(off_t_large byte)
     throw((int)1);
   }
 
-  byte_pos = byte;
+  state.byte_pos = byte;
   return true;
 }
 
 size_t CDiskRam::read_bytes(void *dest, size_t bytes)
 {
-  if (byte_pos >=byte_size)
+  if (state.byte_pos >=byte_size)
     return 0;
 
-  while (byte_pos + bytes >= byte_size)
+  while (state.byte_pos + bytes >= byte_size)
     bytes--;
 
-  memcpy(dest,&(((char*)ramdisk)[byte_pos]),bytes);
-  byte_pos += (unsigned long)bytes;
+  memcpy(dest,&(((char*)ramdisk)[state.byte_pos]),bytes);
+  state.byte_pos += (unsigned long)bytes;
   return bytes;
 }
 
 size_t CDiskRam::write_bytes(void *src, size_t bytes)
 {
-  if (byte_pos >=byte_size)
+  if (state.byte_pos >=byte_size)
     return 0;
 
-  while (byte_pos + bytes >= byte_size)
+  while (state.byte_pos + bytes >= byte_size)
     bytes--;
 
-  memcpy(&(((char*)ramdisk)[byte_pos]),src,bytes);
-  byte_pos += (unsigned long)bytes;
+  memcpy(&(((char*)ramdisk)[state.byte_pos]),src,bytes);
+  state.byte_pos += (unsigned long)bytes;
   return bytes;
 }

@@ -27,7 +27,10 @@
  * \file
  * Contains code to use a file as a disk image.
  *
- * $Id: DiskFile.cpp,v 1.11 2008/01/06 13:00:31 iamcamiel Exp $
+ * $Id: DiskFile.cpp,v 1.12 2008/01/09 10:13:58 iamcamiel Exp $
+ *
+ * X-1.12       Camiel Vanderhoeven                             09-JAN-2008
+ *      Save disk state to state file.
  *
  * X-1.11       Camiel Vanderhoeven                             06-JAN-2008
  *      Set default blocksize to 2048 for cd-rom devices.
@@ -66,7 +69,7 @@
 #include "StdAfx.h" 
 #include "DiskFile.h"
 
-CDiskFile::CDiskFile(CConfigurator * cfg, CDiskController * c, int idebus, int idedev) : CDisk(cfg,c,idebus,idedev)
+CDiskFile::CDiskFile(CConfigurator * cfg, CSystem * sys, CDiskController * c, int idebus, int idedev) : CDisk(cfg,sys,c,idebus,idedev)
 {
 
   filename = myCfg->get_text_value("file");
@@ -90,7 +93,7 @@ CDiskFile::CDiskFile(CConfigurator * cfg, CDiskController * c, int idebus, int i
   fseek_large(handle,0,SEEK_END);
   byte_size=ftell_large(handle);
   fseek_large(handle,0,SEEK_SET);
-  byte_pos = ftell_large(handle);
+  state.byte_pos = ftell_large(handle);
 
   sectors = 32;
   heads = 8;
@@ -99,7 +102,7 @@ CDiskFile::CDiskFile(CConfigurator * cfg, CDiskController * c, int idebus, int i
 
   model_number=myCfg->get_text_value("model_number",filename);
 
-  printf("%s: Mounted file %s, %" LL "d %d-byte blocks, %" LL "d/%d/%d.\n",devid_string,filename,byte_size/block_size,block_size,cylinders,heads,sectors);
+  printf("%s: Mounted file %s, %" LL "d %d-byte blocks, %" LL "d/%d/%d.\n",devid_string,filename,byte_size/state.block_size,state.block_size,cylinders,heads,sectors);
 }
 
 CDiskFile::~CDiskFile(void)
@@ -117,7 +120,7 @@ bool CDiskFile::seek_byte(off_t_large byte)
   }
 
   fseek_large(handle,byte,SEEK_SET);
-  byte_pos = ftell_large(handle);
+  state.byte_pos = ftell_large(handle);
 
   return true;
 }
@@ -126,7 +129,7 @@ size_t CDiskFile::read_bytes(void *dest, size_t bytes)
 {
   size_t r;
   r = fread(dest,1,bytes,handle);
-  byte_pos = ftell_large(handle);
+  state.byte_pos = ftell_large(handle);
   return r;
 }
 
@@ -137,6 +140,6 @@ size_t CDiskFile::write_bytes(void * src, size_t bytes)
 
   size_t r;
   r = fwrite(src,1,bytes,handle);
-  byte_pos = ftell_large(handle);
+  state.byte_pos = ftell_large(handle);
   return r;
 }
