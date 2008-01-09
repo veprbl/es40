@@ -27,7 +27,7 @@
  * \file 
  * Contains the code for the emulated Typhoon Chipset devices.
  *
- * $Id: System.cpp,v 1.53 2008/01/08 19:15:36 iamcamiel Exp $
+ * $Id: System.cpp,v 1.54 2008/01/09 21:04:09 iamcamiel Exp $
  *
  * X-1.53       Camiel Vanderhoeven                             08-JAN-2008
  *      Layout of comments.
@@ -302,7 +302,7 @@ CSystem::CSystem(CConfigurator * cfg)
 
   CHECK_ALLOCATION(memory = calloc(1<<iNumMemoryBits,1));
 
-  printf("%s(%s): $Id: System.cpp,v 1.53 2008/01/08 19:15:36 iamcamiel Exp $\n",cfg->get_myName(),cfg->get_myValue());
+  printf("%s(%s): $Id: System.cpp,v 1.54 2008/01/09 21:04:09 iamcamiel Exp $\n",cfg->get_myName(),cfg->get_myValue());
 }
 
 /**
@@ -362,6 +362,9 @@ unsigned int CSystem::get_memory_bits()
 
 char * CSystem::PtrToMem(u64 address)
 {
+  if (address>>iNumMemoryBits) // Non Memory
+    return 0;
+
   return &(((char*)memory)[(int)address]);
 }
 
