@@ -27,7 +27,30 @@
  * \file
  * Contains the code for the emulated Ali M1543C IDE chipset part.
  *
- * $Id: NewIde.cpp,v 1.3 2008/01/08 22:08:10 iamcamiel Exp $
+ * $Id: NewIde.cpp,v 1.4 2008/01/09 19:18:37 iamcamiel Exp $
+ *
+ * X-1.4         Brian Wheeler                                   09-JAN-2008
+ *   - During init, command_in_progress and command_cycle are cleared.
+ *   - Writes to ide_control are processed correctly.  Tru64 & FreeBSD
+ *     recognize disks now.
+ *   - interrupt is deasserted when command register is written.
+ *   - Removed a bunch of debugging sections.
+ *   - Made it quieter if DEBUG_IDE wasn't defined -- users should no longer
+ *     see Debug Pause messages.
+ *   - busy is asserted if we're currently processing a packet command when
+ *     drq is deasserted (i.e. when the read buffer is empty).  This lets us
+ *     get back into the ATAPI state machine before the host can start
+ *     messing  with the controller.
+ *   - Removed pauses for port 0x3n7 -- its really a floppy port.
+ *   - Remove pause when reset is being started.
+ *   - packet dma flag is presented when get_status() is run.
+ *   - ATAPI command 0x1e (media lock) implemented as no-op.
+ *   - ATAPI command 0x43 (read TOC) implemented as a hack.
+ *   - ATAPI read now uses get_block_size() for determining transfers.
+ *   - ATAPI state machine goes from DP34 to DI immediately upon completion 
+ *     instead of redirecting through DP2.
+ *   - Added ATA Command 0xc6 (Set Multiple).
+ *   .
  *
  * X-1.3         Brian wheeler                                   08-JAN-2008
  *      ATAPI improved.
@@ -74,7 +97,6 @@
 #define DEBUG_IDE_REG_CONTROL
 #define DEBUG_IDE_PACKET
 #endif
-
 
 u32 newide_cfg_data[64] = {
   /*00*/  0x522910b9, // CFID: vendor + device
@@ -127,13 +149,9 @@ u32 newide_cfg_mask[64] = {
   0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
 };
 
-
-
 /**
  * Constructor.
  **/
-
-
 CNewIde::CNewIde(CConfigurator * cfg, CSystem * c, int pcibus, int pcidev) 
   : CDiskController(cfg,c,pcibus,pcidev,2,2) {
   if (theNewIde != 0)
@@ -169,7 +187,6 @@ void CNewIde::ResetPCI()
   for (i=0;i<2;i++) {
     CONTROLLER(i).bm_status = 0;
     CONTROLLER(i).selected = 0;
-    
     for (j=0;j<2;j++) {
       REGISTERS(i,j).error=0;
       COMMAND(i,j).command_in_progress = 0;
@@ -322,7 +339,6 @@ void CNewIde::WriteMem_Legacy(int index, u32 address, int dsize, u32 data) {
   }
 }
 
-
 u32 CNewIde::ReadMem_Bar(int func, int bar, u32 address, int dsize) {
   int channel = 0;
   switch(bar) {
@@ -371,9 +387,6 @@ void CNewIde::WriteMem_Bar(int func, int bar, u32 address, int dsize, u32 data) 
   }
 }
 
-
-
-
 /*
  * Register read/write handlers
  */
@@ -389,7 +402,6 @@ u32 CNewIde::ide_command_read(int index, u32 address, int dsize) {
     return 0xffffffff;
   }
 
-
   switch(address) {
   case REG_COMMAND_DATA:
     if(!SEL_STATUS(index).drq) {
@@ -403,14 +415,6 @@ u32 CNewIde::ide_command_read(int index, u32 address, int dsize) {
 
     data = 0;
 
-    /*
-    // debug packet processing.
-    if(SEL_COMMAND(index).packet_phase==PACKET_COMMAND_REPLY) { 
-      printf("Reading %d bytes from buffer at %d: ",dsize/8,CONTROLLER(index).data_ptr);
-
-    }
-    */
-
     switch(dsize) {
     case 32:
       data = CONTROLLER(index).data[CONTROLLER(index).data_ptr++];
@@ -420,16 +424,23 @@ u32 CNewIde::ide_command_read(int index, u32 address, int dsize) {
       data = CONTROLLER(index).data[CONTROLLER(index).data_ptr++];
     }
 
-    /*
-    // debugging!
-    if(SEL_COMMAND(index).packet_phase==PACKET_COMMAND_REPLY) { 
-      printf("%x\n",data);
-    }
-    */
-
-    if(CONTROLLER(index).data_ptr >= CONTROLLER(index).data_size) {
+    if(CONTROLLER(index).data_ptr >= CONTROLLER(index).data_size) 
+    {
       // there's no more to take.
       SEL_STATUS(index).drq=false;
+      if(SEL_COMMAND(index).current_command == 0xa0 &&
+  	     SEL_COMMAND(index).command_in_progress) 
+      {
+	    // packet is a weird case.  We're actually going to set the
+	    // controller to busy so we can end up in the ATAPI state
+	    // machine before the host has a chance to do anything 
+	    // unexpected.
+	    SEL_STATUS(index).busy=true;
+#ifdef DEBUG_IDE_PACKET
+	    printf("%%IDE-I-READCMD:  Asserting Busy so we can resume ATAPI in state %s.\n",packet_states[SEL_COMMAND(index).packet_phase]);
+	    PAUSE("Enjoy the show.");
+#endif
+      }
     }
 
     if(CONTROLLER(index).data_ptr > IDE_BUFFER_SIZE) {
@@ -541,14 +552,23 @@ void CNewIde::ide_command_write(int index, u32 address, int dsize, u32 data) {
       REGISTERS(index,1).lba_mode = (data >> 6) & 1;
     break;
   case REG_COMMAND_COMMAND:
+    theAli->pic_deassert(1,6+index);  // interrupt is cleared on write. 
     if(!SEL_DISK(index)) {
+#ifdef DEBUG_IDE
       printf("%%IDE-I-NODEV: Command to non-existing device %d.%d. cmd=%x\n",index,CONTROLLER(index).selected,data);
+#endif
     }
     if(SEL_COMMAND(index).command_in_progress==true) {
       // we're already working, why is another command being issued?
+      // chances are, its a timing issue.  We will (hopefully) force
+      // the previous command to completion by calling DoClock() before
+      // processing the new command.  Unfortunately, if the registers
+      // have changed dramatically, it may actually be destructive.
+#ifdef DEBUG_IDE
       printf("%%IDE-W-CIP: Command is already in progress.\n");
       PAUSE("dang it!");
-      DoClock(); // force the current one through?
+#endif
+      DoClock(); 
     } 
 
     if(data & 0xf0 == 0x10) data = 0x10;
@@ -586,13 +606,12 @@ u32 CNewIde::ide_control_read(int index, u32 address) {
 #endif
     break;
   case 1:
-    // 3x7h drive address register.
+    // 3x7h drive address register. (floppy?)
     data |= (CONTROLLER(index).selected==0)?1:2;
     data |= (SEL_REGISTERS(index).head_no)<<2;
     data = (~data) & 0xff; // negate everything
 #ifdef DEBUG_IDE_REG_CONTROL
     printf("%%IDE-I-READCTRL: drive address port on IDE control %d: 0x%02x\n", index, data);
-    PAUSE("Read 0x3n7!");
 #endif
     break;
   }
@@ -616,7 +635,9 @@ void CNewIde::ide_control_write(int index, u32 address, u32 data)
     CONTROLLER(index).disable_irq = (data>>1) & 1;
 
     if (!prev_reset && CONTROLLER(index).reset) {
-      printf("IDE reset on index %d started.\n",index);
+#ifdef DEBUG_IDE_REG_CONTROL
+       printf("IDE reset on index %d started.\n",index);
+#endif
       STATUS(index,0).busy = true;
       STATUS(index,0).drive_ready = false;
       STATUS(index,0).seek_complete = true;
@@ -635,7 +656,9 @@ void CNewIde::ide_control_write(int index, u32 address, u32 data)
       COMMAND(index,0).current_command = 0;
       CONTROLLER(index).disable_irq = false;
     } else if (prev_reset && !CONTROLLER(index).reset) {
+#ifdef DEBUG_IDE_REG_CONTROL
       printf("IDE reset on index %d ended.\n",index);
+#endif
       STATUS(index,0).busy = false;
       STATUS(index,0).drive_ready = true;
       STATUS(index,1).busy = false;
@@ -648,7 +671,7 @@ void CNewIde::ide_control_write(int index, u32 address, u32 data)
     break;
 
   case 1:
-    PAUSE("Wrote to 0x3n7 -- it is read only!");
+    // floppy?
     break;
   }
 }
@@ -704,8 +727,6 @@ void CNewIde::ide_busmaster_write(int index, u32 address, u32 data, int dsize)
     return;
   }
 
-
-
   switch(address) {
   case 0: // command register
 #ifdef DEBUG_IDE_BUSMASTER
@@ -740,7 +761,6 @@ void CNewIde::ide_busmaster_write(int index, u32 address, u32 data, int dsize)
     if(data & 0x02) // error
       CONTROLLER(index).busmaster[2] &= ~0x02;
 
-
 #ifdef DEBUG_IDE_BUSMASTER
     printf("-IDE-I-BUSM: Bus master status write, final data: %x\n",CONTROLLER(index).busmaster[2]);
 #endif
@@ -765,10 +785,6 @@ void CNewIde::ide_busmaster_write(int index, u32 address, u32 data, int dsize)
     break;
   }
 }
-
-
-
-
 
 void CNewIde::set_signature(int index, int id)
 {
@@ -795,8 +811,6 @@ void CNewIde::raise_interrupt(int index) {
   CONTROLLER(index).interrupt_pending=true;
 }
 
-
-
 u8 CNewIde::get_status(int index)
 {
   u8 data;
@@ -821,8 +835,6 @@ u8 CNewIde::get_status(int index)
     SEL_STATUS(index).index_pulse_count = 0;
     SEL_STATUS(index).index_pulse = true;
   }
-
-
 
 #ifdef DEBUG_IDE_REG_COMMAND
   if((SEL_STATUS(index).debug_last_status & 0xfd) != (data & 0xfd) || SEL_STATUS(index).debug_status_update) {
@@ -857,7 +869,6 @@ void CNewIde::identify_drive(int index, bool packet)
   CONTROLLER(index).data_size = 256;
 
   // The data here was taken from T13/1153D revision 18
-
  
   if(!packet) {
     // flags:  0x0080 = removable, 0x0040 = fixed. 
@@ -982,11 +993,7 @@ void CNewIde::identify_drive(int index, bool packet)
 
   // ultra dma modes supported (10-8: modes selected, 2-0, modes supported)
   CONTROLLER(index).data[88] = 0x0000;
-
 }
-
-
-
 
 void CNewIde::command_aborted(int index, u8 command)
 {
@@ -1004,7 +1011,11 @@ void CNewIde::command_aborted(int index, u8 command)
 CNewIde * theNewIde = 0;
 
 void CNewIde::ide_status(int index) {
-  printf("IDE %d.%d: [busy: %d, drdy: %d, flt: %d, drq: %d, err: %d]\n         [c: %d, h: %d, s: %d, #: %d, f: %x, lba: %d]\n         [ptr: %d, size: %d, error: %d, cmd: %x, in progress: %d]\n         [cycle: %d, pkt phase: %d, pkt cmd: %x]\n         [bm-cmd: %x  bm-stat: %x]\n",
+  printf("IDE %d.%d: [busy: %d, drdy: %d, flt: %d, drq: %d, err: %d]\n"
+         "         [c: %d, h: %d, s: %d, #: %d, f: %x, lba: %d]\n"
+         "         [ptr: %d, size: %d, error: %d, cmd: %x, in progress: %d]\n"
+         "         [cycle: %d, pkt phase: %d, pkt cmd: %x, dma: %d]\n"
+         "         [bm-cmd: %x  bm-stat: %x]\n",
 	 index,
 	 CONTROLLER(index).selected,
 
@@ -1032,14 +1043,12 @@ void CNewIde::ide_status(int index) {
 	 SEL_COMMAND(index).command_cycle,
 	 SEL_COMMAND(index).packet_phase,
 	 SEL_COMMAND(index).packet_command[0],
+     SEL_COMMAND(index).packet_dma,
 
 	 CONTROLLER(index).busmaster[0],
 	 CONTROLLER(index).busmaster[2]
-
-	 
 	 );
 }
-
 
 /* Here's where the magic happens! */
 int CNewIde::DoClock() {
@@ -1249,9 +1258,11 @@ int CNewIde::DoClock() {
 	      SEL_STATUS(index).err=false;
 	      raise_interrupt(index); // maybe?
 	    } else {
-	      printf("Original h: %d, s: %d\n", SEL_DISK(index)->get_heads(), SEL_DISK(index)->get_sectors());
+#ifdef DEBUG_IDE
+          printf("Original h: %d, s: %d\n", SEL_DISK(index)->get_heads(), SEL_DISK(index)->get_sectors());
 	      printf("Requested h: %d, s: %d\n", SEL_REGISTERS(index).head_no+1, SEL_REGISTERS(index).sector_count);
 	      PAUSE("INIT DEV PARAMS -- geometry not supported!");
+#endif
 	      SEL_STATUS(index).busy=false;
 	      SEL_STATUS(index).drive_ready=true;
 	      SEL_STATUS(index).fault=false;
@@ -1282,6 +1293,8 @@ int CNewIde::DoClock() {
 		SEL_REGISTERS(index).REASON = IR_CD;
 		SEL_STATUS(index).busy=false;
 		SEL_STATUS(index).drq=true;
+		SEL_STATUS(index).DMRD=false;
+		SEL_STATUS(index).SERV=false;
 		CONTROLLER(index).data_ptr=0;
 		CONTROLLER(index).data_size=6;
 		SEL_COMMAND(index).packet_dma = (SEL_REGISTERS(index).features & 0x01)?true:false;
@@ -1318,8 +1331,7 @@ int CNewIde::DoClock() {
 			 SEL_COMMAND(index).packet_command[11]);
 		};
 #endif
-
-		  
+	  
 		switch(SEL_COMMAND(index).packet_phase) {
 		case PACKET_DP1: // receive packet
 		  if(!SEL_STATUS(index).drq) {
@@ -1375,21 +1387,21 @@ int CNewIde::DoClock() {
 		    case 0x28: // read 10
 		    case 0xa8: // read 12
 		      do {
-			u32 xfer;
-			if(SEL_COMMAND(index).packet_command[0]==0x28) 
-			  xfer = (u32) swap_16(*(u16 *)(&SEL_COMMAND(index).packet_command[7]));
-			else
-			  xfer = swap_32(*(u32 *)(&SEL_COMMAND(index).packet_command[6]));			
-			
-			u32 lba = swap_32(*(u32 *)(&(SEL_COMMAND(index).packet_command[2])));			
-			printf("CD Read LBA: %x, length: %x\n",lba,xfer);
-			
-			SEL_DISK(index)->seek_block(lba);
-			SEL_DISK(index)->read_blocks(&(CONTROLLER(index).data[0]),xfer);
-			SEL_COMMAND(index).packet_phase=PACKET_DP34;
-			CONTROLLER(index).data_ptr=0;
-			CONTROLLER(index).data_size=xfer*(SEL_DISK(index)->get_block_size()/2);
-			SEL_REGISTERS(index).BYTE_COUNT=xfer*SEL_DISK(index)->get_block_size();
+			    u32 xfer;
+			    if(SEL_COMMAND(index).packet_command[0]==0x28) 
+			      xfer = (u32) swap_16(*(u16 *)(&SEL_COMMAND(index).packet_command[7]));
+			    else
+			      xfer = swap_32(*(u32 *)(&SEL_COMMAND(index).packet_command[6]));			
+    			
+			    u32 lba = swap_32(*(u32 *)(&(SEL_COMMAND(index).packet_command[2])));			
+			    printf("CD Read LBA: %x, length: %x\n",lba,xfer);
+    			
+			    SEL_DISK(index)->seek_block(lba);
+			    SEL_DISK(index)->read_blocks(&(CONTROLLER(index).data[0]),xfer);
+			    SEL_COMMAND(index).packet_phase=PACKET_DP34;
+			    CONTROLLER(index).data_ptr=0;
+			    CONTROLLER(index).data_size=xfer*(SEL_DISK(index)->get_block_size()/2);
+			    SEL_REGISTERS(index).BYTE_COUNT=xfer*SEL_DISK(index)->get_block_size();
 		      } while(0);
 		      //exit(1);
 		      break;
@@ -1430,6 +1442,7 @@ int CNewIde::DoClock() {
 			    }
 		      } while(0);
 		      break;
+
 		    default:
 		      printf("Unhandled SCSI command.\n");
 		      exit(1);
@@ -1451,8 +1464,10 @@ int CNewIde::DoClock() {
 						  false);	
 		      //SEL_COMMAND(index).command_in_progress=false;
 		      //SEL_COMMAND(index).packet_phase=PACKET_DP2;
+		      SEL_STATUS(index).drq = true;
+		      SEL_STATUS(index).busy = false;
 			  SEL_COMMAND(index).packet_phase = PACKET_DI;
-			  yield=true;
+			  //yield=true;
 		    } else {
 		      // the controller isn't ready for DMA yet.
 		      yield=1;
@@ -1478,7 +1493,7 @@ int CNewIde::DoClock() {
                 //SEL_COMMAND(index).command_in_progress=false;
                 //SEL_COMMAND(index).packet_phase=PACKET_DP2;
    		        SEL_COMMAND(index).packet_phase = PACKET_DI;
-			    yield=true;
+			    yield=false;
 		      }
 		    }
 		  }
@@ -1492,7 +1507,7 @@ int CNewIde::DoClock() {
 		  SEL_STATUS(index).drive_ready=true; 
 		  SEL_STATUS(index).SERV=false;
 		  SEL_STATUS(index).CHK=false;
-		  SEL_STATUS(index).drq=false;
+		  SEL_STATUS(index).drq=false; // maybe true?
 		  raise_interrupt(index);
 		  SEL_COMMAND(index).command_in_progress=false;
 		  yield=true;
