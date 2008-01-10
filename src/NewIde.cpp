@@ -27,7 +27,12 @@
  * \file
  * Contains the code for the emulated Ali M1543C IDE chipset part.
  *
- * $Id: NewIde.cpp,v 1.4 2008/01/09 19:18:37 iamcamiel Exp $
+ * $Id: NewIde.cpp,v 1.5 2008/01/10 09:55:31 iamcamiel Exp $
+ *
+ * X-1.5         Brian Wheeler                                   10-JAN-2008
+ *   - Stop dividing get_lba_size() by 4 in ATAPI Get Capacity.  SRM can
+ *     now boot cdrom images correctly, and OSes can use cdroms effectively...
+ *     at least until they call an unimplemented SCSI command.
  *
  * X-1.4         Brian Wheeler                                   09-JAN-2008
  *   - During init, command_in_progress and command_cycle are cleared.
@@ -436,9 +441,9 @@ u32 CNewIde::ide_command_read(int index, u32 address, int dsize) {
 	    // machine before the host has a chance to do anything 
 	    // unexpected.
 	    SEL_STATUS(index).busy=true;
+        SEL_STATUS(index).drive_ready=false;
 #ifdef DEBUG_IDE_PACKET
 	    printf("%%IDE-I-READCMD:  Asserting Busy so we can resume ATAPI in state %s.\n",packet_states[SEL_COMMAND(index).packet_phase]);
-	    PAUSE("Enjoy the show.");
 #endif
       }
     }
@@ -571,7 +576,8 @@ void CNewIde::ide_command_write(int index, u32 address, int dsize, u32 data) {
       DoClock(); 
     } 
 
-    if(data & 0xf0 == 0x10) data = 0x10;
+    if((data & 0xf0) == 0x10)
+      data = 0x10;
     
     SEL_COMMAND(index).current_command=data;
     SEL_COMMAND(index).command_cycle=0;
@@ -773,8 +779,8 @@ void CNewIde::ide_busmaster_write(int index, u32 address, u32 data, int dsize)
   case 7:
     CONTROLLER(index).busmaster[address]=data;
     prd_address = cSystem->PCI_Phys(myPCIBus, *(u32 *)(&CONTROLLER(index).busmaster[4]));
-    base = cSystem->ReadMem(prd_address,32);
-    control = cSystem->ReadMem(prd_address+4,32);
+    base = (u32)cSystem->ReadMem(prd_address,32);
+    control = (u32)cSystem->ReadMem(prd_address+4,32);
 #ifdef DEBUG_IDE_BUSMASTER
     printf("%IDE-I-PRD: Virtual address: %" LL "x  \n",*(u32 *)(&CONTROLLER(index).busmaster[4]));
     printf("-IDE-I-PRD: Physical address: %" LL "x  \n",prd_address);
@@ -1376,8 +1382,8 @@ int CNewIde::DoClock() {
 		      break;
 
 		    case 0x25: // Read capacity
-		      *(u32 *)(&CONTROLLER(index).data[0]) = swap_32(((SEL_DISK(index)->get_lba_size())>>2)-1);
-		      *(u32 *)(&CONTROLLER(index).data[2]) = swap_32(2048);
+		      *(u32 *)(&CONTROLLER(index).data[0]) = swap_32(SEL_DISK(index)->get_lba_size()-1);
+		      *(u32 *)(&CONTROLLER(index).data[2]) = swap_32(SEL_DISK(index)->get_block_size());
 		      SEL_COMMAND(index).packet_phase = PACKET_DP34;
 		      SEL_REGISTERS(index).BYTE_COUNT=8; 
 		      CONTROLLER(index).data_size=4; // word count.
@@ -1507,7 +1513,7 @@ int CNewIde::DoClock() {
 		  SEL_STATUS(index).drive_ready=true; 
 		  SEL_STATUS(index).SERV=false;
 		  SEL_STATUS(index).CHK=false;
-		  SEL_STATUS(index).drq=false; // maybe true?
+		  SEL_STATUS(index).drq=false;
 		  raise_interrupt(index);
 		  SEL_COMMAND(index).command_in_progress=false;
 		  yield=true;
@@ -1544,7 +1550,7 @@ int CNewIde::DoClock() {
 	     0xc5: write multiple is mandatory for non-packet (no w/packet)
 	     0xc6: set multiple mode is mandatory for non-packet (no w/packet)
 	   */
-	case 0xc6:
+	case 0xc6: // write multiple
 	  if(SEL_DISK(index)->cdrom()) {
 	    command_aborted(index,SEL_COMMAND(index).current_command);
 	  } else {
@@ -1778,9 +1784,9 @@ int CNewIde::do_dma_transfer(int index, u8 *buffer, u32 buffersize, bool directi
 			      *(u32 *)(&CONTROLLER(index).busmaster[4]));
 	   
   do {
-    u32 base = cSystem->PCI_Phys(myPCIBus, cSystem->ReadMem(prd,32));
-    u32 size = cSystem->ReadMem(prd+4,16);
-    xfer = cSystem->ReadMem(prd+7,8);
+    u64 base = cSystem->PCI_Phys(myPCIBus, (u32)cSystem->ReadMem(prd,32));
+    u32 size = (u32)cSystem->ReadMem(prd+4,16);
+    xfer = (u8)cSystem->ReadMem(prd+7,8);
     if(size==0) 
       size=65536;
 
@@ -1799,11 +1805,11 @@ int CNewIde::do_dma_transfer(int index, u8 *buffer, u32 buffersize, bool directi
     
     // copy it to/from ram.
     if(!direction) {
-      for(int i=0;i<size;i++) 
+      for(u32 i=0;i<size;i++) 
 	cSystem->WriteMem(base+i,8,*buffer++);
     } else {
-      for(int i=0;i<size;i++) 
-	*buffer ++ = cSystem->ReadMem(base+i,8); 
+      for(u32 i=0;i<size;i++) 
+	*buffer ++ = (u8)cSystem->ReadMem(base+i,8); 
     }
     xfersize+=size;
     prd+=8; // go to next entry.

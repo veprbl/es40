@@ -30,7 +30,7 @@
  * You could read the documentation from this file; but it would probably
  * be easier to go to http://es40.sourceforge.net.
  *
- * $Id: dox.cpp,v 1.4 2008/01/08 19:07:14 iamcamiel Exp $
+ * $Id: dox.cpp,v 1.5 2008/01/10 09:55:31 iamcamiel Exp $
  *
  * \author Camiel Vanderhoeven (camiel@camicom.com / http://www.camicom.com)
  **/
@@ -186,20 +186,22 @@
  *
  * \subsection vms OpenVMS
  * Test 8.3
- *   - Using newide, all devices are recognized and use DMA mode.
+ *   - Using newide, all devices are recognized and use DMA mode, including CDs.
  *   - There is a permissions violation during install.  Do not abort it, and the
  *     install will work anyway. (note Camiel: differing results of installation
- *     reported. A lot seems to depend on timing.
+ *     reported. A lot seems to depend on timing.)
  *   .
  *
  * \subsection tru64 Tru64 Unix
  * Tested using 5.1B
  *   - Using the newide device:
- *       - Only slave devices are recognized
+ *       - Devices are probed correctly
  *       - DMA is supported
+ *       - CD-ROM devices crash es40 due to unhandled SCSI commands
  *       .
  *   - Using the ali_ide device
  *       - devices timeout on probe
+ *       .
  *   - ES40 crashes if ali_usb device is present, due to incomplete emulation.
  *   .
  *
@@ -207,13 +209,15 @@
  *
  * \subsection fbsd FreeBSD
  * Tested with 6.2
- *   - Using newide:  devices are not probed correctly.
+ *   - Using newide:  devices are probed and DMA is used.
+ *   - CD-ROM devices crash es40 due to unhandled SCSI commands
  *   .
  *
  * \subsection nbsd NetBSD
  * Tested 3.1.1
  *   - Panics if cirrus device is present.
  *   - Using newide, all devices are recognized and use DMA mode.
+ *   - CD-ROM devices seem to work for install.
  *   - Using ali_ide, all devices are recognized and pio mode is used.
  *   .
  *
@@ -228,8 +232,9 @@
  *
  * \section srm SRM
  * Ok, its not really an OS, but it acts like one.
- *   - Cannot boot CDROMs with newide device (timeouts)
+ *   - Can boot CDROMs with newide device (with cdrom=true)
  *   - Cannot boot CDROMs with ali_ide device (segfault)
  *   .
- * When booting CDROM-type media, set the disk is cdrom=false.
+ * When booting CDROM-type media with the ali_ide device,
+ * set the disk is cdrom=false.
  **/
