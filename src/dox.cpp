@@ -30,7 +30,7 @@
  * You could read the documentation from this file; but it would probably
  * be easier to go to http://es40.sourceforge.net.
  *
- * $Id: dox.cpp,v 1.5 2008/01/10 09:55:31 iamcamiel Exp $
+ * $Id: dox.cpp,v 1.6 2008/01/12 12:37:23 iamcamiel Exp $
  *
  * \author Camiel Vanderhoeven (camiel@camicom.com / http://www.camicom.com)
  **/
@@ -171,6 +171,7 @@
  *  - Programming Interface for Bus Master IDE COntroller (http://suif.stanford.edu/%7Ecsapuntz/specs/idems100.ps)
  *  - FDC37C669 PC 98/99 Compliant Super I/O Floppy Disk Controller (http://www.smsc.com/main/datasheets/37c669.pdf)
  *  - SCSI 2 (http://www.t10.org/ftp/t10/drafts/s2/s2-r10l.pdf)
+ *  - SCSI 3 Multimedia Commands (MMC) (http://www.t10.org/ftp/t10/drafts/mmc/mmc-r10a.pdf)
  *  - SYM53C895 PCI-Ultra2 SCSI I/O Processor (http://www.datasheet4u.com/html/S/Y/M/SYM53C895_LSILogic.pdf.html)
  *  - Ali M1543C B1 South Bridge Version 1.20 (http://mds.gotdns.com/sensors/docs/ali/1543dScb1-120.pdf)
  *  - VGADOC4b (http://home.worldonline.dk/~finth/)
