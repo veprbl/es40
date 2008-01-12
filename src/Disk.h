@@ -27,7 +27,11 @@
  * \file
  * Contains definitions for the disk base class.
  *
- * $Id: Disk.h,v 1.9 2008/01/09 10:13:58 iamcamiel Exp $
+ * $Id: Disk.h,v 1.10 2008/01/12 12:40:13 iamcamiel Exp $
+ *
+ * X-1.10       Camiel Vanderhoeven                             12-JAN-2008
+ *      Include SCSI engine, because this is common to both SCSI and ATAPI
+ *      devices.
  *
  * X-1.9        Camiel Vanderhoeven                             09-JAN-2008
  *      Save disk state to state file.
@@ -61,18 +65,30 @@
 #define __DISK_H__
 
 #include "DiskController.h"
+#include "SCSIDevice.h"
+#include "SCSIBus.h"
 
 /**
  * \brief Abstract base class for disks (connects to a CDiskController)
  **/
 
-class CDisk : public CSystemComponent
+class CDisk : public CSystemComponent, public CSCSIDevice
 {
 public:
   CDisk(CConfigurator * cfg, CSystem * sys, CDiskController * c, int idebus, int idedev);
   virtual ~CDisk(void);
   virtual int SaveState(FILE * f);
   virtual int RestoreState(FILE * f);
+
+  virtual void scsi_select_me(int bus);
+  virtual size_t scsi_expected_xfer_me(int bus);
+  virtual void * scsi_xfer_ptr_me(int bus, size_t bytes);
+  virtual void scsi_xfer_done_me(int bus);
+
+  void set_atapi_mode() { atapi_mode = true; };
+
+  int do_scsi_command();
+  int do_scsi_message();
 
   virtual bool seek_byte(off_t_large byte) = 0;
   virtual size_t read_bytes(void * dest, size_t bytes) = 0;
@@ -120,11 +136,68 @@ protected:
   off_t_large cylinders;
   long heads;
   long sectors;
+
+  bool atapi_mode;
   
+  /// The state structure contains all elements that need to be saved to the statefile
   struct SDisk_state
   {
-    size_t block_size;
-    off_t_large byte_pos;
+    size_t block_size;      /**< How many bytes there are in a physical disk block. **/
+    off_t_large byte_pos;   /**< Current byte position in the disk. **/
+
+    /// SCSI state for SCSI-connected disks
+    struct SDisk_scsi {
+      // State for Message In Phase (disk -> controller)
+      struct SDisk_msgi {
+        u8 data[256];             /**< Data buffer. **/
+        unsigned int available;   /**< Number of bytes available to read. **/
+        unsigned int read;        /**< Number of bytes read so far. **/
+      } msgi;
+
+      // State for Message Out Phase (controller -> disk)
+      struct SDisk_msgo {
+        u8 data[256];             /**< Data buffer. **/
+        unsigned int written;     /**< Number of bytes in buffer. **/
+      } msgo;
+
+      bool lun_selected;          /**< A LUN has been selected. CDisk doesn't support LUNs. **/
+
+      // state for Command phase (controller -> disk)
+      struct SDisk_cmd {
+        u8 data[256];             /**< Data buffer. **/
+        unsigned int written;     /**< Number of bytes in buffer. **/
+      } cmd;
+
+      // State for Data In phase (disk -> controller)
+      struct SDisk_dati {
+        u8 data[64*1024];         /**< Data buffer. **/
+        unsigned int available;   /**< Number of bytes available to read. **/
+        unsigned int read;        /**< Number of bytes read so far. **/
+      } dati;
+
+      // State for Data Out phase (controller -> disk)
+      struct SDisk_dato {
+        u8 data[64*1024];         /**< Data buffer. **/
+        unsigned int expected;    /**< Number of bytes the initiator is expected to write. **/
+        unsigned int written;     /**< Number of bytes written sofar. **/
+      } dato;
+
+      // State for Status phase (disk -> controller)
+      struct SDisk_stat {
+        u8 data[256];             /**< Data buffer. **/
+        unsigned int available;   /**< Number of bytes available to read. **/
+        unsigned int read;        /**< Number of bytes read so far. **/
+      } stat;
+
+      bool locked;                  /**< Media is locked (for CD-ROM type devices). **/
+
+      //bool disconnect_priv;       /**< Initiator has allowed us to disconnect/reconnect. **/
+      //bool will_disconnect;       /**< We intend to disconnect. **/
+      //bool disconnected;          /**< We have disconnected. **/
+      //bool reselected;            /**< We have reselected the initiator. **/
+      //int disconnect_phase;       /**< After we reconnect, we should go to this SCSI phase. **/
+    } scsi;
+
   } state;
 };
 
