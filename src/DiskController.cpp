@@ -27,6 +27,9 @@
  * \file
  * Contains definitions for the disk controller base class.
  *
+ * X-1.10       Brian Wheeler                                   12-JAN-2008
+ *      Avoid deleting Disk devices twice.
+ *
  * X-1.9        Camiel Vanderhoeven                             12-JAN-2008
  *      Made register_disk void and virtual.
  *
