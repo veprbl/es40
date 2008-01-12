@@ -27,6 +27,9 @@
  * \file
  * Contains definitions for the disk controller base class.
  *
+ * X-1.9        Camiel Vanderhoeven                             12-JAN-2008
+ *      Made register_disk void and virtual.
+ *
  * X-1.8        Camiel Vanderhoeven                             29-DEC-2007
  *      Fix memory-leak.
  *
@@ -78,13 +81,14 @@ CDiskController::~CDiskController(void)
   free(disks);
 }
 
-bool CDiskController::register_disk(class CDisk * dsk, int bus, int dev)
+void CDiskController::register_disk(class CDisk * dsk, int bus, int dev)
 {
-  if (bus>=num_bus) return false;
-  if (dev>=num_dev) return false;
+  if (bus>=num_bus) 
+    FAILURE("Can't register disk: bus number out of range");
+  if (dev>=num_dev)
+    FAILURE("Can't register disk: device number out of range");
 
   disks[bus*num_bus+dev] = dsk;
-  return true;
 }
 
 class CDisk * CDiskController::get_disk(int bus, int dev)

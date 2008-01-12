@@ -27,7 +27,10 @@
  * \file
  * Contains definitions for the disk controller base class.
  *
- * $Id: DiskController.h,v 1.2 2008/01/02 09:30:19 iamcamiel Exp $
+ * $Id: DiskController.h,v 1.3 2008/01/12 12:45:48 iamcamiel Exp $
+ *
+ * X-1.3        Camiel Vanderhoeven                             12-JAN-2008
+ *      Made register_disk void and virtual.
  *
  * X-1.2        Camiel Vanderhoeven                             02-JAN-2008
  *      Comments.
@@ -51,7 +54,7 @@ public:
   CDiskController(CConfigurator * cfg, CSystem * c, int pcibus, int pcidev, int num_busses, int num_devs);
   ~CDiskController(void);
 
-  bool register_disk(class CDisk * dsk, int bus, int dev);
+  virtual void register_disk(class CDisk * dsk, int bus, int dev);
   class CDisk * get_disk(int bus, int dev);
 
 private:
