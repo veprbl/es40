@@ -27,7 +27,13 @@
  * \file 
  * Contains the code for the emulated Typhoon Chipset devices.
  *
- * $Id: System.cpp,v 1.54 2008/01/09 21:04:09 iamcamiel Exp $
+ * $Id: System.cpp,v 1.55 2008/01/12 12:38:51 iamcamiel Exp $
+ *
+ * X-1.55       Camiel Vanderhoeven                             12-JAN-2008
+ *      Comments.
+ *
+ * X-1.54       Camiel Vanderhoeven                             09-JAN-2008
+ *      Let PtrToMemory return NULL when the address is out of range.
  *
  * X-1.53       Camiel Vanderhoeven                             08-JAN-2008
  *      Layout of comments.
@@ -302,7 +308,7 @@ CSystem::CSystem(CConfigurator * cfg)
 
   CHECK_ALLOCATION(memory = calloc(1<<iNumMemoryBits,1));
 
-  printf("%s(%s): $Id: System.cpp,v 1.54 2008/01/09 21:04:09 iamcamiel Exp $\n",cfg->get_myName(),cfg->get_myValue());
+  printf("%s(%s): $Id: System.cpp,v 1.55 2008/01/12 12:38:51 iamcamiel Exp $\n",cfg->get_myName(),cfg->get_myValue());
 }
 
 /**
