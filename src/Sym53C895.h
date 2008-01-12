@@ -27,7 +27,10 @@
  * \file
  * Contains the definitions for the emulated Symbios SCSI controller.
  *
- * $Id: Sym53C895.h,v 1.10 2008/01/06 10:38:32 iamcamiel Exp $
+ * $Id: Sym53C895.h,v 1.11 2008/01/12 12:42:09 iamcamiel Exp $
+ *
+ * X-1.11       Camiel Vanderhoeven                             12-JAN-2008
+ *      Use disk's SCSI engine.
  *
  * X-1.10       Camiel Vanderhoeven                             06-JAN-2008
  *      Leave changing the blocksize to the disk itself.
@@ -64,6 +67,7 @@
 #define INCLUDED_SYM53C895_H_
 
 #include "DiskController.h"
+#include "SCSIDevice.h"
 
 /**
  * \brief Symbios Sym53C895 SCSI disk controller.					 
@@ -71,14 +75,13 @@
  * \bug Exception below ASTDEL during OpenVMS boot when booting from SCSI.
  *
  * Documentation consulted:
- *  - SCSI 2
- *    (http://www.t10.org/ftp/t10/drafts/s2/s2-r10l.pdf)
- *  - SYM53C895 PCI-Ultra2 SCSI I/O Processor
- *    (http://www.datasheet4u.com/html/S/Y/M/SYM53C895_LSILogic.pdf.html)
+ *  - SCSI 2 (http://www.t10.org/ftp/t10/drafts/s2/s2-r10l.pdf)
+ *  - SCSI 3 Multimedia Commands (MMC) (http://www.t10.org/ftp/t10/drafts/mmc/mmc-r10a.pdf)
+ *  - SYM53C895 PCI-Ultra2 SCSI I/O Processor (http://www.datasheet4u.com/html/S/Y/M/SYM53C895_LSILogic.pdf.html)
  *  .
  **/
 
-class CSym53C895 : public CDiskController  
+class CSym53C895 : public CDiskController, public CSCSIDevice 
 {
  public:
   virtual int SaveState(FILE * f);
@@ -90,6 +93,8 @@ class CSym53C895 : public CDiskController
 
   virtual u32 config_read_custom(int func, u32 address, int dsize, u32 data);
   virtual void config_write_custom(int func, u32 address, int dsize, u32 old_data, u32 new_data, u32 data);
+
+  virtual void register_disk(class CDisk * dsk, int bus, int dev);
 
   CSym53C895(CConfigurator * cfg, class CSystem * c, int pcibus, int pcidev);
   virtual ~CSym53C895();
@@ -116,12 +121,12 @@ class CSym53C895 : public CDiskController
 
   int execute();
 
-  void select_target(int target);
-  void byte_to_target(u8 value);
-  u8 byte_from_target();
-  void end_xfer();
-  int do_command();
-  int do_message();
+//  void select_target(int target);
+//  void byte_to_target(u8 value);
+//  u8 byte_from_target();
+//  void end_xfer();
+//  int do_command();
+//  int do_message();
   void eval_interrupts();
   void set_interrupt(int reg, u8 interrupt);
   void chip_reset();
@@ -156,47 +161,9 @@ class CSym53C895 : public CDiskController
 
     long gen_timer;
 
-    int phase;
+    //int phase;
 
-    struct SSym_per_target {
-      // msgi: Message In Phase (disk -> controller)
-      u8 msgi[10];
-      unsigned int msgi_len;
-      unsigned int msgi_ptr;
 
-      // msgo: Message Out Phase (controller -> disk)
-      u8 msgo[10];
-      unsigned int msgo_len;
-
-      bool lun_selected;
-
-      // cmd: Command phase 
-      u8 cmd[20];
-      unsigned int cmd_len;
-      bool cmd_sent;
-
-      u8 dati[512];
-      unsigned int dati_ptr;
-      unsigned int dati_len;
-      bool dati_off_disk;
-
-      u8 dato[512];
-      unsigned int dato_ptr;
-      unsigned int dato_len;
-      bool dato_to_disk;
-
-      int stat[10];
-      unsigned int stat_ptr;
-      unsigned int stat_len;
-
-      bool disconnect_priv;
-      bool will_disconnect;
-      bool disconnected;
-      bool reselected;
-      int disconnect_phase;
-
-//      u32 block_size;
-    } per_target[16];
 
 
   } state;

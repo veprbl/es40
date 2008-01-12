@@ -27,7 +27,10 @@
  * \file
  * Contains the code for the emulated Symbios SCSI controller.
  *
- * $Id: Sym53C895.cpp,v 1.17 2008/01/06 10:38:32 iamcamiel Exp $
+ * $Id: Sym53C895.cpp,v 1.18 2008/01/12 12:42:09 iamcamiel Exp $
+ *
+ * X-1.18       Camiel Vanderhoeven                             12-JAN-2008
+ *      Use disk's SCSI engine.
  *
  * X-1.17       Camiel Vanderhoeven                             06-JAN-2008
  *      Leave changing the blocksize to the disk itself.
@@ -85,6 +88,7 @@
 #include "Sym53C895.h"
 #include "System.h"
 #include "Disk.h"
+#include "SCSIBus.h"
 
 #define R_SCNTL0      0x00
 #define R_SCNTL0_TRG        0x01
@@ -381,16 +385,20 @@ CSym53C895::CSym53C895(CConfigurator * cfg, CSystem * c, int pcibus, int pcidev)
   state.wait_reselect = false;
   state.irq_asserted = false;
   state.gen_timer = 0;
-  state.phase = -1;
   memset(state.regs.reg32,0,sizeof(state.regs.reg32));
   R8(CTEST3) = (u8)(pci_state.config_data[0][2]<<4) & R_CTEST3_REV; // Chip rev.
   R8(STEST4) = 0xC0 | 0x20; // LVD SCSI, Freq. Locked
 
-  printf("%s: $Id: Sym53C895.cpp,v 1.17 2008/01/06 10:38:32 iamcamiel Exp $\n",devid_string);
+  // create scsi bus
+  CSCSIBus * a = new CSCSIBus(cfg, c);
+  scsi_register(0, a, 7); // scsi id 7 by default
+
+  printf("%s: $Id: Sym53C895.cpp,v 1.18 2008/01/12 12:42:09 iamcamiel Exp $\n",devid_string);
 }
 
 CSym53C895::~CSym53C895()
 {
+  delete scsi_bus[0];
 }
 
 void CSym53C895::chip_reset()
@@ -402,6 +410,12 @@ void CSym53C895::chip_reset()
   memset(state.regs.reg32,0,sizeof(state.regs.reg32));
   R8(CTEST3) = (u8)(pci_state.config_data[0][2]<<4) & R_CTEST3_REV; // Chip rev.
   R8(STEST4) = 0xC0 | 0x20; // LVD SCSI, Freq. Locked
+}
+
+void CSym53C895::register_disk(class CDisk * dsk, int bus, int dev)
+{
+  CDiskController::register_disk(dsk, bus, dev);
+  dsk->scsi_register(0,scsi_bus[0],dev);
 }
 
 static u32 sym_magic1 = 0x53C895CC;
@@ -1047,12 +1061,10 @@ int CSym53C895::DoClock()
     }
   }
 
+ /**
+
   if (state.wait_reselect && PT.disconnected)
   {
-    // reselection
-    //printf("SYM: Reselection!\n");
-    //printf(">");
-    //getchar();
     state.executing = true;
     state.wait_reselect = false;
     PT.disconnected = false;
@@ -1068,7 +1080,9 @@ int CSym53C895::DoClock()
     //RAISE(SIST0,RSL);
     return 0;
   }
-  
+ 
+ **/
+
   if (state.disconnected)
   {
     if (!TB_R8(SCNTL2,SDU))
@@ -1140,18 +1154,21 @@ int CSym53C895::execute()
         bool table_indirect = (R8(DCMD)>>4) & 1;
         int opcode = (R8(DCMD)>>3) & 1;
         int scsi_phase = (R8(DCMD)>>0) & 7;
+        int real_phase = scsi_get_phase(0);
+
         //printf("SYM: INS = Block Move (i %d, t %d, opc %d, phase %d\n",indirect,table_indirect,opcode,scsi_phase);
 
-        if (state.phase < 0 && state.select_timeout)
+        if (real_phase == SCSI_PHASE_ARBITRATION)
         {
           // selection timeout...?
           //printf("Phase check... selection time-out!\n");
           RAISE(SIST1,STO); // select time-out
+          scsi_free(0);
           state.select_timeout = false;
           return 0;
         }
 
-        if (state.phase < 0 && state.disconnected)
+        if (real_phase == SCSI_PHASE_FREE && state.disconnected)
         {
           //printf("Phase check... disconnected!\n");
           state.disconnected = 1;
@@ -1159,8 +1176,7 @@ int CSym53C895::execute()
           return 0;
         }
 
-
-        if (state.phase == scsi_phase)
+        if (real_phase == scsi_phase)
         {
           //printf("SYM: Ready for transfer.\n");
 
@@ -1197,65 +1213,59 @@ int CSym53C895::execute()
             RAISE(DSTAT,IID); // page 5-32
             return 0;
           }
-          if (state.phase == 0 && PT.dato_to_disk)
+          if ((size_t)count > scsi_expected_xfer(0))
           {
-            //printf("SYM.%d PHASE %d: write %d bytes (%d blocks) to disk.\n",GET_DEST(),state.phase,count,count/PT.block_size);
-            if (count>PT.dato_len)
+            printf("SYM: attempt to xfer more bytes than expected.\n");
+            count = scsi_expected_xfer(0);
+          }
+          u8 * scsi_data_ptr = (u8*) scsi_xfer_ptr(0, count);
+          u8 * org_sdata_ptr = scsi_data_ptr;
+          u64  sys_data_addr = cSystem->PCI_Phys(myPCIBus,R32(DNAD));
+          u8 * sys_data_ptr  = (u8*) cSystem->PtrToMem(sys_data_addr);
+
+          switch (scsi_phase)
+          {
+          case SCSI_PHASE_COMMAND:
+          case SCSI_PHASE_DATA_OUT:
+          case SCSI_PHASE_MSG_OUT:
+            if (sys_data_ptr)
             {
-              //printf("SYM: attempt to write more bytes than expected.\n");
-              count = PT.dato_len;
+              memcpy(scsi_data_ptr,sys_data_ptr,count);
+              R32(DNAD) += count;
             }
-            cmda0 = cSystem->PCI_Phys(myPCIBus,R32(DNAD));
-            void * dptr = cSystem->PtrToMem(cmda0);
-            PTD->write_bytes(dptr,count);
-            PT.dato_len -= count;
-            PT.dato_ptr = PT.dato_len;
-
-            R32(DNAD) +=count;
-
-            //if (!PT.dato_len)
-            end_xfer();
-          }
-          else if (state.phase == 1 && PT.dati_off_disk)
-          {
-            //printf("SYM.%d PHASE %d: read %d bytes (%d blocks) from disk.\n",GET_DEST(),state.phase,count,count/PT.block_size);
-            cmda0 = cSystem->PCI_Phys(myPCIBus,R32(DNAD));
-            void * dptr = cSystem->PtrToMem(cmda0);
-            PTD->read_bytes(dptr,count);
-            PT.dati_len -= count;
-            PT.dati_ptr = PT.dati_len;
-            R32(DNAD) +=count;
-            //if (!PT.dati_len)
-            end_xfer();
-          }
-          else
-          {
-            //printf("SYM.%d PHASE %d: ",GET_DEST(),state.phase);
-            for (i=0;i<count;i++)
+            else
             {
-              u8 dat;
-              cmda0 = cSystem->PCI_Phys(myPCIBus,R32(DNAD)++);
-              if (state.phase>=0)
+              for (i=0;i<count;i++)
               {
-                if (state.phase & 1)
-                {
-                  dat = byte_from_target();
-                  if (i==0)
-                    R8(SFBR) = dat;
-                  //printf("%02x ",dat);
-                  cSystem->WriteMem(cmda0,8,dat);
-                }
-                else
-                {
-                  dat = (u8)cSystem->ReadMem(cmda0,8);
-                  //printf("%02x ",dat);
-                  byte_to_target(dat);
-                }
+                sys_data_addr = cSystem->PCI_Phys(myPCIBus,R32(DNAD));
+                *scsi_data_ptr = (u8) cSystem->ReadMem(sys_data_addr,8);
+                R32(DNAD)++;
+                scsi_data_ptr++;
               }
             }
-            //printf("\n");
-            end_xfer();
+            break;
+          case SCSI_PHASE_STATUS:
+          case SCSI_PHASE_DATA_IN:
+          case SCSI_PHASE_MSG_IN:
+            if (sys_data_ptr)
+            {
+              memcpy(sys_data_ptr,scsi_data_ptr,count);
+              R32(DNAD) += count;
+            }
+            else
+            {
+              for (i=0;i<count;i++)
+              {
+                sys_data_addr = cSystem->PCI_Phys(myPCIBus,R32(DNAD));
+                cSystem->WriteMem(sys_data_addr, 8, (u64) *scsi_data_ptr);
+                R32(DNAD)++;
+                scsi_data_ptr++;
+              }
+            }
+            break;
           }
+          R8(SFBR) = *org_sdata_ptr;
+          scsi_xfer_done(0);
           return 0;
         }
       }
@@ -1299,12 +1309,22 @@ int CSym53C895::execute()
           {
           case 0:
             //printf("SYM: %08x: SELECT %d.\n", R32(DSP)-8,destination);
-            select_target(destination);
+            SET_DEST(destination);
+            if (!scsi_arbitrate(0))
+            {
+              // scsi bus busy, try again next clock...
+              printf("scsi bus busy...\n");
+              R32(DSP) -= 8;
+              return 0;
+            }
+            state.select_timeout = !scsi_select(0, destination);
+            if (!state.select_timeout) // select ok
+              SB_R8(SCNTL2,SDU,true);  // don't expect a disconnect
             return 0;
           case 1:
             //printf("SYM: %08x: WAIT DISCONNECT\n", R32(DSP)-8);
             // maybe we need to do more??
-            state.phase = -1;
+            scsi_free(0);
             return 0;
 
           case 2:
@@ -1489,16 +1509,27 @@ int CSym53C895::execute()
           }
           if (cmp_phase)
           {
+            int real_phase = scsi_get_phase(0);
             //printf("(phase %s %d)",jump_if?"==":"!=", scsi_phase);
-            if (state.phase < 0 && state.select_timeout)
+            if (real_phase == SCSI_PHASE_ARBITRATION)
             {
               // selection timeout...?
               //printf("Phase check... selection time-out!\n");
               RAISE(SIST1,STO); // select time-out
+              scsi_free(0);
               state.select_timeout = false;
               return 0;
             }
-            if ((state.phase==scsi_phase) != jump_if)
+
+            if (real_phase == SCSI_PHASE_FREE && state.disconnected)
+            {
+              //printf("Phase check... disconnected!\n");
+              state.disconnected = 1;
+              R32(DSP)-=8;
+              return 0;
+            }
+
+            if ((real_phase==scsi_phase) != jump_if)
               do_it = false;
           }
         }
@@ -1627,869 +1658,6 @@ int CSym53C895::execute()
     }
     return 1;
 }
-
-void CSym53C895::select_target(int target)
-{
-  if (state.phase>=0)
-    return;
-
-  SET_DEST(target);
-  if (PTD)
-  {
-    state.select_timeout = false;
-    state.phase = 6; // message out
-    PT.msgo_len = 0;
-    PT.msgi_len = 0;
-    PT.cmd_len = 0;
-    PT.dati_len = 0;
-    PT.dato_len = 0;
-    PT.stat_len = 0;
-    PT.dati_off_disk = false;
-    PT.dato_to_disk = false;
-    PT.lun_selected = false;
-    PT.cmd_sent = false;
-    PT.disconnect_priv = false;
-    PT.will_disconnect = false;
-    PT.disconnected = false;
-    // don't expect a disconnect.
-    SB_R8(SCNTL2,SDU,true);
-  }
-  else
-  {
-//    RAIDE(SIST1,STO); // select time-out
-    state.select_timeout = true;
-    state.phase = -1; // bus free
-  }
-}
-
-void CSym53C895::byte_to_target(u8 value)
-{
-  switch (state.phase)
-  {
-  case 0:
-    PT.dato[PT.dato_len++] = value;
-    break;
-
-  case 2:
-    PT.cmd[PT.cmd_len++] = value;
-    break;
-
-  case 6:
-    // message out
-    PT.msgo[PT.msgo_len++] = value;
-    break;
-
-  default:
-    printf("byte written in phase %d\n",state.phase);
-    throw((int)1);
-  }
-}
-
-u8 CSym53C895::byte_from_target()
-{
-  u8 retval = 0;
-
-  switch (state.phase)
-  {
-  case 1:
-    if (!PT.dati_len)
-    {
-      printf("Try to read DATA IN without data!\n");
-      break;
-    }
-    retval = PT.dati[PT.dati_ptr++];
-    if (PT.dati_ptr==PT.dati_len)
-    {
-      PT.dati_ptr = 0;
-      PT.dati_len = 0;
-    }
-    break;
-
-  case 3:
-    if (!PT.stat_len)
-    {
-      printf("Try to read STATUS without data!\n");
-      break;
-    }
-    retval = PT.stat[PT.stat_ptr++];
-    if (PT.stat_ptr==PT.stat_len)
-    {
-      PT.stat_ptr = 0;
-      PT.stat_len = 0;
-    }
-    break;
-
-  case 7:
-    if (PT.reselected)
-    {
-      retval = 0x80; // identify
-      break;
-    }
-
-    if (PT.disconnected)
-    {
-      if (!PT.dati_ptr)
-        retval = 0x04; // disconnect
-      else
-      {
-        if (PT.msgi_ptr==0)
-        {
-          retval = 0x02; // save data pointer
-          PT.msgi_ptr=1;
-        }
-        else if (PT.msgi_ptr==1)
-        {
-          retval = 0x04; // disconnect
-          PT.msgi_ptr=0;
-        }
-      }
-      break;
-    }
-
-    if (!PT.msgi_len)
-    {
-      printf("Try to read MESSAGE IN without data!\n");
-      break;
-    }
-    retval = PT.msgi[PT.msgi_ptr++];
-    if (PT.msgi_ptr==PT.msgi_len)
-    {
-      PT.msgi_len = 0;
-      PT.msgi_ptr = 0;
-    }
-    break;
-
-  default:
-    printf("byte requested in phase %d\n",state.phase);
-    throw((int)1);
-  }
-  return retval;
-}
-
-void CSym53C895::end_xfer()
-{
-  int res;
-  int newphase = state.phase;
-
-  switch (state.phase)
-  {
-  case 6: // msg out
-    PT.cmd_len = 0;
-    PT.dato_len = 0;
-    newphase = do_message(); // command
-    break;
-
-  case 2: // command;
-    res = do_command();
-    if (res == 2 || PT.dato_to_disk)
-      newphase = 0; // data out
-    else if (PT.dati_len)
-      newphase = 1; // data in
-    else
-      newphase = 3; // status
-    break;
-
-  case 0: // data out;
-    if (!PT.dato_to_disk)
-    {
-      res = do_command();
-      if (res == 2)
-        FAILURE("do_command returned 2 after DATA OUT phase");
-    }
-    else if(!PT.dato_len)
-      PT.dato_to_disk = false;
-    else
-      break;
-
-    if (PT.dati_len)
-      newphase = 1; // data in
-    else
-      newphase = 3; // status
-    break;
-
-  case 1: // data in
-    //PT.dati_off_disk = false;
-    if (!PT.dati_len)
-    {
-      PT.dati_off_disk = false;
-      newphase = 3; // status
-    }
-    break;
- 
-  case 3: // status
-    if (!PT.stat_len)
-      newphase = 7; // message in
-    break;
-
-  case 7: // message in
-    if (PT.reselected)
-    {
-      PT.reselected = false;
-      newphase = PT.disconnect_phase;
-    }
-    else if (PT.disconnected)
-    {
-      if (!PT.msgi_ptr)
-        newphase = -1;
-    }
-    else if (!PT.msgi_len)
-    {
-      if (PT.cmd_sent)
-        newphase = -1;
-      else
-        newphase = 2;
-    }
-    break;
-  }
-
-  // if data in and can disconnect...
-  if (state.phase!=7 && newphase==1 && PT.will_disconnect && !PT.disconnected)
-  {
-    //printf("SYM: Disconnecting now...\n");
-    PT.disconnected = true;
-    PT.disconnect_phase = newphase;
-    newphase = 7; // msg in
-  }
-
-  if (newphase != state.phase)
-  {
-    //printf("SYM: Transition from phase %d to phase %d.\n",state.phase,newphase);
-
-    if (newphase==-1)
-    {
-      //printf("SYM: Disconnect. Timer started!\n");
-      // disconnect. generate interrupt?
-      state.disconnected = 20;
-    }
-
-    state.phase = newphase;
-  }
-  //getchar();
-}
-
-/*
- *  SCSI commands: 
- */
-#define	SCSICMD_TEST_UNIT_READY		0x00	/*  Mandatory  */
-#define	SCSICMD_REQUEST_SENSE		0x03	/*  Mandatory  */
-#define	SCSICMD_INQUIRY			0x12	/*  Mandatory  */
-
-#define	SCSICMD_READ			0x08
-#define	SCSICMD_READ_10			0x28
-#define	SCSICMD_WRITE			0x0a
-#define	SCSICMD_WRITE_10		0x2a
-#define	SCSICMD_MODE_SELECT		0x15
-#define	SCSICMD_MODE_SENSE		0x1a
-#define	SCSICMD_START_STOP_UNIT		0x1b
-#define	SCSICMD_PREVENT_ALLOW_REMOVE	0x1e
-#define	SCSICMD_MODE_SENSE10		0x5a
-
-#define	SCSICMD_SYNCHRONIZE_CACHE	0x35
-
-/*  SCSI block device commands:  */
-#define	SCSIBLOCKCMD_READ_CAPACITY	0x25
-
-/*  SCSI CD-ROM commands:  */
-#define	SCSICDROM_READ_SUBCHANNEL	0x42
-#define	SCSICDROM_READ_TOC		0x43
-#define	SCSICDROM_READ_DISCINFO		0x51
-#define	SCSICDROM_READ_TRACKINFO	0x52
-
-/*  SCSI tape commands:  */
-#define	SCSICMD_REWIND			0x01
-#define	SCSICMD_READ_BLOCK_LIMITS	0x05
-#define	SCSICMD_SPACE			0x11
-
-int CSym53C895::do_command()
-{
-  unsigned int retlen;
-  int q;
-  int pagecode;
-  u32 ofs;
-
-  PT.cmd_sent = true;
-
-  //printf("SYM.%d: %d-byte command ",GET_DEST(),PT.cmd_len);
-  //for (unsigned int x=0;x<PT.cmd_len;x++) printf("%02x ",PT.cmd[x]);
-  //printf("\n");
-
-  if (PT.cmd_len<1)
-    return 0;
-
-  if (PT.cmd[1] & 0xe0)
-  {
-    //printf("SYM: LUN selected...\n");
-    PT.lun_selected = true;
-  }
-
-  if (PT.lun_selected && PT.cmd[0] != SCSICMD_INQUIRY && PT.cmd[0] != SCSICMD_REQUEST_SENSE)
-  {
-    printf("SYM: LUN not supported!\n");
-    //printf(">");
-    //getchar();
-  }
-
-  switch(PT.cmd[0])
-  {
-  case SCSICMD_TEST_UNIT_READY:
-    //printf("SYM.%d: TEST UNIT READY.\n",GET_DEST());
-    //if (PT.cmd_len != 6)
-	//  printf("Weird cmd_len=%d.\n", PT.cmd_len);
-	if (PT.cmd[1] != 0x00) 
-    {
-      printf("SYM: Don't know how to handle TEST UNIT READY with cmd[1]=0x%02x.\n", PT.cmd[1]);
-      break;
-	}
-    
-    PT.stat_len = 1;
-    PT.stat[0] = 0;
-    PT.stat_ptr = 0;
-    PT.msgi_len = 1;
-    PT.msgi[0] = 0;
-    PT.msgi_ptr = 0;
-    break;
-
-  case SCSICMD_INQUIRY:
-    {
-      //printf("SYM.%d: INQUIRY.\n",GET_DEST());
-      //if (PT.cmd_len != 6)
-	  //  printf("Weird cmd_len=%d.\n", PT.cmd_len);
-	  if ((PT.cmd[1] & 0x1e) != 0x00) 
-      {
-        printf("SYM: Don't know how to handle INQUIRY with cmd[1]=0x%02x.\n", PT.cmd[1]);
-        //printf(">");
-        //getchar();
-        break;
-	  }
-      u8 qual_dev = PT.lun_selected ? 0x7F : (PTD->cdrom() ? 0x05 : 0x00);
-
-      retlen = PT.cmd[4];
-      PT.dati[0] = qual_dev; // device type
-
-      if (PT.cmd[1] & 0x01)
-      {
-        // Vital Product Data
-        if (PT.cmd[2] == 0x80)
-        {
-          char serial_number[20];
-          sprintf(serial_number,"SRL%04x",GET_DEST()*0x0101);
-          // unit serial number page
-          PT.dati[1] = 0x80; // page code: 0x80
-          PT.dati[2] = 0x00; // reserved
-          PT.dati[3] = (u8)strlen(serial_number);
-          memcpy(&PT.dati[4],serial_number,strlen(serial_number));
-        }
-        else
-        {
-          //printf("Don't know format for vital product data page %02x!!\n",PT.cmd[2]);
-          //printf(">");
-          //getchar();
-          PT.dati[1] = PT.cmd[2]; // page code
-          PT.dati[2] = 0x00; // reserved
-        }
-      }
-      else
-      {
-        /*  Return values:  */
-        if (retlen < 36) {
-	        printf("SYM: SCSI inquiry len=%i, <36!\n", retlen);
-	        retlen = 36;
-        }
-        PT.dati[1] = 0; // not removable;
-        PT.dati[2] = 0x02; // ANSI scsi 2
-        PT.dati[3] = 0x02; // response format
-        PT.dati[4] = 32; // additional length
-        PT.dati[5] = 0; // reserved
-        PT.dati[6] = 0x04; // reserved
-        PT.dati[7] = 0x60; // capabilities
-    //                        vendor  model           rev.
-        memcpy(&(PT.dati[8]),"DEC     RZ58     (C) DEC2000",28);
-
-        /*  Some data is different for CD-ROM drives:  */
-        if (PTD->cdrom()) {
-          PT.dati[1] = 0x80;  /*  0x80 = removable  */
-    //                           vendor  model           rev.
-	      memcpy(&(PT.dati[8]), "DEC     RRD42   (C) DEC 4.5d",28);
-        }
-      }
-
-      PT.dati_ptr = 0;
-      PT.dati_len = retlen;
-
-      PT.stat_len = 1;
-      PT.stat[0] = 0;
-      PT.stat_ptr = 0;
-      PT.msgi_len = 1;
-      PT.msgi[0] = 0;
-      PT.msgi_ptr = 0;
-    }
-    break;
-
-  case SCSICMD_MODE_SENSE:
-  case SCSICMD_MODE_SENSE10:	
-    //printf("SYM.%d: MODE SENSE.\n",GET_DEST());
-	q = 4; retlen = PT.cmd[4];
-	switch (PT.cmd_len) {
-	case 6:	break;
-	case 10:q = 8;
-		retlen = PT.cmd[7] * 256 + PT.cmd[8];
-		break;
-	default:
-	  printf("Weird cmd_len=%d.\n", PT.cmd_len);
-      throw((int)1);
-	}
-
-	if ((PT.cmd[2] & 0xc0) != 0)
-    {
-      printf(" mode sense, cmd[2] = 0x%02x.\n", PT.cmd[2]);
-      throw((int)1);
-    }
-
-	/*  Return data:  */
-
-    PT.dati_len = retlen;	/*  Restore size.  */
-
-	pagecode = PT.cmd[2] & 0x3f;
-
-	//printf("[ MODE SENSE pagecode=%i ]\n", pagecode);
-
-	/*  4 bytes of header for 6-byte command,
-	    8 bytes of header for 10-byte command.  */
-    PT.dati[0] = retlen;	/*  0: mode data length  */
-    PT.dati[1] = PTD->cdrom() ? 0x05 : 0x00;
-			/*  1: medium type  */
-	PT.dati[2] = 0x00;	/*  device specific
-					    parameter  */
-	PT.dati[3] = 8 * 1;	/*  block descriptor
-					    length: 1 page (?)  */
-
-	PT.dati[q+0] = 0x00;	/*  density code  */
-	PT.dati[q+1] = 0;	/*  nr of blocks, high  */
-	PT.dati[q+2] = 0;	/*  nr of blocks, mid  */
-	PT.dati[q+3] = 0;	/*  nr of blocks, low */
-	PT.dati[q+4] = 0x00;	/*  reserved  */
-    PT.dati[q+5] = (u8)(PTD->get_block_size() >> 16) & 255;
-	PT.dati[q+6] = (u8)(PTD->get_block_size() >>  8) & 255;
-	PT.dati[q+7] = (u8)(PTD->get_block_size() >>  0) & 255;
-	q += 8;
-
-    PT.stat_len = 1;
-    PT.stat[0] = 0;
-    PT.stat_ptr = 0;
-    PT.msgi_len = 1;
-    PT.msgi[0] = 0;
-    PT.msgi_ptr = 0;
-
-	/*  descriptors, 8 bytes (each)  */
-
-	/*  page, n bytes (each)  */
-	switch (pagecode) {
-	case 0:
-		/*  TODO: Nothing here?  */
-		break;
-	case 1:		/*  read-write error recovery page  */
-		PT.dati[q + 0] = pagecode;
-		PT.dati[q + 1] = 10;
-		break;
-	case 3:		/*  format device page  */
-		PT.dati[q + 0] = pagecode;
-		PT.dati[q + 1] = 22;
-
-		/*  10,11 = sectors per track  */
-		PT.dati[q + 10] = 0;
-        PT.dati[q + 11] = (u8)PTD->get_sectors();
-
-		/*  12,13 = physical sector size  */
-		PT.dati[q + 12] = (u8)(PTD->get_block_size() >> 8) & 255;
-		PT.dati[q + 13] = (u8)(PTD->get_block_size() >> 0) & 255;
-		break;
-	case 4:		/*  rigid disk geometry page  */
-		PT.dati[q + 0] = pagecode;
-		PT.dati[q + 1] = 22;
-        PT.dati[q + 2] = (u8)(PTD->get_cylinders() >> 16) & 255;
-		PT.dati[q + 3] = (u8)(PTD->get_cylinders() >> 8) & 255;
-        PT.dati[q + 4] = (u8)PTD->get_cylinders() & 255;
-        PT.dati[q + 5] = (u8)PTD->get_heads();
-
-        //rpms
-		PT.dati[q + 20] = (7200 >> 8) & 255;
-		PT.dati[q + 21] = 7200 & 255;
-		break;
-	case 5:		/*  flexible disk page  */
-		PT.dati[q + 0] = pagecode;
-		PT.dati[q + 1] = 0x1e;
-
-		/*  2,3 = transfer rate  */
-		PT.dati[q + 2] = ((5000) >> 8) & 255;
-		PT.dati[q + 3] = (5000) & 255;
-
-		PT.dati[q + 4] = (u8)PTD->get_heads();
-		PT.dati[q + 5] = (u8)PTD->get_sectors();
-
-		/*  6,7 = data bytes per sector  */
-		PT.dati[q + 6] = (u8)(PTD->get_block_size() >> 8) & 255;
-		PT.dati[q + 7] = (u8)(PTD->get_block_size() >> 0) & 255;
-
-		PT.dati[q + 8] = (u8)(PTD->get_cylinders() >> 8) & 255;
-		PT.dati[q + 9] = (u8)PTD->get_cylinders() & 255;
-
-        //rpms
-		PT.dati[q + 28] = (7200 >> 8) & 255;
-		PT.dati[q + 29] = 7200 & 255;
-		break;
-	default:
-		printf("[ MODE_SENSE for page %i is not yet implemented! ]\n", pagecode);
-        throw((int)1);
-	}
-	break;
-
-  case SCSICMD_PREVENT_ALLOW_REMOVE:
-    //if (PT.cmd_len != 6)
-	//  printf("Weird cmd_len=%d.\n", PT.cmd_len);
-
-    //if (PT.cmd[4] & 1)
-    //  printf("SYM.%d: PREVENT MEDIA REMOVAL.\n",GET_DEST());
-    //else
-    //  printf("SYM.%d: ALLOW MEDIA REMOVAL.\n",GET_DEST());
-    
-    PT.stat_len = 1;
-    PT.stat[0] = 0;
-    PT.stat_ptr = 0;
-    PT.msgi_len = 1;
-    PT.msgi[0] = 0;
-    PT.msgi_ptr = 0;
-    break;
-
-  case SCSICMD_MODE_SELECT:
-    // get data out first...
-    if (PT.dato_len==0)
-      return 2;
-
-    //printf("SYM.%d: MODE SELECT.\n",GET_DEST());
-
-    if (   PT.cmd_len == 6 
-        && PT.dato_len == 12 
-        && PT.dato[0] == 0x00 // data length
-        //&& PT.dato[1] == 0x05 // medium type - ignore
-        && PT.dato[2] == 0x00 // dev. specific
-        && PT.dato[3] == 0x08 // block descriptor length
-        && PT.dato[4] == 0x00 // density code
-        && PT.dato[5] == 0x00 // all blocks
-        && PT.dato[6] == 0x00 // all blocks
-        && PT.dato[7] == 0x00 // all blocks
-        && PT.dato[8] == 0x00) // reserved
-    {
-      PTD->set_block_size( (PT.dato[9]<<16) | (PT.dato[10]<<8) | PT.dato[11] );
-      //printf("SYM%d: Block size set to %d.\n",GET_DEST(),PTD->get_block_size());
-    }
-    else
-    {
-	  unsigned int x;
-      printf("SYM: MODE SELECT ignored.\nCommand: ");
-      for(x=0; x<PT.cmd_len; x++) printf("%02x ",PT.cmd[x]);
-      printf("\nData: ");
-      for(x=0; x<PT.dato_len; x++) printf("%02x ",PT.dato[x]);
-      printf("\nThis might be an attempt to change our blocksize or something like that...\nPlease check the above data, then press enter.\n>");
-      getchar();
-    }
-
-    // ignore it...
-
-    PT.stat_len = 1;
-    PT.stat[0] = 0;
-    PT.stat_ptr = 0;
-    PT.msgi_len = 1;
-    PT.msgi[0] = 0;
-    PT.msgi_ptr = 0;
-	break;
-
-  case SCSIBLOCKCMD_READ_CAPACITY:
-    //printf("SYM.%d: READ CAPACITY.\n",GET_DEST());
-    //if (PT.cmd_len != 10)
-	//  printf("Weird cmd_len=%d.\n", PT.cmd_len);
-	if (PT.cmd[8] & 1) 
-    {
-      printf("SYM: Don't know how to handle READ CAPACITY with PMI bit set.\n");
-      break;
-	}
-
-    PT.dati[0] = (u8)((PTD->get_lba_size()) >> 24) & 255;
-	PT.dati[1] = (u8)((PTD->get_lba_size()) >> 16) & 255;
-	PT.dati[2] = (u8)((PTD->get_lba_size()) >>  8) & 255;
-	PT.dati[3] = (u8)((PTD->get_lba_size()) >>  0) & 255;
-
-	PT.dati[4] = (u8)(PTD->get_block_size() >> 24) & 255;
-	PT.dati[5] = (u8)(PTD->get_block_size() >> 16) & 255;
-	PT.dati[6] = (u8)(PTD->get_block_size() >>  8) & 255;
-	PT.dati[7] = (u8)(PTD->get_block_size() >>  0) & 255;
-
-    PT.dati_len = 8;
-
-    PT.stat_len = 1;
-    PT.stat[0] = 0;
-    PT.stat_ptr = 0;
-    PT.msgi_len = 1;
-    PT.msgi[0] = 0;
-    PT.msgi_ptr = 0;
-	break;
-
-  case SCSICMD_READ:
-  case SCSICMD_READ_10:
-    //printf("SYM.%d: READ.\n",GET_DEST());
-    if (PT.disconnect_priv)
-    {
-      //printf("SYM: Will disconnect before returning read data.\n");
-      PT.will_disconnect = true;
-    }
-    if (PT.cmd[0] == SCSICMD_READ)
-    {
-      //if (PT.cmd_len != 6)
-	  //  printf("Weird cmd_len=%d.\n", PT.cmd_len);
-	  /*
-	   *  bits 4..0 of cmd[1], and cmd[2] and cmd[3]
-	   *  hold the logical block address.
-	   *
-	   *  cmd[4] holds the number of logical blocks
-	   *  to transfer. (Special case if the value is
-	   *  0, actually means 256.)
-	   */
-	  ofs = ((PT.cmd[1] & 0x1f) << 16) + (PT.cmd[2] << 8) + PT.cmd[3];
-	  retlen = PT.cmd[4];
-	  if (retlen == 0)
-		retlen = 256;
-	} 
-    else 
-    {
-      //if (PT.cmd_len != 10)
-	  //  printf("Weird cmd_len=%d.\n", PT.cmd_len);
-	  /*
-	   *  cmd[2..5] hold the logical block address.
-	   *  cmd[7..8] holds the number of logical
-	   *  blocks to transfer. (NOTE: If the value is
-	   *  0, this means 0, not 65536. :-)
-	   */
-	  ofs = (PT.cmd[2] << 24) + (PT.cmd[3] << 16) + (PT.cmd[4] << 8) + PT.cmd[5];
-      retlen = (PT.cmd[7] << 8) + PT.cmd[8];
-
-	}
-
-    PT.stat_len = 1;
-    PT.stat[0] = 0;
-    PT.stat_ptr = 0;
-    PT.msgi_len = 1;
-    PT.msgi[0] = 0;
-    PT.msgi_ptr = 0;
-
-    /* Within bounds? */
-    if ((ofs+retlen) > PTD->get_lba_size())
-    {
-      PT.stat[0] = 0x02; // check condition
-      break;
-    }
-
-	/*  Return data:  */
-    PTD->seek_block(ofs);
-    PT.dati_len = retlen * PTD->get_block_size();
-    PT.dati_off_disk = true;
-
-	//printf("SYM.%d READ  ofs=%d size=%d\n", GET_DEST(), ofs, retlen);
-    //getchar();
-	break;
-
-  case SCSICMD_WRITE:
-  case SCSICMD_WRITE_10:
-    //printf("SYM.%d: WRITE.\n",GET_DEST());
-    if (PT.cmd[0] == SCSICMD_WRITE)
-    {
-      //if (PT.cmd_len != 6)
-	  //  printf("Weird cmd_len=%d.\n", PT.cmd_len);
-	  /*
-	   *  bits 4..0 of cmd[1], and cmd[2] and cmd[3]
-	   *  hold the logical block address.
-	   *
-	   *  cmd[4] holds the number of logical blocks
-	   *  to transfer. (Special case if the value is
-	   *  0, actually means 256.)
-	   */
-	  ofs = ((PT.cmd[1] & 0x1f) << 16) + (PT.cmd[2] << 8) + PT.cmd[3];
-	  retlen = PT.cmd[4];
-	  if (retlen == 0)
-		retlen = 256;
-	} 
-    else 
-    {
-      //if (PT.cmd_len != 10)
-	  //  printf("Weird cmd_len=%d.\n", PT.cmd_len);
-	  /*
-	   *  cmd[2..5] hold the logical block address.
-	   *  cmd[7..8] holds the number of logical
-	   *  blocks to transfer. (NOTE: If the value is
-	   *  0, this means 0, not 65536. :-)
-	   */
-	  ofs = (PT.cmd[2] << 24) + (PT.cmd[3] << 16) + (PT.cmd[4] << 8) + PT.cmd[5];
-      retlen = (PT.cmd[7] << 8) + PT.cmd[8];
-	}
-
-    PT.stat_len = 1;
-    PT.stat[0] = 0;
-    PT.stat_ptr = 0;
-    PT.msgi_len = 1;
-    PT.msgi[0] = 0;
-    PT.msgi_ptr = 0;
-
-    /* Within bounds? */
-    if (((ofs+retlen)) > PTD->get_lba_size())
-    {
-      PT.stat[0] = 0x02; // check condition
-      break;
-    }
-
-	/*  Return data:  */
-    PTD->seek_block(ofs);
-    PT.dato_len = retlen * PTD->get_block_size();
-    PT.dato_to_disk = true;
-
-	//printf("SYM.%d WRITE  ofs=%d size=%d\n", GET_DEST(), ofs, retlen);
-    //getchar();
-	break;
-
-  case SCSICMD_SYNCHRONIZE_CACHE:
-    //printf("SYM.%d: SYNCHRONIZE CACHE.\n",GET_DEST());
-    //if (PT.cmd_len != 10)
-	//  printf("Weird cmd_len=%d.\n", PT.cmd_len);
-    
-    PT.stat_len = 1;
-    PT.stat[0] = 0;
-    PT.stat_ptr = 0;
-    PT.msgi_len = 1;
-    PT.msgi[0] = 0;
-    PT.msgi_ptr = 0;
-    break;
-
-  case SCSICDROM_READ_TOC:
-    //printf("SYM.%d: CDROM READ TOC.\n",GET_DEST());
-    //if (PT.cmd_len != 10)
-	//  printf("Weird cmd_len=%d.\n", PT.cmd_len);
-
-    retlen = PT.cmd[7]*256 + PT.cmd[8];
-
-    PT.dati_len = retlen;
-    PT.dati_ptr = 0;
-    retlen -=2;
-    if (retlen>10) 
-      retlen = 10; 
-    else 
-      retlen = 2;
-    
-    PT.dati[0] = (retlen>>8) & 0xff;
-    PT.dati[1] = (retlen>>0) & 0xff;
-    PT.dati[2] = 1; // first track
-    PT.dati[3] = 1; // second track
-
-    if (retlen==10)
-    {
-      PT.dati[4] = 0;
-      PT.dati[2] = PT.cmd[6];
-      if (PT.cmd[6]==1)
-        printf("SYM%d: Don't know how to return info on CDROM track %02x.\n",GET_DEST(),PT.cmd[6]);
-      else if (PT.cmd[6] == 0xAA)
-        printf("SYM%d: Don't know how to return info on CDROM leadout track %02x.\n",GET_DEST(),PT.cmd[6]);
-      else
-        printf("SYM%d: Unknown CDROM track %02x.\n",GET_DEST(),PT.cmd[6]);
-    }
-    
-    PT.stat_len = 1;
-    PT.stat[0] = 0;
-    PT.stat_ptr = 0;
-    PT.msgi_len = 1;
-    PT.msgi[0] = 0;
-    PT.msgi_ptr = 0;
-    break;
-
-  default:
-    printf("SYM: Unknown SCSI command 0x%02x.\n",PT.cmd[0]);
-    //printf(">");
-    //getchar();
-    throw((int)1);
-  }
-  return 0;
-}
-
-int CSym53C895::do_message()
-{
-  unsigned int msg;
-  unsigned int msglen;
-
-  msg = 0;
-  while (msg<PT.msgo_len)
-  {
-    if (PT.msgo[msg] & 0x80)
-    {
-      // identify
-      //printf("SYM.%d: MSG: identify.\n",GET_DEST());
-      if (PT.msgo[msg] & 0x40)
-      {
-        //printf("SYM.%d: MSG: disconnect priv.\n",GET_DEST());
-        PT.disconnect_priv = true;
-      }
-      if (PT.msgo[msg] & 0x07)
-      {
-      // LUN...
-        //printf("SYM.%d: MSG: LUN selected.\n",GET_DEST());
-        PT.lun_selected = true;
-      }
-      msg++;
-    }
-    else
-    {
-      switch (PT.msgo[msg])
-      {
-      case 0x01:
-        //printf("SYM.%d: MSG: extended.\n",GET_DEST());
-        msglen = PT.msgo[msg+1];
-        msg += 2;
-        switch (PT.msgo[msg])
-        {
-        case 0x01:
-			{
-          //printf("SYM.%d: MSG: SDTR.\n",GET_DEST());
-          PT.msgi_len = msglen+2;
-          PT.msgi[0] = 0x01;
-          PT.msgi[1] = msglen;
-          for (unsigned int x=0;x<msglen;x++)
-            PT.msgi[2+x] =PT.msgo[msg+x];
-			}
-          break;
-        case 0x03:
-			{
-          //printf("SYM.%d: MSG: WDTR.\n",GET_DEST());
-          PT.msgi_len = msglen+2;
-          PT.msgi[0] = 0x01;
-          PT.msgi[1] = msglen;
-          for (unsigned int x=0;x<msglen;x++)
-            PT.msgi[2+x] =PT.msgo[msg+x];
-			}
-          break;
-        default:
-          printf("SYM.%d: MSG: don't understand extended message %02x.\n",GET_DEST(),PT.msgo[msg]);
-	      throw((int)1);
-		}
-        msg += msglen;
-        break;
-      default:
-        printf("SYM.%d: MSG: don't understand message %02x.\n",GET_DEST(),PT.msgo[msg]);
-	    throw((int)1);
-      }
-    }
-  }
-
-  // return next phase
-  if (PT.msgi_len)
-    return 7; // msgi
-  else
-    return 2; // command
-}
-
 
 void CSym53C895::set_interrupt(int reg, u8 interrupt)
 {
