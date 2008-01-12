@@ -27,7 +27,10 @@
  * \file
  * Contains definitions to use a RAM disk.
  *
- * $Id: DiskRam.h,v 1.8 2008/01/09 10:13:58 iamcamiel Exp $
+ * $Id: DiskRam.h,v 1.9 2008/01/12 12:46:17 iamcamiel Exp $
+ *
+ * X-1.9        Camiel Vanderhoeven                             12-JAN-2008
+ *      Avoid compiler warnings.
  *
  * X-1.8        Camiel Vanderhoeven                             09-JAN-2008
  *      Save disk state to state file.
