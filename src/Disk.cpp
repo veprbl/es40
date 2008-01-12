@@ -27,7 +27,7 @@
  * \file
  * Contains code for the disk base class.
  *
- * $Id: Disk.cpp,v 1.10 2008/01/12 12:40:12 iamcamiel Exp $
+ * $Id: Disk.cpp,v 1.11 2008/01/12 19:32:10 iamcamiel Exp $
  *
  * X-1.10       Camiel Vanderhoeven                             12-JAN-2008
  *      Include SCSI engine, because this is common to both SCSI and ATAPI
@@ -914,7 +914,7 @@ int CDisk::do_scsi_command()
     {
       if (state.scsi.cmd.data[9] != 0x10)
       {
-        printf("READ CD issued with data type %02x.\n");
+        printf("READ CD issued with data type %02x.\n",state.scsi.cmd.data[9]);
         FAILURE("data type not recognized");
       }
       //  cmd[2..5] hold the logical block address.
