@@ -27,7 +27,7 @@
  * \file
  * Contains code to use a RAM disk.
  *
- * $Id: DiskRam.cpp,v 1.12 2008/01/09 10:13:58 iamcamiel Exp $
+ * $Id: DiskRam.cpp,v 1.13 2008/01/12 12:41:13 iamcamiel Exp $
  *
  * X-1.12       Camiel Vanderhoeven                             09-JAN-2008
  *      Save disk state to state file.
@@ -73,7 +73,7 @@ CDiskRam::CDiskRam(CConfigurator * cfg, CSystem * sys, CDiskController * c, int 
 {
   byte_size = myCfg->get_int_value("size",512)*1024*1024;
 
-  CHECK_ALLOCATION(ramdisk = malloc(byte_size));
+  CHECK_ALLOCATION(ramdisk = malloc((size_t)byte_size));
 
   state.byte_pos = 0;
 
