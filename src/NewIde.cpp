@@ -27,7 +27,10 @@
  * \file
  * Contains the code for the emulated Ali M1543C IDE chipset part.
  *
- * $Id: NewIde.cpp,v 1.5 2008/01/10 09:55:31 iamcamiel Exp $
+ * $Id: NewIde.cpp,v 1.6 2008/01/12 12:44:40 iamcamiel Exp $
+ *
+ * X-1.6        Camiel Vanderhoeven                             12-JAN-2008
+ *      Use disk's SCSI engine for ATAPI devices.
  *
  * X-1.5         Brian Wheeler                                   10-JAN-2008
  *   - Stop dividing get_lba_size() by 4 in ATAPI Get Capacity.  SRM can
@@ -173,7 +176,13 @@ CNewIde::CNewIde(CConfigurator * cfg, CSystem * c, int pcibus, int pcidev)
   add_legacy_io(SEC_CONTROL, 0x376, 2);
   add_legacy_io(PRI_BUSMASTER, 0xf000, 8);
   add_legacy_io(SEC_BUSMASTER, 0xf008, 8);
-  
+
+  // create scsi busses
+  CSCSIBus * a = new CSCSIBus(cfg, c);
+  CSCSIBus * b = new CSCSIBus(cfg, c);
+  scsi_register(0, a, 7); // scsi id 7 by default
+  scsi_register(1, b, 7); // scsi id 7 by default
+
   ResetPCI();
 
   printf("%%IDE-I-INIT: New IDE emulator initialized.\n");
@@ -205,6 +214,16 @@ void CNewIde::ResetPCI()
       STATUS(i,j).seek_complete = false;
       set_signature(i,j);
     }
+  }
+}
+
+void CNewIde::register_disk(class CDisk * dsk, int bus, int dev)
+{
+  CDiskController::register_disk(dsk, bus, dev);
+  if (dsk->cdrom())
+  {
+    dsk->scsi_register(0,scsi_bus[bus],dev);
+    dsk->set_atapi_mode();
   }
 }
 
@@ -293,12 +312,9 @@ int CNewIde::RestoreState(FILE *f)
   return 0;
 }
 
-
-
 /*
  * Region read/write redirection
  */
-
 
 u32 CNewIde::ReadMem_Legacy(int index, u32 address, int dsize) {
   int channel = 0;
@@ -395,7 +411,6 @@ void CNewIde::WriteMem_Bar(int func, int bar, u32 address, int dsize, u32 data) 
 /*
  * Register read/write handlers
  */
-
 
 u32 CNewIde::ide_command_read(int index, u32 address, int dsize) {
   u32 data;
@@ -1296,15 +1311,19 @@ int CNewIde::DoClock() {
 	    } else {
 	      if(SEL_COMMAND(index).packet_phase==PACKET_NONE) {
 		// this must be the first time through.
-		SEL_REGISTERS(index).REASON = IR_CD;
-		SEL_STATUS(index).busy=false;
-		SEL_STATUS(index).drq=true;
-		SEL_STATUS(index).DMRD=false;
-		SEL_STATUS(index).SERV=false;
-		CONTROLLER(index).data_ptr=0;
-		CONTROLLER(index).data_size=6;
-		SEL_COMMAND(index).packet_dma = (SEL_REGISTERS(index).features & 0x01)?true:false;
-		SEL_COMMAND(index).packet_phase = PACKET_DP1;
+            if (!scsi_arbitrate(index))
+              FAILURE("ATAPI SCSI bus busy");
+            if (!scsi_select(index,CONTROLLER(index).selected))
+              FAILURE("ATAPI device not responding to selection");
+		    SEL_REGISTERS(index).REASON = IR_CD;
+		    SEL_STATUS(index).busy=false;
+		    SEL_STATUS(index).drq=true;
+		    SEL_STATUS(index).DMRD=false;
+		    SEL_STATUS(index).SERV=false;
+		    CONTROLLER(index).data_ptr=0;
+		    CONTROLLER(index).data_size=6;
+		    SEL_COMMAND(index).packet_dma = (SEL_REGISTERS(index).features & 0x01)?true:false;
+		    SEL_COMMAND(index).packet_phase = PACKET_DP1;
 	      } 
 	      /*
 	       * This is the Packet I/O state machine.  
@@ -1342,10 +1361,12 @@ int CNewIde::DoClock() {
 		case PACKET_DP1: // receive packet
 		  if(!SEL_STATUS(index).drq) {
 		    // we now have a full command packet.
-		    for(int i=0;i<6;i++) {
-		      SEL_COMMAND(index).packet_command[i*2]=CONTROLLER(index).data[i] & 0xff;		      
-		      SEL_COMMAND(index).packet_command[(i*2)+1]=(CONTROLLER(index).data[i] >> 8) & 0xff;
-		    }
+            if (scsi_get_phase(index) != SCSI_PHASE_COMMAND)
+              FAILURE("SCSI command phase expected");
+            void * cmd_ptr = scsi_xfer_ptr(index,12);
+            memcpy(cmd_ptr,CONTROLLER(index).data,12);
+            scsi_xfer_done(index);
+
 		    SEL_COMMAND(index).packet_phase = PACKET_DP2;
 		    SEL_COMMAND(index).packet_buffersize = SEL_REGISTERS(index).cylinder_no;
 		    SEL_STATUS(index).busy = true;
@@ -1362,97 +1383,33 @@ int CNewIde::DoClock() {
 
 		  if(SEL_COMMAND(index).command_in_progress) 
           {
-		    switch(SEL_COMMAND(index).packet_command[0]) 
+            switch (scsi_get_phase(index))
             {
-		    case 0x00: // Test Unit Ready
+            case SCSI_PHASE_DATA_IN:
+              {
+                u32 num_bytes = scsi_expected_xfer(index);
+                void * data_ptr = scsi_xfer_ptr(index, num_bytes);
+                memcpy(CONTROLLER(index).data, data_ptr, num_bytes);
+                scsi_xfer_done(index);
+                SEL_COMMAND(index).packet_phase = PACKET_DP34;
+		        SEL_REGISTERS(index).BYTE_COUNT=num_bytes; 
+		        CONTROLLER(index).data_size=num_bytes/2; // word count.
+		        CONTROLLER(index).data_ptr=0;
+              }
+              break;
+            case SCSI_PHASE_DATA_OUT:
+              FAILURE("ATAPI for now does not support write operations");
+              break;
+            case SCSI_PHASE_STATUS:
+              scsi_xfer_ptr(index, scsi_expected_xfer(index));
+              scsi_xfer_done(index);
+              if (scsi_get_phase(index) != SCSI_PHASE_FREE)
+                FAILURE("SCSI bus free phase expected");
 		      SEL_COMMAND(index).packet_phase = PACKET_DI;
-		      break;
-
-		      /*
-		    case 0x03: // Request Sense
-		      // SCSI Command: 3 0 0 0 12 0 0 0 0 0 0 0
-		      CONTROLLER(index).data[0]=0xF0; // error + valid
-		      break;
-		      */
-
-		    case 0x1e: // prevent/allow medium removal.
-		      // treat it as a nop, since we can't actually
-		      // remove media anyway
-		      SEL_COMMAND(index).packet_phase = PACKET_DI;
-		      break;
-
-		    case 0x25: // Read capacity
-		      *(u32 *)(&CONTROLLER(index).data[0]) = swap_32(SEL_DISK(index)->get_lba_size()-1);
-		      *(u32 *)(&CONTROLLER(index).data[2]) = swap_32(SEL_DISK(index)->get_block_size());
-		      SEL_COMMAND(index).packet_phase = PACKET_DP34;
-		      SEL_REGISTERS(index).BYTE_COUNT=8; 
-		      CONTROLLER(index).data_size=4; // word count.
-		      CONTROLLER(index).data_ptr=0;
-		      break;
-		      
-		    case 0x28: // read 10
-		    case 0xa8: // read 12
-		      do {
-			    u32 xfer;
-			    if(SEL_COMMAND(index).packet_command[0]==0x28) 
-			      xfer = (u32) swap_16(*(u16 *)(&SEL_COMMAND(index).packet_command[7]));
-			    else
-			      xfer = swap_32(*(u32 *)(&SEL_COMMAND(index).packet_command[6]));			
-    			
-			    u32 lba = swap_32(*(u32 *)(&(SEL_COMMAND(index).packet_command[2])));			
-			    printf("CD Read LBA: %x, length: %x\n",lba,xfer);
-    			
-			    SEL_DISK(index)->seek_block(lba);
-			    SEL_DISK(index)->read_blocks(&(CONTROLLER(index).data[0]),xfer);
-			    SEL_COMMAND(index).packet_phase=PACKET_DP34;
-			    CONTROLLER(index).data_ptr=0;
-			    CONTROLLER(index).data_size=xfer*(SEL_DISK(index)->get_block_size()/2);
-			    SEL_REGISTERS(index).BYTE_COUNT=xfer*SEL_DISK(index)->get_block_size();
-		      } while(0);
-		      //exit(1);
-		      break;
-		      
-		    case 0x43: // read table of contents
-		      do {
-			    int format = SEL_COMMAND(index).packet_command[2];
-
-			    int track = SEL_COMMAND(index).packet_command[6];
-			    int alloclen = swap_16(SEL_COMMAND(index).packet_command[7]);
-			    int flags = SEL_COMMAND(index).packet_command[9];
-			    int tracks = (alloclen-4)/8;
-
-    			switch(format) {
-			    case 0: // TOC
-			      // we really only have one track, so we fill it in
-			      // directly.
-    			  
-			      // header
-			      CONTROLLER(index).data[0] = swap_16(0x0c);
-			      CONTROLLER(index).data[1] = 0x0000;  
-    			  
-			      // track info
-			      CONTROLLER(index).data[2] = swap_16(0x0004);
-			      CONTROLLER(index).data[3] = 0;
-			      CONTROLLER(index).data[4] = 0;
-			      CONTROLLER(index).data[5] = 0;
-			      SEL_COMMAND(index).packet_phase=PACKET_DP34;
-			      break;
-			    case 1: // session information
-			    case 2: // full toc
-			    case 3: // pma area
-			    case 4: // atip area
-			    case 5: // cd-text
-			    default:
-			      printf("Unhandled format in READ TOC: %x",format);
-			      exit(1);
-			    }
-		      } while(0);
-		      break;
-
-		    default:
-		      printf("Unhandled SCSI command.\n");
-		      exit(1);
-		    }
+              break;
+            default:
+              FAILURE("Unexpected SCSI phase");
+            }
 		  } else {
 		    // transition to an idle state
 		    SEL_COMMAND(index).packet_phase=PACKET_DI;
@@ -1468,9 +1425,15 @@ int CNewIde::DoClock() {
 						  (u8 *)(&CONTROLLER(index).data[0]),
 						  SEL_REGISTERS(index).BYTE_COUNT,
 						  false);	
-		      //SEL_COMMAND(index).command_in_progress=false;
-		      //SEL_COMMAND(index).packet_phase=PACKET_DP2;
-		      SEL_STATUS(index).drq = true;
+            
+              if(scsi_get_phase(index) != SCSI_PHASE_STATUS)
+                FAILURE("SCSI status phase expected");
+              scsi_xfer_ptr(index, scsi_expected_xfer(index));
+              scsi_xfer_done(index);
+              if (scsi_get_phase(index) != SCSI_PHASE_FREE)
+                FAILURE("SCSI bus free phase expected");
+
+  	          SEL_STATUS(index).drq = true;
 		      SEL_STATUS(index).busy = false;
 			  SEL_COMMAND(index).packet_phase = PACKET_DI;
 			  //yield=true;
@@ -1495,9 +1458,15 @@ int CNewIde::DoClock() {
 		      } else {			
 			    // all of the data has been read from the buffer.
 			    // for now I assume that it is everything.
-			    printf("Finished transferring!\n");
-                //SEL_COMMAND(index).command_in_progress=false;
-                //SEL_COMMAND(index).packet_phase=PACKET_DP2;
+
+                if(scsi_get_phase(index) != SCSI_PHASE_STATUS)
+                  FAILURE("SCSI status phase expected");
+                scsi_xfer_ptr(index, scsi_expected_xfer(index));
+                scsi_xfer_done(index);
+                if (scsi_get_phase(index) != SCSI_PHASE_FREE)
+                  FAILURE("SCSI bus free phase expected");
+
+                printf("Finished transferring!\n");
    		        SEL_COMMAND(index).packet_phase = PACKET_DI;
 			    yield=false;
 		      }
@@ -1774,7 +1743,6 @@ int CNewIde::DoClock() {
   return 0;
 }
 
-
 int CNewIde::do_dma_transfer(int index, u8 *buffer, u32 buffersize, bool direction) {
   u8 xfer;
   u32 xfersize = 0;
@@ -1832,7 +1800,6 @@ int CNewIde::do_dma_transfer(int index, u8 *buffer, u32 buffersize, bool directi
     }
     
   } while(xfer != 0x80 && status == 0);
-
 
   switch(status) {
   case 0: // normal completion.

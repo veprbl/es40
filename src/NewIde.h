@@ -27,7 +27,10 @@
  * \file
  * Contains the definitions for the emulated Ali M1543C IDE chipset part.
  *
- * $Id: NewIde.h,v 1.2 2008/01/08 22:08:10 iamcamiel Exp $
+ * $Id: NewIde.h,v 1.3 2008/01/12 12:44:40 iamcamiel Exp $
+ *
+ * X-1.3        Camiel Vanderhoeven                             12-JAN-2008
+ *      Use disk's SCSI engine for ATAPI devices.
  *
  * X-1.2         Brian wheeler                                   08-JAN-2008
  *      ATAPI improved.
@@ -47,15 +50,17 @@
 
 #include "DiskController.h"
 #include "Configurator.h"
+#include "SCSIDevice.h"
+#include "SCSIBus.h"
 
 #define MAX_MULTIPLE_SECTORS 16
 
-
-class CNewIde : public CDiskController  
+class CNewIde : public CDiskController, public CSCSIDevice  
 {
  public:
   CNewIde(CConfigurator * cfg, class CSystem * c, int pcibus, int pcidev);
   virtual ~CNewIde();
+  virtual void register_disk(class CDisk * dsk, int bus, int dev);
 
   virtual void WriteMem_Legacy(int index, u32 address, int dsize, u32 data);
   virtual u32 ReadMem_Legacy(int index, u32 address, int dsize);
