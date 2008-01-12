@@ -28,7 +28,10 @@
  * Contains the code for the CPU tracing engine.
  * This will become the debugging engine (interactive debugger) soon.
  *
- * $Id: TraceEngine.cpp,v 1.31 2008/01/02 08:54:48 iamcamiel Exp $
+ * $Id: TraceEngine.cpp,v 1.32 2008/01/12 14:26:55 iamcamiel Exp $
+ *
+ * X-1.33	    Brian Wheeler    				                12-JAN-2008
+ *	End run when Ctrl-C is received.
  *
  * X-1.32       Camiel Vanderhoeven                             02-JAN-2008
  *      Avoid compiler warnings
@@ -149,6 +152,7 @@
 #include "DPR.h"
 #include "Flash.h"
 #include "lockstep.h"
+#include <signal.h>
 
 CTraceEngine * trc;
 
@@ -773,8 +777,16 @@ int CTraceEngine::parse(char command[100][100])
     {
       if (!bBreakPoint)
       {
-	printf("%%IDB-F-NOBRKP: No breakpoint set, and RUN requested without number of cycles.\n");
-	return 0;
+        printf("%%IDB-F-NOBRKP: No breakpoint set, press Ctrl-C to end run.\n");
+        /* catch CTRL-C and shutdown gracefully */
+       extern int got_sigint;
+       void sigint_handler(int);
+       signal(SIGINT,&sigint_handler);
+       while(!got_sigint) {
+         theSystem->SingleStep();
+       }
+       got_sigint=0;
+       return 0;
       }
       printf("%%IDB-I-RUNBPT: Running until breakpoint found.\n");
       switch (iBreakPointMode)
