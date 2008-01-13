@@ -27,7 +27,10 @@
  * \file
  * Contains the code for the emulated Ali M1543C IDE chipset part.
  *
- * $Id: NewIde.cpp,v 1.6 2008/01/12 12:44:40 iamcamiel Exp $
+ * $Id: NewIde.cpp,v 1.7 2008/01/13 18:17:24 iamcamiel Exp $
+ *
+ * X-1.7        Fang Zhe                                        13-JAN-2008
+ *      Big-endian support.
  *
  * X-1.6        Camiel Vanderhoeven                             12-JAN-2008
  *      Use disk's SCSI engine for ATAPI devices.
@@ -793,13 +796,13 @@ void CNewIde::ide_busmaster_write(int index, u32 address, u32 data, int dsize)
     break;
   case 7:
     CONTROLLER(index).busmaster[address]=data;
-    prd_address = cSystem->PCI_Phys(myPCIBus, *(u32 *)(&CONTROLLER(index).busmaster[4]));
-    base = (u32)cSystem->ReadMem(prd_address,32);
-    control = (u32)cSystem->ReadMem(prd_address+4,32);
+    prd_address = cSystem->PCI_Phys(myPCIBus, endian_32(*(u32 *)(&CONTROLLER(index).busmaster[4])));
+    base = (u32)cSystem->ReadMem(prd_address, 32);
+    control = (u32)cSystem->ReadMem(prd_address+4, 32);
 #ifdef DEBUG_IDE_BUSMASTER
-    printf("%IDE-I-PRD: Virtual address: %" LL "x  \n",*(u32 *)(&CONTROLLER(index).busmaster[4]));
-    printf("-IDE-I-PRD: Physical address: %" LL "x  \n",prd_address);
-    printf("-IDE-I-PRD: base: %x, control: %x  \n",base,control);
+    printf("%IDE-I-PRD: Virtual address: %" LL "x  \n", endian_32(*(u32 *)(&CONTROLLER(index).busmaster[4])));
+    printf("-IDE-I-PRD: Physical address: %" LL "x  \n", prd_address);
+    printf("-IDE-I-PRD: base: %x, control: %x  \n",base, control);
 #endif
     break;
   default:
@@ -1072,408 +1075,473 @@ void CNewIde::ide_status(int index) {
 }
 
 /* Here's where the magic happens! */
-int CNewIde::DoClock() {
+int CNewIde::DoClock() 
+{
   static int int_delay = 0;
-  for(int index=0;index<2;index++) {
-    if(SEL_COMMAND(index).command_in_progress) {
-      if(SEL_DISK(index) == NULL && SEL_COMMAND(index).current_command!=0x90) {
-	// this device doesn't exist (and its not execute device diagnostic)
-	// so we'll just timeout
-	SEL_COMMAND(index).command_in_progress=false;
-      } else {
+  for(int index=0;index<2;index++) 
+  {
+    if(SEL_COMMAND(index).command_in_progress) 
+    {
+      if(SEL_DISK(index) == NULL && SEL_COMMAND(index).current_command!=0x90) 
+      {
+  	    // this device doesn't exist (and its not execute device diagnostic)
+	    // so we'll just timeout
+	    SEL_COMMAND(index).command_in_progress=false;
+      } 
+      else 
+      {
 #ifdef DEBUG_IDE_COMMAND
-	printf("%%IDE-I-COMMAND: Processing command on controller %d.\n",index);
-	ide_status(index);
+	    printf("%%IDE-I-COMMAND: Processing command on controller %d.\n",index);
+	    ide_status(index);
 #endif
-	switch(SEL_COMMAND(index).current_command) {
-	case 0x00: // nop
-	  SEL_REGISTERS(index).error=0x04;
-	  SEL_STATUS(index).busy=false;
-	  SEL_STATUS(index).drive_ready=true;
-	  SEL_STATUS(index).fault=true;
-	  SEL_STATUS(index).drq=false;
-	  SEL_STATUS(index).err=true;
-	  SEL_COMMAND(index).command_in_progress=false;
-	  raise_interrupt(index);
-	  PAUSE("got nop....how?");
-	  break;
-
-	case 0x08: // device reset
-	  if(SEL_DISK(index)->cdrom() || 1) {
-	    // the spec says that non-packet devices must not respond to
-	    // device reset.  However, by allowing it, Tru64 recognizes
-	    // the device properly.
-	    SEL_COMMAND(index).command_in_progress=false;
-	    //SEL_REGISTERS(index).error &= ~0x80; // turn off bit 7.
-	    SEL_REGISTERS(index).error = 0x01; // device passed.
-	    set_signature(index,CONTROLLER(index).selected);
-	    SEL_STATUS(index).busy=false;
-	    SEL_STATUS(index).drive_ready=false;
-	    SEL_STATUS(index).drq=false;
-	    SEL_STATUS(index).err=false;
-	    // some sources say there's no reset on device reset.
-	    //raise_interrupt(index);
-	  } else {
-	    command_aborted(index,SEL_COMMAND(index).current_command);
-	  }
-	  break;
-
-	case 0x10: // calibrate drive
-	  SEL_STATUS(index).busy=false;
-	  SEL_STATUS(index).drive_ready=true;
-	  SEL_STATUS(index).seek_complete=true;
-	  SEL_STATUS(index).fault=false;
-	  SEL_STATUS(index).drq=false;
-	  SEL_STATUS(index).err=false;
-	  SEL_REGISTERS(index).cylinder_no=0;
-	  SEL_COMMAND(index).command_in_progress=false;
-	  raise_interrupt(index);
-	  break;
-
-	case 0x20: // read with retries
-	case 0x21: // read without retries
-	  if(SEL_COMMAND(index).command_cycle == 0) {	  
-	    // fixup the 0=256 case.
-	    if(SEL_REGISTERS(index).sector_count ==0)
-	      SEL_REGISTERS(index).sector_count=256;
-	  }
-
-	  if(!SEL_STATUS(index).drq) {
-	    // buffer is empty, so lets fill it.
-	    if(!SEL_REGISTERS(index).lba_mode) {
-	      printf("Non-LBA disk read!\n");
-	      exit(1);
-	    } else {
-	      u32 lba = (SEL_REGISTERS(index).head_no << 24) 
-		| (SEL_REGISTERS(index).cylinder_no << 8) 
-		| SEL_REGISTERS(index).sector_no;
-	      
-	      SEL_DISK(index)->seek_block(lba);
-	      SEL_DISK(index)->read_blocks(&(CONTROLLER(index).data[0]),1);
-	      
+	    switch(SEL_COMMAND(index).current_command) 
+        {
+	    case 0x00: // nop
+	      SEL_REGISTERS(index).error=0x04;
 	      SEL_STATUS(index).busy=false;
 	      SEL_STATUS(index).drive_ready=true;
-	      SEL_STATUS(index).fault=false;
-	      SEL_STATUS(index).drq=true;
-	      SEL_STATUS(index).err=false;
-	      CONTROLLER(index).data_ptr=0;
-	      CONTROLLER(index).data_size=256;
-	      // prepare for next sector
-	      SEL_REGISTERS(index).sector_count--;
-	      if(SEL_REGISTERS(index).sector_count==0) {
-		SEL_COMMAND(index).command_in_progress=false;
-		if(SEL_DISK(index)->cdrom())
-		  set_signature(index,CONTROLLER(index).selected); // per 9.1
-	      } else {	  
-		// set the next block to read.
-		// increment the lba.
-		SEL_REGISTERS(index).sector_no++;
-		if(SEL_REGISTERS(index).sector_no > 255) {
-		  SEL_REGISTERS(index).sector_no=0;
-		  SEL_REGISTERS(index).cylinder_no++;
-		  if(SEL_REGISTERS(index).cylinder_no > 65535) {
-		    SEL_REGISTERS(index).cylinder_no=0;
-		    SEL_REGISTERS(index).head_no++;
-		  }
-		}
-	      }
-	    }
-	    raise_interrupt(index);
-	  }
-	  break;
-
-	case 0x30: // write with retries
-	case 0x31: // write without retries
-	  if(SEL_COMMAND(index).command_cycle==0) {
-	    // this is our first time through
-	    if(SEL_DISK(index)->cdrom() || SEL_DISK(index)->ro()) {
-	      printf("%%IDE-W-RO: Write attempt to read-only disk %d.%d.\n",
-		     index, CONTROLLER(index).selected);
-	      command_aborted(index,SEL_COMMAND(index).current_command);	      
-	    } else {
-	      SEL_STATUS(index).drq=true;
-	      SEL_STATUS(index).busy=false;
-	      CONTROLLER(index).data_size=256;
-	      if(SEL_REGISTERS(index).sector_count ==0)
-		SEL_REGISTERS(index).sector_count=256;
-	    }
-	  } else {
-	    // now we should be getting data.
-	    if(!SEL_STATUS(index).drq) {
-	      // the buffer is full.  Do something with the data.
-	      if(!SEL_REGISTERS(index).lba_mode) {
-		printf("Non-LBA disk write!\n");
-		exit(1);
-	      } else {
-		u32 lba = (SEL_REGISTERS(index).head_no << 24) 
-		  | (SEL_REGISTERS(index).cylinder_no << 8) 
-		  | SEL_REGISTERS(index).sector_no;
-	      
-		SEL_DISK(index)->seek_block(lba);
-		SEL_DISK(index)->write_blocks(&(CONTROLLER(index).data[0]),1);
-	    
-		SEL_STATUS(index).busy=false;
-		SEL_STATUS(index).drive_ready=true;
-		SEL_STATUS(index).fault=false;
-		SEL_STATUS(index).drq=true;
-		SEL_STATUS(index).err=false;
-		CONTROLLER(index).data_ptr=0;
-
-		// prepare for next sector
-		SEL_REGISTERS(index).sector_count--;
-		if(SEL_REGISTERS(index).sector_count==0) {
-		  // we're done
-		  SEL_STATUS(index).drq=false;
-		  SEL_COMMAND(index).command_in_progress=false;
-		} else {	  
-		  // set the next block to read.
-		  // increment the lba.
-		  SEL_REGISTERS(index).sector_no++;
-		  if(SEL_REGISTERS(index).sector_no > 255) {
-		    SEL_REGISTERS(index).sector_no=0;
-		    SEL_REGISTERS(index).cylinder_no++;
-		    if(SEL_REGISTERS(index).cylinder_no > 65535) {
-		      SEL_REGISTERS(index).cylinder_no=0;
-		      SEL_REGISTERS(index).head_no++;
-		    }
-		  }
-		}
-	      }
-	      raise_interrupt(index);
-	    }
-	  }
-	  break;
-
-	  /* case 0x40, 0x41: read verify sector(s) is mandatory for
-	     non-packet (no w/packet */
-	  
-	case 0x70: // seek
-	  if(SEL_DISK(index)->cdrom()) {
-	    command_aborted(index,SEL_COMMAND(index).current_command);
-	  } else {
-	    SEL_STATUS(index).busy=false;
-	    SEL_STATUS(index).drive_ready=true;
-	    SEL_STATUS(index).seek_complete=true;
-	    SEL_STATUS(index).fault=false;
-	    SEL_STATUS(index).drq=false;
-	    SEL_STATUS(index).err=false;
-	    SEL_COMMAND(index).command_in_progress=false;
-	    raise_interrupt(index);
-	  }
-	  break;
-
-	  /* 0x90: execute device diagnostic: mandatory */
-
-	case 0x91: // initialize device parameters
-	  SEL_COMMAND(index).command_in_progress=false;
-	  if(SEL_DISK(index)->cdrom()) {
-	    command_aborted(index,SEL_COMMAND(index).current_command);
-	  } else {
-	    if(SEL_DISK(index)->get_heads() == (SEL_REGISTERS(index).head_no+1)
-	       && SEL_DISK(index)->get_sectors() == SEL_REGISTERS(index).sector_count) {
-	      // use the default translation -- ok!
-	      SEL_STATUS(index).busy=false;
-	      SEL_STATUS(index).drive_ready=true;
-	      SEL_STATUS(index).fault=false;
-	      SEL_STATUS(index).drq=false;
-	      SEL_STATUS(index).err=false;
-	      raise_interrupt(index); // maybe?
-	    } else {
-#ifdef DEBUG_IDE
-          printf("Original h: %d, s: %d\n", SEL_DISK(index)->get_heads(), SEL_DISK(index)->get_sectors());
-	      printf("Requested h: %d, s: %d\n", SEL_REGISTERS(index).head_no+1, SEL_REGISTERS(index).sector_count);
-	      PAUSE("INIT DEV PARAMS -- geometry not supported!");
-#endif
-	      SEL_STATUS(index).busy=false;
-	      SEL_STATUS(index).drive_ready=true;
-	      SEL_STATUS(index).fault=false;
+	      SEL_STATUS(index).fault=true;
 	      SEL_STATUS(index).drq=false;
 	      SEL_STATUS(index).err=true;
-	      SEL_REGISTERS(index).error = 0x04; // ABORT.
+	      SEL_COMMAND(index).command_in_progress=false;
 	      raise_interrupt(index);
-	    }
-	  }
-	  break;
+	      PAUSE("got nop....how?");
+	      break;
 
-	case 0xa0: // packet send
-	  /*
-	   * The state machine and protocol used here was actually
-	   * derived from ATA/ATAPI-5 (D1321R3) instead of the -4
-	   * documenation.  State names were taken from that document.
-	   */
-	  if(!SEL_DISK(index)->cdrom()) {
-	    command_aborted(index,SEL_COMMAND(index).current_command);
-	  } else {
-	    if(SEL_REGISTERS(index).features & 0x02) {
-	      // overlap not supported
-	      PAUSE("overlapping not supported");
-	      command_aborted(index,SEL_COMMAND(index).current_command);
-	    } else {
-	      if(SEL_COMMAND(index).packet_phase==PACKET_NONE) {
-		// this must be the first time through.
-            if (!scsi_arbitrate(index))
-              FAILURE("ATAPI SCSI bus busy");
-            if (!scsi_select(index,CONTROLLER(index).selected))
-              FAILURE("ATAPI device not responding to selection");
-		    SEL_REGISTERS(index).REASON = IR_CD;
-		    SEL_STATUS(index).busy=false;
-		    SEL_STATUS(index).drq=true;
-		    SEL_STATUS(index).DMRD=false;
-		    SEL_STATUS(index).SERV=false;
-		    CONTROLLER(index).data_ptr=0;
-		    CONTROLLER(index).data_size=6;
-		    SEL_COMMAND(index).packet_dma = (SEL_REGISTERS(index).features & 0x01)?true:false;
-		    SEL_COMMAND(index).packet_phase = PACKET_DP1;
-	      } 
-	      /*
-	       * This is the Packet I/O state machine.  
-	       * The gist of it is this:  we loop until yield==true, 
-	       * so we can move from state to state in the same DoClock().  
-	       *
-	       * By the time we get here, we're in DP1 (Receive Packet) and
-	       * we're waiting for an actual packet to arrive.
-	       * 
-	       */
-
-	      bool yield = false;
-	      do {
-		  
-#ifdef DEBUG_IDE_PACKET
-		printf("PACKET STATE: %s (%d)\n",packet_states[SEL_COMMAND(index).packet_phase],SEL_COMMAND(index).packet_phase);
-		if(SEL_COMMAND(index).packet_phase == PACKET_DP2) {
-		  printf("SCSI Command: %x %x %x %x %x %x %x %x %x %x %x %x\n",
-			 SEL_COMMAND(index).packet_command[0],
-			 SEL_COMMAND(index).packet_command[1],
-			 SEL_COMMAND(index).packet_command[2],
-			 SEL_COMMAND(index).packet_command[3],
-			 SEL_COMMAND(index).packet_command[4],
-			 SEL_COMMAND(index).packet_command[5],
-			 SEL_COMMAND(index).packet_command[6],
-			 SEL_COMMAND(index).packet_command[7],
-			 SEL_COMMAND(index).packet_command[8],
-			 SEL_COMMAND(index).packet_command[9],
-			 SEL_COMMAND(index).packet_command[10],
-			 SEL_COMMAND(index).packet_command[11]);
-		};
-#endif
-	  
-		switch(SEL_COMMAND(index).packet_phase) {
-		case PACKET_DP1: // receive packet
-		  if(!SEL_STATUS(index).drq) {
-		    // we now have a full command packet.
-            if (scsi_get_phase(index) != SCSI_PHASE_COMMAND)
-              FAILURE("SCSI command phase expected");
-            void * cmd_ptr = scsi_xfer_ptr(index,12);
-            memcpy(cmd_ptr,CONTROLLER(index).data,12);
-            scsi_xfer_done(index);
-
-		    SEL_COMMAND(index).packet_phase = PACKET_DP2;
-		    SEL_COMMAND(index).packet_buffersize = SEL_REGISTERS(index).cylinder_no;
-		    SEL_STATUS(index).busy = true;
-
-		  } else {		    
-		    // yield to let the host finish writing the packet.
-		    yield=true;
-		  }
-		  break;
-		    
-		case PACKET_DP2:  // prepare b
-		  SEL_STATUS(index).busy=true;
-		  SEL_STATUS(index).drq=false;
-
-		  if(SEL_COMMAND(index).command_in_progress) 
+	    case 0x08: // device reset
+	      if(SEL_DISK(index)->cdrom() || 1) 
           {
-            switch (scsi_get_phase(index))
+	        // the spec says that non-packet devices must not respond to
+	        // device reset.  However, by allowing it, Tru64 recognizes
+	        // the device properly.
+	        SEL_COMMAND(index).command_in_progress=false;
+	        //SEL_REGISTERS(index).error &= ~0x80; // turn off bit 7.
+	        SEL_REGISTERS(index).error = 0x01; // device passed.
+	        set_signature(index,CONTROLLER(index).selected);
+	        SEL_STATUS(index).busy=false;
+	        SEL_STATUS(index).drive_ready=false;
+	        SEL_STATUS(index).drq=false;
+	        SEL_STATUS(index).err=false;
+	        // some sources say there's no reset on device reset.
+	        //raise_interrupt(index);
+	      } 
+          else 
+          {
+	        command_aborted(index,SEL_COMMAND(index).current_command);
+	      }
+	      break;
+
+	    case 0x10: // calibrate drive
+	      SEL_STATUS(index).busy=false;
+	      SEL_STATUS(index).drive_ready=true;
+	      SEL_STATUS(index).seek_complete=true;
+	      SEL_STATUS(index).fault=false;
+	      SEL_STATUS(index).drq=false;
+	      SEL_STATUS(index).err=false;
+	      SEL_REGISTERS(index).cylinder_no=0;
+	      SEL_COMMAND(index).command_in_progress=false;
+	      raise_interrupt(index);
+	      break;
+
+	    case 0x20: // read with retries
+	    case 0x21: // read without retries
+	      if(SEL_COMMAND(index).command_cycle == 0) 
+          {	  
+	        // fixup the 0=256 case.
+	        if(SEL_REGISTERS(index).sector_count ==0)
+	          SEL_REGISTERS(index).sector_count=256;
+	      }
+
+	      if(!SEL_STATUS(index).drq) 
+          {
+	        // buffer is empty, so lets fill it.
+	        if(!SEL_REGISTERS(index).lba_mode) 
             {
-            case SCSI_PHASE_DATA_IN:
+	          printf("Non-LBA disk read!\n");
+	          exit(1);
+	        } 
+            else 
+            {
+	          u32 lba = (SEL_REGISTERS(index).head_no << 24) 
+		              | (SEL_REGISTERS(index).cylinder_no << 8) 
+		              | SEL_REGISTERS(index).sector_no;
+    	      
+	          SEL_DISK(index)->seek_block(lba);
+	          SEL_DISK(index)->read_blocks(&(CONTROLLER(index).data[0]),1);
+#if defined(ES40_BIG_ENDIAN)
+              for (int i = 0; i < SEL_DISK(index)->get_block_size() / sizeof(u16); i ++)
+                CONTROLLER(index).data[i] = endian_16(CONTROLLER(index).data[i]);
+#endif
+	          SEL_STATUS(index).busy=false;
+	          SEL_STATUS(index).drive_ready=true;
+	          SEL_STATUS(index).fault=false;
+	          SEL_STATUS(index).drq=true;
+	          SEL_STATUS(index).err=false;
+	          CONTROLLER(index).data_ptr=0;
+	          CONTROLLER(index).data_size=256;
+	          // prepare for next sector
+	          SEL_REGISTERS(index).sector_count--;
+	          if(SEL_REGISTERS(index).sector_count==0) 
               {
-                u32 num_bytes = scsi_expected_xfer(index);
-                void * data_ptr = scsi_xfer_ptr(index, num_bytes);
-                memcpy(CONTROLLER(index).data, data_ptr, num_bytes);
-                scsi_xfer_done(index);
-                SEL_COMMAND(index).packet_phase = PACKET_DP34;
-		        SEL_REGISTERS(index).BYTE_COUNT=num_bytes; 
-		        CONTROLLER(index).data_size=num_bytes/2; // word count.
+		        SEL_COMMAND(index).command_in_progress=false;
+		        if(SEL_DISK(index)->cdrom())
+		          set_signature(index,CONTROLLER(index).selected); // per 9.1
+	          } 
+              else 
+              {	  
+		        // set the next block to read.
+		        // increment the lba.
+		        SEL_REGISTERS(index).sector_no++;
+		        if(SEL_REGISTERS(index).sector_no > 255) 
+                {
+		          SEL_REGISTERS(index).sector_no=0;
+		          SEL_REGISTERS(index).cylinder_no++;
+		          if(SEL_REGISTERS(index).cylinder_no > 65535) 
+                  {
+		            SEL_REGISTERS(index).cylinder_no=0;
+		            SEL_REGISTERS(index).head_no++;
+		          }
+		        }
+	          }
+	        }
+	        raise_interrupt(index);
+	      }
+	      break;
+
+	    case 0x30: // write with retries
+	    case 0x31: // write without retries
+	      if(SEL_COMMAND(index).command_cycle==0) 
+          {
+	        // this is our first time through
+	        if(SEL_DISK(index)->cdrom() || SEL_DISK(index)->ro()) 
+            {
+	          printf("%%IDE-W-RO: Write attempt to read-only disk %d.%d.\n",
+		         index, CONTROLLER(index).selected);
+	          command_aborted(index,SEL_COMMAND(index).current_command);	      
+	        } 
+            else 
+            {
+	          SEL_STATUS(index).drq=true;
+	          SEL_STATUS(index).busy=false;
+	          CONTROLLER(index).data_size=256;
+	          if(SEL_REGISTERS(index).sector_count ==0)
+		    SEL_REGISTERS(index).sector_count=256;
+	        }
+	      } 
+          else 
+          {
+	        // now we should be getting data.
+	        if(!SEL_STATUS(index).drq) {
+	          // the buffer is full.  Do something with the data.
+	          if(!SEL_REGISTERS(index).lba_mode) 
+              {
+		        printf("Non-LBA disk write!\n");
+		        exit(1);
+	          } 
+              else 
+              {
+		        u32 lba = (SEL_REGISTERS(index).head_no << 24) 
+		                | (SEL_REGISTERS(index).cylinder_no << 8) 
+		                | SEL_REGISTERS(index).sector_no;
+    	      
+#if defined(ES40_BIG_ENDIAN)
+                {
+                  u16 data[IDE_BUFFER_SIZE];
+
+                  SEL_DISK(index)->seek_block(lba);
+                  for (int i = 0; i < SEL_DISK(index)->get_block_size() / sizeof(u16); i ++)
+                    data[i] = endian_16(CONTROLLER(index).data[i]);
+                  SEL_DISK(index)->write_blocks(&(data[0]),1);
+		        }
+#else
+		        SEL_DISK(index)->seek_block(lba);
+		        SEL_DISK(index)->write_blocks(&(CONTROLLER(index).data[0]),1);
+#endif        	    
+		        SEL_STATUS(index).busy=false;
+		        SEL_STATUS(index).drive_ready=true;
+		        SEL_STATUS(index).fault=false;
+		        SEL_STATUS(index).drq=true;
+		        SEL_STATUS(index).err=false;
 		        CONTROLLER(index).data_ptr=0;
-              }
-              break;
-            case SCSI_PHASE_DATA_OUT:
-              FAILURE("ATAPI for now does not support write operations");
-              break;
-            case SCSI_PHASE_STATUS:
-              scsi_xfer_ptr(index, scsi_expected_xfer(index));
-              scsi_xfer_done(index);
-              if (scsi_get_phase(index) != SCSI_PHASE_FREE)
-                FAILURE("SCSI bus free phase expected");
-		      SEL_COMMAND(index).packet_phase = PACKET_DI;
-              break;
-            default:
-              FAILURE("Unexpected SCSI phase");
-            }
-		  } else {
-		    // transition to an idle state
-		    SEL_COMMAND(index).packet_phase=PACKET_DI;
-		  }
-		  break;
-		    		    
-		case PACKET_DP34:
-		  if(SEL_COMMAND(index).packet_dma) {
-		    // send back via dma
-		    printf("Sending ATAPI data back via DMA.\n");
-		    if((CONTROLLER(index).busmaster[2] & 0x01) == 1) {
-		      u8 status = do_dma_transfer(index,
-						  (u8 *)(&CONTROLLER(index).data[0]),
-						  SEL_REGISTERS(index).BYTE_COUNT,
-						  false);	
-            
-              if(scsi_get_phase(index) != SCSI_PHASE_STATUS)
-                FAILURE("SCSI status phase expected");
-              scsi_xfer_ptr(index, scsi_expected_xfer(index));
-              scsi_xfer_done(index);
-              if (scsi_get_phase(index) != SCSI_PHASE_FREE)
-                FAILURE("SCSI bus free phase expected");
 
-  	          SEL_STATUS(index).drq = true;
-		      SEL_STATUS(index).busy = false;
-			  SEL_COMMAND(index).packet_phase = PACKET_DI;
-			  //yield=true;
-		    } else {
-		      // the controller isn't ready for DMA yet.
-		      yield=1;
-		    }
-		  } else {
-		    // send back via pio
-		    if((!SEL_STATUS(index).drq) && 
-		       (CONTROLLER(index).data_ptr==0)) {
-		      // first time through: no data transferred, and drq=0
-		      SEL_STATUS(index).drq = true;
-		      SEL_STATUS(index).busy = false;
-		      SEL_REGISTERS(index).REASON = IR_IO;
-		      raise_interrupt(index);
-		      yield = true;
-		    } else {
-		      if(SEL_STATUS(index).drq) {
-			    printf("Yielding until all PIO data is read.\n");
-			    yield = true;  // yield.			    
-		      } else {			
-			    // all of the data has been read from the buffer.
-			    // for now I assume that it is everything.
+		        // prepare for next sector
+		        SEL_REGISTERS(index).sector_count--;
+		        if(SEL_REGISTERS(index).sector_count==0) 
+                {
+		          // we're done
+		          SEL_STATUS(index).drq=false;
+		          SEL_COMMAND(index).command_in_progress=false;
+		        } 
+                else 
+                {	  
+		          // set the next block to read.
+		          // increment the lba.
+		          SEL_REGISTERS(index).sector_no++;
+		          if(SEL_REGISTERS(index).sector_no > 255) 
+                  {
+		            SEL_REGISTERS(index).sector_no=0;
+		            SEL_REGISTERS(index).cylinder_no++;
+		            if(SEL_REGISTERS(index).cylinder_no > 65535) 
+                    {
+		              SEL_REGISTERS(index).cylinder_no=0;
+		              SEL_REGISTERS(index).head_no++;
+		            }
+		          }
+		        }
+	          }
+	          raise_interrupt(index);
+	        }
+	      }
+	      break;
 
-                if(scsi_get_phase(index) != SCSI_PHASE_STATUS)
-                  FAILURE("SCSI status phase expected");
-                scsi_xfer_ptr(index, scsi_expected_xfer(index));
-                scsi_xfer_done(index);
-                if (scsi_get_phase(index) != SCSI_PHASE_FREE)
-                  FAILURE("SCSI bus free phase expected");
+	      /* case 0x40, 0x41: read verify sector(s) is mandatory for
+	         non-packet (no w/packet */
+    	  
+	    case 0x70: // seek
+	      if(SEL_DISK(index)->cdrom()) 
+          {
+	        command_aborted(index,SEL_COMMAND(index).current_command);
+	      } 
+          else 
+          {
+	        SEL_STATUS(index).busy=false;
+	        SEL_STATUS(index).drive_ready=true;
+	        SEL_STATUS(index).seek_complete=true;
+	        SEL_STATUS(index).fault=false;
+	        SEL_STATUS(index).drq=false;
+	        SEL_STATUS(index).err=false;
+	        SEL_COMMAND(index).command_in_progress=false;
+	        raise_interrupt(index);
+	      }
+	      break;
 
-                printf("Finished transferring!\n");
-   		        SEL_COMMAND(index).packet_phase = PACKET_DI;
-			    yield=false;
-		      }
-		    }
-		  }
-		    
-		  break;
+        /* 0x90: execute device diagnostic: mandatory */
+
+	    case 0x91: // initialize device parameters
+	      SEL_COMMAND(index).command_in_progress=false;
+	      if(SEL_DISK(index)->cdrom()) 
+          {
+	        command_aborted(index,SEL_COMMAND(index).current_command);
+	      } 
+          else 
+          {
+	        if(SEL_DISK(index)->get_heads() == (SEL_REGISTERS(index).head_no+1)
+	           && SEL_DISK(index)->get_sectors() == SEL_REGISTERS(index).sector_count) 
+            {
+	          // use the default translation -- ok!
+	          SEL_STATUS(index).busy=false;
+	          SEL_STATUS(index).drive_ready=true;
+	          SEL_STATUS(index).fault=false;
+	          SEL_STATUS(index).drq=false;
+	          SEL_STATUS(index).err=false;
+	          raise_interrupt(index); // maybe?
+	        } 
+            else 
+            {
+#ifdef DEBUG_IDE
+              printf("Original h: %d, s: %d\n", SEL_DISK(index)->get_heads(), SEL_DISK(index)->get_sectors());
+	          printf("Requested h: %d, s: %d\n", SEL_REGISTERS(index).head_no+1, SEL_REGISTERS(index).sector_count);
+	          PAUSE("INIT DEV PARAMS -- geometry not supported!");
+#endif
+	          SEL_STATUS(index).busy=false;
+	          SEL_STATUS(index).drive_ready=true;
+	          SEL_STATUS(index).fault=false;
+	          SEL_STATUS(index).drq=false;
+	          SEL_STATUS(index).err=true;
+	          SEL_REGISTERS(index).error = 0x04; // ABORT.
+	          raise_interrupt(index);
+	        }
+	      }
+	      break;
+
+	    case 0xa0: // packet send
+	      /*
+	       * The state machine and protocol used here was actually
+	       * derived from ATA/ATAPI-5 (D1321R3) instead of the -4
+	       * documenation.  State names were taken from that document.
+	       */
+	      if(!SEL_DISK(index)->cdrom()) 
+          {
+	        command_aborted(index,SEL_COMMAND(index).current_command);
+	      } 
+          else 
+          {
+	        if(SEL_REGISTERS(index).features & 0x02) 
+            {
+	          // overlap not supported
+	          PAUSE("overlapping not supported");
+	          command_aborted(index,SEL_COMMAND(index).current_command);
+	        } 
+            else 
+            {
+	          if(SEL_COMMAND(index).packet_phase==PACKET_NONE) 
+              {
+		        // this must be the first time through.
+                if (!scsi_arbitrate(index))
+                  FAILURE("ATAPI SCSI bus busy");
+                if (!scsi_select(index,CONTROLLER(index).selected))
+                  FAILURE("ATAPI device not responding to selection");
+		        SEL_REGISTERS(index).REASON = IR_CD;
+		        SEL_STATUS(index).busy=false;
+		        SEL_STATUS(index).drq=true;
+		        SEL_STATUS(index).DMRD=false;
+		        SEL_STATUS(index).SERV=false;
+		        CONTROLLER(index).data_ptr=0;
+		        CONTROLLER(index).data_size=6;
+		        SEL_COMMAND(index).packet_dma = (SEL_REGISTERS(index).features & 0x01)?true:false;
+		        SEL_COMMAND(index).packet_phase = PACKET_DP1;
+	          } 
+	          /* This is the Packet I/O state machine.  
+	           * The gist of it is this:  we loop until yield==true, 
+	           * so we can move from state to state in the same DoClock().  
+	           *
+	           * By the time we get here, we're in DP1 (Receive Packet) and
+	           * we're waiting for an actual packet to arrive.
+	           */
+
+	          bool yield = false;
+	          do 
+              {
+#ifdef DEBUG_IDE_PACKET
+		        printf("PACKET STATE: %s (%d)\n",packet_states[SEL_COMMAND(index).packet_phase],SEL_COMMAND(index).packet_phase);
+		        if(SEL_COMMAND(index).packet_phase == PACKET_DP2) 
+                {
+		          printf("SCSI Command: %x %x %x %x %x %x %x %x %x %x %x %x\n",
+			         SEL_COMMAND(index).packet_command[0],
+			         SEL_COMMAND(index).packet_command[1],
+			         SEL_COMMAND(index).packet_command[2],
+			         SEL_COMMAND(index).packet_command[3],
+			         SEL_COMMAND(index).packet_command[4],
+			         SEL_COMMAND(index).packet_command[5],
+			         SEL_COMMAND(index).packet_command[6],
+			         SEL_COMMAND(index).packet_command[7],
+			         SEL_COMMAND(index).packet_command[8],
+			         SEL_COMMAND(index).packet_command[9],
+			         SEL_COMMAND(index).packet_command[10],
+			         SEL_COMMAND(index).packet_command[11]);
+		        };
+#endif
+		        switch(SEL_COMMAND(index).packet_phase) 
+                {
+		        case PACKET_DP1: // receive packet
+		          if(!SEL_STATUS(index).drq) 
+                  {
+		            // we now have a full command packet.
+                    if (scsi_get_phase(index) != SCSI_PHASE_COMMAND)
+                      FAILURE("SCSI command phase expected");
+                    void * cmd_ptr = scsi_xfer_ptr(index,12);
+                    memcpy(cmd_ptr,CONTROLLER(index).data,12);
+                    scsi_xfer_done(index);
+
+		            SEL_COMMAND(index).packet_phase = PACKET_DP2;
+		            SEL_COMMAND(index).packet_buffersize = SEL_REGISTERS(index).cylinder_no;
+		            SEL_STATUS(index).busy = true;
+
+		          } 
+                  else 
+                  {		    
+		            // yield to let the host finish writing the packet.
+		            yield=true;
+		          }
+		          break;
+    		    
+		        case PACKET_DP2:  // prepare b
+		          SEL_STATUS(index).busy=true;
+		          SEL_STATUS(index).drq=false;
+
+		          if(SEL_COMMAND(index).command_in_progress) 
+                  {
+                    switch (scsi_get_phase(index))
+                    {
+                    case SCSI_PHASE_DATA_IN:
+                      {
+                        u32 num_bytes = scsi_expected_xfer(index);
+                        void * data_ptr = scsi_xfer_ptr(index, num_bytes);
+                        memcpy(CONTROLLER(index).data, data_ptr, num_bytes);
+                        scsi_xfer_done(index);
+                        SEL_COMMAND(index).packet_phase = PACKET_DP34;
+		                SEL_REGISTERS(index).BYTE_COUNT=num_bytes; 
+		                CONTROLLER(index).data_size=num_bytes/2; // word count.
+		                CONTROLLER(index).data_ptr=0;
+                      }
+                      break;
+                    case SCSI_PHASE_DATA_OUT:
+                      FAILURE("ATAPI for now does not support write operations");
+                      break;
+                    case SCSI_PHASE_STATUS:
+                      scsi_xfer_ptr(index, scsi_expected_xfer(index));
+                      scsi_xfer_done(index);
+                      if (scsi_get_phase(index) != SCSI_PHASE_FREE)
+                        FAILURE("SCSI bus free phase expected");
+		              SEL_COMMAND(index).packet_phase = PACKET_DI;
+                      break;
+                    default:
+                      FAILURE("Unexpected SCSI phase");
+                    }
+		          } else {
+		            // transition to an idle state
+		            SEL_COMMAND(index).packet_phase=PACKET_DI;
+		          }
+		          break;
+    		    		    
+		        case PACKET_DP34:
+		          if(SEL_COMMAND(index).packet_dma) {
+		            // send back via dma
+		            printf("Sending ATAPI data back via DMA.\n");
+		            if((CONTROLLER(index).busmaster[2] & 0x01) == 1) {
+		              u8 status = do_dma_transfer(index,
+						          (u8 *)(&CONTROLLER(index).data[0]),
+						          SEL_REGISTERS(index).BYTE_COUNT,
+						          false);	
+                    
+                      if(scsi_get_phase(index) != SCSI_PHASE_STATUS)
+                        FAILURE("SCSI status phase expected");
+                      scsi_xfer_ptr(index, scsi_expected_xfer(index));
+                      scsi_xfer_done(index);
+                      if (scsi_get_phase(index) != SCSI_PHASE_FREE)
+                        FAILURE("SCSI bus free phase expected");
+
+  	                  SEL_STATUS(index).drq = true;
+		              SEL_STATUS(index).busy = false;
+			          SEL_COMMAND(index).packet_phase = PACKET_DI;
+			          //yield=true;
+		            } else {
+		              // the controller isn't ready for DMA yet.
+		              yield=1;
+		            }
+		          } else {
+		            // send back via pio
+		            if((!SEL_STATUS(index).drq) && 
+		               (CONTROLLER(index).data_ptr==0)) {
+		              // first time through: no data transferred, and drq=0
+		              SEL_STATUS(index).drq = true;
+		              SEL_STATUS(index).busy = false;
+		              SEL_REGISTERS(index).REASON = IR_IO;
+		              raise_interrupt(index);
+		              yield = true;
+		            } else {
+		              if(SEL_STATUS(index).drq) {
+			            printf("Yielding until all PIO data is read.\n");
+			            yield = true;  // yield.			    
+		              } else {			
+			            // all of the data has been read from the buffer.
+			            // for now I assume that it is everything.
+
+                        if(scsi_get_phase(index) != SCSI_PHASE_STATUS)
+                          FAILURE("SCSI status phase expected");
+                        scsi_xfer_ptr(index, scsi_expected_xfer(index));
+                        scsi_xfer_done(index);
+                        if (scsi_get_phase(index) != SCSI_PHASE_FREE)
+                          FAILURE("SCSI bus free phase expected");
+
+                        printf("Finished transferring!\n");
+   		                SEL_COMMAND(index).packet_phase = PACKET_DI;
+			            yield=false;
+		              }
+		            }
+		          }
+        		    
+		          break;
 
 		case PACKET_DI:
 		  // this is either DI0 or DI1
@@ -1717,11 +1785,11 @@ int CNewIde::DoClock() {
 	  break;
 	}
 #ifdef DEBUG_IDE_COMMAND
-	if(SEL_COMMAND(index).command_in_progress==false) {
-	  ide_status(index);
-	  printf("%%IDE-I-COMMAND: Command has completed on controller %d.\n",
-		 index);
-	}
+	    if(SEL_COMMAND(index).command_in_progress==false) {
+	      ide_status(index);
+	      printf("%%IDE-I-COMMAND: Command has completed on controller %d.\n",
+		    index);
+	    }
 #endif
 
       }
@@ -1730,11 +1798,11 @@ int CNewIde::DoClock() {
     if (CONTROLLER(index).interrupt_pending) {
       if(!CONTROLLER(index).disable_irq) {
 #ifdef DEBUG_IDE_INTERRUPT
-	printf("%%IDE-I-INTERRUPT: Interrupt raised on controller %d.\n",index);
+  	    printf("%%IDE-I-INTERRUPT: Interrupt raised on controller %d.\n",index);
 #endif
-	CONTROLLER(index).busmaster[2] |= 0x04;
-	theAli->pic_interrupt(1, 6+index);
-	CONTROLLER(index).interrupt_pending=false;
+	    CONTROLLER(index).busmaster[2] |= 0x04;
+	    theAli->pic_interrupt(1, 6+index);
+	    CONTROLLER(index).interrupt_pending=false;
       }
     }
     
@@ -1748,8 +1816,7 @@ int CNewIde::do_dma_transfer(int index, u8 *buffer, u32 buffersize, bool directi
   u32 xfersize = 0;
   u8 status = 0;
   u8 count = 0;
-  u64 prd = cSystem->PCI_Phys(myPCIBus,
-			      *(u32 *)(&CONTROLLER(index).busmaster[4]));
+  u64 prd = cSystem->PCI_Phys(myPCIBus, endian_32(*(u32 *)(&CONTROLLER(index).busmaster[4])));
 	   
   do {
     u64 base = cSystem->PCI_Phys(myPCIBus, (u32)cSystem->ReadMem(prd,32));
