@@ -27,7 +27,10 @@
  * \file
  * Contains code for the disk base class.
  *
- * $Id: Disk.cpp,v 1.11 2008/01/12 19:32:10 iamcamiel Exp $
+ * $Id: Disk.cpp,v 1.12 2008/01/13 12:06:42 iamcamiel Exp $
+ *
+ * X-1.11       Brian Wheeler                                   13-JAN-2008
+ *      More CD-ROM commands supported.
  *
  * X-1.10       Camiel Vanderhoeven                             12-JAN-2008
  *      Include SCSI engine, because this is common to both SCSI and ATAPI
@@ -503,6 +506,7 @@ void CDisk::scsi_xfer_done_me(int bus)
 #define SCSIMP_FORMAT_PARAMS          0x03
 #define SCSIMP_RIGID_GEOMETRY         0x04
 #define SCSIMP_FLEX_PARAMS            0x05
+#define SCSIMP_CACHING			      0x08
 #define SCSIMP_CDROM_CAP              0x2A
 
 /**
@@ -693,58 +697,102 @@ int CDisk::do_scsi_command()
 	//  page, n bytes (each)  
 	switch (pagecode) {
 	case SCSIMP_VENDOR: // vendor specific
-		//  TODO: Nothing here?  
-		break;
+	  //  TODO: Nothing here?  
+	  break;
 	case SCSIMP_READ_WRITE_ERRREC:		//  read-write error recovery page  
-		state.scsi.dati.data[q + 0] = pagecode;
-		state.scsi.dati.data[q + 1] = 10;
-		break;
+	  state.scsi.dati.data[q + 0] = pagecode;
+	  state.scsi.dati.data[q + 1] = 10;
+	  break;
 	case SCSIMP_FORMAT_PARAMS:		//  format device page  
-		state.scsi.dati.data[q + 0] = pagecode;
-		state.scsi.dati.data[q + 1] = 22;
+	  state.scsi.dati.data[q + 0] = pagecode;
+	  state.scsi.dati.data[q + 1] = 22;
 
-		//  10,11 = sectors per track  
-		state.scsi.dati.data[q + 10] = 0;
-        state.scsi.dati.data[q + 11] = (u8)get_sectors();
+	  //  10,11 = sectors per track  
+	  state.scsi.dati.data[q + 10] = 0;
+      state.scsi.dati.data[q + 11] = (u8)get_sectors();
 
-		///  12,13 = physical sector size 
-		state.scsi.dati.data[q + 12] = (u8)(get_block_size() >> 8) & 255;
-		state.scsi.dati.data[q + 13] = (u8)(get_block_size() >> 0) & 255;
-		break;
-	case SCSIMP_RIGID_GEOMETRY:		//  rigid disk geometry page  
-		state.scsi.dati.data[q + 0] = pagecode;
-		state.scsi.dati.data[q + 1] = 22;
-        state.scsi.dati.data[q + 2] = (u8)(get_cylinders() >> 16) & 255;
-		state.scsi.dati.data[q + 3] = (u8)(get_cylinders() >> 8) & 255;
-        state.scsi.dati.data[q + 4] = (u8)get_cylinders() & 255;
-        state.scsi.dati.data[q + 5] = (u8)get_heads();
+	  //  12,13 = physical sector size 
+	  state.scsi.dati.data[q + 12] = (u8)(get_block_size() >> 8) & 255;
+	  state.scsi.dati.data[q + 13] = (u8)(get_block_size() >> 0) & 255;
+	  break;
+	
+    case SCSIMP_RIGID_GEOMETRY:		//  rigid disk geometry page  
+	  state.scsi.dati.data[q + 0] = pagecode;
+	  state.scsi.dati.data[q + 1] = 22;
+      state.scsi.dati.data[q + 2] = (u8)(get_cylinders() >> 16) & 255;
+	  state.scsi.dati.data[q + 3] = (u8)(get_cylinders() >> 8) & 255;
+      state.scsi.dati.data[q + 4] = (u8)get_cylinders() & 255;
+      state.scsi.dati.data[q + 5] = (u8)get_heads();
 
-        //rpms
-		state.scsi.dati.data[q + 20] = (7200 >> 8) & 255;
-		state.scsi.dati.data[q + 21] = 7200 & 255;
-		break;
-	case SCSIMP_FLEX_PARAMS:		//  flexible disk page  
-		state.scsi.dati.data[q + 0] = pagecode;
-		state.scsi.dati.data[q + 1] = 0x1e;
+      //rpms
+	  state.scsi.dati.data[q + 20] = (7200 >> 8) & 255;
+	  state.scsi.dati.data[q + 21] = 7200 & 255;
+	  break;
+	
+    case SCSIMP_FLEX_PARAMS:		//  flexible disk page  
+	  state.scsi.dati.data[q + 0] = pagecode;
+	  state.scsi.dati.data[q + 1] = 0x1e;
 
-		//  2,3 = transfer rate  
-		state.scsi.dati.data[q + 2] = ((5000) >> 8) & 255;
-		state.scsi.dati.data[q + 3] = (5000) & 255;
+	  //  2,3 = transfer rate  
+	  state.scsi.dati.data[q + 2] = ((5000) >> 8) & 255;
+	  state.scsi.dati.data[q + 3] = (5000) & 255;
 
-		state.scsi.dati.data[q + 4] = (u8)get_heads();
-		state.scsi.dati.data[q + 5] = (u8)get_sectors();
+	  state.scsi.dati.data[q + 4] = (u8)get_heads();
+	  state.scsi.dati.data[q + 5] = (u8)get_sectors();
 
-		//  6,7 = data bytes per sector  
-		state.scsi.dati.data[q + 6] = (u8)(get_block_size() >> 8) & 255;
-		state.scsi.dati.data[q + 7] = (u8)(get_block_size() >> 0) & 255;
+	  //  6,7 = data bytes per sector  
+	  state.scsi.dati.data[q + 6] = (u8)(get_block_size() >> 8) & 255;
+	  state.scsi.dati.data[q + 7] = (u8)(get_block_size() >> 0) & 255;
 
-		state.scsi.dati.data[q + 8] = (u8)(get_cylinders() >> 8) & 255;
-		state.scsi.dati.data[q + 9] = (u8)get_cylinders() & 255;
+	  state.scsi.dati.data[q + 8] = (u8)(get_cylinders() >> 8) & 255;
+	  state.scsi.dati.data[q + 9] = (u8)get_cylinders() & 255;
 
-        //rpms
-		state.scsi.dati.data[q + 28] = (7200 >> 8) & 255;
-		state.scsi.dati.data[q + 29] = 7200 & 255;
-		break;
+      //rpms
+	  state.scsi.dati.data[q + 28] = (7200 >> 8) & 255;
+	  state.scsi.dati.data[q + 29] = 7200 & 255;
+	  break;
+
+	case SCSIMP_CACHING: // Caching page
+      state.scsi.dati.data[q+0] = pagecode;
+      state.scsi.dati.data[q+1] = 0x12;
+          
+      // 2 = IC,ABPF,CAP,DISC,SIZE,WCE,MF,RCD
+      //     |  |    |   |    |    |   |  +- read cache disable (0=no)
+      //     |  |    |   |    |    |   +---- multiplication factor (0=block)
+      //     |  |    |   |    |    +-------- write cache enable (0=no cache)
+      //     |  |    |   |    +------------- use cache segment size (0=no)
+      //     |  |    |   +------------------ prefetch across cyls (1=yes)
+      //     |  |    +---------------------- cache analysis (0=drive)
+      //     |  +--------------------------- abort prefetch (1=abrt on cmd)
+      //     +------------------------------ initiator control (0=drive)
+      state.scsi.dati.data[q+2] = 0x0a;
+
+      state.scsi.dati.data[q+3] = 0; // read/write cache retention
+      state.scsi.dati.data[q+4] = 0x00; // disable prefetch
+      state.scsi.dati.data[q+5] = 0x00; // for req's greater than this
+
+      state.scsi.dati.data[q+6] = 0; // minimum prefetch
+      state.scsi.dati.data[q+7] = 0;
+
+     state.scsi.dati.data[q+8] = 0; // maximum prefetch
+     state.scsi.dati.data[q+9] = 0;
+
+     state.scsi.dati.data[q+10] = 0; // maximum prefetch ceiling
+     state.scsi.dati.data[q+11] = 0; 
+
+     state.scsi.dati.data[q+12] = 0;
+     state.scsi.dati.data[q+13] = 0; // # cache segments
+
+     state.scsi.dati.data[q+14] = 0; // cache segement size
+     state.scsi.dati.data[q+15] = 0;
+
+     state.scsi.dati.data[q+16] = 0; // reserved
+
+     state.scsi.dati.data[q+17] = 0; // non-cache segement size
+     state.scsi.dati.data[q+18] = 0;
+     state.scsi.dati.data[q+19] = 0;
+     break;
+	  
     case SCSIMP_CDROM_CAP: // CD-ROM capabilities
       state.scsi.dati.data[q + 0] = pagecode;
       state.scsi.dati.data[q + 1] = 0x14; // length
@@ -1051,6 +1099,84 @@ int CDisk::do_scsi_command()
     state.scsi.msgi.available = 1;
     state.scsi.msgi.data[0] = 0;
     state.scsi.msgi.read = 0;
+    break;
+
+  case SCSICDROM_READ_DISCINFO:
+    switch(state.scsi.cmd.data[2] & 0x7) 
+    {
+    case 0:
+      state.scsi.dati.data[0] = 0; // msb of block length.
+      state.scsi.dati.data[1] = 30; // lsb of block length.
+      state.scsi.dati.data[2] = 0x0e; // type 0, ro, complete session, finalized
+      state.scsi.dati.data[3] = 1; // first track #
+      state.scsi.dati.data[4] = 1; // # of sessions (lsb)
+      state.scsi.dati.data[5] = 1; // first track # in last session (lsb)
+      state.scsi.dati.data[6] = 1; // last track # in last session (lsb)
+      state.scsi.dati.data[7] = 0; // flags
+      state.scsi.dati.data[8] = 0; // disk type (cd)
+      state.scsi.dati.data[9] = 0; // number of sessions (msb)
+      state.scsi.dati.data[10] = 0; // first track # in last session (msb)
+      state.scsi.dati.data[11] = 0; // last track # in last session (msb)
+      state.scsi.dati.data[12] = 0x10; // Disk ID
+      state.scsi.dati.data[13] = 0x23;
+      state.scsi.dati.data[14] = 0x45;
+      state.scsi.dati.data[15] = 0x67;
+      state.scsi.dati.data[16] = 0xff; // lead-in start time of last session
+      state.scsi.dati.data[17] = 0xff;
+      state.scsi.dati.data[18] = 0xff;
+      state.scsi.dati.data[19] = 0xff;
+      state.scsi.dati.data[20] = 0xff; // last possible start time for start of lead out
+      state.scsi.dati.data[21] = 0xff;
+      state.scsi.dati.data[22] = 0xff;
+      state.scsi.dati.data[23] = 0xff;
+      state.scsi.dati.data[24] = 0; // Disk Barcode
+      state.scsi.dati.data[25] = 0;
+      state.scsi.dati.data[26] = 0;
+      state.scsi.dati.data[27] = 0;
+      state.scsi.dati.data[28] = 0;
+      state.scsi.dati.data[29] = 0;
+      state.scsi.dati.data[30] = 0;
+      state.scsi.dati.data[31] = 0;
+      state.scsi.dati.data[32] = 0; // disk application code
+
+
+      state.scsi.dati.available = 33;
+      state.scsi.stat.available = 1;
+      state.scsi.stat.data[0] = 0;
+      state.scsi.stat.read = 0;
+      state.scsi.msgi.available = 1;
+      state.scsi.msgi.data[0] = 0;
+      state.scsi.msgi.read = 0;      
+
+      break;
+    case 1:
+    case 2:
+    default:
+      printf("Unimplemented data-type in READ_DISKINFO: %d\n",
+	     state.scsi.cmd.data[2] & 0x7);
+      FAILURE("Unimplemented data-type");
+      break;
+    }
+    break;
+
+  case SCSICDROM_READ_TRACKINFO:
+    if(state.scsi.cmd.data[1] & 0x04) {
+      FAILURE("Don't know how to deal with the 'open' bit yet");
+    } else {
+      u8 type = state.scsi.cmd.data[1] & 0x03;
+      u32 item = state.scsi.cmd.data[3] << 24 |
+	             state.scsi.cmd.data[4] << 16 |
+	             state.scsi.cmd.data[5] << 8 |
+	             state.scsi.cmd.data[6];
+      switch(type) {
+      case 0: // logical block address
+      case 1: // track
+      case 2: // border number
+      default:
+	    printf("Unimplemented address/number type: %d\n",type);
+        FAILURE("Unimplemented address/number type");
+      }
+    }
     break;
 
   default:
