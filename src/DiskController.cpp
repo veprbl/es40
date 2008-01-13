@@ -27,7 +27,7 @@
  * \file
  * Contains definitions for the disk controller base class.
  *
- * X-1.10       Brian Wheeler                                   12-JAN-2008
+ * X-1.11       Brian Wheeler                                   13-JAN-2008
  *      Avoid deleting Disk devices twice.
  *
  * X-1.9        Camiel Vanderhoeven                             12-JAN-2008
@@ -73,14 +73,6 @@ CDiskController::CDiskController(CConfigurator * cfg, CSystem * c, int pcibus, i
 CDiskController::~CDiskController(void)
 {
   int i;
-  for (i=0;i<num_bus*num_dev;i++) 
-  {
-    if (disks[i])
-    {
-      delete disks[i];
-      disks[i] = 0;
-    }
-  }
   free(disks);
 }
 
