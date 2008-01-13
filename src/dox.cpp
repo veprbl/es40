@@ -30,7 +30,7 @@
  * You could read the documentation from this file; but it would probably
  * be easier to go to http://es40.sourceforge.net.
  *
- * $Id: dox.cpp,v 1.6 2008/01/12 12:37:23 iamcamiel Exp $
+ * $Id: dox.cpp,v 1.7 2008/01/13 12:11:18 iamcamiel Exp $
  *
  * \author Camiel Vanderhoeven (camiel@camicom.com / http://www.camicom.com)
  **/
@@ -190,18 +190,19 @@
  *   - Using newide, all devices are recognized and use DMA mode, including CDs.
  *   - There is a permissions violation during install.  Do not abort it, and the
  *     install will work anyway. (note Camiel: differing results of installation
- *     reported. A lot seems to depend on timing.)
+ *     reported. A lot seems to depend on timing).
  *   .
  *
  * \subsection tru64 Tru64 Unix
  * Tested using 5.1B
  *   - Using the newide device:
- *       - Devices are probed correctly
- *       - DMA is supported
- *       - CD-ROM devices crash es40 due to unhandled SCSI commands
+ *       - Devices are probed correctly.
+ *       - DMA is supported.
+ *       - CD-ROM devices crash es40 due to unhandled SCSI commands.
+ *       - Crash during install due to timing issues in disk code.
  *       .
  *   - Using the ali_ide device
- *       - devices timeout on probe
+ *       - devices timeout on probe.
  *       .
  *   - ES40 crashes if ali_usb device is present, due to incomplete emulation.
  *   .
@@ -210,16 +211,34 @@
  *
  * \subsection fbsd FreeBSD
  * Tested with 6.2
- *   - Using newide:  devices are probed and DMA is used.
- *   - CD-ROM devices crash es40 due to unhandled SCSI commands
+ *   - Using newide
+ *      - devices are probed and DMA is used.
+ *      - CD-ROM device looks like an audio disk to FreeBSD.
+ *      .
  *   .
  *
  * \subsection nbsd NetBSD
  * Tested 3.1.1
  *   - Panics if cirrus device is present.
- *   - Using newide, all devices are recognized and use DMA mode.
- *   - CD-ROM devices seem to work for install.
- *   - Using ali_ide, all devices are recognized and pio mode is used.
+ *   - Using newide 
+ *       - all devices are recognized and use DMA mode.
+ *       - CD-ROM devices are supported and work for install and normal use
+ *       .
+ *   - Using ali_ide
+ *       - all devices are recognized and pio mode is used.
+ *       - CD-ROM devices are not supported
+ *       .
+ *   .
+ *
+ * Tested 4.0
+ *   - Panics if cirrus device is present.
+ *   - Using newide
+ *       - recognizes all devices and uses DMA
+ *       - CD-ROM cannot be used due to unimplemented opcodes (0x52).
+ *       .
+ *   - Using ali_ide
+ *       - Unknown at this time.
+ *       .
  *   .
  *
  * \subsection linux Linux
