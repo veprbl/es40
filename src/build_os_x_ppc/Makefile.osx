@@ -1,0 +1,144 @@
+################################################################################
+# ES40 emulator.
+# Copyright (C) 2007-2008 by the ES40 Emulator Project
+#
+# Website: http://sourceforge.net/projects/es40
+# E-mail : camiel@camicom.com
+# 
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 2
+# of the License, or (at your option) any later version.
+# 
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+# 
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+# 
+# Although this is not required, the author would appreciate being notified of, 
+# and receiving any modifications you may make to the source code that might serve
+# the general public.
+#
+################################################################################
+#
+# Makefile for GNU Linux. (And possibly many UNIX'es).
+#
+# $Id: Makefile.osx,v 1.1 2008/01/13 18:21:05 iamcamiel Exp $
+#
+# X-1.16		Fang Zhe        				13-JAN-2008
+#	Adapted this file (from the Linux version) for the OS X port.
+#
+################################################################################
+
+#to use G++
+CC = g++
+CFLAGS = -arch ppc -arch i386 -isysroot /Developer/SDKs/MacOSX10.4u.sdk -O2 -I. -I..
+
+#to use IBM's xlC
+#CC = /opt/ibmcmp/vacpp/6.0/bin/xlc++_r
+#CFLAGS = -O5 -I/opt/ibmcmp/vacpp/6.0/include -I. -I.. -D__GNUC__
+
+#CFLAGS += -I/Developer/SDKs/MacOSX10.3.9.sdk/usr/include
+CFLAGS += -g -I/Library/Frameworks/SDL.framework/Headers -DHAVE_SDL -DHAVE_PCAP
+
+#LDFLAGS = -Wl,-syslibroot,/Developer/SDKs/MacOSX10.3.9.sdk
+LDFLAGS = -arch ppc -arch i386 -isysroot /Developer/SDKs/MacOSX10.4u.sdk 
+LDFLAGS += -Wl,-framework,WebKit -Wl,-weak_framework,SDL -Wl,-framework,Carbon
+LDFLAGS += -L. -Wl,-dylib_file,/usr/lib/libpcap.A.dylib:libpcap.dylib -Wl,-dynamic -weak-lpcap
+IDB_CFLAGS = -DIDB 
+LSM_CFLAGS = -DIDB -DLS_MASTER
+LSS_CFLAGS = -DIDB -DLS_SLAVE
+LD = g++
+#to use IBM's xlC
+#LD = /opt/ibmcmp/vacpp/6.0/bin/xlc++_r
+#A_LDFLAGS = -O5 -qstrict -qmkshrobj -Wl,-static -qreport
+#LDFLAGS += -lgcc_s.1
+
+DEPEND = makedepend $(CFLAGS)
+
+OBJS =  AliM1543C.o \
+	  AliM1543C_ide.o \
+	  AliM1543C_usb.o \
+        AlphaCPU.o \
+	  AlphaCPU_vmspal.o \
+        AlphaSim.o \
+	  Cirrus.o \
+	  Configurator.o \
+        DEC21143.o \
+        Disk.o \
+        DiskController.o \
+        DiskDevice.o \
+        DiskFile.o \
+        DiskRam.o \
+        DPR.o \
+        es40_debug.o \
+        Flash.o \
+        FloppyController.o \
+  	  lockstep.o \
+       NewIde.o \
+	  PCIDevice.o \
+        Port80.o \
+	  S3Trio64.o \
+       SCSIBus.o \
+       SCSIDevice.o \
+	  Serial.o \
+        StdAfx.o \
+        Sym53C895.o \
+        SystemComponent.o \
+        System.o \
+        TraceEngine.o \
+	  VGA.o \
+	  gui/gui.o \
+	  gui/keymap.o \
+	  gui/scancodes.o \
+	  gui/sdl.o
+
+IDB_OBJS = $(subst .o,.do,$(OBJS))
+LSM_OBJS = $(subst .o,.mao,$(OBJS))
+LSS_OBJS = $(subst .o,.slo,$(OBJS))
+
+.SUFFIXES: .do .mao .slo
+
+.cpp.o:
+	$(CC) $(CFLAGS) -c $<  -o $@
+
+.cpp.do:
+	$(CC) $(CFLAGS) $(IDB_CFLAGS) -c $< -o $@
+
+.cpp.mao:
+	$(CC) $(CFLAGS) $(LSM_CFLAGS) -c $< -o $@
+
+.cpp.slo:
+	$(CC) $(CFLAGS) $(LSS_CFLAGS) -c $< -o $@
+
+all: es40
+
+debug: es40_idb es40_lsm es40_lss
+
+es40:   $(OBJS)
+ifeq ($(CC),/opt/ibmcmp/vacpp/6.0/bin/xlc++_r)
+	$(LD) $(A_LDFLAGS) -o es40.a $(OBJS)
+	$(LD) $(LDFLAGS) es40.a -o es40
+else
+	$(LD) $(LDFLAGS) -o es40 $(OBJS)
+endif
+
+es40_idb: $(IDB_OBJS)
+	$(LD) $(LDFLAGS) -o es40_idb $(IDB_OBJS)
+
+es40_lsm: $(LSM_OBJS)
+	$(LD) $(LDFLAGS) -o es40_lsm $(LSM_OBJS)
+
+es40_lss: $(LSS_OBJS)
+	$(LD) $(LDFLAGS) -o es40_lss $(LSS_OBJS)
+
+depend: $(SRCS)
+	$(DEPEND) $(SRCS)
+	$(DEPEND) -o.do -a -- $(IDB_CFLAGS) -- $(SRCS)
+clean:
+	rm -f es40 es40.a es40_idb es40_lss es40_lsm *.o *.do *.mao *.slo *.trc gui/*.o gui/*.mao gui/*.slo gui/*.do
+
