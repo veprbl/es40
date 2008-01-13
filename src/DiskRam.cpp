@@ -27,7 +27,10 @@
  * \file
  * Contains code to use a RAM disk.
  *
- * $Id: DiskRam.cpp,v 1.13 2008/01/12 12:41:13 iamcamiel Exp $
+ * $Id: DiskRam.cpp,v 1.14 2008/01/13 17:36:56 iamcamiel Exp $
+ *
+ * X-1.14       Camiel Vanderhoeven                             13-JAN-2008
+ *      Use determine_layout in stead of calc_cylinders.
  *
  * X-1.12       Camiel Vanderhoeven                             09-JAN-2008
  *      Save disk state to state file.
@@ -80,7 +83,8 @@ CDiskRam::CDiskRam(CConfigurator * cfg, CSystem * sys, CDiskController * c, int 
   sectors = 32;
   heads = 8;
 
-  calc_cylinders();
+  //calc_cylinders();
+  determine_layout();
 
   model_number=myCfg->get_text_value("model_number","ES40RAMDISK");
 

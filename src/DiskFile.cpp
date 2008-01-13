@@ -27,7 +27,10 @@
  * \file
  * Contains code to use a file as a disk image.
  *
- * $Id: DiskFile.cpp,v 1.13 2008/01/09 19:18:55 iamcamiel Exp $
+ * $Id: DiskFile.cpp,v 1.14 2008/01/13 17:36:56 iamcamiel Exp $
+ *
+ * X-1.14       Camiel Vanderhoeven                             13-JAN-2008
+ *      Use determine_layout in stead of calc_cylinders.
  *
  * X-1.13       Brian Wheeler                                   09-JAN-2008
  *      Put filename in disk model number (without path).
@@ -101,7 +104,8 @@ CDiskFile::CDiskFile(CConfigurator * cfg, CSystem * sys, CDiskController * c, in
   sectors = 32;
   heads = 8;
 
-  calc_cylinders();
+  //calc_cylinders();
+  determine_layout();
 
   model_number=myCfg->get_text_value("model_number",filename);
 

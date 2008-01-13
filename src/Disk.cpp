@@ -27,7 +27,10 @@
  * \file
  * Contains code for the disk base class.
  *
- * $Id: Disk.cpp,v 1.12 2008/01/13 12:06:42 iamcamiel Exp $
+ * $Id: Disk.cpp,v 1.13 2008/01/13 17:36:56 iamcamiel Exp $
+ *
+ * X-1.13       Camiel Vanderhoeven                             13-JAN-2008
+ *      Determine best-fitting C/H/S lay-out.
  *
  * X-1.11       Brian Wheeler                                   13-JAN-2008
  *      More CD-ROM commands supported.
@@ -223,7 +226,8 @@ int CDisk::RestoreState(FILE *f)
     return -1;
   }
 
-  calc_cylinders(); // state.block_size may have changed.
+  //calc_cylinders(); // state.block_size may have changed.
+  determine_layout();
 
   printf("%s: %d bytes restored.\n",devid_string,ss);
   return 0;
@@ -1269,4 +1273,103 @@ int CDisk::do_scsi_message()
     return SCSI_PHASE_MSG_IN;
   else
     return SCSI_PHASE_COMMAND;
+}
+
+static int primes_54[54]
+                    = { 2,  3,    5,   7,  11,  13,  17,  19,  23,  29,  
+                       31,  37,  41,  43,  47,  53,  59,  61,  67,  71, 
+                       73,  79,  83,  89,  97, 101, 103, 107, 109, 113, 
+                      127, 131, 137, 139, 149, 151, 157, 163, 167, 173, 
+                      179, 181, 191, 193, 197, 199, 211, 223, 227, 229, 
+                      233, 239, 241, 251 };
+
+                         //  2 3 5 7 11 13
+static int pri16[16][6] = { {4,0,0,0, 0, 0}, //16
+                            {0,1,1,0, 0, 0}, //15
+                            {1,0,0,1, 0, 0}, //14
+                            {0,0,0,0, 0, 1}, //13
+                            {2,1,0,0, 0, 0}, //12
+                            {0,0,0,0, 1, 0}, //11
+                            {1,0,1,0, 0, 0}, //10
+                            {0,2,0,0, 0, 0}, //9
+                            {3,0,0,0, 0, 0}, //8
+                            {0,0,0,1, 0, 0}, //7
+                            {1,1,0,0, 0, 0}, //6
+                            {0,0,1,0, 0, 0}, //5
+                            {2,0,0,0, 0, 0}, //4
+                            {0,1,0,0, 0, 0}, //3
+                            {1,0,0,0, 0, 0}, //2
+                            {0,0,0,0, 0, 0}};//1
+
+
+static off_t_large get_primes(off_t_large value, int pri[54])
+{
+  int i;
+  for (i=0;i<54;i++)
+  {
+    pri[i] = 0;
+    while (!(value%primes_54[i]))
+    {
+      pri[i]++;
+      value /= primes_54[i];
+    }
+  }
+
+  return value;
+}
+
+/**
+ * Calculate optimal disk layout...
+ **/
+
+void CDisk::determine_layout()
+{
+  int disk_primes[54];
+  int compare_primes[54];
+
+  long heads_sectors;
+  long c_heads;
+  bool b;
+  int prime;
+
+  get_primes(get_lba_size(),disk_primes);
+
+  for (heads_sectors=255*16;heads_sectors>0;heads_sectors--)
+  {
+    if (get_primes(heads_sectors,compare_primes)>1)
+      continue;
+
+    for (c_heads=16;c_heads>0;c_heads--)
+    { 
+      b = true;
+      for(prime=0;prime<6;prime++)
+      {
+        if (pri16[16-c_heads][prime]>compare_primes[prime])
+        {
+          b = false;
+          break; 
+        }
+      }
+      if (b)
+        break;
+    }
+
+    if (heads_sectors/c_heads > 255)
+      continue;
+
+    b = true;
+    for (prime=0;prime<54;prime++)
+    {
+      if (compare_primes[prime]>disk_primes[prime])
+      {
+        b = false;
+        break;
+      }
+    }
+    if (b)
+      break;
+  }
+  heads = c_heads;
+  sectors = heads_sectors/c_heads;
+  cylinders = get_lba_size()/heads/sectors;
 }

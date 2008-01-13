@@ -27,7 +27,10 @@
  * \file
  * Contains code to use a raw device as a disk image.
  *
- * $Id: DiskDevice.cpp,v 1.4 2008/01/09 10:13:58 iamcamiel Exp $
+ * $Id: DiskDevice.cpp,v 1.5 2008/01/13 17:36:56 iamcamiel Exp $
+ *
+ * X-1.5        Camiel Vanderhoeven                             13-JAN-2008
+ *      Use determine_layout in stead of calc_cylinders.
  *
  * X-1.4        Camiel Vanderhoeven                             09-JAN-2008
  *      Save disk state to state file.
@@ -121,7 +124,8 @@ CDiskDevice::CDiskDevice(CConfigurator * cfg, CSystem * sys, CDiskController * c
   heads = 8;
 #endif
 
-  calc_cylinders();
+  //calc_cylinders();
+  determine_layout();
 
   model_number=myCfg->get_text_value("model_number",filename);
 
