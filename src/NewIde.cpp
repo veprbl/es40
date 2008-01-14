@@ -27,7 +27,10 @@
  * \file
  * Contains the code for the emulated Ali M1543C IDE chipset part.
  *
- * $Id: NewIde.cpp,v 1.7 2008/01/13 18:17:24 iamcamiel Exp $
+ * $Id: NewIde.cpp,v 1.8 2008/01/14 21:34:53 iamcamiel Exp $
+ *
+ * X-1.8        Brian Wheeler                                   14-JAN-2008
+ *      Less messages without debugging enabled.
  *
  * X-1.7        Fang Zhe                                        13-JAN-2008
  *      Big-endian support.
@@ -1487,7 +1490,9 @@ int CNewIde::DoClock()
 		        case PACKET_DP34:
 		          if(SEL_COMMAND(index).packet_dma) {
 		            // send back via dma
+#ifdef DEBUG_IDE_PACKET
 		            printf("Sending ATAPI data back via DMA.\n");
+#endif
 		            if((CONTROLLER(index).busmaster[2] & 0x01) == 1) {
 		              u8 status = do_dma_transfer(index,
 						          (u8 *)(&CONTROLLER(index).data[0]),
@@ -1521,7 +1526,9 @@ int CNewIde::DoClock()
 		              yield = true;
 		            } else {
 		              if(SEL_STATUS(index).drq) {
-			            printf("Yielding until all PIO data is read.\n");
+#ifdef DEBUG_IDE_PACKET
+                        printf("Yielding until all PIO data is read.\n");
+#endif
 			            yield = true;  // yield.			    
 		              } else {			
 			            // all of the data has been read from the buffer.
@@ -1534,8 +1541,10 @@ int CNewIde::DoClock()
                         if (scsi_get_phase(index) != SCSI_PHASE_FREE)
                           FAILURE("SCSI bus free phase expected");
 
+#ifdef DEBUG_IDE_PACKET
                         printf("Finished transferring!\n");
-   		                SEL_COMMAND(index).packet_phase = PACKET_DI;
+#endif
+                        SEL_COMMAND(index).packet_phase = PACKET_DI;
 			            yield=false;
 		              }
 		            }
@@ -1561,7 +1570,9 @@ int CNewIde::DoClock()
 		  exit(1);
 		}
 	      } while(!yield);
+#ifdef DEBUG_IDE_PACKET
 	      ide_status(index);
+#endif
 	    }
 	  }
 	  break;
