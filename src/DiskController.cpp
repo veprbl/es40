@@ -27,6 +27,9 @@
  * \file
  * Contains definitions for the disk controller base class.
  *
+ * X-1.12       Camiel Vanderhoeven                             14-JAN-2008
+ *      Removed unreferenced variable.
+ *
  * X-1.11       Brian Wheeler                                   13-JAN-2008
  *      Avoid deleting Disk devices twice.
  *
@@ -72,7 +75,6 @@ CDiskController::CDiskController(CConfigurator * cfg, CSystem * c, int pcibus, i
 
 CDiskController::~CDiskController(void)
 {
-  int i;
   free(disks);
 }
 
