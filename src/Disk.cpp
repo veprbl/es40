@@ -27,7 +27,10 @@
  * \file
  * Contains code for the disk base class.
  *
- * $Id: Disk.cpp,v 1.13 2008/01/13 17:36:56 iamcamiel Exp $
+ * $Id: Disk.cpp,v 1.14 2008/01/14 09:40:29 iamcamiel Exp $
+ *
+ * X-1.14       Brian Wheeler/Camiel Vanderhoeven               14-JAN-2008
+ *      Added read_track_info command, completed read_toc command.
  *
  * X-1.13       Camiel Vanderhoeven                             13-JAN-2008
  *      Determine best-fitting C/H/S lay-out.
@@ -1052,7 +1055,7 @@ int CDisk::do_scsi_command()
     seek_block(ofs);
     write_blocks(state.scsi.dato.data, retlen);
 
-	printf("%s WRITE  ofs=%d size=%d\n", devid_string, ofs, retlen);
+    printf("%s: WRITE  ofs=%d size=%d\n", devid_string, ofs, retlen);
     //getchar();
 	break;
 
@@ -1068,41 +1071,69 @@ int CDisk::do_scsi_command()
     break;
 
   case SCSICDROM_READ_TOC:
-    //printf("SYM.%d: CDROM READ TOC.\n",GET_DEST());
-
-    retlen = state.scsi.cmd.data[7]*256 + state.scsi.cmd.data[8];
-
-    state.scsi.dati.available = retlen;
-    state.scsi.dati.read = 0;
-    retlen -=2;
-    if (retlen>10) 
-      retlen = 10; 
-    else 
-      retlen = 2;
-    
-    state.scsi.dati.data[0] = (retlen>>8) & 0xff;
-    state.scsi.dati.data[1] = (retlen>>0) & 0xff;
-    state.scsi.dati.data[2] = 1; // first track
-    state.scsi.dati.data[3] = 1; // second track
-
-    if (retlen==10)
     {
-      state.scsi.dati.data[4] = 0;
-      state.scsi.dati.data[2] = state.scsi.cmd.data[6];
-      if (state.scsi.cmd.data[6]==1)
-        printf("%s: Don't know how to return info on CDROM track %02x.\n",devid_string,state.scsi.cmd.data[6]);
-      else if (state.scsi.cmd.data[6] == 0xAA)
-        printf("%s: Don't know how to return info on CDROM leadout track %02x.\n",devid_string,state.scsi.cmd.data[6]);
-      else
-        printf("%s: Unknown CDROM track %02x.\n",devid_string,state.scsi.cmd.data[6]);
+      //printf("%s: CDROM READ TOC.\n", devid_string);
+
+      if (state.scsi.cmd.data[1]&0x02)
+      {
+        printf("%s: I don't understand READ TOC/PMA/ATIP with MSF bit set.\n",devid_string);
+        FAILURE("SCSI command failure");
+      }
+
+      if (state.scsi.cmd.data[2]&0x0f)
+      {
+        printf("%s: I don't understand READ TOC/PMA/ATIP with format %01x.\n",devid_string,state.scsi.cmd.data[2] & 0x0f);
+        FAILURE("SCSI command failure");
+      }
+
+      if (state.scsi.cmd.data[6]>1 && state.scsi.cmd.data[6] != 0xAA)
+      {
+        printf("%s: I don't know CD-ROM track 0x%02x.\n",devid_string,state.scsi.cmd.data[6]);
+        FAILURE("SCSI command failure");
+      }
+
+      retlen = state.scsi.cmd.data[7]*256 + state.scsi.cmd.data[8];
+
+      state.scsi.dati.available = retlen;
+      state.scsi.dati.read = 0;
+
+      int q = 2;
+      
+      state.scsi.dati.data[q++] = 1; // first track
+      state.scsi.dati.data[q++] = 1; // last track
+
+      state.scsi.dati.data[q++] = 0;
+      state.scsi.dati.data[q++] = state.scsi.cmd.data[6];
+      if (state.scsi.cmd.data[6]<=1)
+      {
+        state.scsi.dati.data[q++] = 0; // reserved
+        state.scsi.dati.data[q++] = 0x14; // adr/control (Q-channel: current position, data track, no copy)
+        state.scsi.dati.data[q++] = 1; // track number
+        state.scsi.dati.data[q++] = 0; // reserved
+        state.scsi.dati.data[q++] = 0>>24; //lba
+        state.scsi.dati.data[q++] = 0>>16;
+        state.scsi.dati.data[q++] = 0>>8;
+        state.scsi.dati.data[q++] = 0;
+      }
+      state.scsi.dati.data[q++] = 0; // reserved
+      state.scsi.dati.data[q++] = 0x16; // adr/control (Q-channel: current position, data track, copy)
+      state.scsi.dati.data[q++] = 0xAA; // track number
+      state.scsi.dati.data[q++] = 0; // reserved
+      state.scsi.dati.data[q++] = (u8)(get_lba_size()>>24); //lba
+      state.scsi.dati.data[q++] = (u8)(get_lba_size()>>16);
+      state.scsi.dati.data[q++] = (u8)(get_lba_size()>>8);
+      state.scsi.dati.data[q++] = (u8)get_lba_size();
+
+      state.scsi.dati.data[0] = (u8)(q>>8);
+      state.scsi.dati.data[1] = (u8)q;
+      
+      state.scsi.stat.available = 1;
+      state.scsi.stat.data[0] = 0;
+      state.scsi.stat.read = 0;
+      state.scsi.msgi.available = 1;
+      state.scsi.msgi.data[0] = 0;
+      state.scsi.msgi.read = 0;
     }
-    
-    state.scsi.stat.available = 1;
-    state.scsi.stat.data[0] = 0;
-    state.scsi.stat.read = 0;
-    state.scsi.msgi.available = 1;
-    state.scsi.msgi.data[0] = 0;
-    state.scsi.msgi.read = 0;
     break;
 
   case SCSICDROM_READ_DISCINFO:
@@ -1173,8 +1204,64 @@ int CDisk::do_scsi_command()
 	             state.scsi.cmd.data[5] << 8 |
 	             state.scsi.cmd.data[6];
       switch(type) {
-      case 0: // logical block address
       case 1: // track
+        /*
+          netbsd4 sends:
+          52 01 00 00 00 01 00 00 24 00 00 00
+          type = track, item = 1, 
+          output from a real CD:
+          0000 00 22 01 01 00 04 0f 00 00 00 00 00 ff ff ff ff ."..............
+          0010 00 00 00 00 00 00 00 00 00 01 f4 98 00 00 00 00 ................
+          0020 00 00 00 00 00 00 00 00 61 00 00 00 00 00 00 00 ........a.......
+        */
+	    state.scsi.dati.data[0]=0x00;
+	    state.scsi.dati.data[1]=0x22; // length = 34
+	    state.scsi.dati.data[2]=item & 0xff; // track #
+	    state.scsi.dati.data[3]=0x01; // session 1
+	    state.scsi.dati.data[4]=0x00; // reserved
+	    state.scsi.dati.data[5]=0x04; // track mode
+	    state.scsi.dati.data[6]=0x0f; // data mode
+	    state.scsi.dati.data[7]=0x00; // reserved
+	    state.scsi.dati.data[8]=0x00; // track start address.
+	    state.scsi.dati.data[9]=0x00; 
+	    state.scsi.dati.data[10]=0x00;
+	    state.scsi.dati.data[11]=0x00;
+	    state.scsi.dati.data[12]=0xff; // next writable.
+	    state.scsi.dati.data[13]=0xff;
+	    state.scsi.dati.data[14]=0xff;
+	    state.scsi.dati.data[15]=0xff;
+	    state.scsi.dati.data[16]=0x00; // free blocks
+	    state.scsi.dati.data[17]=0x00;
+	    state.scsi.dati.data[18]=0x00;
+	    state.scsi.dati.data[19]=0x00;
+	    state.scsi.dati.data[20]=0x00; // fixed packet / blocking size
+	    state.scsi.dati.data[21]=0x00;
+	    state.scsi.dati.data[22]=0x00;
+	    state.scsi.dati.data[23]=0x00;
+	    state.scsi.dati.data[24]=(get_block_size() >> 24) & 0xff; // msb=track size
+	    state.scsi.dati.data[25]=(get_block_size() >> 16) & 0xff;
+	    state.scsi.dati.data[26]=(get_block_size() >> 8) & 0xff;
+	    state.scsi.dati.data[27]=get_block_size() & 0xff;
+	    state.scsi.dati.data[28]=0x00; // last recorded address
+	    state.scsi.dati.data[29]=0x00;
+	    state.scsi.dati.data[30]=0x00;
+	    state.scsi.dati.data[31]=0x00;
+	    state.scsi.dati.data[32]=0x00; // track msb
+	    state.scsi.dati.data[33]=0x00; // session msb
+	    state.scsi.dati.data[34]=0x00; // reserved
+	    state.scsi.dati.data[35]=0x00; // reserved
+    	
+	    state.scsi.dati.available = 0x24;
+	    state.scsi.stat.available = 1;
+	    state.scsi.stat.data[0] = 0;
+	    state.scsi.stat.read = 0;
+	    state.scsi.msgi.available = 1;
+	    state.scsi.msgi.data[0] = 0;
+	    state.scsi.msgi.read = 0;     
+     
+	    break;
+
+      case 0: // logical block address
       case 2: // border number
       default:
 	    printf("Unimplemented address/number type: %d\n",type);
