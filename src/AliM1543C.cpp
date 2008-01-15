@@ -27,7 +27,13 @@
  * \file 
  * Contains the code for the emulated Ali M1543C chipset devices.
  *
- * $Id: AliM1543C.cpp,v 1.50 2008/01/08 16:38:08 iamcamiel Exp $
+ * $Id: AliM1543C.cpp,v 1.51 2008/01/15 20:07:17 iamcamiel Exp $
+ *
+ * X-1.51       Brian wheeler                                   15-JAN-2008
+ *      When a keyboard self-test command is received, and the queue is
+ *      not empty, the queue is cleared so the 0x55 that's sent back
+ *      will be the first thing in line. Makes the keyboard initialize
+ *      a little better with SRM. 
  *
  * X-1.50       Camiel Vanderhoeven                             08-JAN-2008
  *      Comments.
@@ -414,7 +420,7 @@ CAliM1543C::CAliM1543C(CConfigurator * cfg, CSystem * c, int pcibus, int pcidev)
     lpt=NULL;
   }
 
-  printf("%s: $Id: AliM1543C.cpp,v 1.50 2008/01/08 16:38:08 iamcamiel Exp $\n",devid_string);
+  printf("%s: $Id: AliM1543C.cpp,v 1.51 2008/01/15 20:07:17 iamcamiel Exp $\n",devid_string);
 }
 
 /**
@@ -1743,7 +1749,7 @@ void CAliM1543C::kbd_60_write(u8 value)
         // data byte written last to 0x60
         state.kbd_controller.status.c_d = 0;
 #if defined(DEBUG_KBD)
-        if (state.kbd_controller.inpb)
+        if (state.kbd_controller.status.inpb)
           printf("write to port 60h, not ready for write   \n");
 #endif
         switch (state.kbd_controller.last_comm) {
@@ -1910,8 +1916,12 @@ void CAliM1543C::kbd_64_write(u8 value)
 	  }
           // controller output buffer must be empty
           if (state.kbd_controller.status.outb) {
-            BX_ERROR(("kbd: OUTB set and command 0x%02x encountered", value));
-            break;
+            printf("kbd: OUTB set and command 0x%02x encountered", value);
+            //break;
+	        // drain the queue?
+	        state.kbd_internal_buffer.head = 0;
+	        state.kbd_internal_buffer.num_elements = 0;
+	        state.kbd_controller.status.outb = 0;
           }
 	  // (mch) Why is this commented out??? Enabling
           state.kbd_controller.status.sysf = 1; // self test complete
@@ -1920,7 +1930,7 @@ void CAliM1543C::kbd_64_write(u8 value)
         case 0xab: // Interface Test
           // controller output buffer must be empty
           if (state.kbd_controller.status.outb) {
-            BX_PANIC(("kbd: OUTB set and command 0x%02x encountered", value));
+            printf("kbd: OUTB set and command 0x%02x encountered", value);
             break;
           }
           kbd_controller_enQ(0x00, 0);
