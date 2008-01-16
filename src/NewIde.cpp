@@ -27,7 +27,10 @@
  * \file
  * Contains the code for the emulated Ali M1543C IDE chipset part.
  *
- * $Id: NewIde.cpp,v 1.8 2008/01/14 21:34:53 iamcamiel Exp $
+ * $Id: NewIde.cpp,v 1.9 2008/01/16 18:38:52 iamcamiel Exp $
+ *
+ * X-1.9        Brian Wheeler                                   16-JAN-2008
+ *      Less timeouts.
  *
  * X-1.8        Brian Wheeler                                   14-JAN-2008
  *      Less messages without debugging enabled.
@@ -590,6 +593,7 @@ void CNewIde::ide_command_write(int index, u32 address, int dsize, u32 data) {
       // the previous command to completion by calling DoClock() before
       // processing the new command.  Unfortunately, if the registers
       // have changed dramatically, it may actually be destructive.
+
 #ifdef DEBUG_IDE
       printf("%%IDE-W-CIP: Command is already in progress.\n");
       PAUSE("dang it!");
@@ -599,7 +603,8 @@ void CNewIde::ide_command_write(int index, u32 address, int dsize, u32 data) {
 
     if((data & 0xf0) == 0x10)
       data = 0x10;
-    
+
+    SEL_COMMAND(index).command_in_progress=false;
     SEL_COMMAND(index).current_command=data;
     SEL_COMMAND(index).command_cycle=0;
     SEL_STATUS(index).drq=false;
@@ -671,12 +676,14 @@ void CNewIde::ide_control_write(int index, u32 address, u32 data)
       STATUS(index,0).drq = false;
       STATUS(index,0).err = false;
       COMMAND(index,0).current_command = 0;
+      COMMAND(index,0).command_in_progress = false;
       STATUS(index,1).busy = true;
       STATUS(index,1).drive_ready = false;
       STATUS(index,1).seek_complete = true;
       STATUS(index,1).drq = false;
       STATUS(index,1).err = false;
       COMMAND(index,1).current_command = 0;
+      COMMAND(index,1).command_in_progress = false;
       
       CONTROLLER(index).reset_in_progress = true;
       SEL_REGISTERS(index).error = 0x01; // no error
@@ -1108,7 +1115,8 @@ int CNewIde::DoClock()
 	      SEL_STATUS(index).err=true;
 	      SEL_COMMAND(index).command_in_progress=false;
 	      raise_interrupt(index);
-	      PAUSE("got nop....how?");
+	      printf("got nop on %d.%d\n",index,CONTROLLER(index).selected);
+	      FAILURE("This isn't possible, but you're seeing it.");
 	      break;
 
 	    case 0x08: // device reset
@@ -1529,6 +1537,15 @@ int CNewIde::DoClock()
 #ifdef DEBUG_IDE_PACKET
                         printf("Yielding until all PIO data is read.\n");
 #endif
+				        // FreeBSD sometimes loses interrupts with atapi
+				        // pio.  If we've been here 25 times and the 
+				        // pointer is still 0, we throw an interrupt 
+				        // just to be safe.
+				        if(SEL_COMMAND(index).command_cycle > 25
+				           && CONTROLLER(index).data_ptr==0)
+                        {
+				          raise_interrupt(index);
+				        }
 			            yield = true;  // yield.			    
 		              } else {			
 			            // all of the data has been read from the buffer.
@@ -1802,7 +1819,6 @@ int CNewIde::DoClock()
 		    index);
 	    }
 #endif
-
       }
     } 
 
