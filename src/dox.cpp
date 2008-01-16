@@ -30,7 +30,7 @@
  * You could read the documentation from this file; but it would probably
  * be easier to go to http://es40.sourceforge.net.
  *
- * $Id: dox.cpp,v 1.8 2008/01/14 21:35:06 iamcamiel Exp $
+ * $Id: dox.cpp,v 1.9 2008/01/16 18:39:53 iamcamiel Exp $
  *
  * \author Camiel Vanderhoeven (camiel@camicom.com / http://www.camicom.com)
  **/
@@ -137,10 +137,10 @@
  * \section con Contributors
  * In order of appearance.
  *  - Camiel Vanderhoeven (camiel@camicom.com): main architect/developer.
- *  - Brian Wheeler: UNIX port, initial config file, initial VGA, and contributions to overall quality.
+ *  - Brian Wheeler: UNIX port, initial config file, initial VGA, new IDE, and contributions to overall quality.
  *  - Eduardo Marcelo Serrat: Major bugfixes. 
  *  - Fang Zhe: OS X port.
- *  - David Hittner: Bugfix in Ethernet controller.
+ *  - David Hittner: CPU Integer Traps, Bugfix in Ethernet controller.
  *  - Fausto Saporito: Bugfixes.
  *  .
  *
@@ -213,7 +213,7 @@
  * Tested with 6.2
  *   - Using newide
  *      - devices are probed and DMA is used.
- *      - CD-ROM device works, but install fails.
+ *      - CD-ROM device works, but occasionally times out.
  *      .
  *   .
  *
