@@ -28,7 +28,10 @@
  * Contains the code for the emulated DecChip 21264CB EV68 Alpha processor.
  *
  * \bug Rounding and trap modes are not used for floating point ops.
- * \bug /V is ignored for integer ops.
+ * \bug /V isn't implemented for all integer ops yet.
+ *
+ * X-1.52       David Hittner                                   16-JAN-2008
+ *      Added ADDL/V instruction, added MIPS estimate (define MIPS_ESTIMATE)
  *
  * X-1.51       Camiel Vanderhoeven                             08-JAN-2008
  *      Removed last references to IDE disk read SRM replacement.
@@ -275,7 +278,7 @@
 
 #define OP(mnemonic, format)							\
 	DO_##mnemonic;								\
-	return 0;
+    return 0;
 
 #define OP_FNC(mnemonic, format)							\
     mnemonic();								\
@@ -400,7 +403,7 @@ CAlphaCPU::CAlphaCPU(CConfigurator * cfg, CSystem * system) : CSystemComponent (
   bListing = false;
 #endif
   
-  printf("%s: $Id: AlphaCPU.cpp,v 1.51 2008/01/08 16:41:24 iamcamiel Exp $\n",devid_string);
+  printf("%s: $Id: AlphaCPU.cpp,v 1.52 2008/01/16 18:36:34 iamcamiel Exp $\n",devid_string);
 }
 
 /**
@@ -488,6 +491,16 @@ void handle_debug_string(char * s)
 
 #endif
 
+#if defined(MIPS_ESTIMATE)
+// MIPS_INTERVAL must take longer than 1 second to execute
+// or estimate will generate a divide-by-zero error
+#define MIPS_INTERVAL 0xfffffff
+static time_t saved = 0;
+static u64 count;
+static double min_mips = 999999999999999.0;
+static double max_mips = 0.0;
+#endif
+
 /**
  * Called each clock-cycle.
  * This is where the actual CPU emulation takes place. Each clocktick, one instruction
@@ -516,6 +529,24 @@ int CAlphaCPU::DoClock()
   int opcode;
   int function;
 
+#if defined(MIPS_ESTIMATE)
+  // Calculate simulated performance statistics
+  if (++count >= MIPS_INTERVAL) {
+	time_t current;
+	time(&current);
+    if (saved > 0) {
+	  double secs = difftime(current, saved);
+	  double ips = MIPS_INTERVAL / secs;
+	  double mips = ips / 1000000.0;
+	  if (max_mips < mips) max_mips = mips;
+	  if (min_mips > mips) min_mips = mips;
+	  printf("ES40 MIPS (%3.1f sec):: current: %5.3f, min: %5.3f, max: %5.3f\n", secs, mips, min_mips, max_mips);
+	}
+    saved = current;
+    count = 0;
+  }
+#endif
+
 #if defined(IDB)
   char * funcname = 0;
   char dbg_string[1000] = "";
@@ -530,6 +561,7 @@ int CAlphaCPU::DoClock()
   state.instruction_count++;
 #endif
 
+  // Service interrupts
   if (DO_ACTION)
   {
     if (state.check_int && !(state.pc&1))
@@ -571,15 +603,15 @@ int CAlphaCPU::DoClock()
 #endif
 
     // get next instruction
-    if (get_icache(state.pc,&ins))
-  	  return 0;
-  }
-  else
-  {
+    if (get_icache(state.pc, &ins))
+      return 0;
+  } else {
     ins = (u32)(cSystem->ReadMem(state.pc,32));
   }
+
   state.pc += 4;
 
+  // Clear "always zero" registers
   state.r[31] = 0;
   state.f[31] = 0;
 
@@ -596,18 +628,18 @@ int CAlphaCPU::DoClock()
     }
   }
 
-  opcode = ins >>26;
-
+  // Decode and dispatch opcode.
+  opcode = ins >> 26;
   switch (opcode)
     {
     case 0x00: // CALL_PAL
-      function = ins&0x1fffffff;
-      switch (function)
-      {
+      function = ins & 0x1fffffff;
+      OP(CALL_PAL,PAL);
+//      switch (function)
+//      {
 //        case 0x123401: OP_FNC(vmspal_int_read_ide, NOP);
-
-        default: OP(CALL_PAL,PAL);
-      }
+//        default: OP(CALL_PAL,PAL);
+//      }
 
     case 0x08: OP(LDA,MEM);
     case 0x09: OP(LDAH,MEM);
@@ -618,25 +650,25 @@ int CAlphaCPU::DoClock()
     case 0x0e: OP(STB,MEM);
     case 0x0f: OP(STQ_U,MEM);
 
-    case 0x10: // op
-      function = (ins>>5) & 0x7f;
-      switch (function) // ignore /V for now
+    case 0x10: // INTA* instructions
+      function = (ins >> 5) & 0x7f;
+      switch (function)
       {
-        case 0x00:
-        case 0x40: OP(ADDL,R12_R3);
+        case 0x00: OP(ADDL,R12_R3);
+        case 0x40: OP(ADDL_V,R12_R3);
         case 0x02: OP(S4ADDL,R12_R3);
-        case 0x09:
-        case 0x49: OP(SUBL,R12_R3);
+        case 0x49: //OP(SUBL_V,R12_R3);
+        case 0x09: OP(SUBL,R12_R3);
         case 0x0b: OP(S4SUBL,R12_R3);
         case 0x0f: OP(CMPBGE,R12_R3);
         case 0x12: OP(S8ADDL,R12_R3);
         case 0x1b: OP(S8SUBL,R12_R3);
         case 0x1d: OP(CMPULT,R12_R3);
-        case 0x20: 
-        case 0x60: OP(ADDQ,R12_R3);
+        case 0x60: //OP(ADDQ_V,R12_R3);
+        case 0x20: OP(ADDQ,R12_R3);
         case 0x22: OP(S4ADDQ,R12_R3);
-        case 0x29:
-        case 0x69: OP(SUBQ,R12_R3);
+        case 0x69: //OP(SUBQ_V,R12_R3);
+        case 0x29: OP(SUBQ,R12_R3);
         case 0x2b: OP(S4SUBQ,R12_R3);
         case 0x2d: OP(CMPEQ,R12_R3);
         case 0x32: OP(S8ADDQ,R12_R3);
@@ -646,9 +678,10 @@ int CAlphaCPU::DoClock()
         case 0x6d: OP(CMPLE,R12_R3);
         default:   UNKNOWN2;
       }
+      break;
 
-    case 0x11: // op
-      function = (ins>>5) & 0x7f;
+    case 0x11: // INTL* instructions
+      function = (ins >> 5) & 0x7f;
       switch (function)
       {
         case 0x00: OP(AND,R12_R3);
@@ -669,8 +702,9 @@ int CAlphaCPU::DoClock()
         case 0x6c: OP(IMPLVER,X_R3);
         default:   UNKNOWN2;
       }
+      break;
 
-    case 0x12:
+    case 0x12:  // INTS* instructions
       function = (ins>>5) & 0x7f;
       switch (function)
       {
@@ -702,78 +736,81 @@ int CAlphaCPU::DoClock()
         case 0x7a: OP(EXTQH,R12_R3);
         default:   UNKNOWN2;
       }
+      break;
 
-    case 0x13:
+    case 0x13:  // INTM* instructions
       function = (ins>>5) & 0x7f;
       switch (function) // ignore /V for now
       {
-	case 0x00: 
+        case 0x00: 
         case 0x40: OP(MULL,R12_R3);
-	case 0x20: 
+        case 0x20: 
         case 0x60: OP(MULQ,R12_R3);
-	case 0x30: OP(UMULH,R12_R3);
-	default:   UNKNOWN2;
+        case 0x30: OP(UMULH,R12_R3);
+        default:   UNKNOWN2;
       }
+      break;
 
-    case 0x14:
+    case 0x14:  // ITFP* instructions
       function = (ins>>5) & 0x7ff;
       switch(function)
       {
-      case 0x004: OP(ITOFS,R1_F3);
-      case 0x00a: 
-      case 0x08a: 
-      case 0x10a: 
-      case 0x18a: 
-      case 0x40a: 
-      case 0x48a: 
-      case 0x50a: 
-      case 0x58a: OP(SQRTF,F2_F3);
-      case 0x00b:
-      case 0x04b: 
-      case 0x08b: 
-      case 0x0cb: 
-      case 0x10b: 
-      case 0x14b: 
-      case 0x18b: 
-      case 0x1cb: 
-      case 0x50b: 
-      case 0x54b: 
-      case 0x58b: 
-      case 0x5cb: 
-      case 0x70b: 
-      case 0x74b: 
-      case 0x78b: 
-      case 0x7cb: OP(SQRTS,F2_F3);
-      case 0x014: OP(ITOFF,R1_F3);
-      case 0x024: OP(ITOFT,R1_F3);
-      case 0x02a: 
-      case 0x0aa: 
-      case 0x12a: 
-      case 0x1aa: 
-      case 0x42a: 
-      case 0x4aa: 
-      case 0x52a: 
-      case 0x5aa: OP(SQRTG,F2_F3);
-      case 0x02b: 
-      case 0x06b: 
-      case 0x0ab: 
-      case 0x0eb: 
-      case 0x12b: 
-      case 0x16b: 
-      case 0x1ab: 
-      case 0x1eb: 
-      case 0x52b: 
-      case 0x56b: 
-      case 0x5ab: 
-      case 0x5eb: 
-      case 0x72b: 
-      case 0x76b: 
-      case 0x7ab: 
-      case 0x7eb: OP(SQRTT,F2_F3);
-      default:    UNKNOWN2;
+        case 0x004: OP(ITOFS,R1_F3);
+        case 0x00a: 
+        case 0x08a: 
+        case 0x10a: 
+        case 0x18a: 
+        case 0x40a: 
+        case 0x48a: 
+        case 0x50a: 
+        case 0x58a: OP(SQRTF,F2_F3);
+        case 0x00b:
+        case 0x04b: 
+        case 0x08b: 
+        case 0x0cb: 
+        case 0x10b: 
+        case 0x14b: 
+        case 0x18b: 
+        case 0x1cb: 
+        case 0x50b: 
+        case 0x54b: 
+        case 0x58b: 
+        case 0x5cb: 
+        case 0x70b: 
+        case 0x74b: 
+        case 0x78b: 
+        case 0x7cb: OP(SQRTS,F2_F3);
+        case 0x014: OP(ITOFF,R1_F3);
+        case 0x024: OP(ITOFT,R1_F3);
+        case 0x02a: 
+        case 0x0aa: 
+        case 0x12a: 
+        case 0x1aa: 
+        case 0x42a: 
+        case 0x4aa: 
+        case 0x52a: 
+        case 0x5aa: OP(SQRTG,F2_F3);
+        case 0x02b: 
+        case 0x06b: 
+        case 0x0ab: 
+        case 0x0eb: 
+        case 0x12b: 
+        case 0x16b: 
+        case 0x1ab: 
+        case 0x1eb: 
+        case 0x52b: 
+        case 0x56b: 
+        case 0x5ab: 
+        case 0x5eb: 
+        case 0x72b: 
+        case 0x76b: 
+        case 0x7ab: 
+        case 0x7eb: OP(SQRTT,F2_F3);
+        default:    UNKNOWN2;
       }
+      break;
 
-    case 0x15:
+    case 0x15:  // FLTV* instructions
       function = (ins>>5) & 0x7ff;
       switch(function)
       {
@@ -799,15 +836,18 @@ int CAlphaCPU::DoClock()
                  case 0x01e: OP(CVTDG,F2_F3);
                  case 0x020: OP(ADDG,F12_F3);
                  case 0x021: OP(SUBG,F12_F3);
-	         case 0x022: OP(MULG,F12_F3);
+	             case 0x022: OP(MULG,F12_F3);
                  case 0x023: OP(DIVG,F12_F3);
-	         case 0x02c: OP(CVTGF,F12_F3);
-	         case 0x02d: OP(CVTGD,F2_F3);
+	             case 0x02c: OP(CVTGF,F12_F3);
+	             case 0x02d: OP(CVTGD,F2_F3);
                  case 0x02f: OP(CVTGQ,F2_F3);
                  default:   UNKNOWN2;
                  }
+                 break;
       }
-    case 0x16:
+      break;
+
+    case 0x16:  // FLTI* instructions
       function = (ins>>5) & 0x7ff;
       switch(function)
       {
@@ -846,8 +886,11 @@ int CAlphaCPU::DoClock()
                           OP(CVTQT,F2_F3);
                default:   UNKNOWN2;
                }
+               break;
       }
-    case 0x17:
+      break;
+
+    case 0x17:  // FLTL* instructions
       function = (ins>>5) & 0x7ff;
       switch (function)
       {
@@ -868,41 +911,45 @@ int CAlphaCPU::DoClock()
       case 0x530: OP(CVTQL,F12_F3);
       default:   UNKNOWN2;
       }
+      break;
 
-    case 0x18:
+    case 0x18:  // MISC* instructions
       function = (ins & 0xffff);
       switch (function)
-	{
-	case 0x0000: OP(TRAPB,NOP);
-	case 0x0400: OP(EXCB,NOP);
-	case 0x4000: OP(MB,NOP);
-	case 0x4400: OP(WMB,NOP);
-	case 0x8000: OP(FETCH,NOP);
-	case 0xA000: OP(FETCH_M,NOP);
-	case 0xC000: OP(RPCC,X_R1);
-	case 0xE000: OP(RC,X_R1);
-	case 0xE800: OP(ECB,NOP);
-	case 0xF000: OP(RS,X_R1);
-	case 0xF800: OP(WH64,NOP);
-	case 0xFC00: OP(WH64EN,NOP);
-	default:     UNKNOWN2;
-	}
+	  {
+	    case 0x0000: OP(TRAPB,NOP);
+	    case 0x0400: OP(EXCB,NOP);
+	    case 0x4000: OP(MB,NOP);
+	    case 0x4400: OP(WMB,NOP);
+	    case 0x8000: OP(FETCH,NOP);
+	    case 0xA000: OP(FETCH_M,NOP);
+	    case 0xC000: OP(RPCC,X_R1);
+	    case 0xE000: OP(RC,X_R1);
+	    case 0xE800: OP(ECB,NOP);
+	    case 0xF000: OP(RS,X_R1);
+	    case 0xF800: OP(WH64,NOP);
+	    case 0xFC00: OP(WH64EN,NOP);
+	    default:     UNKNOWN2;
+	  }
+      break;
 
     case 0x19: // HW_MFPR
       function = (ins>>8) & 0xff;
       OP(HW_MFPR,MFPR);
 
-    case 0x1a: OP(JMP,JMP);
+    case 0x1a:  // JSR* instructions
+      OP(JMP,JMP);
 
-    case 0x1b: // HW_LD
+    case 0x1b: // PAL reserved - HW_LD
       function = (ins>>12) & 0xf;
       if (function&1) {
-	OP(HW_LDQ,HW_LD);
+	    OP(HW_LDQ,HW_LD);
       } else {
-	OP(HW_LDL,HW_LD);
+	    OP(HW_LDL,HW_LD);
       }
 
-    case 0x1c: // op
+
+    case 0x1c: // FPTI* instructions
       function = (ins>>5) & 0x7f;
       switch (function)
         {
@@ -928,6 +975,7 @@ int CAlphaCPU::DoClock()
         case 0x78: OP(FTOIS,F1_R3);
         default:   UNKNOWN2;
         }
+      break;
 
     case 0x1d: // HW_MTPR
       function = (ins>>8) & 0xff;
@@ -938,9 +986,9 @@ int CAlphaCPU::DoClock()
     case 0x1f: // HW_ST
       function = (ins>>12) & 0xf;
       if (function&1) {
-	OP(HW_STQ,HW_ST);
+	    OP(HW_STQ,HW_ST);
       } else {
-	OP(HW_STL,HW_ST);
+	    OP(HW_STL,HW_ST);
       }
 
     case 0x20: OP(LDF, FMEM);
@@ -978,7 +1026,9 @@ int CAlphaCPU::DoClock()
 
     default:
       UNKNOWN1;
-    }
+  }
+
+  return 0;
 }
 
 #if defined(IDB)

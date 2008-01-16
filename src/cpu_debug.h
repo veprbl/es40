@@ -1,7 +1,7 @@
 /* ES40 emulator.
- * Copyright (C) 2007 by Camiel Vanderhoeven
+ * Copyright (C) 2007-2008 by the ES40 Emulator Project
  *
- * Website: www.camicom.com
+ * WWW    : http://sourceforge.net/projects/es40
  * E-mail : camiel@camicom.com
  * 
  * This program is free software; you can redistribute it and/or
@@ -23,9 +23,13 @@
  * the general public.
  */ 
 
+
 /**
  * \file 
  * Contains debugging macros used by AlphaCPU.cpp
+ *
+ * X-1.17       Camiel Vanderhoeven                             16-JAN-2008
+ *      Added ARITH_TRAP macro. 
  *
  * X-1.16       Camiel Vanderhoeven                             2-DEC-2007
  *      Moved PAL_NAME and IPR_NAME to AlphaCPU.cpp. 
@@ -124,11 +128,22 @@ extern char * IPR_NAME[];
 #define TRC_(down,up,x,y) ;
 #define TRC(down,up) ;
 #define TRC_BR ;
-#define GO_PAL(offset) {						\
-    state.exc_addr = state.current_pc;						\
-    state.pc = state.pal_base | offset | 1; }
-
+#define GO_PAL(offset)                                              \
+    {						                                        \
+      state.exc_addr = state.current_pc;  						    \
+      state.pc = state.pal_base | offset | 1;                       \
+    }
 #endif
+
+// INTeger overflow arithmetic trap
+#define ARITH_INT X64(80)
+
+#define ARITH_TRAP(flags, reg)                                      \
+    {                                                               \
+      state.exc_sum = flags              /* cause of trap */        \
+                    | (reg & 0x1f) << 8; /* destination register */ \
+      GO_PAL(ARITH);                     /* trap */                 \
+    }
 
 #if defined(IDB)
 

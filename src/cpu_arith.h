@@ -1,7 +1,7 @@
 /* ES40 emulator.
- * Copyright (C) 2007 by Camiel Vanderhoeven
+ * Copyright (C) 2007-2008 by the ES40 Emulator Project
  *
- * Website: www.camicom.com
+ * WWW    : http://sourceforge.net/projects/es40
  * E-mail : camiel@camicom.com
  * 
  * This program is free software; you can redistribute it and/or
@@ -27,6 +27,9 @@
  * \file 
  * Contains code macros for the processor integer arithmetic instructions.
  * Based on ARM chapter 4.4.
+ *
+ * X-1.6        David Hittner                                   16-JAN-2008
+ *      Added ADDL/V instruction
  *
  * X-1.5        Camiel Vanderhoeven                             2-DEC-2007
  *      Use sext_64 inline.
@@ -59,6 +62,18 @@
 #define DO_ADDL state.r[REG_3] = sext_64(state.r[REG_1] + V_2,32);
 #define DO_S4ADDL state.r[REG_3] = sext_64((state.r[REG_1]*4) + V_2,32);
 #define DO_S8ADDL state.r[REG_3] = sext_64((state.r[REG_1]*8) + V_2,32);
+
+#define L_SIGN   X64(80000000)
+#define DO_ADDL_V                                                   \
+    {                                                               \
+      int rc = REG_3;                                               \
+      u64 rav = state.r[REG_1];                                     \
+      u64 rbv = V_2;                                                \
+      state.r[rc] = sext_64(rav + rbv, 32);                         \
+      /* test for integer overflow */                               \
+      if (((~rav ^ rbv) & (rav ^ state.r[rc])) & L_SIGN)            \
+        ARITH_TRAP(ARITH_INT, rc);                                  \
+    }
 
 #define DO_CTLZ									\
  	    temp_64 = 0;							\
