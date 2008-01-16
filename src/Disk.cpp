@@ -27,7 +27,10 @@
  * \file
  * Contains code for the disk base class.
  *
- * $Id: Disk.cpp,v 1.15 2008/01/14 21:34:38 iamcamiel Exp $
+ * $Id: Disk.cpp,v 1.16 2008/01/16 18:39:49 iamcamiel Exp $
+ *
+ * X-1.16       Camiel Vanderhoeven                             16-JAN-2008
+ *      Less messages without debugging enabled.
  *
  * X-1.15       Brian Wheeler                                   14-JAN-2008
  *      Corrected output from read track info and read toc.
@@ -538,16 +541,19 @@ int CDisk::do_scsi_command()
   int pagecode;
   u32 ofs;
 
+#if defined(DEBUG_SCSI)
   printf("%s: %d-byte command ",devid_string,state.scsi.cmd.written);
   for (unsigned int x=0;x<state.scsi.cmd.written;x++) printf("%02x ",state.scsi.cmd.data[x]);
   printf("\n");
-
+#endif
   if (state.scsi.cmd.written<1)
     return 0;
 
   if (state.scsi.cmd.data[1] & 0xe0)
   {
+#if defined(DEBUG_SCSI)
     printf("%s: LUN selected...\n",devid_string);
+#endif
     state.scsi.lun_selected = true;
   }
 
@@ -680,7 +686,7 @@ int CDisk::do_scsi_command()
 	  if ((state.scsi.cmd.data[2] & 0xc0) != 0)
       {
         printf(" mode sense, cmd[2] = 0x%02x.\n", state.scsi.cmd.data[2]);
-        throw((int)1);
+        FAILURE("SCSI Command Failed");
       }
 
 	  //  Return data:  
@@ -942,7 +948,9 @@ int CDisk::do_scsi_command()
   case SCSICMD_READ_10:
   case SCSICMD_READ_12:
   case SCSICMD_READ_CD:
+#if defined(DEBUG_SCSI)
     printf("%s: READ.\n", devid_string);
+#endif
     //if (state.scsi.disconnect_priv)
     //{
     //  //printf("%s: Will disconnect before returning read data.\n", devid_string);
@@ -986,7 +994,7 @@ int CDisk::do_scsi_command()
       if (state.scsi.cmd.data[9] != 0x10)
       {
         printf("READ CD issued with data type %02x.\n",state.scsi.cmd.data[9]);
-        FAILURE("data type not recognized");
+        FAILURE("SCSI Command Failed");
       }
       //  cmd[2..5] hold the logical block address.
 	  //  cmd[6..8] holds the number of logical blocks to transfer.
@@ -1016,7 +1024,9 @@ int CDisk::do_scsi_command()
     read_blocks(state.scsi.dati.data, retlen);
     state.scsi.dati.available = retlen * get_block_size();
 
+#if defined(DEBUG_SCSI)
     printf("%s: READ  ofs=%d size=%d\n", devid_string, ofs, retlen);
+#endif
     //getchar();
 	break;
 
@@ -1071,7 +1081,9 @@ int CDisk::do_scsi_command()
     seek_block(ofs);
     write_blocks(state.scsi.dato.data, retlen);
 
+#if defined(DEBUG_SCSI)
     printf("%s: WRITE  ofs=%d size=%d\n", devid_string, ofs, retlen);
+#endif
     //getchar();
 	break;
 
@@ -1093,19 +1105,19 @@ int CDisk::do_scsi_command()
       if (state.scsi.cmd.data[1]&0x02)
       {
         printf("%s: I don't understand READ TOC/PMA/ATIP with MSF bit set.\n",devid_string);
-        FAILURE("SCSI command failure");
+        FAILURE("SCSI Command Failed");
       }
 
       if (state.scsi.cmd.data[2]&0x0f)
       {
         printf("%s: I don't understand READ TOC/PMA/ATIP with format %01x.\n",devid_string,state.scsi.cmd.data[2] & 0x0f);
-        FAILURE("SCSI command failure");
+        FAILURE("SCSI Command Failed");
       }
 
       if (state.scsi.cmd.data[6]>1 && state.scsi.cmd.data[6] != 0xAA)
       {
         printf("%s: I don't know CD-ROM track 0x%02x.\n",devid_string,state.scsi.cmd.data[6]);
-        FAILURE("SCSI command failure");
+        FAILURE("SCSI Command Failed");
       }
 
       retlen = state.scsi.cmd.data[7]*256 + state.scsi.cmd.data[8];
@@ -1211,16 +1223,16 @@ int CDisk::do_scsi_command()
     case 1:
     case 2:
     default:
-      printf("Unimplemented data-type in READ_DISKINFO: %d\n",
-	     state.scsi.cmd.data[2] & 0x7);
-      FAILURE("Unimplemented data-type");
+      printf("%s: Unimplemented data-type in READ_DISKINFO: %d.\n", devid_string, state.scsi.cmd.data[2] & 0x7);
+      FAILURE("SCSI Command Failed");
       break;
     }
     break;
 
   case SCSICDROM_READ_TRACKINFO:
     if(state.scsi.cmd.data[1] & 0x04) {
-      FAILURE("Don't know how to deal with the 'open' bit yet");
+      printf("%s: Don't know how to deal with the 'open' bit yet.\n", devid_string);
+      FAILURE("SCSI Command Failed");
     } else {
       u8 type = state.scsi.cmd.data[1] & 0x03;
       u32 item = state.scsi.cmd.data[3] << 24 |
@@ -1297,17 +1309,15 @@ int CDisk::do_scsi_command()
       case 0: // logical block address
       case 2: // border number
       default:
-	    printf("Unimplemented address/number type: %d\n",type);
-        FAILURE("Unimplemented address/number type");
+        printf("%s: Unimplemented address/number type: %d\n",devid_string,type);
+        FAILURE("SCSI Command Failed");
       }
     }
     break;
 
   default:
     printf("%s: Unknown SCSI command 0x%02x.\n",devid_string,state.scsi.cmd.data[0]);
-    //printf(">");
-    //getchar();
-    throw((int)1);
+    FAILURE("SCSI Command Failed");
   }
   return 0;
 }
@@ -1330,19 +1340,27 @@ int CDisk::do_scsi_message()
     if (state.scsi.msgo.data[msg] & 0x80)
     {
       // identify
+#if defined(DEBUG_SCSI)
       printf("%s: MSG: identify",devid_string);
+#endif
       if (state.scsi.msgo.data[msg] & 0x40)
       {
+#if defined(DEBUG_SCSI)
         printf(" w/disconnect priv");
+#endif
 //        state.scsi.disconnect_priv = true;
       }
       if (state.scsi.msgo.data[msg] & 0x07)
       {
       // LUN...
+#if defined(DEBUG_SCSI)
         printf(" for lun %d%",state.scsi.msgo.data[msg] & 0x07);
+#endif
         state.scsi.lun_selected = true;
       }
+#if defined(DEBUG_SCSI)
       printf("\n");
+#endif
       msg++;
     }
     else
@@ -1350,14 +1368,18 @@ int CDisk::do_scsi_message()
       switch (state.scsi.msgo.data[msg])
       {
       case 0x01:
+#if defined(DEBUG_SCSI)
         printf("%s: MSG: extended: ",devid_string);
+#endif
         msglen = state.scsi.msgo.data[msg+1];
         msg += 2;
         switch (state.scsi.msgo.data[msg])
         {
         case 0x01:
 	      {
+#if defined(DEBUG_SCSI)
             printf("SDTR.\n");
+#endif
             state.scsi.msgi.available = msglen+2;
             state.scsi.msgi.data[0] = 0x01;
             state.scsi.msgi.data[1] = msglen;
@@ -1367,7 +1389,9 @@ int CDisk::do_scsi_message()
           break;
         case 0x03:
 		  {
+#if defined(DEBUG_SCSI)
             printf("WDTR.\n");
+#endif
             state.scsi.msgi.available = msglen+2;
             state.scsi.msgi.data[0] = 0x01;
             state.scsi.msgi.data[1] = msglen;
@@ -1377,13 +1401,13 @@ int CDisk::do_scsi_message()
           break;
         default:
           printf("%s: MSG: don't understand extended message %02x.\n",devid_string,state.scsi.msgo.data[msg]);
-	      throw((int)1);
+	      FAILURE("SCSI Message Failed");
 		}
         msg += msglen;
         break;
       default:
         printf("%s: MSG: don't understand message %02x.\n",devid_string,state.scsi.msgo.data[msg]);
-	    throw((int)1);
+        FAILURE("SCSI Message Failed");
       }
     }
   }
