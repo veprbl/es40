@@ -28,7 +28,10 @@
  * \file
  * Contains the definitions for the emulated DecChip 21264CB EV68 Alpha processor.
  *
- * $Id: AlphaCPU.h,v 1.35 2008/01/18 20:58:20 iamcamiel Exp $
+ * $Id: AlphaCPU.h,v 1.36 2008/01/18 21:07:41 iamcamiel Exp $
+ *
+ * X-1.35       Camiel Vanderhoeven                             18-JAN-2008
+ *      Comment.
  *
  * X-1.34       Camiel Vanderhoeven                             18-JAN-2008
  *      Process device interrupts after a 100-cpu-cycle delay.
@@ -445,7 +448,6 @@ inline void CAlphaCPU::flush_icache_asm()
 /**
  * Set the PALcode BASE register, and determine whether we're running VMS PALcode.
  **/
-
 inline void CAlphaCPU::set_PAL_BASE(u64 pb)
 {
   state.pal_base = pb;
@@ -455,8 +457,23 @@ inline void CAlphaCPU::set_PAL_BASE(u64 pb)
 /**
  * Get an instruction from the instruction cache.
  * If necessary, fill a new cache block from memory.
+ *
+ * get_icache checks all cache entries, to see if there is a
+ * cache entry that matches the current address space number,
+ * and that contains the address we're looking for. If it 
+ * exists, the instruction is fetched from this cache,
+ * otherwise, the physical address for the instruction is
+ * calculated, and the cache block is filled.
+ *
+ * The last cache entry that was a hit is remembered, so that
+ * cache entry is checked first on the next instruction. (very
+ * likely to be the same cache block)
+ *
+ * It would be easiest to do without the instruction cache
+ * altogether, but unfortunately SRM uses self-modifying
+ * code, that relies on the correct instruction stream to 
+ * remain in the cache.
  **/
-
 inline int CAlphaCPU::get_icache(u64 address, u32 * data)
 {
   int i = state.last_found_icache;
