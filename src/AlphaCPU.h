@@ -28,7 +28,10 @@
  * \file
  * Contains the definitions for the emulated DecChip 21264CB EV68 Alpha processor.
  *
- * $Id: AlphaCPU.h,v 1.34 2008/01/08 16:41:24 iamcamiel Exp $
+ * $Id: AlphaCPU.h,v 1.35 2008/01/18 20:58:20 iamcamiel Exp $
+ *
+ * X-1.34       Camiel Vanderhoeven                             18-JAN-2008
+ *      Process device interrupts after a 100-cpu-cycle delay.
  *
  * X-1.33       Camiel Vanderhoeven                             08-JAN-2008
  *      Removed last references to IDE disk read SRM replacement.
@@ -221,7 +224,7 @@ class CAlphaCPU : public CSystemComponent
   void flush_icache_asm();
   virtual int SaveState(FILE * f);
   virtual int RestoreState(FILE * f);
-  void irq_h(int number, bool assert);
+  void irq_h(int number, bool assert, int delay);
   int get_cpuid();
   void flush_icache();
 
@@ -399,6 +402,8 @@ class CAlphaCPU : public CSystemComponent
     u64 last_tb_virt;
     bool pal_vms;                           /**< True if the PALcode base is 0x8000 (=VMS PALcode base) */
     bool check_int;                         /**< True if an interrupt may be pending */
+    int irq_h_timer[6];                     /**< Timers for delayed IRQ_H[0:5] assertion */
+    bool check_timers;
   } state;                                  /**< Determines CPU state that needs to be saved to the state file */
 
 #ifdef IDB
@@ -559,15 +564,35 @@ inline int CAlphaCPU::get_cpuid()
  * Assert or release an external interrupt line to the cpu.
  **/
 
-inline void CAlphaCPU::irq_h(int number, bool assert)
+inline void CAlphaCPU::irq_h(int number, bool assert, int delay)
 {
   if (assert)
   {
-    state.eir |= (X64(1)<<number);
-    state.check_int = true;
+    if (!(state.eir & (X64(1)<<number)) && !state.irq_h_timer[number])
+    {
+      if (delay)
+      {
+        state.irq_h_timer[number] = delay;
+        state.check_timers = true;
+      }
+      else
+      {
+        state.eir |= (X64(1)<<number);
+        state.check_int = true;
+      }
+    }
   }
   else
+  {
       state.eir &= ~(X64(1)<<number);
+      state.irq_h_timer[number] = 0;
+      state.check_timers = false;
+      for (int i=0;i<6;i++)
+      {
+        if (state.irq_h_timer[i])
+          state.check_timers = true;
+      }
+  }
 }
 
 /**

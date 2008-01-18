@@ -1,7 +1,7 @@
 /* ES40 emulator.
- * Copyright (C) 2007 by Camiel Vanderhoeven
+ * Copyright (C) 2007-2008 by the ES40 Emulator Project
  *
- * Website: www.camicom.com
+ * WWW    : http://sourceforge.net/projects/es40
  * E-mail : camiel@camicom.com
  * 
  * This program is free software; you can redistribute it and/or
@@ -27,6 +27,12 @@
  * \file 
  * Contains code macros for the processor floating-point operate instructions.
  * Based on ARM chapter 4.10.
+ *
+ * $Id: cpu_fp_operate.h,v 1.11 2008/01/18 20:58:20 iamcamiel Exp $
+ *
+ * X-1.11       Camiel Vanderhoeven                             18-JAN-2008
+ *      Replaced sext_64 inlines with sext_u64_<bits> inlines for
+ *      performance reasons (thanks to David Hittner for spotting this!);
  *
  * X-1.10       Camiel Vanderhoeven                             2-DEC-2007
  *      Use sext_64 inline. 
@@ -74,8 +80,8 @@
 #define DO_CVTQL state.f[FREG_3] = ((state.f[FREG_2] & X64(00000000c0000000)) << 32)	\
 	                   | ((state.f[FREG_2] & X64(000000003fffffff)) << 29);
 
-#define DO_CVTLQ state.f[FREG_3] = sext_64(  ((state.f[FREG_2] >> 32) & X64(00000000c0000000))	\
-	                          | ((state.f[FREG_2] >> 29) & X64(000000003fffffff)), 32);
+#define DO_CVTLQ state.f[FREG_3] = sext_u64_32(  ((state.f[FREG_2] >> 32) & X64(00000000c0000000))	\
+	                          | ((state.f[FREG_2] >> 29) & X64(000000003fffffff)));
 
 #define DO_FCMOVEQ  if (state.f[FREG_1] == X64(0000000000000000) || state.f[FREG_1] == X64(8000000000000000))	state.f[FREG_3] = state.f[FREG_2];
 #define DO_FCMOVGE  if (!(state.f[FREG_1]& X64(8000000000000000)) || state.f[FREG_1] == X64(8000000000000000))	state.f[FREG_3] = state.f[FREG_2];

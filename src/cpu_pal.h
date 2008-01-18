@@ -1,7 +1,7 @@
 /* ES40 emulator.
- * Copyright (C) 2007 by Camiel Vanderhoeven
+ * Copyright (C) 2007-2008 by the ES40 Emulator Project
  *
- * Website: www.camicom.com
+ * WWW    : http://sourceforge.net/projects/es40
  * E-mail : camiel@camicom.com
  * 
  * This program is free software; you can redistribute it and/or
@@ -21,12 +21,18 @@
  * Although this is not required, the author would appreciate being notified of, 
  * and receiving any modifications you may make to the source code that might serve
  * the general public.
- */ 
+ */
 
 /**
  * \file 
  * Contains code macros for the processor PALmode instructions.
  * Based on HRM.
+ *
+ * $Id: cpu_pal.h,v 1.10 2008/01/18 20:58:20 iamcamiel Exp $
+ *
+ * X-1.10       Camiel Vanderhoeven                             18-JAN-2008
+ *      Replaced sext_64 inlines with sext_u64_<bits> inlines for
+ *      performance reasons (thanks to David Hittner for spotting this!);
  *
  * X-1.9        Camiel Vanderhoeven                             2-DEC-2007
  *      Changed the way translation buffers work, the way interrupts work. 
@@ -216,7 +222,7 @@
 	  break;								\
     case 0x11: /* i_ctl */							\
  	  state.i_ctl_other = state.r[REG_2]    & X64(00000000007e2f67);			\
-	  state.i_ctl_vptb  = sext_64 (state.r[REG_2] & X64(0000ffffc0000000),48);		\
+	  state.i_ctl_vptb  = sext_u64_48 (state.r[REG_2] & X64(0000ffffc0000000));		\
 	  state.i_ctl_spe   = (int)(state.r[REG_2]>>3) & 3;				\
 	  state.sde         = (state.r[REG_2]>>7) & 1;					\
 	  state.hwe         = (state.r[REG_2]>>12) & 1;					\
@@ -292,7 +298,7 @@
 	  state.cc    = (u32)(state.r[REG_2] & X64(fffffff0));				\
 	  break;								\
     case 0xc4: /* VA_CTL */							\
- 	  state.va_ctl_vptb = sext_64(state.r[REG_2] & X64(0000ffffc0000000),48);		\
+ 	  state.va_ctl_vptb = sext_u64_48(state.r[REG_2] & X64(0000ffffc0000000));		\
 	  state.va_ctl_va_mode = (int)(state.r[REG_2]>>1) & 3;				\
 	  break;								\
     default:								\

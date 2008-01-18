@@ -27,7 +27,11 @@
  * \file
  * Contains the code for the emulated Symbios SCSI controller.
  *
- * $Id: Sym53C895.cpp,v 1.18 2008/01/12 12:42:09 iamcamiel Exp $
+ * $Id: Sym53C895.cpp,v 1.19 2008/01/18 20:58:20 iamcamiel Exp $
+ *
+ * X-1.19       Camiel Vanderhoeven                             18-JAN-2008
+ *      Replaced sext_64 inlines with sext_u64_<bits> inlines for
+ *      performance reasons (thanks to David Hittner for spotting this!)
  *
  * X-1.18       Camiel Vanderhoeven                             12-JAN-2008
  *      Use disk's SCSI engine.
@@ -393,7 +397,7 @@ CSym53C895::CSym53C895(CConfigurator * cfg, CSystem * c, int pcibus, int pcidev)
   CSCSIBus * a = new CSCSIBus(cfg, c);
   scsi_register(0, a, 7); // scsi id 7 by default
 
-  printf("%s: $Id: Sym53C895.cpp,v 1.18 2008/01/12 12:42:09 iamcamiel Exp $\n",devid_string);
+  printf("%s: $Id: Sym53C895.cpp,v 1.19 2008/01/18 20:58:20 iamcamiel Exp $\n",devid_string);
 }
 
 CSym53C895::~CSym53C895()
@@ -1186,7 +1190,7 @@ int CSym53C895::execute()
           u32 i;
           if (table_indirect)
           {
-            u32 add = R32(DSA) + sext_32(R32(DSPS),24);
+            u32 add = R32(DSA) + sext_u32_24(R32(DSPS));
 
             //printf("SYM: Reading table at DSA(%08x)+DSPS(%08x) = %08x.\n",R32(DSA),R32(DSPS),add);
 
@@ -1291,14 +1295,14 @@ int CSym53C895::execute()
           u32 dest_addr = R32(DNAD);
 
           if (relative)
-            dest_addr = R32(DSP) + sext_32(R32(DNAD),24);
+            dest_addr = R32(DSP) + sext_u32_24(R32(DNAD));
 
           //printf("SYM: INS = I/O (opc %d, r %d, t %d, a %d, dest %d, sc %d%d%d%d\n"
           //  ,opcode,relative,table_indirect,atn,destination,sc_carry,sc_target,sc_ack,sc_atn);
 
           if (table_indirect)
           {
-            u32 io_addr = R32(DSA) + sext_32(GET_DBC(),24);
+            u32 io_addr = R32(DSA) + sext_u32_24(GET_DBC());
             u64 io_pa = cSystem->PCI_Phys(myPCIBus,io_addr);
             u32 io_struc = (u32)cSystem->ReadMem(io_pa,32);
             destination = (io_struc>>16) & 0x0f;
@@ -1488,7 +1492,7 @@ int CSym53C895::execute()
         bool do_it;
 
         if (relative)
-          dest_addr = R32(DSP) + sext_32(R32(DSPS),24);
+          dest_addr = R32(DSP) + sext_u32_24(R32(DSPS));
 
         //printf("SYM: %08x: if (",R32(DSP)-8);
         if (carry_test)
@@ -1601,7 +1605,7 @@ int CSym53C895::execute()
           u32 memaddr;
 
           if (dsa_relative)
-            memaddr = R32(DSA) + sext_32(R32(DSPS),24);
+            memaddr = R32(DSA) + sext_u32_24(R32(DSPS));
           else
             memaddr = R32(DSPS);
 

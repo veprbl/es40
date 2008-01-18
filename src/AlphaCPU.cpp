@@ -30,6 +30,13 @@
  * \bug Rounding and trap modes are not used for floating point ops.
  * \bug /V isn't implemented for all integer ops yet.
  *
+ * $Id: AlphaCPU.cpp,v 1.53 2008/01/18 20:58:20 iamcamiel Exp $
+ *
+ * X-1.53       Camiel Vanderhoeven                             18-JAN-2008
+ *      Replaced sext_64 inlines with sext_u64_<bits> inlines for
+ *      performance reasons (thanks to David Hittner for spotting this!);
+ *      Process device interrupts after a 100-cpu-cycle delay.
+ *
  * X-1.52       David Hittner                                   16-JAN-2008
  *      Added ADDL/V instruction, added MIPS estimate (define MIPS_ESTIMATE)
  *
@@ -339,6 +346,11 @@ CAlphaCPU::CAlphaCPU(CConfigurator * cfg, CSystem * system) : CSystemComponent (
       state.f[i] = 0;
     }
 
+  for(i=0;i<6;i++)
+    state.irq_h_timer[i] = 0;
+
+  state.check_timers = false;
+
   flush_icache();
 
   tbia(ACCESS_READ);
@@ -403,7 +415,7 @@ CAlphaCPU::CAlphaCPU(CConfigurator * cfg, CSystem * system) : CSystemComponent (
   bListing = false;
 #endif
   
-  printf("%s: $Id: AlphaCPU.cpp,v 1.52 2008/01/16 18:36:34 iamcamiel Exp $\n",devid_string);
+  printf("%s: $Id: AlphaCPU.cpp,v 1.53 2008/01/18 20:58:20 iamcamiel Exp $\n",devid_string);
 }
 
 /**
@@ -414,10 +426,10 @@ CAlphaCPU::~CAlphaCPU()
 {
 }
 
-#define DISP_12 (sext_64(ins,12))
-#define DISP_13 (sext_64(ins,13))
-#define DISP_16 (sext_64(ins,16))
-#define DISP_21 (sext_64(ins,21))
+#define DISP_12 (sext_u64_12(ins))
+#define DISP_13 (sext_u64_13(ins))
+#define DISP_16 (sext_u64_16(ins))
+#define DISP_21 (sext_u64_21(ins))
 
 #define DATA_PHYS(addr,flags) 				\
     if (virt2phys(addr, &phys_address, flags, NULL, ins)) \
@@ -564,6 +576,27 @@ int CAlphaCPU::DoClock()
   // Service interrupts
   if (DO_ACTION)
   {
+    if (state.check_timers)
+    {
+      state.check_timers = false;
+      for (int i=0;i<6;i++)
+      {
+        if (state.irq_h_timer[i])
+        {
+          state.irq_h_timer[i]--;
+          if (state.irq_h_timer[i])
+          {
+            state.check_timers = true;
+          }
+          else
+          {
+            state.eir |= (X64(1)<<i);
+            state.check_int = true;
+          }
+        }
+      }
+    }
+
     if (state.check_int && !(state.pc&1))
     {
       if (state.pal_vms)

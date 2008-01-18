@@ -27,7 +27,10 @@
  * \file 
  * Contains the code for the emulated Typhoon Chipset devices.
  *
- * $Id: System.cpp,v 1.55 2008/01/12 12:38:51 iamcamiel Exp $
+ * $Id: System.cpp,v 1.56 2008/01/18 20:58:20 iamcamiel Exp $
+ *
+ * X-1.56       Camiel Vanderhoeven                             18-JAN-2008
+ *      Process device interrupts after a 100-cpu-cycle delay.
  *
  * X-1.55       Camiel Vanderhoeven                             12-JAN-2008
  *      Comments.
@@ -308,7 +311,7 @@ CSystem::CSystem(CConfigurator * cfg)
 
   CHECK_ALLOCATION(memory = calloc(1<<iNumMemoryBits,1));
 
-  printf("%s(%s): $Id: System.cpp,v 1.55 2008/01/12 12:38:51 iamcamiel Exp $\n",cfg->get_myName(),cfg->get_myValue());
+  printf("%s(%s): $Id: System.cpp,v 1.56 2008/01/18 20:58:20 iamcamiel Exp $\n",cfg->get_myName(),cfg->get_myValue());
 }
 
 /**
@@ -1424,7 +1427,7 @@ void CSystem::cchip_csr_write(u32 a, u64 data)
       {
 	    if (data & (X64(10)<<i))
         {
-	      acCPUs[i]->irq_h(2,false);
+	      acCPUs[i]->irq_h(2,false,0);
 	      //printf("*** TIMER interrupt cleared for CPU %d\n",i);
         }
    	  }
@@ -1754,7 +1757,7 @@ void CSystem::interrupt(int number, bool assert)
       // timer int...
       state.cchip.misc |= 0xf0;
       for(i=0;i<iNumCPUs;i++)
-	acCPUs[i]->irq_h(2,true);
+	acCPUs[i]->irq_h(2,true,0); // timer interrupt is immediate
     }
   else if (assert)
     {
@@ -1771,14 +1774,14 @@ void CSystem::interrupt(int number, bool assert)
   for (i=0;i<iNumCPUs;i++)
     {
       if (state.cchip.drir & state.cchip.dim[i] & X64(00ffffffffffffff))
-	acCPUs[i]->irq_h(1,true);
+	    acCPUs[i]->irq_h(1,true, 100); // device interrupts delayed by 100 clocks
       else
-	acCPUs[i]->irq_h(1,false);
+	    acCPUs[i]->irq_h(1,false, 0);
 
       if (state.cchip.drir & state.cchip.dim[i] & X64(fc00000000000000))
-	acCPUs[i]->irq_h(0,true);
+	    acCPUs[i]->irq_h(0, true, 100); // device interrupts delayed by 100 clocks
       else
-	acCPUs[i]->irq_h(0,false);
+	    acCPUs[i]->irq_h(0, false, 0);
     }
 }
 
@@ -2300,7 +2303,7 @@ void CSystem::panic(char *message, int flags)
 void CSystem::clear_clock_int(int ProcNum)
 {
   state.cchip.misc &=~(X64(10)<<ProcNum);
-  acCPUs[ProcNum]->irq_h(2,false);
+  acCPUs[ProcNum]->irq_h(2, false, 0);
 }
 
 #if defined(PROFILE)

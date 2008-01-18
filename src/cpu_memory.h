@@ -1,7 +1,8 @@
 /* ES40 emulator.
- * Copyright (C) 2007 by Camiel Vanderhoeven
+/* ES40 emulator.
+ * Copyright (C) 2007-2008 by the ES40 Emulator Project
  *
- * Website: www.camicom.com
+ * WWW    : http://sourceforge.net/projects/es40
  * E-mail : camiel@camicom.com
  * 
  * This program is free software; you can redistribute it and/or
@@ -21,12 +22,18 @@
  * Although this is not required, the author would appreciate being notified of, 
  * and receiving any modifications you may make to the source code that might serve
  * the general public.
- */ 
+ */
 
 /**
  * \file 
  * Contains code macros for the processor memory load/store instructions.
  * Based on ARM chapter 4.2.
+ *
+ * $Id: cpu_memory.h,v 1.6 2008/01/18 20:58:20 iamcamiel Exp $
+ *
+ * X-1.6        Camiel Vanderhoeven                             18-JAN-2008
+ *      Replaced sext_64 inlines with sext_u64_<bits> inlines for
+ *      performance reasons (thanks to David Hittner for spotting this!);
  *
  * X-1.5        Camiel Vanderhoeven                             2-DEC-2007
  *      Changed the way translation buffers work. 
@@ -58,12 +65,12 @@
 #define DO_LDL									\
 	if (FREG_1 != 31) {							\
 	  DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_READ);	\
-	  state.r[REG_1] = sext_64(READ_PHYS(32),32); }
+	  state.r[REG_1] = sext_u64_32(READ_PHYS(32)); }
 
 #define DO_LDL_L								\
 	  state.lock_flag = true;							\
 	  DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_READ);	\
-	  state.r[REG_1] = sext_64(READ_PHYS(32),32);
+	  state.r[REG_1] = sext_u64_32(READ_PHYS(32));
 
 #define DO_LDQ									\
 	if (FREG_1 != 31) {							\

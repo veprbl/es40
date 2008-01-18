@@ -1,7 +1,7 @@
 /* ES40 emulator.
- * Copyright (C) 2007 by Camiel Vanderhoeven
+ * Copyright (C) 2007-2008 by the ES40 Emulator Project
  *
- * Website: www.camicom.com
+ * WWW    : http://sourceforge.net/projects/es40
  * E-mail : camiel@camicom.com
  * 
  * This program is free software; you can redistribute it and/or
@@ -21,12 +21,18 @@
  * Although this is not required, the author would appreciate being notified of, 
  * and receiving any modifications you may make to the source code that might serve
  * the general public.
- */ 
+ */
 
 /**
  * \file 
  * Contains code macros for the processor BWX (byte and word extension) instructions.
  * Based on ARM chapter 4.6.
+ *
+ * $Id: cpu_bwx.h,v 1.8 2008/01/18 20:58:20 iamcamiel Exp $
+ *
+ * X-1.8        Camiel Vanderhoeven                             18-JAN-2008
+ *      Replaced sext_64 inlines with sext_u64_<bits> inlines for
+ *      performance reasons (thanks to David Hittner for spotting this!);
  *
  * X-1.7        Camiel Vanderhoeven                             2-DEC-2007
  *      Use sext_64 inline.
@@ -92,8 +98,8 @@
 #define DO_MSKLH state.r[REG_3] = (V_2&7) ? (state.r[REG_1] & ~(X64_LONG>>((64-((V_2&7)*8))&63))) : state.r[REG_1];
 #define DO_MSKQH state.r[REG_3] = (V_2&7) ? (state.r[REG_1] & ~(X64_QUAD>>((64-((V_2&7)*8))&63))) : state.r[REG_1];
 
-#define DO_SEXTB state.r[REG_3] = sext_64(V_2,8);
-#define DO_SEXTW state.r[REG_3] = sext_64(V_2,16);
+#define DO_SEXTB state.r[REG_3] = sext_u64_8(V_2);
+#define DO_SEXTW state.r[REG_3] = sext_u64_16(V_2);
 
 #define DO_ZAP								\
 	  state.r[REG_3] = state.r[REG_1] & (  ((V_2&  1)?0:              X64(ff))	\

@@ -1,7 +1,7 @@
 /* ES40 emulator.
  * Copyright (C) 2007-2008 by the ES40 Emulator Project
  *
- * Website: http://sourceforge.net/projects/es40
+ * WWW    : http://sourceforge.net/projects/es40
  * E-mail : camiel@camicom.com
  * 
  * This program is free software; you can redistribute it and/or
@@ -21,13 +21,19 @@
  * Although this is not required, the author would appreciate being notified of, 
  * and receiving any modifications you may make to the source code that might serve
  * the general public.
- */ 
+ */
 
 /**
  * \file 
  * Contains routines that replace parts of the VMS PALcode for the emulated
  * DecChip 21264CB EV68 Alpha processor. Based on disassembly of original VMS
  * PALcode, HRM, and OpenVMS AXP Internals and Data Structures.
+ *
+ * $Id: AlphaCPU_vmspal.cpp,v 1.6 2008/01/18 20:58:20 iamcamiel Exp $
+ *
+ * X-1.6       Camiel Vanderhoeven                             18-JAN-2008
+ *      Replaced sext_64 inlines with sext_u64_<bits> inlines for
+ *      performance reasons (thanks to David Hittner for spotting this!);
  *
  * X-1.5        Camiel Vanderhoeven                             08-JAN-2008
  *      Removed last references to IDE disk read SRM replacement.
@@ -120,13 +126,13 @@
 #define ldl(a,b)                                              \
       if (virt2phys(a,&phys_address,ACCESS_READ,NULL,0))  \
         return -1;                                             \
-      b = sext_64(cSystem->ReadMem(phys_address, 32),32);
+      b = sext_u64_32(cSystem->ReadMem(phys_address));
 #define ldb(a,b)                                              \
       if (virt2phys(a,&phys_address,ACCESS_READ,NULL,0))  \
         return -1;                                             \
       b = (char)(cSystem->ReadMem(phys_address, 8));
 #define hw_ldq(a,b) b = cSystem->ReadMem(a&~X64(7),64)
-#define hw_ldl(a,b) b = sext_64(cSystem->ReadMem(a&~X64(3),32),32);
+#define hw_ldl(a,b) b = sext_u64_32(cSystem->ReadMem(a&~X64(3),32));
 #define hw_ldbu(a,b) b = cSystem->ReadMem(a,8)
 
 /**

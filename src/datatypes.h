@@ -1,7 +1,7 @@
 /* ES40 emulator.
- * Copyright (C) 2007 by Camiel Vanderhoeven
+ * Copyright (C) 2007-2008 by the ES40 Emulator Project
  *
- * Website: www.camicom.com
+ * WWW    : http://sourceforge.net/projects/es40
  * E-mail : camiel@camicom.com
  * 
  * This program is free software; you can redistribute it and/or
@@ -26,6 +26,12 @@
 /** 
  * \file
  * Contains the datatype definitions for use with Microsoft Visual C++ and Linux.
+ *
+ * $Id: datatypes.h,v 1.15 2008/01/18 20:58:20 iamcamiel Exp $
+ *
+ * X-1.15       Camiel Vanderhoeven                             18-JAN-2008
+ *      Replaced sext_64 inlines with sext_u64_<bits> inlines for
+ *      performance reasons (thanks to David Hittner for spotting this!)
  *
  * X-1.14       Camiel Vanderhoeven                             14-DEC-2007
  *      Added sext_32.
@@ -184,15 +190,74 @@ inline u64 extend_bit_64(u64 x, int hibit, int lobit, int srcbit)
    return 0;
 }
 
-inline u64 sext_64(u64 x, int bit)
+/**
+ * Sign-extend an 8-bit value to 64 bits.
+ **/
+inline u64 sext_u64_8(u64 a) 
 {
-   if (x & (X64(1)<<(bit-1)))
-   {
-     u64 r = X64(ffffffffffffffff);
-      r   &= ~((X64(1)<<(bit))-X64(1));
-    return x|r;
-   }
-   return x & ((X64(1)<<(bit))-X64(1));;
+  return  (((a) & X64(0000000000000080)) ?
+           ((a) | X64(ffffffffffffff00)) :
+           ((a) & X64(00000000000000ff)));
+}
+
+/**
+ * Sign-extend a 12-bit value to 64 bits.
+ **/
+inline u64 sext_u64_12(u64 a)
+{
+  return (((a) & X64(0000000000000800)) ?
+          ((a) | X64(fffffffffffff000)) :
+          ((a) & X64(0000000000000fff)));
+}
+
+/**
+ * Sign-extend a 13-bit value to 64 bits.
+ **/
+inline u64 sext_u64_13(u64 a)
+{
+  return (((a) & X64(0000000000001000)) ?
+          ((a) | X64(ffffffffffffe000)) :
+          ((a) & X64(0000000000001fff)));
+}
+
+/**
+ * Sign-extend an 16-bit value to 64 bits.
+ **/
+inline u64 sext_u64_16(u64 a)
+{
+  return (((a) & X64(0000000000008000)) ?
+          ((a) | X64(ffffffffffff0000)) :
+          ((a) & X64(000000000000ffff)));
+}
+
+/**
+ * Sign-extend a 21-bit value to 64 bits.
+ **/
+inline u64 sext_u64_21(u64 a)
+{
+  return (((a) & X64(0000000000100000)) ? 
+          ((a) | X64(ffffffffffe00000)) : 
+          ((a) & X64(00000000001fffff)));
+}
+
+/**
+ * Sign-extend a 32-bit value to 64 bits.
+ **/
+inline u64 sext_u64_32(u64 a)
+{
+  return (((a) & X64(0000000080000000)) ?
+          ((a) | X64(ffffffff00000000)) :
+          ((a) & X64(00000000ffffffff)));
+}
+
+/**
+ * Sign-extend a 48-bit value to 64 bits.
+ **/
+inline u64 sext_u64_48(u64 a)
+{
+  return (((a) & X64(0000800000000000)) ?
+          ((a) | X64(ffff000000000000)) :
+          ((a) & X64(0000ffffffffffff)));
 }
 
 inline bool test_bit_64(u64 x, int bit)
@@ -246,15 +311,14 @@ inline bool test_bit_32(u32 x, int bit)
   return (x & (1<<bit))?true:false;
 }
 
-inline u32 sext_32(u32 x, int bit)
+/**
+ * Sign-extend a 24-bit value to 32 bits.
+ **/
+inline u32 sext_u32_24(u32 a)
 {
-   if (x & (1<<(bit-1)))
-   {
-     u32 r = 0xffffffff;
-      r   &= ~((1<<(bit))-1);
-    return x|r;
-   }
-   return x & ((1<<(bit))-1);;
+  return (((a) & 0x00800000) ?
+          ((a) | 0xff000000) :
+          ((a) & 0x00ffffff));
 }
 
 #endif //INCLUDED_DATATYPES_H
