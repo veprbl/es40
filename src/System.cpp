@@ -27,7 +27,11 @@
  * \file 
  * Contains the code for the emulated Typhoon Chipset devices.
  *
- * $Id: System.cpp,v 1.56 2008/01/18 20:58:20 iamcamiel Exp $
+ * $Id: System.cpp,v 1.57 2008/01/19 17:13:35 iamcamiel Exp $
+ *
+ * X-1.57       Camiel Vanderhoeven                             19-JAN-2008
+ *      Run CPU in a separate thread if CPU_THREADS is defined.
+ *      NOTA BENE: This is very experimental, and has several problems.
  *
  * X-1.56       Camiel Vanderhoeven                             18-JAN-2008
  *      Process device interrupts after a 100-cpu-cycle delay.
@@ -251,7 +255,6 @@
 #include <stdlib.h>
 #include <signal.h>
 
-
 #define CLOCK_RATIO 10000
 
 #if defined(LS_MASTER) || defined(LS_SLAVE)
@@ -311,7 +314,7 @@ CSystem::CSystem(CConfigurator * cfg)
 
   CHECK_ALLOCATION(memory = calloc(1<<iNumMemoryBits,1));
 
-  printf("%s(%s): $Id: System.cpp,v 1.56 2008/01/18 20:58:20 iamcamiel Exp $\n",cfg->get_myName(),cfg->get_myValue());
+  printf("%s(%s): $Id: System.cpp,v 1.57 2008/01/19 17:13:35 iamcamiel Exp $\n",cfg->get_myName(),cfg->get_myValue());
 }
 
 /**
@@ -461,8 +464,16 @@ int CSystem::Run()
   /* catch CTRL-C and shutdown gracefully */
   signal(SIGINT,&sigint_handler);
 
+  // start any threads...
+  for (i=0;i<iNumComponents;i++)
+    acComponents[i]->StartThreads();
+
   for(k=0;!got_sigint;k++)
   {
+
+#if defined(CPU_THREADS)
+      sleep_ms(1);
+#else
     for(j=0;j<CLOCK_RATIO;j++)
     {
       for(i=0;i<iNumFastClocks;i++)
@@ -471,7 +482,8 @@ int CSystem::Run()
 	     return result;
       }
     }
-	 
+#endif
+
     for(i=0;i<iNumSlowClocks;i++)
     {
       if (result = acSlowClocks[i]->DoClock())
@@ -484,6 +496,22 @@ int CSystem::Run()
     printf("%d | %016" LL "x\r",k,acCPUs[0]->get_pc());
 #endif
 #endif
+  }
+
+  // stop any threads...
+  for (i=0;i<iNumComponents;i++)
+    acComponents[i]->StopThreads();
+
+  bool x = true;
+  while(x)
+  {
+    x = false;
+    for (i=0;i<iNumComponents;i++)
+      if (acComponents[i]->ActiveThreads())
+      {
+        x = true;
+        sleep_ms(1);
+      }
   }
 
   printf("%%SYS-W-SHUTDOWN: CTRL-C or Device Failed\n");

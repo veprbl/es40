@@ -27,7 +27,11 @@
  * \file 
  * Contains definitions for the base class for devices that connect to the chipset.
  *
- * $Id: SystemComponent.h,v 1.12 2008/01/02 09:30:20 iamcamiel Exp $
+ * $Id: SystemComponent.h,v 1.13 2008/01/19 17:13:35 iamcamiel Exp $
+ *
+ * X-1.13       Camiel Vanderhoeven                             19-JAN-2008
+ *      Run CPU in a separate thread if CPU_THREADS is defined.
+ *      NOTA BENE: This is very experimental, and has several problems.
  *
  * X-1.12       Camiel Vanderhoeven                             02-JAN-2008
  *      Comments.
@@ -88,10 +92,12 @@ class CSystemComponent
   //=== abstract ===
   virtual u64 ReadMem(int index, u64 address, int dsize) {return 0;};
   virtual void WriteMem(int index, u64 address, int dsize, u64 data) {};
-//  virtual u8 ReadTIG(int index, int address) {return 0;};
-//  virtual void WriteTIG(int index, int address, u8 data) {};
   virtual int DoClock() {return 0;};
   virtual void ResetPCI() {};
+
+  virtual void StartThreads() {};
+  virtual void StopThreads() {};
+  virtual bool ActiveThreads() { return false; };
 
  protected: 
   char * devid_string;

@@ -30,7 +30,11 @@
  * or project specific include files that are used frequently, but
  * are changed infrequently.
  *
- * $Id: StdAfx.h,v 1.24 2008/01/05 14:58:38 iamcamiel Exp $
+ * $Id: StdAfx.h,v 1.25 2008/01/19 17:13:35 iamcamiel Exp $
+ *
+ * X-1.25       Camiel Vanderhoeven                             19-JAN-2008
+ *      Run CPU in a separate thread if CPU_THREADS is defined.
+ *      NOTA BENE: This is very experimental, and has several problems.
  *
  * X-1.24       Fang Zhe                                        05-JAN-2008
  *      Do 64-bit file I/O properly for FreeBSD and OS X.
@@ -112,6 +116,12 @@
 #if !defined(INCLUDED_STDAFX_H)
 #define INCLUDED_STDAFX_H
 
+// if we're compiling with interactive debugger features, things need to
+// be synchronous, so we disable CPU threads.
+#if defined(IDB)
+#undef CPU_THREADS
+#endif
+
 #include "datatypes.h"
 
 #if defined(_WIN32)
@@ -133,7 +143,7 @@ inline void sleep_ms(DWORD ms)
 }
 
 #include <process.h>
-#else
+#else // not windows
 #define _strdup strdup
 #include <sys/time.h>
 #include <stdlib.h>

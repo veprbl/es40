@@ -30,7 +30,11 @@
  * \bug Rounding and trap modes are not used for floating point ops.
  * \bug /V isn't implemented for all integer ops yet.
  *
- * $Id: AlphaCPU.cpp,v 1.53 2008/01/18 20:58:20 iamcamiel Exp $
+ * $Id: AlphaCPU.cpp,v 1.54 2008/01/19 17:13:34 iamcamiel Exp $
+ *
+ * X-1.54       Camiel Vanderhoeven                             19-JAN-2008
+ *      Run CPU in a separate thread if CPU_THREADS is defined.
+ *      NOTA BENE: This is very experimental, and has several problems.
  *
  * X-1.53       Camiel Vanderhoeven                             18-JAN-2008
  *      Replaced sext_64 inlines with sext_u64_<bits> inlines for
@@ -335,7 +339,13 @@ CAlphaCPU::CAlphaCPU(CConfigurator * cfg, CSystem * system) : CSystemComponent (
   cSystem = system;
   int i;
 
+#if !defined(CPU_THREADS)
+  // if the CPU doesn't have it's own thread, register it as a fast clocked device.
   cSystem->RegisterClock(this, false);
+#else
+  thread_shouldrun = false;
+  thread_doesrun = false;
+#endif
 
   state.pc = 0;
   state.bIntrFlag = false;
@@ -415,7 +425,7 @@ CAlphaCPU::CAlphaCPU(CConfigurator * cfg, CSystem * system) : CSystemComponent (
   bListing = false;
 #endif
   
-  printf("%s: $Id: AlphaCPU.cpp,v 1.53 2008/01/18 20:58:20 iamcamiel Exp $\n",devid_string);
+  printf("%s: $Id: AlphaCPU.cpp,v 1.54 2008/01/19 17:13:34 iamcamiel Exp $\n",devid_string);
 }
 
 /**
@@ -652,12 +662,11 @@ int CAlphaCPU::DoClock()
   {
     if (DO_ACTION)
     {
-#if 0
-      if (state.pc>X64(600000))
-	state.cc+=X64(1654321);
-      else
-#endif
+#if defined(CPU_THREADS)
+    state.cc+=20;
+#else
 	state.cc+=83;
+#endif
     }
   }
 
@@ -1589,6 +1598,42 @@ void CAlphaCPU::tbis(u64 virt,int flags)
   if (i>=0)
     state.tb[t][i].valid = false;
 }
+
+#if defined(CPU_THREADS)
+void CAlphaCPU::thread_proc()
+{
+  thread_doesrun = true;
+  while(thread_shouldrun)
+    DoClock();
+  thread_doesrun = false;
+}
+
+#if defined(_WIN32)
+DWORD WINAPI do_proc(LPVOID lpParam)
+#else
+static void * do_proc(void * lpParam)
+#endif
+{
+  ((CAlphaCPU *) lpParam)->thread_proc();
+  return 0;
+}
+
+void CAlphaCPU::StartThreads()
+{
+  thread_shouldrun = true;
+
+  if (!thread_doesrun)
+  {
+#if defined(_WIN32)
+    thread_handle = CreateThread(NULL, 0, do_proc, this, 0, &thread_id);
+#else
+    pthread_create(&thread_handle, NULL, do_proc, this);
+#endif
+  }
+
+}
+
+#endif
 
 #if defined(IDB)
 

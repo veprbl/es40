@@ -28,7 +28,11 @@
  * \file
  * Contains the definitions for the emulated DecChip 21264CB EV68 Alpha processor.
  *
- * $Id: AlphaCPU.h,v 1.36 2008/01/18 21:07:41 iamcamiel Exp $
+ * $Id: AlphaCPU.h,v 1.37 2008/01/19 17:13:35 iamcamiel Exp $
+ *
+ * X-1.36       Camiel Vanderhoeven                             19-JAN-2008
+ *      Run CPU in a separate thread if CPU_THREADS is defined.
+ *      NOTA BENE: This is very experimental, and has several problems.
  *
  * X-1.35       Camiel Vanderhoeven                             18-JAN-2008
  *      Comment.
@@ -264,6 +268,25 @@ class CAlphaCPU : public CSystemComponent
 #endif
 
   int virt2phys(u64 virt, u64 * phys, int flags, bool * asm_bit, u32 instruction);
+
+#if defined(CPU_THREADS)
+
+  void thread_proc();
+  virtual void StartThreads();
+  virtual void StopThreads() { thread_shouldrun = false; };
+  virtual bool ActiveThreads() { return thread_doesrun; };
+
+private:
+#if defined(_WIN32)
+  HANDLE thread_handle;
+  DWORD thread_id;
+#else
+  pthread_t thread_handle;
+#endif
+
+  bool thread_shouldrun;
+  bool thread_doesrun;
+#endif
 
  private:
   int get_icache(u64 address, u32 * data);
@@ -583,32 +606,60 @@ inline int CAlphaCPU::get_cpuid()
 
 inline void CAlphaCPU::irq_h(int number, bool assert, int delay)
 {
-  if (assert)
+  bool active = (state.eir & (X64(1)<<number)) || state.irq_h_timer[number];
+
+  if (assert && !active)
   {
-    if (!(state.eir & (X64(1)<<number)) && !state.irq_h_timer[number])
+#if defined(CPU_THREADS)
+#if defined(_WIN32)
+    if (thread_id != GetCurrentThreadId())
+#else
+    if (thread_handle != pthread_self())
+#endif
     {
-      if (delay)
-      {
-        state.irq_h_timer[number] = delay;
-        state.check_timers = true;
-      }
-      else
-      {
-        state.eir |= (X64(1)<<number);
-        state.check_int = true;
-      }
+      StopThreads();
+      while(ActiveThreads());
     }
+#endif
+    if (delay)
+    {
+      state.irq_h_timer[number] = delay;
+      state.check_timers = true;
+    }
+    else
+    {
+      state.eir |= (X64(1)<<number);
+      state.check_int = true;
+    }
+#if defined(CPU_THREADS)
+      StartThreads();
+#endif
+    return;
   }
-  else
+  if (!assert && active)
   {
-      state.eir &= ~(X64(1)<<number);
-      state.irq_h_timer[number] = 0;
-      state.check_timers = false;
-      for (int i=0;i<6;i++)
-      {
-        if (state.irq_h_timer[i])
-          state.check_timers = true;
-      }
+#if defined(CPU_THREADS)
+#if defined(_WIN32)
+    if (thread_id != GetCurrentThreadId())
+#else
+    if (thread_handle != pthread_self())
+#endif
+    {
+      StopThreads();
+      while(ActiveThreads());
+    }
+#endif
+    state.eir &= ~(X64(1)<<number);
+    state.irq_h_timer[number] = 0;
+    state.check_timers = false;
+    for (int i=0;i<6;i++)
+    {
+      if (state.irq_h_timer[i])
+        state.check_timers = true;
+    }
+#if defined(CPU_THREADS)
+    StartThreads();
+#endif
   }
 }
 
