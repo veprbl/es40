@@ -27,7 +27,10 @@
  * \file
  * Contains the code for the configuration file interpreter.
  *
- * $Id: Configurator.cpp,v 1.10 2008/01/09 10:13:58 iamcamiel Exp $
+ * $Id: Configurator.cpp,v 1.11 2008/01/19 21:33:26 iamcamiel Exp $
+ *
+ * X-1.11       Camiel Vanderhoeven                             19-JAN-2008
+ *      Added win32 GUI.
  *
  * X-1.10       Camiel Vanderhoeven                             09-JAN-2008
  *      Save disk state to state file.
@@ -508,6 +511,7 @@ classinfo classes[] =
   {"device",  c_device,                                    IS_DISK          },
   {"ramdisk", c_ramdisk,                                   IS_DISK          },
   {"sdl",     c_sdl,     N_P |                                      IS_GUI  },
+  {"win32",   c_win32,   N_P |                                      IS_GUI  },
   {0,         c_none,    0                                                  }
 };
 
@@ -711,6 +715,14 @@ void CConfigurator::initialize()
     PLUG_load_plugin (this, sdl);
 #else
     FAILURE("Can't instantiate the SDL GUI without SDL support");
+#endif
+    break;
+
+  case c_win32:
+#if defined(_WIN32)
+    PLUG_load_plugin (this, win32);
+#else
+    FAILURE("Can't instantiate the Win32 GUI on a non-Win32 platform");
 #endif
     break;
 
