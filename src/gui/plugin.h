@@ -32,7 +32,10 @@
  * Contains the definitions for use with bx_..._gui_c classes used for
  * interfacing with SDL and other device interfaces.
  *
- * $Id: plugin.h,v 1.5 2008/01/19 21:33:26 iamcamiel Exp $
+ * $Id: plugin.h,v 1.6 2008/01/20 16:15:41 iamcamiel Exp $
+ *
+ * X-1.5        Camiel Vanderhoeven                             20-JAN-2008
+ *      Added X11 GUI.
  *
  * X-1.4        Camiel Vanderhoeven                             19-JAN-2008
  *      Added win32 GUI.
@@ -73,6 +76,10 @@ DECLARE_PLUGIN_INIT_FINI_FOR_MODULE(sdl)
 
 #if defined(_WIN32)
 DECLARE_PLUGIN_INIT_FINI_FOR_MODULE(win32)
+#endif
+
+#if defined(HAVE_X11)
+DECLARE_PLUGIN_INIT_FINI_FOR_MODULE(x11)
 #endif
 
 #endif /* __PLUGIN_H */
