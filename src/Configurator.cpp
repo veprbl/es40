@@ -27,7 +27,10 @@
  * \file
  * Contains the code for the configuration file interpreter.
  *
- * $Id: Configurator.cpp,v 1.11 2008/01/19 21:33:26 iamcamiel Exp $
+ * $Id: Configurator.cpp,v 1.12 2008/01/20 16:17:59 iamcamiel Exp $
+ *
+ * X-1.12        Camiel Vanderhoeven                             20-JAN-2008
+ *      Added X11 GUI.
  *
  * X-1.11       Camiel Vanderhoeven                             19-JAN-2008
  *      Added win32 GUI.
@@ -512,6 +515,7 @@ classinfo classes[] =
   {"ramdisk", c_ramdisk,                                   IS_DISK          },
   {"sdl",     c_sdl,     N_P |                                      IS_GUI  },
   {"win32",   c_win32,   N_P |                                      IS_GUI  },
+  {"X11",     c_x11,     N_P |                                      IS_GUI  },
   {0,         c_none,    0                                                  }
 };
 
@@ -723,6 +727,14 @@ void CConfigurator::initialize()
     PLUG_load_plugin (this, win32);
 #else
     FAILURE("Can't instantiate the Win32 GUI on a non-Win32 platform");
+#endif
+    break;
+
+  case c_x11:
+#if defined(HAVE_X11)
+    PLUG_load_plugin (this, x11);
+#else
+    FAILURE("Can't instantiate the X11 GUI on a non-X11 platform");
 #endif
     break;
 

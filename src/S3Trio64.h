@@ -27,7 +27,10 @@
  * \file
  * Contains the definitions for emulated S3 Trio 64 Video Card device.
  *
- * $Id: S3Trio64.h,v 1.8 2008/01/08 16:38:16 iamcamiel Exp $
+ * $Id: S3Trio64.h,v 1.9 2008/01/20 16:17:59 iamcamiel Exp $
+ *
+ * X-1.9        Camiel Vanderhoeven                             20-JAN-2008
+ *      Added X11 GUI.
  *
  * X-1.8        Camiel Vanderhoeven                             08-JAN-2008
  *      Comments.
@@ -97,6 +100,7 @@ class CS3Trio64 : public CVGA
     void update(void);
 
     virtual u8 get_actl_palette_idx(u8 index);
+    virtual void redraw_area(unsigned x0, unsigned y0, unsigned width, unsigned height);
 
 private:
     u32 mem_read(u32 address, int dsize);
@@ -139,7 +143,6 @@ private:
     u32 rom_read(u32 address, int dsize);
     void rom_write(u32 address, int dsize, u32 data);
 
-    void redraw_area(unsigned x0, unsigned y0, unsigned width, unsigned height);
     void determine_screen_dimensions(unsigned *piHeight, unsigned *piWidth);
 
     char bios_message[200];

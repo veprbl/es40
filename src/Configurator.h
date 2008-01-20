@@ -27,7 +27,10 @@
  * \file
  * Contains the definitions for the configuration file interpreter.
  *
- * $Id: Configurator.h,v 1.7 2008/01/19 21:33:26 iamcamiel Exp $
+ * $Id: Configurator.h,v 1.8 2008/01/20 16:17:59 iamcamiel Exp $
+ *
+ * X-1.8        Camiel Vanderhoeven                             20-JAN-2008
+ *      Added X11 GUI.
  *
  * X-1.7        Camiel Vanderhoeven                             19-JAN-2008
  *      Added win32 GUI.
@@ -77,7 +80,8 @@ typedef enum {c_none,
               c_ramdisk,
               // gui's
               c_sdl,
-              c_win32} classid;
+              c_win32,
+              c_x11 } classid;
 
 class CConfigurator
 {

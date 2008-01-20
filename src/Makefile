@@ -27,8 +27,10 @@
 #
 # Makefile for GNU Linux. (And possibly many UNIX'es).
 #
-# $Id: Makefile,v 1.16 2008/01/12 14:31:13 iamcamiel Exp $
+# $Id: Makefile,v 1.17 2008/01/20 16:17:59 iamcamiel Exp $
 #
+# X-1.5         Camiel Vanderhoeven             20-JAN-2008
+#   Added X11 GUI.
 # X-1.16		Brian Wheeler      				12-JAN-2008
 #	Added SCSIDevice and SCSIDisk.
 #
@@ -86,7 +88,7 @@ LDFLAGS =
 #CC = /home/bdwheele/intel/cce/10.1.008/bin/icc
 #LDFLAGS = -L/home/bdwheele/intel/cce/10.1.008/lib -lirc -lintlc
 
-CFLAGS = -g  -O2 -I. -I.. -I/usr/include/SDL -DHAVE_SDL -DHAVE_PCAP
+CFLAGS = -g  -O2 -I. -I.. -I/usr/include/SDL -DHAVE_SDL -DHAVE_PCAP -DHAVE_X11
 LDFLAGS = -lpcap -lSDL
 IDB_CFLAGS = -DIDB 
 LSM_CFLAGS = -DIDB -DLS_MASTER
@@ -128,6 +130,7 @@ OBJS = AliM1543C.o \
        TraceEngine.o \
        VGA.o \
        gui/gui.o \
+       gui/gui_x11.o \
        gui/keymap.o \
        gui/scancodes.o \
        gui/sdl.o
