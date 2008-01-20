@@ -34,7 +34,10 @@
  * Contains the definitions for the bx_gui_c base class used for interfacing with
  * SDL and other device interfaces.
  *
- * $Id: gui.h,v 1.4 2008/01/02 09:35:57 iamcamiel Exp $
+ * $Id: gui.h,v 1.5 2008/01/20 16:15:07 iamcamiel Exp $
+ *
+ * X-1.5        Camiel Vanderhoeven                             20-JAN-2008
+ *      Avoid compiler warnings.
  *
  * X-1.4        Camiel Vanderhoeven                             02-JAN-2008
  *      Comments.
@@ -122,7 +125,7 @@ public:
 
 protected:
   static s32 make_text_snapshot (char **snapshot, u32 *length);
-  static void toggle_mouse_enable(void);
+//  static void toggle_mouse_enable(void);
 
   unsigned char vga_charmap[0x2000];
   bool charmap_updated;
