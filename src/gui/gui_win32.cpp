@@ -37,7 +37,10 @@
  * \file
  * Win32 GUI implementation. Allows use of gfx without SDL on WIndows
  *
- * $Id: gui_win32.cpp,v 1.1 2008/01/19 21:33:26 iamcamiel Exp $
+ * $Id: gui_win32.cpp,v 1.2 2008/01/20 16:12:37 iamcamiel Exp $
+ *
+ * X-1.2        Camiel Vanderhoeven                             19-JAN-2008
+ *      Changed window title.
  *
  * X-1.1        Camiel Vanderhoeven                             19-JAN-2008
  *      Initial version for ES40 emulator.
@@ -55,21 +58,11 @@
 #include "../VGA.h"
 #include "../AliM1543C.h"
 
-//#include "zmouse.h"
-//#include "win32dialog.h"
-//#include "win32res.h"
-//#include "font/vga.bitmap.h"
-// windows.h is included by bochs.h
-//#include <commctrl.h>
 #include <process.h>
 
 class bx_win32_gui_c : public bx_gui_c {
 public:
   bx_win32_gui_c (CConfigurator * cfg) { myCfg = cfg; bx_keymap = new bx_keymap_c(cfg); };
-//  bx_win32_gui_c (void) {}
-
-
-//  DECLARE_GUI_VIRTUAL_METHODS();
 
   virtual void specific_init(unsigned x_tilesize, unsigned y_tilesize);
   virtual void text_update(u8 *old_text, u8 *new_text, unsigned long cursor_x, unsigned long cursor_y, bx_vga_tminfo_t tm_info, unsigned rows);
@@ -91,8 +84,6 @@ private:
 // plugin code
 static bx_win32_gui_c *theGui = NULL;
 IMPLEMENT_GUI_PLUGIN_CODE(win32)
-
-//#define LOG_THIS theGui->
 
 #define EXIT_GUI_SHUTDOWN        1
 #define EXIT_GMH_FAILURE         2
@@ -161,8 +152,8 @@ static BOOL fix_size = FALSE;
 static HWND hotKeyReceiver = NULL;
 static HWND saveParent = NULL;
 
-static char szAppName[] = "Bochs for Windows";
-static char szWindowName[] = "Bochs for Windows - Display";
+static char szAppName[] = "ES40 Emulator";
+static char szWindowName[] = "ES40 Emulator";
 
 typedef struct {
   HINSTANCE hInstance;
