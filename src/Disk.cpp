@@ -27,7 +27,10 @@
  * \file
  * Contains code for the disk base class.
  *
- * $Id: Disk.cpp,v 1.16 2008/01/16 18:39:49 iamcamiel Exp $
+ * $Id: Disk.cpp,v 1.17 2008/01/21 21:32:06 iamcamiel Exp $
+ *
+ * X-1.17       Camiel Vanderhoeven                             21-JAN-2008
+ *      OpenVMs doesn't like max 255 sectors.
  *
  * X-1.16       Camiel Vanderhoeven                             16-JAN-2008
  *      Less messages without debugging enabled.
@@ -1466,6 +1469,9 @@ static off_t_large get_primes(off_t_large value, int pri[54])
  * Calculate optimal disk layout...
  **/
 
+#define MAX_HD 16
+#define MAX_SEC 50
+
 void CDisk::determine_layout()
 {
   int disk_primes[54];
@@ -1478,12 +1484,12 @@ void CDisk::determine_layout()
 
   get_primes(get_lba_size(),disk_primes);
 
-  for (heads_sectors=255*16;heads_sectors>0;heads_sectors--)
+  for (heads_sectors=MAX_SEC*MAX_HD;heads_sectors>0;heads_sectors--)
   {
     if (get_primes(heads_sectors,compare_primes)>1)
       continue;
 
-    for (c_heads=16;c_heads>0;c_heads--)
+    for (c_heads=MAX_HD;c_heads>0;c_heads--)
     { 
       b = true;
       for(prime=0;prime<6;prime++)
@@ -1498,7 +1504,7 @@ void CDisk::determine_layout()
         break;
     }
 
-    if (heads_sectors/c_heads > 255)
+    if (heads_sectors/c_heads > MAX_SEC)
       continue;
 
     b = true;
@@ -1515,5 +1521,9 @@ void CDisk::determine_layout()
   }
   heads = c_heads;
   sectors = heads_sectors/c_heads;
+
+//  sectors = 32;
+//  heads = 8;
+
   cylinders = get_lba_size()/heads/sectors;
 }
