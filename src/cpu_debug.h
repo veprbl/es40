@@ -23,10 +23,12 @@
  * the general public.
  */ 
 
-
 /**
  * \file 
  * Contains debugging macros used by AlphaCPU.cpp
+ *
+ * X-1.18       Camiel Vanderhoeven                             21-JAN-2008
+ *      Moved some macro's to cpu_defs.h.
  *
  * X-1.17       Camiel Vanderhoeven                             16-JAN-2008
  *      Added ARITH_TRAP macro. 
@@ -134,16 +136,6 @@ extern char * IPR_NAME[];
       state.pc = state.pal_base | offset | 1;                       \
     }
 #endif
-
-// INTeger overflow arithmetic trap
-#define ARITH_INT X64(80)
-
-#define ARITH_TRAP(flags, reg)                                      \
-    {                                                               \
-      state.exc_sum = flags              /* cause of trap */        \
-                    | (reg & 0x1f) << 8; /* destination register */ \
-      GO_PAL(ARITH);                     /* trap */                 \
-    }
 
 #if defined(IDB)
 
@@ -671,3 +663,36 @@ extern char * IPR_NAME[];
       return 0;	
 
 #endif
+
+#if defined(IDB)
+
+#define OP(mnemonic, format)							\
+        PRE_##format(mnemonic);							\
+	if (!bListing) {							\
+	  DO_##mnemonic;							\
+	}									\
+	POST_##format;								\
+        handle_debug_string(dbg_string);					\
+	return 0;
+
+#define OP_FNC(mnemonic, format)							\
+        PRE_##format(mnemonic);							\
+	if (!bListing) {							\
+	  mnemonic();							\
+	}									\
+	POST_##format;								\
+        handle_debug_string(dbg_string);					\
+	return 0;
+
+#else //defined(IDB)
+
+#define OP(mnemonic, format)							\
+	DO_##mnemonic;								\
+    return 0;
+
+#define OP_FNC(mnemonic, format)							\
+    mnemonic();								\
+	return 0;
+
+#endif //defined(IDB)
+

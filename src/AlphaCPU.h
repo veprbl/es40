@@ -28,7 +28,10 @@
  * \file
  * Contains the definitions for the emulated DecChip 21264CB EV68 Alpha processor.
  *
- * $Id: AlphaCPU.h,v 1.37 2008/01/19 17:13:35 iamcamiel Exp $
+ * $Id: AlphaCPU.h,v 1.38 2008/01/21 22:39:25 iamcamiel Exp $
+ *
+ * X-1.37       Camiel Vanderhoeven                             21-JAN-2008
+ *      Moved some macro's to cpu_defs.h; implement new floating-point code.
  *
  * X-1.36       Camiel Vanderhoeven                             19-JAN-2008
  *      Run CPU in a separate thread if CPU_THREADS is defined.
@@ -158,6 +161,7 @@
 
 #include "SystemComponent.h"
 #include "System.h"
+#include "cpu_defs.h"
 
 #define ICACHE_ENTRIES          1024
 #define ICACHE_LINE_SIZE        512 // in dwords
@@ -298,6 +302,41 @@ private:
   void tbiap(int flags);
   void tbis(u64 virt, int flags);
   void go_pal(u32 pal_offset);
+
+  /* Floating Point routines */
+  u64 ieee_lds (u32 op);
+  u32 ieee_sts (u64 op);
+  u64 ieee_cvtst (u64 op, u32 ins);
+  u64 ieee_cvtts (u64 op, u32 ins);
+  s32 ieee_fcmp (u64 s1, u64 s2, u32 ins, u32 trap_nan);
+  u64 ieee_cvtif (u64 val, u32 ins, u32 dp);
+  u64 ieee_cvtfi (u64 op, u32 ins);
+  u64 ieee_fadd (u64 s1, u64 s2, u32 ins, u32 dp, bool sub);
+  u64 ieee_fmul (u64 s1, u64 s2, u32 ins, u32 dp);
+  u64 ieee_fdiv (u64 s1, u64 s2, u32 ins, u32 dp);
+  u64 ieee_sqrt (u32 ins, u32 dp);
+  int ieee_unpack (u64 op, UFP *r, u32 ins);
+  void ieee_norm (UFP *r);
+  u64 ieee_rpack (UFP *r, u32 ins, u32 dp);
+  void ieee_trap (u64 trap, u32 instenb, u64 fpcrdsb, u32 ins);
+  u64 fsqrt64 (u64 asig, s32 exp);
+  u64 vax_ldf (u32 op);
+  u64 vax_ldg (u64 op);
+  u32 vax_stf (u64 op);
+  u64 vax_stg (u64 op);
+  void CAlphaCPU::arith_trap(u64 mask, u32 ins);
+  bool CAlphaCPU::vax_unpack (u64 op, UFP *r, u32 ins);
+  bool CAlphaCPU::vax_unpack_d (u64 op, UFP *r, u32 ins);
+  void CAlphaCPU::vax_norm (UFP *r);
+  u64 CAlphaCPU::vax_rpack (UFP *r, u32 ins, u32 dp);
+  u64 CAlphaCPU::vax_rpack_d (UFP *r, u32 ins);
+  s32 CAlphaCPU:: vax_fcmp (u64 s1, u64 s2, u32 ins);
+  u64 CAlphaCPU::vax_cvtif (u64 val, u32 ins, u32 dp);
+  u64 CAlphaCPU::vax_cvtfi (u64 op, u32 ins);
+  u64 CAlphaCPU::vax_fadd (u64 s1, u64 s2, u32 ins, u32 dp, bool sub);
+  u64 CAlphaCPU::vax_fmul (u64 s1, u64 s2, u32 ins, u32 dp);
+  u64 CAlphaCPU::vax_fdiv (u64 s1, u64 s2, u32 ins, u32 dp);
+  u64 vax_sqrt (u32 ins, u32 dp);
 
   /* VMS PALcode call: */
   void vmspal_call_cflush();

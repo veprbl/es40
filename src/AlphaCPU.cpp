@@ -27,10 +27,12 @@
  * \file 
  * Contains the code for the emulated DecChip 21264CB EV68 Alpha processor.
  *
- * \bug Rounding and trap modes are not used for floating point ops.
  * \bug /V isn't implemented for all integer ops yet.
  *
- * $Id: AlphaCPU.cpp,v 1.54 2008/01/19 17:13:34 iamcamiel Exp $
+ * $Id: AlphaCPU.cpp,v 1.55 2008/01/21 22:39:25 iamcamiel Exp $
+ *
+ * X-1.55       Camiel Vanderhoeven                             21-JAN-2008
+ *      Moved some macro's to cpu_defs.h; implement new floating-point code.
  *
  * X-1.54       Camiel Vanderhoeven                             19-JAN-2008
  *      Run CPU in a separate thread if CPU_THREADS is defined.
@@ -247,7 +249,6 @@
 #include "AlphaCPU.h"
 #include "TraceEngine.h"
 #include "lockstep.h"
-#include "es40_float.h"
 #include "cpu_memory.h"
 #include "cpu_control.h"
 #include "cpu_arith.h"
@@ -264,70 +265,6 @@
 
 //#include "Serial.h"
 //#include "AliM1543C.h"
-
-#if defined(IDB)
-
-#define OP(mnemonic, format)							\
-        PRE_##format(mnemonic);							\
-	if (!bListing) {							\
-	  DO_##mnemonic;							\
-	}									\
-	POST_##format;								\
-        handle_debug_string(dbg_string);					\
-	return 0;
-
-#define OP_FNC(mnemonic, format)							\
-        PRE_##format(mnemonic);							\
-	if (!bListing) {							\
-	  mnemonic();							\
-	}									\
-	POST_##format;								\
-        handle_debug_string(dbg_string);					\
-	return 0;
-
-#else //defined(IDB)
-
-#define OP(mnemonic, format)							\
-	DO_##mnemonic;								\
-    return 0;
-
-#define OP_FNC(mnemonic, format)							\
-    mnemonic();								\
-	return 0;
-
-#endif //defined(IDB)
-
-// INTERRUPT VECTORS
-#define DTBM_DOUBLE_3 X64(100)
-#define DTBM_DOUBLE_4 X64(180)
-#define FEN           X64(200)
-#define UNALIGN       X64(280)
-#define DTBM_SINGLE   X64(300)
-#define DFAULT        X64(380)
-#define OPCDEC        X64(400)
-#define IACV          X64(480)
-#define MCHK          X64(500)
-#define ITB_MISS      X64(580)
-#define ARITH         X64(600)
-#define INTERRUPT     X64(680)
-#define MT_FPCR       X64(700)
-#define RESET         X64(780)
-
-/** Chip ID (EV68CB pass 4) [HRM p 5-16]; actual value derived from SRM-code */
-#define CPU_CHIP_ID	0x21
-/** Major CPU type (EV68CB) [ARM pp D-1..3] */
-#define CPU_TYPE_MAJOR	12
-/** Minor CPU type (pass 4) [ARM pp D-1..3] */
-#define CPU_TYPE_MINOR	6
-/** Implementation version [HRM p 2-38; ARM p D-5] */
-#define CPU_IMPLVER	2
-/** Architecture mask [HRM p 2-38; ARM p D-4]; FIX not implemented */
-#define CPU_AMASK	X64(1305)
-
-#define X64_BYTE	X64(ff)
-#define X64_WORD	X64(ffff)
-#define X64_LONG	X64(ffffffff)
-#define X64_QUAD	X64(ffffffffffffffff)
 
 /**
  * Constructor.
@@ -425,7 +362,7 @@ CAlphaCPU::CAlphaCPU(CConfigurator * cfg, CSystem * system) : CSystemComponent (
   bListing = false;
 #endif
   
-  printf("%s: $Id: AlphaCPU.cpp,v 1.54 2008/01/19 17:13:34 iamcamiel Exp $\n",devid_string);
+  printf("%s: $Id: AlphaCPU.cpp,v 1.55 2008/01/21 22:39:25 iamcamiel Exp $\n",devid_string);
 }
 
 /**
@@ -436,66 +373,6 @@ CAlphaCPU::~CAlphaCPU()
 {
 }
 
-#define DISP_12 (sext_u64_12(ins))
-#define DISP_13 (sext_u64_13(ins))
-#define DISP_16 (sext_u64_16(ins))
-#define DISP_21 (sext_u64_21(ins))
-
-#define DATA_PHYS(addr,flags) 				\
-    if (virt2phys(addr, &phys_address, flags, NULL, ins)) \
-      return 0
-
-#define ALIGN_PHYS(a) (phys_address & ~((u64)((a)-1)))
-
-/**
- * Normal variant of read action
- * In reality, these would generate an alignment trap, and the exception
- * handler would put things straight. Instead, to speed things up, we'll
- * just perform the read as requested using the unaligned address.
- **/
-
-#define READ_PHYS(size)				\
-  cSystem->ReadMem(phys_address, size)
-
-/**
- * Normal variant of write action
- * In reality, these would generate an alignment trap, and the exception
- * handler would put things straight. Instead, to speed things up, we'll
- * just perform the write as requested using the unaligned address.
- **/
-
-#define WRITE_PHYS(data,size)			\
-  cSystem->WriteMem(phys_address, size, data)
-
-/**
- * NO-TRAP (NT) variants of read action.
- * This is used for HW_LD, where alignment traps are 
- * inhibited. We'll align the adress and read using the aligned
- * address.
- **/
-
-#define READ_PHYS_NT(size)			\
-  cSystem->ReadMem(ALIGN_PHYS((size)/8), size)
-
-/**
- * NO-TRAP (NT) variants of write action.
- * This is used for HW_ST, where alignment traps are 
- * inhibited. We'll align the adress and write using the aligned
- * address.
- **/
-
-#define WRITE_PHYS_NT(data,size) 				\
-    cSystem->WriteMem(ALIGN_PHYS((size)/8), size, data)
-
-#define REG_1 RREG(ins>>21)
-#define REG_2 RREG(ins>>16)
-#define REG_3 RREG(ins)
-
-#define FREG_1 ((ins>>21) & 0x1f)
-#define FREG_2 ((ins>>16) & 0x1f)
-#define FREG_3 ( ins      & 0x1f)
-
-#define V_2 ( (ins&0x1000)?((ins>>13)&0xff):state.r[REG_2] )
 
 #if defined(IDB)
 
@@ -547,6 +424,7 @@ int CAlphaCPU::DoClock()
   u64 temp_64_d;
   u64 temp_64_hi;
   u64 temp_64_lo;
+  UFP ufp1, ufp2;
 
   int opcode;
   int function;

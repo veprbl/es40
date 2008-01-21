@@ -28,7 +28,10 @@
  * Contains code macros for the processor floating-point operate instructions.
  * Based on ARM chapter 4.10.
  *
- * $Id: cpu_fp_operate.h,v 1.11 2008/01/18 20:58:20 iamcamiel Exp $
+ * $Id: cpu_fp_operate.h,v 1.12 2008/01/21 22:39:25 iamcamiel Exp $
+ *
+ * X-1.12       Camiel Vanderhoeven                             21-JAN-2008
+ *      Implement new floating-point code for most operations.
  *
  * X-1.11       Camiel Vanderhoeven                             18-JAN-2008
  *      Replaced sext_64 inlines with sext_u64_<bits> inlines for
@@ -91,63 +94,77 @@
 #define DO_FCMOVNE  if (state.f[FREG_1] != X64(0000000000000000) && state.f[FREG_1] != X64(8000000000000000))	state.f[FREG_3] = state.f[FREG_2];
 
 #define DO_MF_FPCR state.f[FREG_1] = state.fpcr;
-#define DO_MT_FPCR state.fpcr = state.f[FREG_1];
+#define DO_MT_FPCR                                      \
+  state.fpcr = state.f[FREG_1] & X64(7fff800000000000); \
+  if (state.fpcr & X64(03f0000000000000))               \
+     state.fpcr |= X64(8000000000000000); /* SUM */
 
-#define DO_ADDG state.f[FREG_3] = host2g(g2host(state.f[FREG_1])+g2host(state.f[FREG_2]));
-#define DO_ADDF state.f[FREG_3] = host2f(f2host(state.f[FREG_1])+f2host(state.f[FREG_2]));
-#define DO_ADDT state.f[FREG_3] = host2t(t2host(state.f[FREG_1])+t2host(state.f[FREG_2]));
-#define DO_ADDS state.f[FREG_3] = host2s(s2host(state.f[FREG_1])+s2host(state.f[FREG_2]));
+/** 2008/1/21: all code beyond this point has been updated **/
 
-#define DO_SUBG state.f[FREG_3] = host2g(g2host(state.f[FREG_1])-g2host(state.f[FREG_2]));
-#define DO_SUBF state.f[FREG_3] = host2f(f2host(state.f[FREG_1])-f2host(state.f[FREG_2]));
-#define DO_SUBT state.f[FREG_3] = host2t(t2host(state.f[FREG_1])-t2host(state.f[FREG_2]));
-#define DO_SUBS state.f[FREG_3] = host2s(s2host(state.f[FREG_1])-s2host(state.f[FREG_2]));
+/* add */
+#define DO_ADDG state.f[FREG_3] = vax_fadd (state.f[FREG_1], state.f[FREG_2], ins, DT_G, 0);
+#define DO_ADDF state.f[FREG_3] = vax_fadd (state.f[FREG_1], state.f[FREG_2], ins, DT_F, 0);
+#define DO_ADDT state.f[FREG_3] = ieee_fadd (state.f[FREG_1], state.f[FREG_2], ins, DT_T, 0);
+#define DO_ADDS state.f[FREG_3] = ieee_fadd (state.f[FREG_1], state.f[FREG_2], ins, DT_S, 0);
 
-#define DO_CMPGEQ state.f[FREG_3] = (g2host(state.f[FREG_1])==g2host(state.f[FREG_2]))?X64(4000000000000000):0;
-#define DO_CMPGLE state.f[FREG_3] = (g2host(state.f[FREG_1])<=g2host(state.f[FREG_2]))?X64(4000000000000000):0;
-#define DO_CMPGLT state.f[FREG_3] = (g2host(state.f[FREG_1])<g2host(state.f[FREG_2]))?X64(4000000000000000):0;
+/* subtract */
+#define DO_SUBG state.f[FREG_3] = vax_fadd (state.f[FREG_1], state.f[FREG_2], ins, DT_G, 1);
+#define DO_SUBF state.f[FREG_3] = vax_fadd (state.f[FREG_1], state.f[FREG_2], ins, DT_F, 1);
+#define DO_SUBT state.f[FREG_3] = ieee_fadd (state.f[FREG_1], state.f[FREG_2], ins, DT_T, 1);
+#define DO_SUBS state.f[FREG_3] = ieee_fadd (state.f[FREG_1], state.f[FREG_2], ins, DT_S, 1);
 
-#define DO_CMPTEQ state.f[FREG_3] = (t2host(state.f[FREG_1])==t2host(state.f[FREG_2]))?X64(4000000000000000):0;
-#define DO_CMPTLE state.f[FREG_3] = (t2host(state.f[FREG_1])<=t2host(state.f[FREG_2]))?X64(4000000000000000):0;
-#define DO_CMPTLT state.f[FREG_3] = (t2host(state.f[FREG_1])<t2host(state.f[FREG_2]))?X64(4000000000000000):0;
-#define DO_CMPTUN state.f[FREG_3] = (i_isnan(state.f[FREG_1]) || i_isnan(state.f[FREG_2]))?X64(4000000000000000):0;
+/* comparison */
+#define DO_CMPGEQ state.f[FREG_3] = (vax_fcmp (state.f[FREG_1], state.f[FREG_2], ins) == 0) ? FP_TRUE : 0;
+#define DO_CMPGLE state.f[FREG_3] = (vax_fcmp (state.f[FREG_1], state.f[FREG_2], ins) <= 0) ? FP_TRUE : 0;
+#define DO_CMPGLT state.f[FREG_3] = (vax_fcmp (state.f[FREG_1], state.f[FREG_2], ins) < 0) ? FP_TRUE : 0;
+#define DO_CMPTEQ state.f[FREG_3] = (ieee_fcmp (state.f[FREG_1], state.f[FREG_2], ins, 0) == 0) ? FP_TRUE : 0;
+#define DO_CMPTLE state.f[FREG_3] = (ieee_fcmp (state.f[FREG_1], state.f[FREG_2], ins, 1) <= 0) ? FP_TRUE : 0;
+#define DO_CMPTLT state.f[FREG_3] = (ieee_fcmp (state.f[FREG_1], state.f[FREG_2], ins, 1) < 0) ? FP_TRUE : 0;
 
-#define DO_CVTGQ state.f[FREG_3] = (u64)((s64)g2host(state.f[FREG_2]));
-#define DO_CVTQG state.f[FREG_3] = host2g((double)((s64)state.f[FREG_2]));
-#define DO_CVTQF state.f[FREG_3] = host2f((double)((s64)state.f[FREG_2]));
+#define DO_CMPTUN                                                                                 \
+	  state.f[FREG_3] = ((ieee_unpack (state.f[FREG_1], &ufp1, ins) == UFT_NAN)                   \
+                      || (ieee_unpack (state.f[FREG_2], &ufp2, ins) == UFT_NAN)) ? FP_TRUE : 0;   \
 
-#define DO_CVTTQ state.f[FREG_3] = (u64)((s64)t2host(state.f[FREG_2]));
-#define DO_CVTQT state.f[FREG_3] = host2t((double)((s64)state.f[FREG_2]));
-#define DO_CVTQS state.f[FREG_3] = host2s((double)((s64)state.f[FREG_2]));
-#define DO_CVTGD state.f[FREG_3] = host2d(g2host(state.f[FREG_2]));
-#define DO_CVTDG state.f[FREG_3] = host2g(d2host(state.f[FREG_2]));
-#define DO_CVTGF state.f[FREG_3] = host2f(g2host(state.f[FREG_2]));
+/* format conversions */
+#define DO_CVTGQ state.f[FREG_3] = vax_cvtfi (state.f[FREG_2], ins);
+#define DO_CVTQG state.f[FREG_3] = vax_cvtif (state.f[FREG_2], ins, DT_G);
+#define DO_CVTQF state.f[FREG_3] = vax_cvtif (state.f[FREG_2], ins, DT_F);
+#define DO_CVTTQ state.f[FREG_3] = ieee_cvtfi (state.f[FREG_2], ins);
+#define DO_CVTQT state.f[FREG_3] = ieee_cvtif (state.f[FREG_2], ins, DT_T);
+#define DO_CVTQS state.f[FREG_3] = ieee_cvtif (state.f[FREG_2], ins, DT_S);
+#define DO_CVTGD state.f[FREG_3] = (vax_unpack (state.f[FREG_2], &ufp2, ins)) ? 0 : vax_rpack_d (&ufp2, ins);
+#define DO_CVTDG state.f[FREG_3] = (vax_unpack_d (state.f[FREG_2], &ufp2, ins))? 0 : vax_rpack (&ufp2, ins, DT_G);;
+#define DO_CVTGF state.f[FREG_3] = (vax_unpack (state.f[FREG_2], &ufp2, ins)) ? 0 : vax_rpack (&ufp2, ins, DT_F);
+#define DO_CVTST state.f[FREG_3] = ieee_cvtst(state.f[FREG_2], ins);
+#define DO_CVTTS state.f[FREG_3] = ieee_cvtts(state.f[FREG_2], ins);
 
-#define DO_FTOIS								\
- 	    temp_64 = state.f[FREG_1];						\
-	    state.r[REG_3] = (temp_64 & X64(000000003fffffff))			\
-	      |((temp_64 & X64(c000000000000000)) >> 32)			\
-	      |(((temp_64 & X64(8000000000000000)) >>31) * X64(ffffffff));
+/* float <-> integer register moves */
+#define DO_FTOIS                                                \
+  if (state.fpen == 0) GO_PAL(FEN); /* flt point disabled? */   \
+	    state.r[REG_3] = ieee_sts (state.f[FREG_1]);            \
 
-#define DO_FTOIT state.r[REG_3] = state.f[FREG_1];
+#define DO_FTOIT                                                \
+  if (state.fpen == 0) GO_PAL(FEN); /* flt point disabled? */   \
+	    state.r[REG_3] = state.f[FREG_1];                       \
+
 #define DO_ITOFT state.f[FREG_3] = state.r[REG_1];
-#define DO_ITOFS state.f[FREG_3] = load_s((u32)state.r[REG_1]);
-#define DO_ITOFF state.f[FREG_3] = itof_f(state.r[REG_1]);
+#define DO_ITOFS state.f[FREG_3] = ieee_lds((u32)state.r[REG_1]);
+#define DO_ITOFF state.f[FREG_3] = vax_ldf(SWAP_VAXF((u32)state.r[REG_1]));
 
-#define DO_MULG state.f[FREG_3] = host2g(g2host(state.f[FREG_1]) * g2host(state.f[FREG_2]));
-#define DO_MULF state.f[FREG_3] = host2f(f2host(state.f[FREG_1]) * f2host(state.f[FREG_2]));
-#define DO_MULT state.f[FREG_3] = host2t(t2host(state.f[FREG_1]) * t2host(state.f[FREG_2]));
-#define DO_MULS state.f[FREG_3] = host2s(s2host(state.f[FREG_1]) * s2host(state.f[FREG_2]));
+/* Multiply */
+#define DO_MULG state.f[FREG_3] = vax_fmul (state.f[FREG_1], state.f[FREG_2], ins, DT_G);
+#define DO_MULF state.f[FREG_3] = vax_fmul (state.f[FREG_1], state.f[FREG_2], ins, DT_F);
+#define DO_MULT state.f[FREG_3] = ieee_fmul (state.f[FREG_1], state.f[FREG_2], ins, DT_T);
+#define DO_MULS state.f[FREG_3] = ieee_fmul (state.f[FREG_1], state.f[FREG_2], ins, DT_S);
 
-#define DO_DIVG state.f[FREG_3] = host2g(g2host(state.f[FREG_1]) / g2host(state.f[FREG_2]));
-#define DO_DIVF state.f[FREG_3] = host2f(f2host(state.f[FREG_1]) / f2host(state.f[FREG_2]));
-#define DO_DIVT state.f[FREG_3] = host2t(t2host(state.f[FREG_1]) / t2host(state.f[FREG_2]));
-#define DO_DIVS state.f[FREG_3] = host2s(s2host(state.f[FREG_1]) / s2host(state.f[FREG_2]));
+/* Divide */
+#define DO_DIVG state.f[FREG_3] = vax_fdiv (state.f[FREG_1], state.f[FREG_2], ins, DT_G);
+#define DO_DIVF state.f[FREG_3] = vax_fdiv (state.f[FREG_1], state.f[FREG_2], ins, DT_F);
+#define DO_DIVT state.f[FREG_3] = ieee_fdiv (state.f[FREG_1], state.f[FREG_2], ins, DT_T);
+#define DO_DIVS state.f[FREG_3] = ieee_fdiv (state.f[FREG_1], state.f[FREG_2], ins, DT_S);
 
-#define DO_SQRTG state.f[FREG_3] = host2g(sqrt(g2host(state.f[FREG_2])));
-#define DO_SQRTF state.f[FREG_3] = host2f(sqrt(f2host(state.f[FREG_2])));
-#define DO_SQRTT state.f[FREG_3] = host2t(sqrt(t2host(state.f[FREG_2])));
-#define DO_SQRTS state.f[FREG_3] = host2s(sqrt(s2host(state.f[FREG_2])));
-
-#define DO_CVTST state.f[FREG_3] = host2t(s2host(state.f[FREG_2]));
-#define DO_CVTTS state.f[FREG_3] = host2s(t2host(state.f[FREG_2]));
+/* Square-root */
+#define DO_SQRTG state.f[FREG_3] = vax_sqrt(ins, DT_G);
+#define DO_SQRTF state.f[FREG_3] = vax_sqrt(ins, DT_F);
+#define DO_SQRTT state.f[FREG_3] = ieee_sqrt(ins, DT_T);
+#define DO_SQRTS state.f[FREG_3] = ieee_sqrt(ins, DT_S);
