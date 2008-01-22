@@ -28,6 +28,9 @@
  * Contains code macros for the processor floating-point branch instructions.
  * Based on ARM chapter 4.9.
  *
+ * X-1.5        Camiel Vanderhoeven                             22-JAN-2008
+ *      Implement new floating-point code.
+ *
  * X-1.4        Camiel Vanderhoeven                             11-APR-2007
  *      Moved all data that should be saved to a state file to a structure
  *      "state".
@@ -44,9 +47,34 @@
  * \author Camiel Vanderhoeven (camiel@camicom.com / http://www.camicom.com)
  **/
 
-#define DO_FBEQ  if (state.f[FREG_1] == X64(0000000000000000) || state.f[FREG_1] == X64(8000000000000000))	state.pc += (DISP_21 * 4);
-#define DO_FBGE  if (!(state.f[FREG_1]& X64(8000000000000000)) || state.f[FREG_1] == X64(8000000000000000))	state.pc += (DISP_21 * 4);
-#define DO_FBGT  if (!(state.f[FREG_1]& X64(8000000000000000)) && state.f[FREG_1] != X64(0000000000000000))	state.pc += (DISP_21 * 4);
-#define DO_FBLE  if ((state.f[FREG_1]& X64(8000000000000000)) || state.f[FREG_1] == X64(0000000000000000))	state.pc += (DISP_21 * 4);
-#define DO_FBLT  if ((state.f[FREG_1]& X64(8000000000000000)) && state.f[FREG_1] != X64(8000000000000000))	state.pc += (DISP_21 * 4);
-#define DO_FBNE  if (state.f[FREG_1] != X64(0000000000000000) && state.f[FREG_1] != X64(8000000000000000))	state.pc += (DISP_21 * 4);
+#define DO_FBEQ                                                         \
+    if (state.fpen == 0) GO_PAL(FEN);		  /* flt point disabled? */ \
+	if ((state.f[FREG_1] & ~FPR_SIGN) == 0)            /* +0 or - 0? */ \
+	    state.pc += (DISP_21 * 4);
+
+#define DO_FBGE                                                         \
+    if (state.fpen == 0) GO_PAL(FEN);		  /* flt point disabled? */ \
+	if (state.f[FREG_1] <= FPR_SIGN)                   /* +0 to + n? */ \
+	    state.pc += (DISP_21 * 4);
+
+#define DO_FBGT                                                         \
+    if (state.fpen == 0) GO_PAL(FEN);		  /* flt point disabled? */ \
+	if (!(state.f[FREG_1] & FPR_SIGN) && (state.f[FREG_1] != 0))        \
+                                                 /* not - and not 0? */ \
+	    state.pc += (DISP_21 * 4);
+
+#define DO_FBLE                                                         \
+    if (state.fpen == 0) GO_PAL(FEN);		  /* flt point disabled? */ \
+    if ((state.f[FREG_1] & FPR_SIGN) || (state.f[FREG_1] == 0))         \
+                                                          /* - or 0? */ \
+	    state.pc += (DISP_21 * 4);
+
+#define DO_FBLT                                                         \
+    if (state.fpen == 0) GO_PAL(FEN);		  /* flt point disabled? */ \
+    if (state.f[FREG_1] > FPR_SIGN)                     /* -0 to -n? */ \
+	    state.pc += (DISP_21 * 4);
+
+#define DO_FBNE                                                         \
+    if (state.fpen == 0) GO_PAL(FEN);		  /* flt point disabled? */ \
+    if ((state.f[FREG_1] & ~FPR_SIGN) != 0)         /* not +0 or -0? */ \
+	    state.pc += (DISP_21 * 4);
