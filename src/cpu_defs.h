@@ -27,7 +27,10 @@
  * \file 
  * Contains some macro definitions and some inline functions for the Alpha CPU.
  *
- * $Id: cpu_defs.h,v 1.1 2008/01/21 22:39:25 iamcamiel Exp $
+ * $Id: cpu_defs.h,v 1.2 2008/01/22 21:31:04 iamcamiel Exp $
+ *
+ * X-1.2        Camiel Vanderhoeven                             22-JAN-2008
+ *      Added RA, RAV style macro's for integer registers.
  *
  * X-1.1        Camiel Vanderhoeven                             21-JAN-2008
  *      File created. Contains code pulled from various older source files,
@@ -389,14 +392,20 @@ return quo;						/* return quotient */
 #define WRITE_PHYS_NT(data,size) 				\
     cSystem->WriteMem(ALIGN_PHYS((size)/8), size, data)
 
-#define REG_1 RREG(ins>>21)
-#define REG_2 RREG(ins>>16)
-#define REG_3 RREG(ins)
+#define REG_1 RREG(I_GETRA(ins))
+#define REG_2 RREG(I_GETRB(ins))
+#define REG_3 RREG(I_GETRC(ins))
 
-#define FREG_1 ((ins>>21) & 0x1f)
-#define FREG_2 ((ins>>16) & 0x1f)
-#define FREG_3 ( ins      & 0x1f)
+#define FREG_1 (I_GETRA(ins))
+#define FREG_2 (I_GETRB(ins))
+#define FREG_3 (I_GETRC(ins))
 
-#define V_2 ( (ins&0x1000)?((ins>>13)&0xff):state.r[REG_2] )
+#define RA REG_1
+#define RAV state.r[RA]
+#define RB REG_2
+#define RBV ( (ins&0x1000)?((ins>>13)&0xff):state.r[RB] )
+#define V_2 RBV
+#define RC REG_3
+#define RCV state.r[RC]
 
 #endif
