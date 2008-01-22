@@ -29,7 +29,10 @@
  *
  * \bug /V isn't implemented for all integer ops yet.
  *
- * $Id: AlphaCPU.cpp,v 1.55 2008/01/21 22:39:25 iamcamiel Exp $
+ * $Id: AlphaCPU.cpp,v 1.56 2008/01/22 19:50:52 iamcamiel Exp $
+ *
+ * X-1.56       Camiel Vanderhoeven                             22-JAN-2008
+ *      Implemented missing /V integer instructions.
  *
  * X-1.55       Camiel Vanderhoeven                             21-JAN-2008
  *      Moved some macro's to cpu_defs.h; implement new floating-point code.
@@ -362,7 +365,7 @@ CAlphaCPU::CAlphaCPU(CConfigurator * cfg, CSystem * system) : CSystemComponent (
   bListing = false;
 #endif
   
-  printf("%s: $Id: AlphaCPU.cpp,v 1.55 2008/01/21 22:39:25 iamcamiel Exp $\n",devid_string);
+  printf("%s: $Id: AlphaCPU.cpp,v 1.56 2008/01/22 19:50:52 iamcamiel Exp $\n",devid_string);
 }
 
 /**
@@ -416,14 +419,6 @@ int CAlphaCPU::DoClock()
   u64 temp_64;
   u64 temp_64_1;
   u64 temp_64_2;
-  u64 temp_64_x;
-  u64 temp_64_y;
-  u64 temp_64_a;
-  u64 temp_64_b;
-  u64 temp_64_c;
-  u64 temp_64_d;
-  u64 temp_64_hi;
-  u64 temp_64_lo;
   UFP ufp1, ufp2;
 
   int opcode;
@@ -577,17 +572,17 @@ int CAlphaCPU::DoClock()
         case 0x00: OP(ADDL,R12_R3);
         case 0x40: OP(ADDL_V,R12_R3);
         case 0x02: OP(S4ADDL,R12_R3);
-        case 0x49: //OP(SUBL_V,R12_R3);
+        case 0x49: OP(SUBL_V,R12_R3);
         case 0x09: OP(SUBL,R12_R3);
         case 0x0b: OP(S4SUBL,R12_R3);
         case 0x0f: OP(CMPBGE,R12_R3);
         case 0x12: OP(S8ADDL,R12_R3);
         case 0x1b: OP(S8SUBL,R12_R3);
         case 0x1d: OP(CMPULT,R12_R3);
-        case 0x60: //OP(ADDQ_V,R12_R3);
+        case 0x60: OP(ADDQ_V,R12_R3);
         case 0x20: OP(ADDQ,R12_R3);
         case 0x22: OP(S4ADDQ,R12_R3);
-        case 0x69: //OP(SUBQ_V,R12_R3);
+        case 0x69: OP(SUBQ_V,R12_R3);
         case 0x29: OP(SUBQ,R12_R3);
         case 0x2b: OP(S4SUBQ,R12_R3);
         case 0x2d: OP(CMPEQ,R12_R3);
@@ -662,10 +657,10 @@ int CAlphaCPU::DoClock()
       function = (ins>>5) & 0x7f;
       switch (function) // ignore /V for now
       {
-        case 0x00: 
-        case 0x40: OP(MULL,R12_R3);
-        case 0x20: 
-        case 0x60: OP(MULQ,R12_R3);
+        case 0x00: OP(MULL,R12_R3);
+        case 0x40: OP(MULL_V,R12_R3);
+        case 0x20: OP(MULQ,R12_R3);
+        case 0x60: OP(MULQ_V,R12_R3);
         case 0x30: OP(UMULH,R12_R3);
         default:   UNKNOWN2;
       }

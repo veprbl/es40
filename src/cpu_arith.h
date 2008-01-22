@@ -28,7 +28,10 @@
  * Contains code macros for the processor integer arithmetic instructions.
  * Based on ARM chapter 4.4.
  *
- * $Id: cpu_arith.h,v 1.8 2008/01/21 22:39:25 iamcamiel Exp $
+ * $Id: cpu_arith.h,v 1.9 2008/01/22 19:50:52 iamcamiel Exp $
+ *
+ * X-1.9       Camiel Vanderhoeven                             22-JAN-2008
+ *      Implemented missing /V integer instructions.
  *
  * X-1.8       Camiel Vanderhoeven                             21-JAN-2008
  *      Fixed misunderstaiding of the INT bit in integer overflow traps.
@@ -60,13 +63,26 @@
  * \author Camiel Vanderhoeven (camiel@camicom.com / http://www.camicom.com)
  **/
 
+/* comparison */
+#define DO_CMPEQ state.r[REG_3] = (state.r[REG_1]==V_2)?1:0;
+#define DO_CMPLT state.r[REG_3] = ((s64)state.r[REG_1]<(s64)V_2)?1:0;
+#define DO_CMPLE state.r[REG_3] = ((s64)state.r[REG_1]<=(s64)V_2)?1:0;
+
+/* addition */
 #define DO_ADDQ state.r[REG_3] = state.r[REG_1] + V_2;
 #define DO_S4ADDQ state.r[REG_3] = (state.r[REG_1]*4) + V_2;
 #define DO_S8ADDQ state.r[REG_3] = (state.r[REG_1]*8) + V_2;
 
-#define DO_CMPEQ state.r[REG_3] = (state.r[REG_1]==V_2)?1:0;
-#define DO_CMPLT state.r[REG_3] = ((s64)state.r[REG_1]<(s64)V_2)?1:0;
-#define DO_CMPLE state.r[REG_3] = ((s64)state.r[REG_1]<=(s64)V_2)?1:0;
+#define DO_ADDQ_V                                                   \
+    {                                                               \
+      int rc = REG_3;                                               \
+      u64 rav = state.r[REG_1];                                     \
+      u64 rbv = V_2;                                                \
+      state.r[rc] = rav + rbv;                                      \
+      /* test for integer overflow */                               \
+      if (((~rav ^ rbv) & (rav ^ state.r[rc])) & Q_SIGN)            \
+        ARITH_TRAP(TRAP_INT | TRAP_IOV, rc);                        \
+    }
 
 #define DO_ADDL state.r[REG_3] = sext_u64_32(state.r[REG_1] + V_2);
 #define DO_S4ADDL state.r[REG_3] = sext_u64_32((state.r[REG_1]*4) + V_2);
@@ -81,7 +97,7 @@
       state.r[rc] = sext_u64_32(rav + rbv);                         \
       /* test for integer overflow */                               \
       if (((~rav ^ rbv) & (rav ^ state.r[rc])) & L_SIGN)            \
-        ARITH_TRAP(TRAP_INT | TRAP_IOV, rc);                                  \
+        ARITH_TRAP(TRAP_INT | TRAP_IOV, rc);                        \
     }
 
 #define DO_CTLZ									\
@@ -115,36 +131,69 @@
 #define DO_CMPULT state.r[REG_3] = ((u64)state.r[REG_1]<(u64)V_2)?1:0;
 #define DO_CMPULE state.r[REG_3] = ((u64)state.r[REG_1]<=(u64)V_2)?1:0;
 
-#define DO_MULL state.r[REG_3] = sext_u64_32((u32)state.r[REG_1]*(u32)V_2);
-#define DO_MULQ state.r[REG_3] = state.r[REG_1]*V_2;
+/* multiplication */
 
-	 /*
-	    The UMULH algorithm was snagged from:
-	    http://www.cs.uaf.edu/2004/fall/cs301/notes/notes/node47.html
+#define DO_MULL state.r[REG_3] = sext_u64_32(sext_u64_32(state.r[REG_1])*sext_u64_32(V_2));
 
-	    which is very similar to the method used in the (unreleased)
-	    simh alpha emulation.
+#define DO_MULL_V                                       \
+  {                                                     \
+    u64 rav = sext_u64_32(state.r[REG_1]);              \
+	u64 rbv = sext_u64_32(V_2);                         \
+	u64 sr = rav * rbv;                                 \
+    state.r[REG_3] = sext_u64_32(sr);                   \
+	u32 t32 = ((u32) (sr >> 32)) & 0xffffffff;          \
+	if ((state.r[REG_3] ^ sr) & X64(ffffffff00000000))  \
+      ARITH_TRAP(TRAP_INT | TRAP_IOV, REG_3);           \
+    }
 
-	  */
-#define DO_UMULH							\
-	    temp_64_a = (state.r[REG_1] >> 32) & X64_LONG;			\
-	    temp_64_b = state.r[REG_1]  & X64_LONG;				\
-	    temp_64_c = (V_2 >> 32) & X64_LONG;				\
-	    temp_64_d = V_2 & X64_LONG;					\
-									\
-	    temp_64_lo = temp_64_b * temp_64_d;				\
-	    temp_64_x = temp_64_a * temp_64_d + temp_64_c * temp_64_b;	\
-	    temp_64_y = ((temp_64_lo >> 32) & X64_LONG) + temp_64_x;	\
-	    temp_64_lo = (temp_64_lo & X64_LONG) | ((temp_64_y & X64_LONG) << 32);	\
-	    temp_64_hi = (temp_64_y >> 32) & X64_LONG;			\
-	    temp_64_hi += temp_64_a * temp_64_c;			\
-	    state.r[REG_3] = temp_64_hi;
+#define DO_MULQ                                                                 \
+  state.r[REG_3] = uemul64 (ABS_Q (state.r[REG_1]), ABS_Q (V_2), NULL);         \
+  if (Q_GETSIGN (state.r[REG_1] ^ V_2)) state.r[REG_3] = NEG_Q (state.r[REG_3]);                                    \
+    
+#define DO_MULQ_V                                               \
+  {                                                             \
+    u64 rav = state.r[REG_1];                                   \
+	u64 rbv = V_2;                                              \
+    u64 t64;                                                    \
+    state.r[REG_3] = uemul64 (ABS_Q (rav), ABS_Q (rbv), &t64);  \
+    if (Q_GETSIGN (state.r[REG_1] ^ V_2))                       \
+    {                                                           \
+      state.r[REG_3] = NEG_Q (state.r[REG_3]);                  \
+      t64 = ~t64 + (state.r[REG_3] == 0);                       \
+    }                                                           \
+	if (Q_GETSIGN(state.r[REG_3])? (t64 != X64_QUAD): (t64 != 0)) \
+      ARITH_TRAP(TRAP_INT | TRAP_IOV, REG_3);                   \
+  }
 
+#define DO_UMULH uemul64(state.r[REG_1], V_2, &state.r[REG_3]);
+
+/* subtraction */
 #define DO_SUBQ state.r[REG_3] = state.r[REG_1] - V_2;
 #define DO_S4SUBQ state.r[REG_3] = (state.r[REG_1]*4) - V_2;
 #define DO_S8SUBQ state.r[REG_3] = (state.r[REG_1]*8) - V_2;
+
+#define DO_SUBQ_V                                                   \
+    {                                                               \
+      int rc = REG_3;                                               \
+      u64 rav = state.r[REG_1];                                     \
+      u64 rbv = V_2;                                                \
+      state.r[rc] = rav - rbv;                                      \
+      /* test for integer overflow */                               \
+      if (((rav ^ rbv) & (~rav ^ state.r[rc])) & Q_SIGN)            \
+        ARITH_TRAP(TRAP_INT | TRAP_IOV, rc);                        \
+    }
 
 #define DO_SUBL state.r[REG_3] = sext_u64_32(state.r[REG_1] - V_2);
 #define DO_S4SUBL state.r[REG_3] = sext_u64_32((state.r[REG_1]*4) - V_2);
 #define DO_S8SUBL state.r[REG_3] = sext_u64_32((state.r[REG_1]*8) - V_2);
 
+#define DO_SUBL_V                                                   \
+    {                                                               \
+      int rc = REG_3;                                               \
+      u64 rav = state.r[REG_1];                                     \
+      u64 rbv = V_2;                                                \
+      state.r[rc] = sext_u64_32(rav - rbv);                         \
+      /* test for integer overflow */                               \
+      if (((rav ^ rbv) & (~rav ^ state.r[rc])) & L_SIGN)            \
+        ARITH_TRAP(TRAP_INT | TRAP_IOV, rc);                        \
+    }
