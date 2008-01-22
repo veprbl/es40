@@ -34,7 +34,10 @@
  * Contains the code for the bx_sdl_gui_c class used for interfacing with
  * SDL.
  *
- * $Id: sdl.cpp,v 1.12 2008/01/05 14:58:06 iamcamiel Exp $
+ * $Id: sdl.cpp,v 1.13 2008/01/22 10:53:14 iamcamiel Exp $
+ *
+ * X-1.13       Camiel Vanderhoeven                             22-JAN-2008
+ *      Minor cleanups.
  *
  * X-1.12       Fang Zhe                                        05-JAN-2008
  *      Last patch was applied incompletely.
@@ -143,14 +146,6 @@ int old_mousex=0, new_mousex=0;
 int old_mousey=0, new_mousey=0;
 bool just_warped = false;
 
-#if SDL_BYTEORDER == SDL_LIL_ENDIAN
-#define SWAP16(X)    (X)
-#define SWAP32(X)    (X)
-#else
-#define SWAP16(X)    SDL_Swap16(X)
-#define SWAP32(X)    SDL_Swap32(X)
-#endif
-
 bx_sdl_gui_c::bx_sdl_gui_c (CConfigurator * cfg)
 {
   myCfg = cfg;
@@ -170,7 +165,7 @@ void bx_sdl_gui_c::specific_init(
     unsigned y_tilesize)
 {
   int i,j;
-  Uint32 flags;
+  u32 flags;
 
   tilewidth = x_tilesize;
   tileheight = y_tilesize;
@@ -254,13 +249,13 @@ void bx_sdl_gui_c::text_update(
   unsigned int curs, hchars, offset;
   u8 fontline, fontpixels, fontrows;
   int rows;
-  Uint32 fgcolor, bgcolor;
-  Uint32 *buf, *buf_row, *buf_char;
-  Uint32 disp;
+  u32 fgcolor, bgcolor;
+  u32 *buf, *buf_row, *buf_char;
+  u32 disp;
   u16 font_row, mask;
   u8 cfstart, cfwidth, cfheight, split_fontrows, split_textrow;
   bool cursor_visible, gfxcharw9, invert, forceUpdate, split_screen;
-  Uint32 text_palette[16];
+  u32 text_palette[16];
 
 //  UNUSED(nrows);
   forceUpdate = 0;
@@ -285,7 +280,7 @@ void bx_sdl_gui_c::text_update(
     line_compare = tm_info.line_compare;
   }
   disp = sdl_screen->pitch/4;
-  buf_row = (Uint32 *)sdl_screen->pixels /*+ headerbar_height*disp*/;
+  buf_row = (u32 *)sdl_screen->pixels /*+ headerbar_height*disp*/;
   // first invalidate character at previous and new cursor location
   if ( (prev_cursor_y < text_rows) && (prev_cursor_x < text_cols) ) {
     curs = prev_cursor_y * tm_info.line_offset + prev_cursor_x * 2;
@@ -461,12 +456,12 @@ void bx_sdl_gui_c::graphics_tile_update(
     unsigned x,
     unsigned y)
 {
-  Uint32 *buf, disp;
-  Uint32 *buf_row;
+  u32 *buf, disp;
+  u32 *buf_row;
   int i,j;
   
   disp = sdl_screen->pitch/4;
-  buf = (Uint32 *)sdl_screen->pixels + /*(headerbar_height+y)*disp +*/ x;
+  buf = (u32 *)sdl_screen->pixels + /*(headerbar_height+y)*disp +*/ x;
 
   i = tileheight;
   if( i + y > res_y ) i = res_y - y;
@@ -891,15 +886,15 @@ void bx_sdl_gui_c::flush(void)
 void bx_sdl_gui_c::clear_screen(void)
 {
   int i = res_y, j;
-  Uint32 color;
-  Uint32 *buf, *buf_row;
-  Uint32 disp;
+  u32 color;
+  u32 *buf, *buf_row;
+  u32 disp;
 
   if (sdl_screen)
   {
     color = SDL_MapRGB( sdl_screen->format, 0,0,0 );
     disp = sdl_screen->pitch/4;
-    buf = (Uint32 *)sdl_screen->pixels; // + headerbar_height*disp;
+    buf = (u32 *)sdl_screen->pixels; // + headerbar_height*disp;
   }
   else return;
 
