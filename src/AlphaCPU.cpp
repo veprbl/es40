@@ -29,7 +29,10 @@
  *
  * \bug /V isn't implemented for all integer ops yet.
  *
- * $Id: AlphaCPU.cpp,v 1.56 2008/01/22 19:50:52 iamcamiel Exp $
+ * $Id: AlphaCPU.cpp,v 1.57 2008/01/22 22:05:47 iamcamiel Exp $
+ *
+ * X-1.57       Camiel Vanderhoeven                             22-JAN-2008
+ *      Nicer initialization of "state" structure.
  *
  * X-1.56       Camiel Vanderhoeven                             22-JAN-2008
  *      Implemented missing /V integer instructions.
@@ -277,7 +280,6 @@ CAlphaCPU::CAlphaCPU(CConfigurator * cfg, CSystem * system) : CSystemComponent (
 {
   state.iProcNum = cSystem->RegisterCPU(this);
   cSystem = system;
-  int i;
 
 #if !defined(CPU_THREADS)
   // if the CPU doesn't have it's own thread, register it as a fast clocked device.
@@ -287,85 +289,26 @@ CAlphaCPU::CAlphaCPU(CConfigurator * cfg, CSystem * system) : CSystemComponent (
   thread_doesrun = false;
 #endif
 
-  state.pc = 0;
-  state.bIntrFlag = false;
-
-  for(i=0;i<64;i++) 
-    {
-      state.r[i] = 0;
-      state.f[i] = 0;
-    }
-
-  for(i=0;i<6;i++)
-    state.irq_h_timer[i] = 0;
-
-  state.check_timers = false;
+  memset(&state,0,sizeof(state));
 
   flush_icache();
 
   tbia(ACCESS_READ);
   tbia(ACCESS_EXEC);
 
-  state.alt_cm = 0;
-  state.asn = 0;
-  state.asn0 = 0;
-  state.asn1 = 0;
-  state.asten = 0;
-  state.aster = 0;
-  state.astrr = 0;
-  state.cc = 0;
-  state.cc_ena = false;
-  state.cc_offset = 0;
-  state.cm = 0;
-  state.cren = 0;
-  state.crr = 0;
-  state.current_pc = 0;
-  state.dc_ctl = 3;
-  state.dc_ctl = 0;
-  state.dc_stat = 0;
-  state.eien = 0;
-  state.eir = 0;
-  state.exc_addr = 0;
-  state.exc_sum = 0;
-  state.fault_va = 0;
-  state.fpcr = X64(8ff0000000000000);
+//  state.fpcr = X64(8ff0000000000000);
   state.fpen = true;
-  state.hwe = false;
   state.i_ctl_other = X64(502086);
-  state.i_ctl_va_mode = 0;
-  state.i_ctl_vptb = 0;
-  state.i_stat = 0;
-  state.mm_stat = 0;
-  state.pal_base = 0;
-  state.pc = 0;
-  state.pcen = 0;
-  state.pcr = 0;
-  state.pctr_ctl = 0;
-  state.pmpc = 0;
-  state.ppcen = false;
-  state.sde = false;
-  state.sien = 0;
-  state.sir = 0;
-  state.slen = 0;
-  state.slr = 0;
   state.smc = 1;
-  state.m_ctl_spe = 0;
-  state.i_ctl_spe = 0;
-  state.va_ctl_va_mode = 0;
-  state.va_ctl_vptb = 0;
-  state.pal_vms = false;
-  state.check_int = false;
 
   // SROM imitation...
   add_tb(0, X64(ff61),ACCESS_READ);
-//  add_tb(0, X64(ff61),ACCESS_EXEC);
-//  state.r[32+22] = X64(1) << 0x3f;
 
 #if defined(IDB)
   bListing = false;
 #endif
   
-  printf("%s: $Id: AlphaCPU.cpp,v 1.56 2008/01/22 19:50:52 iamcamiel Exp $\n",devid_string);
+  printf("%s: $Id: AlphaCPU.cpp,v 1.57 2008/01/22 22:05:47 iamcamiel Exp $\n",devid_string);
 }
 
 /**
@@ -569,8 +512,8 @@ int CAlphaCPU::DoClock()
       function = (ins >> 5) & 0x7f;
       switch (function)
       {
-        case 0x00: OP(ADDL,R12_R3);
         case 0x40: OP(ADDL_V,R12_R3);
+        case 0x00: OP(ADDL,R12_R3);
         case 0x02: OP(S4ADDL,R12_R3);
         case 0x49: OP(SUBL_V,R12_R3);
         case 0x09: OP(SUBL,R12_R3);
@@ -657,10 +600,10 @@ int CAlphaCPU::DoClock()
       function = (ins>>5) & 0x7f;
       switch (function) // ignore /V for now
       {
-        case 0x00: OP(MULL,R12_R3);
         case 0x40: OP(MULL_V,R12_R3);
-        case 0x20: OP(MULQ,R12_R3);
+        case 0x00: OP(MULL,R12_R3);
         case 0x60: OP(MULQ_V,R12_R3);
+        case 0x20: OP(MULQ,R12_R3);
         case 0x30: OP(UMULH,R12_R3);
         default:   UNKNOWN2;
       }
@@ -1340,7 +1283,6 @@ if (spe && !cm)
 u64 CAlphaCPU::get_instruction_count()
 {
   return state.instruction_count;
-
 }
 #endif
 
@@ -1503,7 +1445,6 @@ void CAlphaCPU::StartThreads()
     pthread_create(&thread_handle, NULL, do_proc, this);
 #endif
   }
-
 }
 
 #endif
