@@ -37,7 +37,11 @@
  * \file
  * Win32 GUI implementation. Allows use of gfx without SDL on WIndows
  *
- * $Id: gui_win32.cpp,v 1.2 2008/01/20 16:12:37 iamcamiel Exp $
+ * $Id: gui_win32.cpp,v 1.3 2008/01/22 10:45:31 iamcamiel Exp $
+ *
+ * X-1.3        Camiel Vanderhoeven                             22-JAN-2008
+ *      Commented out mousewheel-code, doesn't work with older win32
+ *      versions.
  *
  * X-1.2        Camiel Vanderhoeven                             19-JAN-2008
  *      Changed window title.
@@ -925,17 +929,17 @@ LRESULT CALLBACK simWndProc(HWND hwnd, UINT iMsg, WPARAM wParam, LPARAM lParam)
     }
     return 0;
 
-  case WM_MOUSEWHEEL:
-    if (!mouseModeChange) {
-      // WM_MOUSEWHEEL returns x and y relative to the main screen.
-      // WM_MOUSEMOVE below returns x and y relative to the current view.
-      POINT pt;
-      pt.x = LOWORD(lParam);
-      pt.y = HIWORD(lParam);
-      ScreenToClient(stInfo.simWnd, &pt);
-      processMouseXY( pt.x, pt.y, (s16) HIWORD(wParam) / 120, LOWORD(wParam), 0);
-    }
-    return 0;
+  //case WM_MOUSEWHEEL:
+  //  if (!mouseModeChange) {
+  //    // WM_MOUSEWHEEL returns x and y relative to the main screen.
+  //    // WM_MOUSEMOVE below returns x and y relative to the current view.
+  //    POINT pt;
+  //    pt.x = LOWORD(lParam);
+  //    pt.y = HIWORD(lParam);
+  //    ScreenToClient(stInfo.simWnd, &pt);
+  //    processMouseXY( pt.x, pt.y, (s16) HIWORD(wParam) / 120, LOWORD(wParam), 0);
+  //  }
+  //  return 0;
 
   case WM_LBUTTONDOWN:
   case WM_LBUTTONDBLCLK:
