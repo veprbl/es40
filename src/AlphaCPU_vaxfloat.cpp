@@ -27,7 +27,10 @@
  * \file 
  * Contains VAX floating point code for the Alpha CPU.
  *
- * $Id: AlphaCPU_vaxfloat.cpp,v 1.1 2008/01/21 22:39:25 iamcamiel Exp $
+ * $Id: AlphaCPU_vaxfloat.cpp,v 1.2 2008/01/22 21:33:42 iamcamiel Exp $
+ *
+ * X-1.2        Camiel Vanderhoeven                             22-JAN-2008
+ *      Minor cleanup.
  *
  * X-1.1        Camiel Vanderhoeven                             21-JAN-2008
  *      File created. Contains code based upon the SIMH Alpha pre-
@@ -86,8 +89,6 @@ return SWAP_VAXG (op);					/* swizzle bits */
 
 void CAlphaCPU::arith_trap(u64 mask, u32 ins)
 {
-  u32 rc = I_GETRC (ins);
-
   ARITH_TRAP(mask | ((ins & I_FTRP_S) ? TRAP_SWC : 0)
                   , I_GETRC(ins));
 }
