@@ -36,7 +36,10 @@
  * \file 
  * Contains the code for the emulated DEC 21143 NIC device.
  *
- * $Id: DEC21143.cpp,v 1.26 2008/01/08 15:58:55 iamcamiel Exp $
+ * $Id: DEC21143.cpp,v 1.27 2008/01/24 12:40:26 iamcamiel Exp $
+ *
+ * X-1.27       Camiel Vanderhoeven                             24-JAN-2008
+ *      Use new CPCIDevice::do_pci_read and CPCIDevice::do_pci_write.
  *
  * X-1.26       Fang Zhe                                        08-JAN-2008
  *      Avoid compiler warning.
@@ -339,7 +342,7 @@ CDEC21143::CDEC21143(CConfigurator * confg, CSystem * c, int pcibus, int pcidev)
   pthread_create(&receive_process_handle, NULL, recv_proc, this);
 #endif
 
-  printf("%s: $Id: DEC21143.cpp,v 1.26 2008/01/08 15:58:55 iamcamiel Exp $\n",devid_string);
+  printf("%s: $Id: DEC21143.cpp,v 1.27 2008/01/24 12:40:26 iamcamiel Exp $\n",devid_string);
 }
 
 /**
@@ -828,9 +831,9 @@ void CDEC21143::srom_access(uint32_t oldreg, uint32_t idata)
 
 int CDEC21143::dec21143_rx()
 {
-	uint64_t addr = state.rx.cur_addr, bufaddr;
+	u32 addr = state.rx.cur_addr, bufaddr;
 	unsigned char descr[16];
-	uint32_t rdes0, rdes1, rdes2, rdes3;
+	u32 rdes0, rdes1, rdes2, rdes3;
 	int bufsize, buf1_size, buf2_size, writeback_len = 4, to_xfer;
     struct pcap_pkthdr * packet_header;
     const u_char * packet_data = NULL;
@@ -858,9 +861,7 @@ int CDEC21143::dec21143_rx()
 		state.rx.cur_offset = 0;
 	}
 
-    addr = cSystem->PCI_Phys(0,(u32)addr);
-
-    memcpy(descr,cSystem->PtrToMem(addr),sizeof(u32)*4);
+    do_pci_read(addr,descr,1,16);
 
 	rdes0 = descr[0] + (descr[1]<<8) + (descr[2]<<16) + (descr[3]<<24);
 	rdes1 = descr[4] + (descr[5]<<8) + (descr[6]<<16) + (descr[7]<<24);
@@ -895,8 +896,6 @@ int CDEC21143::dec21143_rx()
 //	debug("{ RX (%llx): 0x%08x 0x%08x 0x%x 0x%x: buf %i bytes at 0x%x }\n",
 //	    (long long)addr, rdes0, rdes1, rdes2, rdes3, bufsize, (int)bufaddr);
 
-    bufaddr = cSystem->PCI_Phys(0,bufaddr&0xffffffff);
-
 	/*  Turn off all status bits, and give up ownership:  */
 	rdes0 = 0x00000000;
 
@@ -905,7 +904,7 @@ int CDEC21143::dec21143_rx()
 		to_xfer = bufsize;
 
 	/*  DMA bytes from the packet into emulated physical memory:  */
-    memcpy(cSystem->PtrToMem(bufaddr), state.rx.cur_buf + state.rx.cur_offset, to_xfer);
+    do_pci_write(bufaddr, state.rx.cur_buf + state.rx.cur_offset, 1, to_xfer);
 
 	/*  Was this the first buffer in a frame? Then mark it as such.  */
 	if (state.rx.cur_offset == 0)
@@ -945,11 +944,10 @@ int CDEC21143::dec21143_rx()
 		descr[14] = (u8) (rdes3 >> 16); descr[15] = (u8) (rdes3 >> 24);
 	}
 
-    memcpy(cSystem->PtrToMem(addr), descr, sizeof(u32));
+    do_pci_write(addr, descr, 1, 16);
 
 	return 1;
 }
-
 
 /**
  *  Transmit a packet, if the guest OS has marked a descriptor as containing
@@ -958,17 +956,15 @@ int CDEC21143::dec21143_rx()
 
 int CDEC21143::dec21143_tx()
 {
-	uint64_t addr = state.tx.cur_addr, bufaddr;
+	u32 addr = state.tx.cur_addr, bufaddr;
 	unsigned char descr[16];
-	uint32_t tdes0, tdes1, tdes2, tdes3;
+	u32 tdes0, tdes1, tdes2, tdes3;
 	int bufsize, buf1_size, buf2_size;
 
     if (state.tx.suspend)
         return 0;
 
-    addr = cSystem->PCI_Phys(0,addr & 0xffffffff);
-
-    memcpy(descr, cSystem->PtrToMem(addr), 16);
+    do_pci_read(addr, descr, 1, 16);
 
 	tdes0 = descr[0] + (descr[1]<<8) + (descr[2]<<16) + (descr[3]<<24);
 	tdes1 = descr[4] + (descr[5]<<8) + (descr[6]<<16) + (descr[7]<<24);
@@ -1008,7 +1004,6 @@ int CDEC21143::dec21143_tx()
 	fatal("{ TX (%llx): 0x%08x 0x%08x 0x%x 0x%x: buf %i bytes at 0x%x }\n",
 	  (long long)addr, tdes0, tdes1, tdes2, tdes3, bufsize, (int)bufaddr);
 	*/
-    bufaddr = cSystem->PCI_Phys(0,bufaddr&0xffffffff);
 
 	/*  Assume no error:  */
 	tdes0 &= ~ (TDSTAT_Tx_UF | TDSTAT_Tx_EC | TDSTAT_Tx_LC | TDSTAT_Tx_NC | TDSTAT_Tx_LO | TDSTAT_Tx_TO | TDSTAT_ES);
@@ -1022,15 +1017,10 @@ int CDEC21143::dec21143_tx()
 //		fatal("{ TX: setup packet }\n");
         if (bufsize != 192)
 			fatal("[ dec21143: setup packet len = %i, should be 192! ]\n", (int)bufsize);
-  //      else
-  //        for (i=0;i<192;i+=12)
-  //            printf("%02" LL "x:%02" LL "x:%02" LL "x:%02" LL "x:%02" LL "x:%02" LL "x \n",cSystem->ReadMem(bufaddr+i,8),cSystem->ReadMem(bufaddr+i+1,8),cSystem->ReadMem(bufaddr+i+4,8),cSystem->ReadMem(bufaddr+i+5,8),cSystem->ReadMem(bufaddr+i+8,8),cSystem->ReadMem(bufaddr+i+9,8));
-        if (memcmp(state.setup_filter, cSystem->PtrToMem(bufaddr),192))
-        {
-          memcpy(state.setup_filter, cSystem->PtrToMem(bufaddr),192);
-          SetupFilter();
-        }
-		if (tdes1 & TDCTL_Tx_IC)
+        do_pci_read(bufaddr, state.setup_filter, 1, 192);
+        SetupFilter();
+
+        if (tdes1 & TDCTL_Tx_IC)
 			state.reg[CSR_STATUS/8] |= STATUS_TI;
 		/*  New descriptor values, according to the docs:  */
 		tdes0 = 0x7fffffff; tdes1 = 0xffffffff;
@@ -1057,7 +1047,7 @@ int CDEC21143::dec21143_tx()
 		}
 
 		/*  "DMA" data from emulated physical memory into the buf:  */
-        memcpy(state.tx.cur_buf + state.tx.cur_buf_len, cSystem->PtrToMem(bufaddr), bufsize);
+        do_pci_read(bufaddr, state.tx.cur_buf + state.tx.cur_buf_len, 1, bufsize);
 
 		state.tx.cur_buf_len += bufsize;
 
@@ -1096,7 +1086,7 @@ int CDEC21143::dec21143_tx()
 	descr[12] = (u8) tdes3;       descr[13] = (u8) (tdes3 >> 8);
 	descr[14] = (u8) (tdes3 >> 16); descr[15] = (u8) (tdes3 >> 24);
 
-    memcpy(cSystem->PtrToMem(addr),descr,sizeof(u32)*4);
+    do_pci_write(addr, descr, 1, 16);
 
 	return 1;
 }
