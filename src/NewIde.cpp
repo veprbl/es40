@@ -27,7 +27,10 @@
  * \file
  * Contains the code for the emulated Ali M1543C IDE chipset part.
  *
- * $Id: NewIde.cpp,v 1.9 2008/01/16 18:38:52 iamcamiel Exp $
+ * $Id: NewIde.cpp,v 1.10 2008/01/24 12:15:16 iamcamiel Exp $
+ *
+ * X-1.10       Camiel Vanderhoeven                             24-JAN-2008
+ *      Use new CPCIDevice::do_pci_read and CPCIDevice::do_pci_write.
  *
  * X-1.9        Brian Wheeler                                   16-JAN-2008
  *      Less timeouts.
@@ -745,7 +748,7 @@ void CNewIde::ide_busmaster_write(int index, u32 address, u32 data, int dsize)
   printf("%%IDE-I-WRITBUSM: write port %d on IDE bus master %d: 0x%02x, %d bytes\n",  (u32)(address),index, data, dsize/8);
 #endif
 
-  u64 prd_address;
+  u32 prd_address;
   u32 base,control;
 
   switch(dsize) {
@@ -806,9 +809,9 @@ void CNewIde::ide_busmaster_write(int index, u32 address, u32 data, int dsize)
     break;
   case 7:
     CONTROLLER(index).busmaster[address]=data;
-    prd_address = cSystem->PCI_Phys(myPCIBus, endian_32(*(u32 *)(&CONTROLLER(index).busmaster[4])));
-    base = (u32)cSystem->ReadMem(prd_address, 32);
-    control = (u32)cSystem->ReadMem(prd_address+4, 32);
+    prd_address = endian_32(*(u32 *)(&CONTROLLER(index).busmaster[4]));
+    do_pci_read(prd_address, &base, 4, 1);
+    do_pci_read(prd_address+4, &control, 4, 1);
 #ifdef DEBUG_IDE_BUSMASTER
     printf("%IDE-I-PRD: Virtual address: %" LL "x  \n", endian_32(*(u32 *)(&CONTROLLER(index).busmaster[4])));
     printf("-IDE-I-PRD: Physical address: %" LL "x  \n", prd_address);
@@ -1168,8 +1171,7 @@ int CNewIde::DoClock()
 	        // buffer is empty, so lets fill it.
 	        if(!SEL_REGISTERS(index).lba_mode) 
             {
-	          printf("Non-LBA disk read!\n");
-	          exit(1);
+	          FAILURE("Non-LBA disk read");
 	        } 
             else 
             {
@@ -1246,8 +1248,7 @@ int CNewIde::DoClock()
 	          // the buffer is full.  Do something with the data.
 	          if(!SEL_REGISTERS(index).lba_mode) 
               {
-		        printf("Non-LBA disk write!\n");
-		        exit(1);
+		        FAILURE("Non-LBA disk write");
 	          } 
               else 
               {
@@ -1583,8 +1584,7 @@ int CNewIde::DoClock()
 		  break;
 		    
 		default:
-		  printf("Unknown packet phase.\n");
-		  exit(1);
+		  FAILURE("Unknown packet phase");
 		}
 	      } while(!yield);
 #ifdef DEBUG_IDE_PACKET
@@ -1809,7 +1809,7 @@ int CNewIde::DoClock()
 	  ide_status(index);
 	  printf("unhandled IDE command: %x\n",
 		 SEL_COMMAND(index).current_command);
-	  exit(1);
+	  FAILURE("Unknown IDE command");
 	  break;
 	}
 #ifdef DEBUG_IDE_COMMAND
@@ -1843,14 +1843,15 @@ int CNewIde::do_dma_transfer(int index, u8 *buffer, u32 buffersize, bool directi
   u32 xfersize = 0;
   u8 status = 0;
   u8 count = 0;
-  u64 prd = cSystem->PCI_Phys(myPCIBus, endian_32(*(u32 *)(&CONTROLLER(index).busmaster[4])));
+  u32 prd = endian_32(*(u32 *)(&CONTROLLER(index).busmaster[4]));
 	   
   do {
-    u64 base = cSystem->PCI_Phys(myPCIBus, (u32)cSystem->ReadMem(prd,32));
-    u32 size = (u32)cSystem->ReadMem(prd+4,16);
-    xfer = (u8)cSystem->ReadMem(prd+7,8);
-    if(size==0) 
-      size=65536;
+    u32 base;
+    do_pci_read(prd, &base, 4, 1);
+    u16 size_16;
+    do_pci_read(prd+4,&size_16, 2, 1);
+    size_t size = size_16?size_16:65536;
+    do_pci_read(prd+7, &xfer, 1, 1);
 
 #ifdef DEBUG_IDE_DMA	      
     printf("-IDE-I-DMA: Transfer %d bytes to/from %lx (%x)\n",size,base,xfer);
@@ -1867,11 +1868,11 @@ int CNewIde::do_dma_transfer(int index, u8 *buffer, u32 buffersize, bool directi
     
     // copy it to/from ram.
     if(!direction) {
-      for(u32 i=0;i<size;i++) 
-	cSystem->WriteMem(base+i,8,*buffer++);
+      do_pci_write(base, buffer, 1, size);
+      buffer += size;
     } else {
-      for(u32 i=0;i<size;i++) 
-	*buffer ++ = (u8)cSystem->ReadMem(base+i,8); 
+      do_pci_read(base, buffer, 1, size);
+      buffer += size;
     }
     xfersize+=size;
     prd+=8; // go to next entry.
@@ -1882,8 +1883,7 @@ int CNewIde::do_dma_transfer(int index, u8 *buffer, u32 buffersize, bool directi
     }
     
     if(count++ > 32) {
-      printf("Too many PRD nodes?\n");
-      exit(1);
+      FAILURE("Too many PRD nodes?");
     }
     
     
