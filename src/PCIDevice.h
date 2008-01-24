@@ -27,7 +27,11 @@
  * \file
  * Contains the definitions for the PCI Device base class.
  *
- * $Id: PCIDevice.h,v 1.3 2008/01/02 09:30:19 iamcamiel Exp $
+ * $Id: PCIDevice.h,v 1.4 2008/01/24 11:28:35 iamcamiel Exp $
+ *
+ * X-1.4        Camiel Vanderhoeven                             24-JAN-2008
+ *      Added do_pci_read and do_pci_write. Thanks to David Hittner for
+ *      suggesting this.
  *
  * X-1.3        Camiel Vanderhoeven                             02-JAN-2008
  *      Comments.
@@ -80,6 +84,8 @@ public:
 protected:
 
   bool do_pci_interrupt(int func, bool asserted);
+  void do_pci_read(u32 address, void *dest, size_t element_size, size_t element_count);
+  void do_pci_write(u32 address, void *source, size_t element_size, size_t element_count);
 
   void add_function(int func, u32 data[64], u32 mask[64]);
   void add_legacy_io(int id, u32 base, u32 length);

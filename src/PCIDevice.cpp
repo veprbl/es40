@@ -27,7 +27,11 @@
  * \file
  * Contains the code for the PCI device class.
  *
- * $Id: PCIDevice.cpp,v 1.10 2008/01/03 17:19:47 iamcamiel Exp $
+ * $Id: PCIDevice.cpp,v 1.11 2008/01/24 11:28:34 iamcamiel Exp $
+ *
+ * X-1.11       Camiel Vanderhoeven                             24-JAN-2008
+ *      Added do_pci_read and do_pci_write. Thanks to David Hittner for
+ *      suggesting this.
  *
  * X-1.10       Fang Zhe                                        03-JAN-2008
  *      Fixed semicolon error.
@@ -486,4 +490,180 @@ void CPCIDevice::WriteMem_Bar(int func, int bar, u32 address, int dsize, u32 dat
 {
   printf("%s(%s).%d No BAR write handler installed!\n",myCfg->get_myName(), myCfg->get_myValue(), func);
   throw((int)1);
+}
+
+/**
+ * \brief Read data from the PCI bus.
+ *
+ * Called by the PCI-device to read data off the PCI bus. address is the
+ * 32-bit address put on the PCI bus. element_count elements of element_size
+ * bytes each will be read in an endian-aware manner.
+ **/
+void CPCIDevice::do_pci_read(u32 address, void *dest, size_t element_size, size_t element_count)
+{
+  size_t el;
+  char * dst = (char*)dest;
+
+  if (element_count == 0)
+    return;
+
+  // get the 64-bit system wide address
+  u64 phys_addr = cSystem->PCI_Phys(myPCIBus,address);
+
+  // if there is only one element to read, this is a simple ReadMem operation.
+  if (element_count == 1)
+  {
+    switch (element_size)
+    {
+      case 1:
+        *(u8*)dest = (u8) cSystem->ReadMem(phys_addr,8);
+        break;
+      case 2:
+        *(u16*)dest = (u16) cSystem->ReadMem(phys_addr,16);
+        break;
+      case 4:
+        *(u32*)dest = (u32) cSystem->ReadMem(phys_addr,32);
+        break;
+      default:
+        FAILURE("Strange element size");
+    }
+    return;
+  }
+
+#if defined(ES40_BIG_ENDIAN)
+  // if this is a big-endian host machine, the memcpy method is only valid
+  // if we're transferring bytes. Otherwise, endian-conversions need to be done.
+  if (element_size==1)
+  {
+#endif
+    // get a pointer to system memory if the address is inside main memory
+    char * memptr = cSystem->PtrToMem(phys_addr);
+    // if the address is inside system memory, a simple memcpy operation is
+    // all that is needed.
+    if (memptr)
+    {
+      memcpy(dest,memptr,element_size*element_count);
+      return;
+    }
+#if defined(ES40_BIG_ENDIAN)
+  }
+#endif
+
+  // outside main memory, or inside main memory with endian-conversion
+  // required we need to do the transfer element-by-element.
+  switch (element_size)
+  {
+  case 1:
+    for (el=0; el<element_count;el++)
+    {
+      *(u8*)dst = (u8) cSystem->ReadMem(phys_addr,8);
+      dst++;
+      phys_addr++;
+    }
+    break;
+  case 2:
+    {
+      *(u16*)dst = endian_16((u16) cSystem->ReadMem(phys_addr,16));
+      dst+=2;
+      phys_addr+=2;
+    }
+    break;
+  case 4:
+    {
+      *(u32*)dst = endian_32((u32) cSystem->ReadMem(phys_addr,32));
+      dst+=4;;
+      phys_addr+=4;
+    }
+    break;
+  default:
+    FAILURE("Strange element size");
+  }
+}
+
+/**
+ * \brief Write data to the PCI bus.
+ *
+ * Called by the PCI-device to write data to the PCI bus. address is the
+ * 32-bit address put on the PCI bus. element_count elements of element_size
+ * bytes each will be written in an endian-aware manner.
+ **/
+void CPCIDevice::do_pci_write(u32 address, void *source, size_t element_size, size_t element_count)
+{
+  size_t el;
+  char * src = (char*)source;
+
+  if (element_count == 0)
+    return;
+
+  // get the 64-bit system wide address
+  u64 phys_addr = cSystem->PCI_Phys(myPCIBus,address);
+
+  // if there is only one element to read, this is a simple ReadMem operation.
+  if (element_count == 1)
+  {
+    switch (element_size)
+    {
+      case 1:
+        cSystem->WriteMem(phys_addr, 8, *(u8*)source);
+        break;
+      case 2:
+        cSystem->WriteMem(phys_addr, 16, *(u16*)source);
+        break;
+      case 4:
+        cSystem->WriteMem(phys_addr, 32, *(u32*)source);
+        break;
+      default:
+        FAILURE("Strange element size");
+    }
+    return;
+  }
+
+#if defined(ES40_BIG_ENDIAN)
+  // if this is a big-endian host machine, the memcpy method is only valid
+  // if we're transferring bytes. Otherwise, endian-conversions need to be done.
+  if (element_size==1)
+  {
+#endif
+    // get a pointer to system memory if the address is inside main memory
+    char * memptr = cSystem->PtrToMem(phys_addr);
+    // if the address is inside system memory, a simple memcpy operation is
+    // all that is needed.
+    if (memptr)
+    {
+      memcpy(memptr,source,element_size*element_count);
+      return;
+    }
+#if defined(ES40_BIG_ENDIAN)
+  }
+#endif
+
+  // outside main memory, or inside main memory with endian-conversion
+  // required we need to do the transfer element-by-element.
+  switch (element_size)
+  {
+  case 1:
+    for (el=0; el<element_count;el++)
+    {
+      cSystem->WriteMem(phys_addr, 8, *(u8*)src);
+      src++;
+      phys_addr++;
+    }
+    break;
+  case 2:
+    {
+      cSystem->WriteMem(phys_addr, 16, endian_16(*(u16*)src));
+      src+=2;
+      phys_addr+=2;
+    }
+    break;
+  case 4:
+    {
+      cSystem->WriteMem(phys_addr, 32, endian_32(*(u32*)src));
+      src+=4;;
+      phys_addr+=4;
+    }
+    break;
+  default:
+    FAILURE("Strange element size");
+  }
 }

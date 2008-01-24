@@ -27,7 +27,10 @@
  * \file
  * Contains the code for the emulated Symbios SCSI controller.
  *
- * $Id: Sym53C895.cpp,v 1.19 2008/01/18 20:58:20 iamcamiel Exp $
+ * $Id: Sym53C895.cpp,v 1.20 2008/01/24 11:28:35 iamcamiel Exp $
+ *
+ * X-1.20       Camiel Vanderhoeven                             24-JAN-2008
+ *      Use new CPCIDevice::do_pci_read and CPCIDevice::do_pci_write.
  *
  * X-1.19       Camiel Vanderhoeven                             18-JAN-2008
  *      Replaced sext_64 inlines with sext_u64_<bits> inlines for
@@ -397,7 +400,7 @@ CSym53C895::CSym53C895(CConfigurator * cfg, CSystem * c, int pcibus, int pcidev)
   CSCSIBus * a = new CSCSIBus(cfg, c);
   scsi_register(0, a, 7); // scsi id 7 by default
 
-  printf("%s: $Id: Sym53C895.cpp,v 1.19 2008/01/18 20:58:20 iamcamiel Exp $\n",devid_string);
+  printf("%s: $Id: Sym53C895.cpp,v 1.20 2008/01/24 11:28:35 iamcamiel Exp $\n",devid_string);
 }
 
 CSym53C895::~CSym53C895()
@@ -1137,15 +1140,12 @@ int CSym53C895::execute()
     //  getchar();
     //}
 
-    cmda0 = cSystem->PCI_Phys(myPCIBus, R32(DSP));
-    cmda1 = cSystem->PCI_Phys(myPCIBus, R32(DSP) + 4);
+    do_pci_read(R32(DSP), &R32(DBC), 4, 1);
+    do_pci_read(R32(DSP)+4, &R32(DSPS), 4, 1); 
 
     R32(DSP) += 8;
 
     //printf("SYM: INS @ %" LL "x, %" LL "x   \n",cmda0, cmda1);
-
-    R32(DBC) = (u32)cSystem->ReadMem(cmda0,32);  // loads both DBC and DCMD
-    R32(DSPS) = (u32)cSystem->ReadMem(cmda1,32);
 
     //printf("SYM: INS = %x, %x, %x   \n",R8(DCMD), GET_DBC(), R32(DSPS));
 
@@ -1187,17 +1187,15 @@ int CSym53C895::execute()
           u32 start;
           u32 count;
 
-          u32 i;
           if (table_indirect)
           {
             u32 add = R32(DSA) + sext_u32_24(R32(DSPS));
 
             //printf("SYM: Reading table at DSA(%08x)+DSPS(%08x) = %08x.\n",R32(DSA),R32(DSPS),add);
 
-            cmda0 = cSystem->PCI_Phys(myPCIBus,add);
-            cmda1 = cSystem->PCI_Phys(myPCIBus,add+4);
-            count = (u32)cSystem->ReadMem(cmda0,32) & 0x00ffffff;
-            start = (u32)cSystem->ReadMem(cmda1,32);
+            do_pci_read(add, &count, 4, 1);
+            count &= 0x00ffffff;
+            do_pci_read(add+4, &start, 4, 1);
           }
           else if (indirect)
           {
@@ -1224,48 +1222,20 @@ int CSym53C895::execute()
           }
           u8 * scsi_data_ptr = (u8*) scsi_xfer_ptr(0, count);
           u8 * org_sdata_ptr = scsi_data_ptr;
-          u64  sys_data_addr = cSystem->PCI_Phys(myPCIBus,R32(DNAD));
-          u8 * sys_data_ptr  = (u8*) cSystem->PtrToMem(sys_data_addr);
 
           switch (scsi_phase)
           {
           case SCSI_PHASE_COMMAND:
           case SCSI_PHASE_DATA_OUT:
           case SCSI_PHASE_MSG_OUT:
-            if (sys_data_ptr)
-            {
-              memcpy(scsi_data_ptr,sys_data_ptr,count);
-              R32(DNAD) += count;
-            }
-            else
-            {
-              for (i=0;i<count;i++)
-              {
-                sys_data_addr = cSystem->PCI_Phys(myPCIBus,R32(DNAD));
-                *scsi_data_ptr = (u8) cSystem->ReadMem(sys_data_addr,8);
-                R32(DNAD)++;
-                scsi_data_ptr++;
-              }
-            }
+            do_pci_read(R32(DNAD), scsi_data_ptr, 1, count);
+            R32(DNAD) += count;
             break;
           case SCSI_PHASE_STATUS:
           case SCSI_PHASE_DATA_IN:
           case SCSI_PHASE_MSG_IN:
-            if (sys_data_ptr)
-            {
-              memcpy(sys_data_ptr,scsi_data_ptr,count);
-              R32(DNAD) += count;
-            }
-            else
-            {
-              for (i=0;i<count;i++)
-              {
-                sys_data_addr = cSystem->PCI_Phys(myPCIBus,R32(DNAD));
-                cSystem->WriteMem(sys_data_addr, 8, (u64) *scsi_data_ptr);
-                R32(DNAD)++;
-                scsi_data_ptr++;
-              }
-            }
+            do_pci_write(R32(DNAD), scsi_data_ptr, 1, count);
+            R32(DNAD) += count;
             break;
           }
           R8(SFBR) = *org_sdata_ptr;
@@ -1303,8 +1273,8 @@ int CSym53C895::execute()
           if (table_indirect)
           {
             u32 io_addr = R32(DSA) + sext_u32_24(GET_DBC());
-            u64 io_pa = cSystem->PCI_Phys(myPCIBus,io_addr);
-            u32 io_struc = (u32)cSystem->ReadMem(io_pa,32);
+            u32 io_struc;
+            do_pci_read(io_addr, &io_struc, 4, 1);
             destination = (io_struc>>16) & 0x0f;
             //printf("SYM: table indirect. io_struct = %08x, new dest = %d.\n",io_struc,destination);
           }
@@ -1619,8 +1589,8 @@ int CSym53C895::execute()
             //printf("from %x.\n",memaddr);
             for (int i=0; i<byte_count;i++)
             {
-              u64 ma = cSystem->PCI_Phys(myPCIBus,memaddr+i);
-              u8 dat = (u8)cSystem->ReadMem(ma,8);
+              u8 dat;
+              do_pci_read(memaddr+i, &dat, 1, 1);
               //printf("SYM: %02x -> reg%02x\n",dat,regaddr+i);
               WriteMem_Bar(0,1,regaddr+i,8,dat);
             }
@@ -1633,10 +1603,9 @@ int CSym53C895::execute()
             //printf("to %x.\n",memaddr);
             for (int i=0; i<byte_count;i++)
             {
-              u64 ma = cSystem->PCI_Phys(myPCIBus,memaddr+i);
               u8 dat = (u8)ReadMem_Bar(0,1,regaddr+i,8);
               //printf("SYM: %02x <- reg%02x\n",dat,regaddr+i);
-              cSystem->WriteMem(ma,8,dat);
+              do_pci_write(memaddr+i, &dat, 1, 1);
             }
           }
           return 0;
@@ -1644,17 +1613,16 @@ int CSym53C895::execute()
         else
         {
           // memory move
-          cmda0 = cSystem->PCI_Phys(myPCIBus, R32(DSP));
+          u32 temp_shadow;
+          do_pci_read(R32(DSP), &temp_shadow, 4, 1);
           R32(DSP) += 4;
-          u32 temp_shadow = (u32)cSystem->ReadMem(cmda0,32);
-          //printf("SYM: %08x: Memory Move %06x bytes from %08x to %08x.\n",R32(DSP)-8,GET_DBC(),R32(DSPS),temp_shadow);
-          cmda0 = cSystem->PCI_Phys(myPCIBus, R32(DSPS));
-          cmda1 = cSystem->PCI_Phys(myPCIBus, temp_shadow);
 
-          int num_bytes = GET_DBC();
-          while(num_bytes--)
-            cSystem->WriteMem(cmda1++,8,cSystem->ReadMem(cmda0++,8));
-          
+          //printf("SYM: %08x: Memory Move %06x bytes from %08x to %08x.\n",R32(DSP)-12,GET_DBC(),R32(DSPS),temp_shadow);
+
+          void * buf = malloc(GET_DBC());
+          do_pci_read(R32(DSPS), buf, 1, GET_DBC());
+          do_pci_write(temp_shadow, buf, 1, GET_DBC());
+          free(buf);
           return 0;
         }
       }
