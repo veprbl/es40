@@ -53,7 +53,7 @@
 				StringPooling="false"
 				MinimalRebuild="false"
 				BasicRuntimeChecks="0"
-				RuntimeLibrary="2"
+				RuntimeLibrary="0"
 				EnableFunctionLevelLinking="false"
 				UsePrecompiledHeader="0"
 				PrecompiledHeaderFile=".\Release LSM/es40.pch"
@@ -156,7 +156,7 @@
 				StringPooling="false"
 				MinimalRebuild="false"
 				BasicRuntimeChecks="0"
-				RuntimeLibrary="2"
+				RuntimeLibrary="0"
 				EnableFunctionLevelLinking="false"
 				UsePrecompiledHeader="0"
 				PrecompiledHeaderFile=".\Release IDB/es40.pch"
@@ -255,12 +255,12 @@
 				FavorSizeOrSpeed="1"
 				WholeProgramOptimization="true"
 				AdditionalIncludeDirectories="c:\program files\winpcap\include;c:\program files\sdl\include"
-				PreprocessorDefinitions="WIN32;NDEBUG;_CONSOLE;HAVE_SDL;HAVE_PCAP"
+				PreprocessorDefinitions="WIN32;NDEBUG;_CONSOLE;HAVE_SDL;HAVE_PCAP;HAVE_NEW_IDE"
 				StringPooling="false"
 				MinimalRebuild="false"
 				ExceptionHandling="1"
 				BasicRuntimeChecks="0"
-				RuntimeLibrary="2"
+				RuntimeLibrary="0"
 				EnableFunctionLevelLinking="false"
 				UsePrecompiledHeader="0"
 				PrecompiledHeaderFile=".\Release/es40.pch"
@@ -363,7 +363,7 @@
 				StringPooling="false"
 				MinimalRebuild="false"
 				BasicRuntimeChecks="0"
-				RuntimeLibrary="2"
+				RuntimeLibrary="0"
 				EnableFunctionLevelLinking="false"
 				UsePrecompiledHeader="0"
 				PrecompiledHeaderFile=".\Release LSS/es40.pch"
@@ -466,7 +466,7 @@
 				StringPooling="false"
 				MinimalRebuild="true"
 				BasicRuntimeChecks="3"
-				RuntimeLibrary="3"
+				RuntimeLibrary="1"
 				EnableFunctionLevelLinking="false"
 				UsePrecompiledHeader="0"
 				PrecompiledHeaderFile=".\Debug/es40.pch"
@@ -532,8 +532,6 @@
 				Name="VCPostBuildEventTool"
 			/>
 		</Configuration>
-
-
 		<Configuration
 			Name="Release NN LSM|Win32"
 			OutputDirectory=".\Release NN LSM"
@@ -573,7 +571,7 @@
 				StringPooling="false"
 				MinimalRebuild="false"
 				BasicRuntimeChecks="0"
-				RuntimeLibrary="2"
+				RuntimeLibrary="0"
 				EnableFunctionLevelLinking="false"
 				UsePrecompiledHeader="0"
 				PrecompiledHeaderFile=".\Release NN LSM/es40.pch"
@@ -676,7 +674,7 @@
 				StringPooling="false"
 				MinimalRebuild="false"
 				BasicRuntimeChecks="0"
-				RuntimeLibrary="2"
+				RuntimeLibrary="0"
 				EnableFunctionLevelLinking="false"
 				UsePrecompiledHeader="0"
 				PrecompiledHeaderFile=".\Release NN IDB/es40.pch"
@@ -775,12 +773,12 @@
 				FavorSizeOrSpeed="1"
 				WholeProgramOptimization="true"
 				AdditionalIncludeDirectories="c:\program files\sdl\include"
-				PreprocessorDefinitions="WIN32;NDEBUG;_CONSOLE;HAVE_SDL"
+				PreprocessorDefinitions="WIN32;NDEBUG;_CONSOLE;HAVE_SDL;HAVE_NEW_IDE"
 				StringPooling="false"
 				MinimalRebuild="false"
 				ExceptionHandling="1"
 				BasicRuntimeChecks="0"
-				RuntimeLibrary="2"
+				RuntimeLibrary="0"
 				EnableFunctionLevelLinking="false"
 				UsePrecompiledHeader="0"
 				PrecompiledHeaderFile=".\Release NN/es40.pch"
@@ -883,7 +881,7 @@
 				StringPooling="false"
 				MinimalRebuild="false"
 				BasicRuntimeChecks="0"
-				RuntimeLibrary="2"
+				RuntimeLibrary="0"
 				EnableFunctionLevelLinking="false"
 				UsePrecompiledHeader="0"
 				PrecompiledHeaderFile=".\Release NN LSS/es40.pch"
@@ -947,7 +945,6 @@
 				Name="VCPostBuildEventTool"
 			/>
 		</Configuration>
-
 		<Configuration
 			Name="Release NN NS LSM|Win32"
 			OutputDirectory=".\Release NN NS LSM"
@@ -987,7 +984,7 @@
 				StringPooling="false"
 				MinimalRebuild="false"
 				BasicRuntimeChecks="0"
-				RuntimeLibrary="2"
+				RuntimeLibrary="0"
 				EnableFunctionLevelLinking="false"
 				UsePrecompiledHeader="0"
 				PrecompiledHeaderFile=".\Release NN NS LSM/es40.pch"
@@ -1090,7 +1087,7 @@
 				StringPooling="false"
 				MinimalRebuild="false"
 				BasicRuntimeChecks="0"
-				RuntimeLibrary="2"
+				RuntimeLibrary="0"
 				EnableFunctionLevelLinking="false"
 				UsePrecompiledHeader="0"
 				PrecompiledHeaderFile=".\Release NN NS IDB/es40.pch"
@@ -1189,12 +1186,12 @@
 				FavorSizeOrSpeed="1"
 				WholeProgramOptimization="true"
 				AdditionalIncludeDirectories=""
-				PreprocessorDefinitions="WIN32;NDEBUG;_CONSOLE"
+				PreprocessorDefinitions="WIN32;NDEBUG;_CONSOLE;HAVE_NEW_IDE"
 				StringPooling="false"
 				MinimalRebuild="false"
 				ExceptionHandling="1"
 				BasicRuntimeChecks="0"
-				RuntimeLibrary="2"
+				RuntimeLibrary="0"
 				EnableFunctionLevelLinking="false"
 				UsePrecompiledHeader="0"
 				PrecompiledHeaderFile=".\Release NN NS/es40.pch"
@@ -1297,7 +1294,7 @@
 				StringPooling="false"
 				MinimalRebuild="false"
 				BasicRuntimeChecks="0"
-				RuntimeLibrary="2"
+				RuntimeLibrary="0"
 				EnableFunctionLevelLinking="false"
 				UsePrecompiledHeader="0"
 				PrecompiledHeaderFile=".\Release NN NS LSS/es40.pch"
@@ -1361,7 +1358,6 @@
 				Name="VCPostBuildEventTool"
 			/>
 		</Configuration>
-
 		<Configuration
 			Name="Release NS LSM|Win32"
 			OutputDirectory=".\Release NS LSM"
@@ -1401,7 +1397,7 @@
 				StringPooling="false"
 				MinimalRebuild="false"
 				BasicRuntimeChecks="0"
-				RuntimeLibrary="2"
+				RuntimeLibrary="0"
 				EnableFunctionLevelLinking="false"
 				UsePrecompiledHeader="0"
 				PrecompiledHeaderFile=".\Release NS LSM/es40.pch"
@@ -1504,7 +1500,7 @@
 				StringPooling="false"
 				MinimalRebuild="false"
 				BasicRuntimeChecks="0"
-				RuntimeLibrary="2"
+				RuntimeLibrary="0"
 				EnableFunctionLevelLinking="false"
 				UsePrecompiledHeader="0"
 				PrecompiledHeaderFile=".\Release NS IDB/es40.pch"
@@ -1603,12 +1599,12 @@
 				FavorSizeOrSpeed="1"
 				WholeProgramOptimization="true"
 				AdditionalIncludeDirectories="c:\program files\winpcap\include"
-				PreprocessorDefinitions="WIN32;NDEBUG;_CONSOLE;HAVE_PCAP"
+				PreprocessorDefinitions="WIN32;NDEBUG;_CONSOLE;HAVE_PCAP;HAVE_NEW_IDE"
 				StringPooling="false"
 				MinimalRebuild="false"
 				ExceptionHandling="1"
 				BasicRuntimeChecks="0"
-				RuntimeLibrary="2"
+				RuntimeLibrary="0"
 				EnableFunctionLevelLinking="false"
 				UsePrecompiledHeader="0"
 				PrecompiledHeaderFile=".\Release NS/es40.pch"
@@ -1711,7 +1707,7 @@
 				StringPooling="false"
 				MinimalRebuild="false"
 				BasicRuntimeChecks="0"
-				RuntimeLibrary="2"
+				RuntimeLibrary="0"
 				EnableFunctionLevelLinking="false"
 				UsePrecompiledHeader="0"
 				PrecompiledHeaderFile=".\Release NS LSS/es40.pch"
@@ -1775,7 +1771,6 @@
 				Name="VCPostBuildEventTool"
 			/>
 		</Configuration>
-
 	</Configurations>
 	<References>
 	</References>
@@ -1798,6 +1793,14 @@
 			</File>
 			<File
 				RelativePath="..\AlphaCPU.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\AlphaCPU_ieeefloat.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\AlphaCPU_vaxfloat.cpp"
 				>
 			</File>
 			<File
@@ -1829,6 +1832,10 @@
 				>
 			</File>
 			<File
+				RelativePath="..\DiskDevice.cpp"
+				>
+			</File>
+			<File
 				RelativePath="..\DiskFile.cpp"
 				>
 			</File>
@@ -1857,11 +1864,19 @@
 				>
 			</File>
 			<File
+				RelativePath="..\gui\gui_win32.cpp"
+				>
+			</File>
+			<File
 				RelativePath="..\gui\keymap.cpp"
 				>
 			</File>
 			<File
 				RelativePath="..\lockstep.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\NewIde.cpp"
 				>
 			</File>
 			<File
@@ -1878,6 +1893,14 @@
 			</File>
 			<File
 				RelativePath="..\gui\scancodes.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\SCSIBus.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\SCSIDevice.cpp"
 				>
 			</File>
 			<File
@@ -2018,6 +2041,10 @@
 				>
 			</File>
 			<File
+				RelativePath="..\DiskDevice.h"
+				>
+			</File>
+			<File
 				RelativePath="..\DiskFile.h"
 				>
 			</File>
@@ -2035,10 +2062,6 @@
 			</File>
 			<File
 				RelativePath="..\es40_endian.h"
-				>
-			</File>
-			<File
-				RelativePath="..\es40_float.h"
 				>
 			</File>
 			<File
@@ -2082,6 +2105,14 @@
 				>
 			</File>
 			<File
+				RelativePath="..\SCSIBus.h"
+				>
+			</File>
+			<File
+				RelativePath="..\SCSIDevice.h"
+				>
+			</File>
+			<File
 				RelativePath="..\gui\sdl_fonts.h"
 				>
 			</File>
@@ -2118,11 +2149,11 @@
 				>
 			</File>
 			<File
-				RelativePath="..\gui\vga.h"
+				RelativePath="..\VGA.h"
 				>
 			</File>
 			<File
-				RelativePath="..\VGA.h"
+				RelativePath="..\gui\vga.h"
 				>
 			</File>
 		</Filter>
