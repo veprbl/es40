@@ -28,7 +28,10 @@
  * Contains code macros for the processor integer arithmetic instructions.
  * Based on ARM chapter 4.4.
  *
- * $Id: cpu_arith.h,v 1.11 2008/01/22 21:43:36 iamcamiel Exp $
+ * $Id: cpu_arith.h,v 1.12 2008/01/24 17:40:07 iamcamiel Exp $
+ *
+ * X-1.12      Camiel Vanderhoeven                             24-JAN-2008
+ *      Fixed some overflow-detection issues.
  *
  * X-1.11      Camiel Vanderhoeven                             22-JAN-2008
  *      Also fixed MULQ/V.
@@ -80,20 +83,32 @@
 #define DO_S8ADDQ RCV = (RAV*8) + RBV;
 
 #define DO_ADDQ_V                                       \
-  RCV = RAV + RBV;                                      \
-  /* test for integer overflow */                       \
-  if (((~RAV ^ RBV) & (RAV ^ RCV)) & Q_SIGN)            \
-    ARITH_TRAP(TRAP_INT | TRAP_IOV, RC);
+  {                                                     \
+    u64 rav = RAV;                                      \
+    u64 rbv = RBV;                                      \
+    RCV = rav + rbv;                                    \
+    /* test for integer overflow */                     \
+    if (((~rav ^ rbv) & (rav ^ RCV)) & Q_SIGN) {        \
+      ARITH_TRAP(TRAP_INT | TRAP_IOV, RC);              \
+      printf("ADDQ_V %016" LL "x + %016" LL "x = %016" LL "x + TRAP.\n",rav,rbv,RCV); \
+    }                                                   \
+  }
 
 #define DO_ADDL RCV = sext_u64_32(RAV + RBV);
 #define DO_S4ADDL RCV = sext_u64_32((RAV*4) + RBV);
 #define DO_S8ADDL RCV = sext_u64_32((RAV*8) + RBV);
 
 #define DO_ADDL_V                                       \
-  RCV = sext_u64_32(RAV + RBV);                         \
-  /* test for integer overflow */                       \
-  if (((~RAV ^ RBV) & (RAV ^ RCV)) & L_SIGN)            \
-    ARITH_TRAP(TRAP_INT | TRAP_IOV, RC);
+  {                                                     \
+    u64 rav = RAV;                                      \
+    u64 rbv = RBV;                                      \
+    RCV = sext_u64_32(rav + rbv);                       \
+    /* test for integer overflow */                     \
+    if (((~rav ^ rbv) & (rav ^ RCV)) & L_SIGN) {        \
+      ARITH_TRAP(TRAP_INT | TRAP_IOV, RC);              \
+      printf("ADDL_V %016" LL "x + %016" LL "x = %016" LL "x + TRAP.\n",rav,rbv,RCV); \
+    }                                                   \
+  }
 
 #define DO_CTLZ									\
  	    temp_64 = 0;							\
@@ -132,21 +147,30 @@
 
 #define DO_MULL_V                                       \
   {                                                     \
-	u64 sr = sext_u64_32(RAV) * sext_u64_32(RBV);       \
+    u64 rav = RAV;                                      \
+    u64 rbv = RBV;                                      \
+	u64 sr = sext_u64_32(rav) * sext_u64_32(rbv);       \
     RCV = sext_u64_32(sr);                              \
-	u32 t32 = ((u32) (sr >> 32)) & 0xffffffff;          \
-	if ((RCV ^ sr) & X64(ffffffff00000000))             \
+    if ((RCV ^ sr) & X64(ffffffff00000000)) {           \
       ARITH_TRAP(TRAP_INT | TRAP_IOV, RC);              \
-    }
+      printf("MULL_V %016" LL "x * %016" LL "x = %016" LL "x + TRAP.\n",rav,rbv,RCV); \
+    }                                                   \
+  }
 
 #define DO_MULQ RCV = RAV * RBV;
     
 #define DO_MULQ_V                                      \
   {                                                    \
+    u64 rav = RAV;                                     \
+    u64 rbv = RBV;                                     \
     u64 t64;                                           \
-    RCV = uemul64 (RAV, RBV, &t64);                    \
-	if (Q_GETSIGN(RCV)? (t64 != X64_QUAD): (t64 != 0)) \
+    RCV = uemul64 (rav, rbv, &t64);                    \
+    if (Q_GETSIGN(rav)) t64 -= rbv;                    \
+    if (Q_GETSIGN(rbv)) t64 -= rav;                    \
+    if (Q_GETSIGN(RCV)? (t64 != X64_QUAD): (t64 != 0)) { \
       ARITH_TRAP(TRAP_INT | TRAP_IOV, RC);             \
+      printf("MULQ_V %016" LL "x * %016" LL "x = %016" LL "x + TRAP.\n",rav,rbv,RCV); \
+    }                                                   \
   }
 
 #define DO_UMULH uemul64(RAV, RBV, &RCV);
@@ -157,17 +181,29 @@
 #define DO_S8SUBQ RCV = (RAV*8) - RBV;
 
 #define DO_SUBQ_V                                           \
-      RCV = RAV - RBV;                                      \
-      /* test for integer overflow */                       \
-      if (((RAV ^ RBV) & (~RAV ^ RCV)) & Q_SIGN)            \
-        ARITH_TRAP(TRAP_INT | TRAP_IOV, RC);
+  {                                                         \
+    u64 rav = RAV;                                          \
+    u64 rbv = RBV;                                          \
+    RCV = rav - rbv;                                        \
+    /* test for integer overflow */                         \
+    if (((rav ^ rbv) & (rav ^ RCV)) & Q_SIGN) {            \
+      ARITH_TRAP(TRAP_INT | TRAP_IOV, RC);                  \
+      printf("SUBQ_V %016" LL "x - %016" LL "x = %016" LL "x + TRAP.\n",rav,rbv,RCV); \
+    }                                                   \
+  }
 
 #define DO_SUBL RCV = sext_u64_32(RAV - RBV);
 #define DO_S4SUBL RCV = sext_u64_32((RAV*4) - RBV);
 #define DO_S8SUBL RCV = sext_u64_32((RAV*8) - RBV);
 
 #define DO_SUBL_V                                           \
-      RCV = sext_u64_32(RAV - RBV);                         \
-      /* test for integer overflow */                       \
-      if (((RAV ^ RBV) & (~RAV ^ RCV)) & L_SIGN)            \
-        ARITH_TRAP(TRAP_INT | TRAP_IOV, RC);
+  {                                                         \
+    u64 rav = RAV;                                          \
+    u64 rbv = RBV;                                          \
+    RCV = sext_u64_32(rav - rbv);                           \
+    /* test for integer overflow */                         \
+    if (((rav ^ rbv) & (rav ^ RCV)) & L_SIGN) {            \
+      ARITH_TRAP(TRAP_INT | TRAP_IOV, RC);                  \
+      printf("SUBL_V %016" LL "x - %016" LL "x = %016" LL "x + TRAP.\n",rav,rbv,RCV); \
+    }                                                   \
+  }
