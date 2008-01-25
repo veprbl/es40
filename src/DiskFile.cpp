@@ -27,7 +27,10 @@
  * \file
  * Contains code to use a file as a disk image.
  *
- * $Id: DiskFile.cpp,v 1.14 2008/01/13 17:36:56 iamcamiel Exp $
+ * $Id: DiskFile.cpp,v 1.15 2008/01/25 11:56:42 iamcamiel Exp $
+ *
+ * X-1.15       Camiel Vanderhoeven                             25-JAN-2008
+ *      Create file if it doesn't exist and autocreate_size is specified.
  *
  * X-1.14       Camiel Vanderhoeven                             13-JAN-2008
  *      Use determine_layout in stead of calc_cylinders.
@@ -92,7 +95,25 @@ CDiskFile::CDiskFile(CConfigurator * cfg, CSystem * sys, CDiskController * c, in
   if (!handle)
   {
     printf("%s: Could not open file %s!\n",devid_string,filename);
-    throw((int)1);
+    int sz = myCfg->get_int_value("autocreate_size",0);
+    if (!sz)
+      FAILURE("File does not exist and no autocreate_size set");
+    void * crt_buf;
+    handle = fopen(filename,"wb");
+    if (!handle)
+      FAILURE("File does not exist and could not be created");
+    crt_buf = calloc(1024,1024);
+    for (int a = 0; a<sz; a++)
+      fwrite(crt_buf,1024,1024,handle);
+    fclose(handle);
+    free(crt_buf);
+    if (read_only)
+      handle = fopen(filename,"rb");
+    else
+      handle = fopen(filename,"rb+");
+    if (!handle)
+      FAILURE("File created could not be opened");
+    printf("%s: %d MB file %s created.\n",devid_string,sz,filename);
   }
 
   // determine size...
