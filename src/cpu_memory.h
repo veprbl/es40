@@ -1,5 +1,4 @@
 /* ES40 emulator.
-/* ES40 emulator.
  * Copyright (C) 2007-2008 by the ES40 Emulator Project
  *
  * WWW    : http://sourceforge.net/projects/es40
@@ -29,7 +28,12 @@
  * Contains code macros for the processor memory load/store instructions.
  * Based on ARM chapter 4.2.
  *
- * $Id: cpu_memory.h,v 1.6 2008/01/18 20:58:20 iamcamiel Exp $
+ * $Id: cpu_memory.h,v 1.7 2008/01/25 16:03:45 iamcamiel Exp $
+ *
+ * X-1.7        Camiel Vanderhoeven                             25-JAN-2008
+ *      Trap on unalogned memory access. The previous implementation where
+ *      unaligned accesses were silently allowed could go wrong when page
+ *      boundaries are crossed.
  *
  * X-1.6        Camiel Vanderhoeven                             18-JAN-2008
  *      Replaced sext_64 inlines with sext_u64_<bits> inlines for
@@ -50,8 +54,6 @@
  *
  * X-1.1        Camiel Vanderhoeven                             18-FEB-2007
  *      File created. Contains code previously found in AlphaCPU.h
- *
- * \author Camiel Vanderhoeven (camiel@camicom.com / http://www.camicom.com)
  **/
 
 #define DO_LDA state.r[REG_1] = state.r[REG_2] + DISP_16;
@@ -59,70 +61,70 @@
 #define DO_LDAH state.r[REG_1] = state.r[REG_2] + (DISP_16<<16);
 
 #define DO_LDBU									\
-	  DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_READ);	\
+	  DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_READ, 0);	\
 	  state.r[REG_1] = READ_PHYS(8);
 
 #define DO_LDL									\
 	if (FREG_1 != 31) {							\
-	  DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_READ);	\
+	  DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_READ, 3);	\
 	  state.r[REG_1] = sext_u64_32(READ_PHYS(32)); }
 
 #define DO_LDL_L								\
 	  state.lock_flag = true;							\
-	  DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_READ);	\
+	  DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_READ, 3);	\
 	  state.r[REG_1] = sext_u64_32(READ_PHYS(32));
 
 #define DO_LDQ									\
 	if (FREG_1 != 31) {							\
-	  DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_READ);	\
+	  DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_READ, 7);	\
 	  state.r[REG_1] = READ_PHYS(64); }
 
 #define DO_LDQ_L								\
 	  state.lock_flag = true;							\
-	  DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_READ);	\
+	  DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_READ, 7);	\
 	  state.r[REG_1] = READ_PHYS(64);
 
 #define DO_LDQ_U									\
-	  DATA_PHYS((state.r[REG_2] + DISP_16)& ~X64(7), ACCESS_READ);	\
+	  DATA_PHYS((state.r[REG_2] + DISP_16)& ~X64(7), ACCESS_READ, 7);	\
 	  state.r[REG_1] = READ_PHYS(64);
 
 #define DO_LDWU									\
-	  DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_READ);	\
+	  DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_READ, 1);	\
 	  state.r[REG_1] = READ_PHYS(16);
 
 #define DO_STB									\
-	  DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_WRITE);	\
+	  DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_WRITE, 0);	\
 	  WRITE_PHYS(state.r[REG_1],8);
 
 #define DO_STL									\
-	  DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_WRITE);	\
+	  DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_WRITE, 3);	\
 	  WRITE_PHYS(state.r[REG_1],32);
 
 #define DO_STL_C								\
 	  if (state.lock_flag) {							\
-	      DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_WRITE);	\
+	      DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_WRITE, 3);	\
 	      WRITE_PHYS(state.r[REG_1],32);						\
 	    }									\
 	  state.r[REG_1] = state.lock_flag?1:0;						\
 	  state.lock_flag = false;
 
 #define DO_STQ									\
-	  DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_WRITE);	\
+	  DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_WRITE, 7);	\
 	  WRITE_PHYS(state.r[REG_1],64);
 
 #define DO_STQ_C								\
 	  if (state.lock_flag) {							\
-	      DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_WRITE);	\
+	      DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_WRITE, 7);	\
 	      WRITE_PHYS(state.r[REG_1],64);						\
 	    }									\
 	  state.r[REG_1] = state.lock_flag?1:0;						\
 	  state.lock_flag = false;
 
 #define DO_STQ_U									\
-	  DATA_PHYS((state.r[REG_2] + DISP_16)& ~X64(7), ACCESS_WRITE);	\
+	  DATA_PHYS((state.r[REG_2] + DISP_16)& ~X64(7), ACCESS_WRITE, 7);	\
 	  WRITE_PHYS(state.r[REG_1],64);
 
 #define DO_STW									\
-	  DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_WRITE);	\
+	  DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_WRITE, 1);	\
 	  WRITE_PHYS(state.r[REG_1],16);
 

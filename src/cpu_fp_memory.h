@@ -1,7 +1,7 @@
 /* ES40 emulator.
- * Copyright (C) 2007 by Camiel Vanderhoeven
+ * Copyright (C) 2007-2008 by the ES40 Emulator Project
  *
- * Website: www.camicom.com
+ * WWW    : http://sourceforge.net/projects/es40
  * E-mail : camiel@camicom.com
  * 
  * This program is free software; you can redistribute it and/or
@@ -23,10 +23,16 @@
  * the general public.
  */ 
 
+
 /**
  * \file 
  * Contains code macros for the processor floating-point load/store instructions.
  * Based on ARM chapter 4.8.
+ *
+ * X-1.9        Camiel Vanderhoeven                             25-JAN-2008
+ *      Trap on unalogned memory access. The previous implementation where
+ *      unaligned accesses were silently allowed could go wrong when page
+ *      boundaries are crossed.
  *
  * X-1.8        Camiel Vanderhoeven                             21-JAN-2008
  *      Implement new floating-point code.
@@ -52,54 +58,52 @@
  *
  * X-1.1        Camiel Vanderhoeven                             18-FEB-2007
  *      File created. Contains code previously found in AlphaCPU.h
- *
- * \author Camiel Vanderhoeven (camiel@camicom.com / http://www.camicom.com)
  **/
 
 #define DO_LDF									                    \
 	if (state.fpen == 0) GO_PAL (FEN);	/* flt point disabled? */   \
 	if (FREG_1 != 31) {							                    \
-	  DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_READ);	            \
+	  DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_READ, 3);	        \
 	  state.f[FREG_1] = vax_ldf((u32)READ_PHYS(32));                \
     }
 
 #define DO_LDG									                    \
 	if (state.fpen == 0) GO_PAL (FEN);	/* flt point disabled? */   \
 	if (FREG_1 != 31) {							                    \
-	  DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_READ);	            \
+	  DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_READ, 7);          \
 	  state.f[FREG_1] = vax_ldg(READ_PHYS(64));                     \
     }
 
 #define DO_LDS									                    \
 	if (state.fpen == 0) GO_PAL (FEN);	/* flt point disabled? */   \
 	if (FREG_1 != 31) {							                    \
-	  DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_READ);	            \
+	  DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_READ, 3);          \
 	  state.f[FREG_1] = ieee_lds((u32)READ_PHYS(32));               \
     }
 
 #define DO_LDT									                    \
 	if (state.fpen == 0) GO_PAL (FEN);	/* flt point disabled? */   \
 	if (FREG_1 != 31) {							                    \
-	  DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_READ);	            \
+	  DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_READ, 7);          \
 	  state.f[FREG_1] = READ_PHYS(64);                              \
     }
 
 #define DO_STF									                    \
 	if (state.fpen == 0) GO_PAL (FEN);	/* flt point disabled? */   \
-	  DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_WRITE);	        \
+	  DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_WRITE, 3);         \
 	  WRITE_PHYS(vax_stf(state.f[FREG_1]),32);
 
 #define DO_STG									                    \
 	if (state.fpen == 0) GO_PAL (FEN);	/* flt point disabled? */   \
-	  DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_WRITE);	        \
+	  DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_WRITE, 7);         \
 	  WRITE_PHYS(vax_stg(state.f[FREG_1]),64);
 
 #define DO_STS									                    \
 	if (state.fpen == 0) GO_PAL (FEN);	/* flt point disabled? */   \
-	  DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_WRITE);	        \
+	  DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_WRITE, 3);	        \
 	  WRITE_PHYS(ieee_sts(state.f[FREG_1]),32);
 
 #define DO_STT									                    \
 	if (state.fpen == 0) GO_PAL (FEN);	/* flt point disabled? */   \
-	  DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_WRITE);	        \
+	  DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_WRITE, 7);	        \
 	  WRITE_PHYS(state.f[FREG_1],64);

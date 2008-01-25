@@ -28,7 +28,12 @@
  * Contains code macros for the processor PALmode instructions.
  * Based on HRM.
  *
- * $Id: cpu_pal.h,v 1.10 2008/01/18 20:58:20 iamcamiel Exp $
+ * $Id: cpu_pal.h,v 1.11 2008/01/25 16:03:45 iamcamiel Exp $
+ *
+ * X-1.11       Camiel Vanderhoeven                             25-JAN-2008
+ *      Trap on unalogned memory access. The previous implementation where
+ *      unaligned accesses were silently allowed could go wrong when page
+ *      boundaries are crossed.
  *
  * X-1.10       Camiel Vanderhoeven                             18-JAN-2008
  *      Replaced sext_64 inlines with sext_u64_<bits> inlines for
@@ -63,8 +68,6 @@
  *
  * X-1.1        Camiel Vanderhoeven                             18-FEB-2007
  *      File created. Contains code previously found in AlphaCPU.h
- *
- * \author Camiel Vanderhoeven (camiel@camicom.com / http://www.camicom.com)    
  **/
 
 #define DO_HW_MFPR						                                    \
@@ -321,23 +324,23 @@
 	      state.r[REG_1] = READ_PHYS_NT(32);					\
 	      break;								\
         case 4: /* longword virtual vpte                 chk   alt    vpte */	\
-	      DATA_PHYS(state.r[REG_2] + DISP_12, ACCESS_READ | NO_CHECK | VPTE);	\
+	      DATA_PHYS_NT(state.r[REG_2] + DISP_12, ACCESS_READ | NO_CHECK | VPTE);	\
 	      state.r[REG_1] = READ_PHYS_NT(32);					\
 	      break;								\
         case 8: /* longword virtual */						\
-          DATA_PHYS(state.r[REG_2] + DISP_12, ACCESS_READ | NO_CHECK);	\
+          DATA_PHYS_NT(state.r[REG_2] + DISP_12, ACCESS_READ | NO_CHECK);	\
 	      state.r[REG_1] = READ_PHYS_NT(32);					\
 	      break;								\
         case 10: /* longword virtual check */					\
-	      DATA_PHYS(state.r[REG_2] + DISP_12, ACCESS_READ);	\
+	      DATA_PHYS_NT(state.r[REG_2] + DISP_12, ACCESS_READ);	\
 	      state.r[REG_1] = READ_PHYS_NT(32);					\
 	      break;								\
         case 12: /* longword virtual alt */					\
-	      DATA_PHYS(state.r[REG_2] + DISP_12, ACCESS_READ | NO_CHECK | ALT);	\
+	      DATA_PHYS_NT(state.r[REG_2] + DISP_12, ACCESS_READ | NO_CHECK | ALT);	\
 	      state.r[REG_1] = READ_PHYS_NT(32);					\
 	      break;								\
         case 14: /* longword virtual alt check */				\
-	      DATA_PHYS(state.r[REG_2] + DISP_12, ACCESS_READ | ALT);	\
+	      DATA_PHYS_NT(state.r[REG_2] + DISP_12, ACCESS_READ | ALT);	\
 	      state.r[REG_1] = READ_PHYS_NT(32);					\
 	      break;								\
         default:								\
@@ -357,23 +360,23 @@
 	      state.r[REG_1] = READ_PHYS_NT(64);					\
 	      break;								\
         case 5: /* quadword virtual vpte                 chk   alt    vpte */	\
-          DATA_PHYS(state.r[REG_2] + DISP_12, ACCESS_READ | NO_CHECK | VPTE);	\
+          DATA_PHYS_NT(state.r[REG_2] + DISP_12, ACCESS_READ | NO_CHECK | VPTE);	\
 	      state.r[REG_1] = READ_PHYS_NT(64);					\
 	      break;								\
         case 9: /* quadword virtual */						\
-	      DATA_PHYS(state.r[REG_2] + DISP_12, ACCESS_READ | NO_CHECK);	\
+	      DATA_PHYS_NT(state.r[REG_2] + DISP_12, ACCESS_READ | NO_CHECK);	\
 	      state.r[REG_1] = READ_PHYS_NT(64);					\
 	      break;								\
         case 11: /* quadword virtual check */					\
-	      DATA_PHYS(state.r[REG_2] + DISP_12, ACCESS_READ);	\
+	      DATA_PHYS_NT(state.r[REG_2] + DISP_12, ACCESS_READ);	\
 	      state.r[REG_1] = READ_PHYS_NT(64);					\
 	      break;								\
         case 13: /* quadword virtual alt */					\
-	      DATA_PHYS(state.r[REG_2] + DISP_12, ACCESS_READ | NO_CHECK | ALT);	\
+	      DATA_PHYS_NT(state.r[REG_2] + DISP_12, ACCESS_READ | NO_CHECK | ALT);	\
 	      state.r[REG_1] = READ_PHYS_NT(64);					\
 	      break;								\
         case 15: /* quadword virtual alt check */				\
-	      DATA_PHYS(state.r[REG_2] + DISP_12, ACCESS_READ | ALT);	\
+	      DATA_PHYS_NT(state.r[REG_2] + DISP_12, ACCESS_READ | ALT);	\
 	      state.r[REG_1] = READ_PHYS_NT(64);					\
 	      break;								\
         default:								\
@@ -396,11 +399,11 @@
 	      state.lock_flag = false;						\
 	      break;								\
         case 4: /* longword virtual                      chk   alt    vpte */	\
-	      DATA_PHYS(state.r[REG_2] + DISP_12, ACCESS_READ | NO_CHECK);	\
+	      DATA_PHYS_NT(state.r[REG_2] + DISP_12, ACCESS_READ | NO_CHECK);	\
 	      WRITE_PHYS_NT(state.r[REG_1],32);					\
 	      break;								\
         case 12: /* longword virtual alt */					\
-	      DATA_PHYS(state.r[REG_2] + DISP_12, ACCESS_READ | NO_CHECK | ALT);	\
+	      DATA_PHYS_NT(state.r[REG_2] + DISP_12, ACCESS_READ | NO_CHECK | ALT);	\
 	      WRITE_PHYS_NT(state.r[REG_1],32);					\
 	      break;								\
         default:								\
@@ -423,11 +426,11 @@
 	      state.lock_flag = false;						\
 	      break;								\
         case 5: /* quadword virtual                      chk    alt    vpte */	\
-	      DATA_PHYS(state.r[REG_2] + DISP_12, ACCESS_READ | NO_CHECK);	\
+	      DATA_PHYS_NT(state.r[REG_2] + DISP_12, ACCESS_READ | NO_CHECK);	\
 	      WRITE_PHYS_NT(state.r[REG_1],64);					\
 	      break;								\
         case 13: /* quadword virtual alt */					\
-	      DATA_PHYS(state.r[REG_2] + DISP_12, ACCESS_READ | NO_CHECK | ALT);	\
+	      DATA_PHYS_NT(state.r[REG_2] + DISP_12, ACCESS_READ | NO_CHECK | ALT);	\
 	      WRITE_PHYS_NT(state.r[REG_1],64);					\
 	      break;								\
         default:								\
