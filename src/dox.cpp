@@ -30,7 +30,7 @@
  * You could read the documentation from this file; but it would probably
  * be easier to go to http://es40.sourceforge.net.
  *
- * $Id: dox.cpp,v 1.9 2008/01/16 18:39:53 iamcamiel Exp $
+ * $Id: dox.cpp,v 1.10 2008/01/25 09:19:15 iamcamiel Exp $
  *
  * \author Camiel Vanderhoeven (camiel@camicom.com / http://www.camicom.com)
  **/
@@ -68,10 +68,13 @@
  * Q: SDL is not available for my system, or I don't want to install it. 
  * What are my options?
  *
- * A: Support for other interfaces might be added in the future. For now,
- * your only option is to disable graphics support, by compiling without
- * HAVE_SDL defined. For Windows, you can download the no_gfx version of
- * the binary package.
+ * A: Compile without HAVE_SDL defined. For Windows, you can download the
+ * no_sdl version of the binary package. If you're on Windows, change the
+ * configuration file (gui=win32), if your system supports X-Windows (as is
+ * the case on most Linux/BSD/UNIX distributions, change it to gui=X11.
+ * If your system is not supported, remove the gui section alltogether, as
+ * well as any vga-card sections. Graphics support will nbot be available
+ * in this case.
  *
  * \subsection a3 A3. PCAP not found
  * Q: I get warnings about pcap.h, wpcap.lib, wpcap.dll, or libpcap not being 
@@ -140,7 +143,7 @@
  *  - Brian Wheeler: UNIX port, initial config file, initial VGA, new IDE, and contributions to overall quality.
  *  - Eduardo Marcelo Serrat: Major bugfixes. 
  *  - Fang Zhe: OS X port.
- *  - David Hittner: CPU Integer Traps, Bugfix in Ethernet controller.
+ *  - David Hittner: Ethernet controller fixes, many wise suggestions in other places.
  *  - Fausto Saporito: Bugfixes.
  *  .
  *
@@ -152,6 +155,7 @@
  *  - Andy Goldstein (HP)
  *  - Ian Miller (publicity: http://www.openvms.org)
  *  - Anders Gavare (allowing us to re-use parts of GXEmul)
+ *  - Bob Supnik (author of the SIMH Alpha pre-implementation)
  *  .
  *
  * If we missed anyone, please let us know!
