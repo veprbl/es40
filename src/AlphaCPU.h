@@ -28,7 +28,10 @@
  * \file
  * Contains the definitions for the emulated DecChip 21264CB EV68 Alpha processor.
  *
- * $Id: AlphaCPU.h,v 1.38 2008/01/21 22:39:25 iamcamiel Exp $
+ * $Id: AlphaCPU.h,v 1.39 2008/01/25 09:54:13 iamcamiel Exp $
+ *
+ * X-1.39       Camiel Vanderhoeven                             25-JAN-2008
+ *      Added option to disable the icache.
  *
  * X-1.37       Camiel Vanderhoeven                             21-JAN-2008
  *      Moved some macro's to cpu_defs.h; implement new floating-point code.
@@ -252,6 +255,9 @@ class CAlphaCPU : public CSystemComponent
   u64 get_pc();
   u64 get_pal_base();
 
+  void enable_icache();
+  void restore_icache();
+
 #ifdef IDB
   u64 get_current_pc_physical();
   u64 get_instruction_count();
@@ -403,6 +409,8 @@ private:
   /* VMS PALcode internal: */
   int vmspal_int_initiate_exception();
   int vmspal_int_initiate_interrupt();
+
+  bool icache_enabled;
   
   /// The state structure contains all elements that need to be saved to the statefile
   struct SCPU_state {
@@ -484,15 +492,18 @@ private:
 
 inline void CAlphaCPU::flush_icache()
 {
-//  memset(state.icache,0,sizeof(state.icache));
-  int i;
-  for(i=0;i<ICACHE_ENTRIES;i++) 
+  if (icache_enabled)
   {
-    state.icache[i].valid = false;
+//  memset(state.icache,0,sizeof(state.icache));
+    int i;
+    for(i=0;i<ICACHE_ENTRIES;i++) 
+    {
+      state.icache[i].valid = false;
 //    state.icache[i].asm_bit = true;
+    }
+    state.next_icache = 0;
+    state.last_found_icache = 0;
   }
-  state.next_icache = 0;
-  state.last_found_icache = 0;
 }
 
 /**
@@ -501,10 +512,13 @@ inline void CAlphaCPU::flush_icache()
 
 inline void CAlphaCPU::flush_icache_asm()
 {
-  int i;
-  for(i=0;i<ICACHE_ENTRIES;i++) 
-    if (!state.icache[i].asm_bit)
-      state.icache[i].valid = false;
+  if (icache_enabled)
+  {
+    int i;
+    for(i=0;i<ICACHE_ENTRIES;i++) 
+      if (!state.icache[i].asm_bit)
+        state.icache[i].valid = false;
+  }
 }
 
 /**
@@ -544,67 +558,85 @@ inline int CAlphaCPU::get_icache(u64 address, u32 * data)
   int result;
   bool asm_bit;
 
-  if (	state.icache[i].valid
-	&& (state.icache[i].asn == state.asn || state.icache[i].asm_bit)
-	&& state.icache[i].address == (address & ICACHE_MATCH_MASK))
-  {
-    *data = endian_32(state.icache[i].data[(address>>2)&ICACHE_INDEX_MASK]);
-#ifdef IDB
-    current_pc_physical = state.icache[i].p_address + (address & ICACHE_BYTE_MASK);
-#endif
-    return 0;
-  }
-
-  for (i=0;i<ICACHE_ENTRIES;i++)
+  if (icache_enabled)
   {
     if (	state.icache[i].valid
-	&& (state.icache[i].asn == state.asn || state.icache[i].asm_bit)
-	&& state.icache[i].address == (address & ICACHE_MATCH_MASK))
+	  && (state.icache[i].asn == state.asn || state.icache[i].asm_bit)
+	  && state.icache[i].address == (address & ICACHE_MATCH_MASK))
     {
-      state.last_found_icache = i;
       *data = endian_32(state.icache[i].data[(address>>2)&ICACHE_INDEX_MASK]);
+#ifdef IDB
+      current_pc_physical = state.icache[i].p_address + (address & ICACHE_BYTE_MASK);
+#endif
+      return 0;
+    }
+
+    for (i=0;i<ICACHE_ENTRIES;i++)
+    {
+      if (	state.icache[i].valid
+	  && (state.icache[i].asn == state.asn || state.icache[i].asm_bit)
+	  && state.icache[i].address == (address & ICACHE_MATCH_MASK))
+      {
+        state.last_found_icache = i;
+        *data = endian_32(state.icache[i].data[(address>>2)&ICACHE_INDEX_MASK]);
 
 #ifdef IDB
-	  current_pc_physical = state.icache[i].p_address + (address & ICACHE_BYTE_MASK);
+  	    current_pc_physical = state.icache[i].p_address + (address & ICACHE_BYTE_MASK);
 #endif
 
-	  return 0;
-	}
-  }
+	    return 0;
+	  }
+    }
 
-  v_a = address & ICACHE_MATCH_MASK;
+    v_a = address & ICACHE_MATCH_MASK;
 
-  if (address & 1)
-  {
-    p_a = v_a & ~X64(1);
-    asm_bit = true;
-  }
-  else
-  {
-    result = virt2phys(v_a, &p_a, ACCESS_EXEC, &asm_bit,0);
-    if (result)
-      return result;
-  }
-  
-  memcpy(state.icache[state.next_icache].data, cSystem->PtrToMem(p_a), ICACHE_LINE_SIZE * 4);
+    if (address & 1)
+    {
+      p_a = v_a & ~X64(1);
+      asm_bit = true;
+    }
+    else
+    {
+      result = virt2phys(v_a, &p_a, ACCESS_EXEC, &asm_bit,0);
+      if (result)
+        return result;
+    }
+    
+    memcpy(state.icache[state.next_icache].data, cSystem->PtrToMem(p_a), ICACHE_LINE_SIZE * 4);
 
-  state.icache[state.next_icache].valid = true;
-  state.icache[state.next_icache].asn = state.asn;
-  state.icache[state.next_icache].asm_bit = asm_bit;
-  state.icache[state.next_icache].address = address & ICACHE_MATCH_MASK;
-  state.icache[state.next_icache].p_address = p_a;
-	
-  *data = endian_32(state.icache[state.next_icache].data[(address>>2)&ICACHE_INDEX_MASK]);
+    state.icache[state.next_icache].valid = true;
+    state.icache[state.next_icache].asn = state.asn;
+    state.icache[state.next_icache].asm_bit = asm_bit;
+    state.icache[state.next_icache].address = address & ICACHE_MATCH_MASK;
+    state.icache[state.next_icache].p_address = p_a;
+  	
+    *data = endian_32(state.icache[state.next_icache].data[(address>>2)&ICACHE_INDEX_MASK]);
 
 #ifdef IDB
-  current_pc_physical = state.icache[state.next_icache].p_address + (address & ICACHE_BYTE_MASK);
+    current_pc_physical = state.icache[state.next_icache].p_address + (address & ICACHE_BYTE_MASK);
 #endif
 
-  state.last_found_icache = state.next_icache;
-  state.next_icache++;
-  if (state.next_icache==ICACHE_ENTRIES)
-    state.next_icache = 0;
-  return 0;
+    state.last_found_icache = state.next_icache;
+    state.next_icache++;
+    if (state.next_icache==ICACHE_ENTRIES)
+      state.next_icache = 0;
+    return 0;
+  }
+  else // icache disabled
+  {
+    if (address & 1)
+    {
+      p_a = address & ~X64(3);
+    }
+    else
+    {
+      result = virt2phys(address, &p_a, ACCESS_EXEC, &asm_bit, 0);
+      if (result)
+        return result;
+    }
+    *data = (u32)cSystem->ReadMem(p_a, 32);
+    return 0;
+  }
 }
 
 /**

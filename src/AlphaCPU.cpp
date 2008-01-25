@@ -27,9 +27,10 @@
  * \file 
  * Contains the code for the emulated DecChip 21264CB EV68 Alpha processor.
  *
- * \bug /V isn't implemented for all integer ops yet.
+ * $Id: AlphaCPU.cpp,v 1.58 2008/01/25 09:54:13 iamcamiel Exp $
  *
- * $Id: AlphaCPU.cpp,v 1.57 2008/01/22 22:05:47 iamcamiel Exp $
+ * X-1.58       Camiel Vanderhoeven                             25-JAN-2008
+ *      Added option to disable the icache.
  *
  * X-1.57       Camiel Vanderhoeven                             22-JAN-2008
  *      Nicer initialization of "state" structure.
@@ -291,7 +292,9 @@ CAlphaCPU::CAlphaCPU(CConfigurator * cfg, CSystem * system) : CSystemComponent (
 
   memset(&state,0,sizeof(state));
 
+  icache_enabled = true;
   flush_icache();
+  icache_enabled = myCfg->get_bool_value("icache",false);
 
   tbia(ACCESS_READ);
   tbia(ACCESS_EXEC);
@@ -308,7 +311,7 @@ CAlphaCPU::CAlphaCPU(CConfigurator * cfg, CSystem * system) : CSystemComponent (
   bListing = false;
 #endif
   
-  printf("%s: $Id: AlphaCPU.cpp,v 1.57 2008/01/22 22:05:47 iamcamiel Exp $\n",devid_string);
+  printf("%s: $Id: AlphaCPU.cpp,v 1.58 2008/01/25 09:54:13 iamcamiel Exp $\n",devid_string);
 }
 
 /**
@@ -1412,6 +1415,31 @@ void CAlphaCPU::tbis(u64 virt,int flags)
   int i = FindTBEntry(virt,flags);
   if (i>=0)
     state.tb[t][i].valid = false;
+}
+
+/**
+ * \brief Enable i-cache regardles of config file.
+ *
+ * Required for SRM-ROM decompression.
+ **/
+void CAlphaCPU::enable_icache()
+{
+  icache_enabled = true;
+}
+
+/**
+ * \brief Enable or disable i-cache depending on config file.
+ **/
+void CAlphaCPU::restore_icache()
+{
+  bool newval;
+
+  newval = myCfg->get_bool_value("icache",false);
+
+  if (!newval)
+    flush_icache();
+
+  icache_enabled = newval;
 }
 
 #if defined(CPU_THREADS)

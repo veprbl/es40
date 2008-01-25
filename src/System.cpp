@@ -27,7 +27,10 @@
  * \file 
  * Contains the code for the emulated Typhoon Chipset devices.
  *
- * $Id: System.cpp,v 1.57 2008/01/19 17:13:35 iamcamiel Exp $
+ * $Id: System.cpp,v 1.58 2008/01/25 09:54:13 iamcamiel Exp $
+ *
+ * X-1.58       Camiel Vanderhoeven                             25-JAN-2008
+ *      Added option to disable the icache.
  *
  * X-1.57       Camiel Vanderhoeven                             19-JAN-2008
  *      Run CPU in a separate thread if CPU_THREADS is defined.
@@ -314,7 +317,7 @@ CSystem::CSystem(CConfigurator * cfg)
 
   CHECK_ALLOCATION(memory = calloc(1<<iNumMemoryBits,1));
 
-  printf("%s(%s): $Id: System.cpp,v 1.57 2008/01/19 17:13:35 iamcamiel Exp $\n",cfg->get_myName(),cfg->get_myValue());
+  printf("%s(%s): $Id: System.cpp,v 1.58 2008/01/25 09:54:13 iamcamiel Exp $\n",cfg->get_myName(),cfg->get_myValue());
 }
 
 /**
@@ -1628,6 +1631,7 @@ int CSystem::LoadROM()
     printf("%%SYS-I-DECOMP: Decompressing ROM image.\n0%%");
     acCPUs[0]->set_pc(0x900001);
     acCPUs[0]->set_PAL_BASE(0x900000);
+    acCPUs[0]->enable_icache();
 
     j = 0;
     while (acCPUs[0]->get_clean_pc() > 0x200000)
@@ -1645,6 +1649,7 @@ int CSystem::LoadROM()
         printf(".");
     }
     printf("100%%\n");
+    acCPUs[0]->restore_icache();
 
     f = fopen(myCfg->get_text_value("rom.decompressed","decompressed.rom"),"wb");
     if (!f)
