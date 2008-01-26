@@ -27,7 +27,7 @@
  * \file 
  * Contains VAX floating point code for the Alpha CPU.
  *
- * $Id: AlphaCPU_vaxfloat.cpp,v 1.3 2008/01/26 12:21:40 iamcamiel Exp $
+ * $Id: AlphaCPU_vaxfloat.cpp,v 1.4 2008/01/26 12:31:46 iamcamiel Exp $
  *
  * X-1.3        Camiel Vanderhoeven                             26-JAN-2008
  *      Made IDB compile again.
@@ -115,9 +115,9 @@ r->frac = FPR_GETFRAC (op);				/* get fraction */
 if (r->exp == 0) {					/* exp = 0? */
 	if (op != 0) arith_trap (TRAP_INV, ins); 	/* rsvd op? */
 	r->frac = r->sign = 0;
-	return TRUE;  }
+	return true;  }
 r->frac = (r->frac | FPR_HB) << FPR_GUARD;		/* ins hidden bit, guard */
-return FALSE;
+return false;
 }
 
 bool CAlphaCPU::vax_unpack_d (u64 op, UFP *r, u32 ins)
@@ -128,10 +128,10 @@ r->frac = FDR_GETFRAC (op);				/* get fraction */
 if (r->exp == 0) {					/* exp = 0? */
 	if (op != 0) arith_trap (TRAP_INV, ins); 	/* rsvd op? */
 	r->frac = r->sign = 0;
-	return TRUE;  }
+	return true;  }
 r->exp = r->exp + G_BIAS - D_BIAS;			/* change to G bias */
 r->frac = (r->frac | FDR_HB) << FDR_GUARD;		/* ins hidden bit, guard */
-return FALSE;
+return false;
 }
 
 /* VAX normalize */
