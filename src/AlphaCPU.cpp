@@ -27,7 +27,10 @@
  * \file 
  * Contains the code for the emulated DecChip 21264CB EV68 Alpha processor.
  *
- * $Id: AlphaCPU.cpp,v 1.58 2008/01/25 09:54:13 iamcamiel Exp $
+ * $Id: AlphaCPU.cpp,v 1.59 2008/01/26 12:21:40 iamcamiel Exp $
+ *
+ * X-1.59       Camiel Vanderhoeven                             26-JAN-2008
+ *      Made IDB compile again.
  *
  * X-1.58       Camiel Vanderhoeven                             25-JAN-2008
  *      Added option to disable the icache.
@@ -311,7 +314,7 @@ CAlphaCPU::CAlphaCPU(CConfigurator * cfg, CSystem * system) : CSystemComponent (
   bListing = false;
 #endif
   
-  printf("%s: $Id: AlphaCPU.cpp,v 1.58 2008/01/25 09:54:13 iamcamiel Exp $\n",devid_string);
+  printf("%s: $Id: AlphaCPU.cpp,v 1.59 2008/01/26 12:21:40 iamcamiel Exp $\n",devid_string);
 }
 
 /**
@@ -324,6 +327,10 @@ CAlphaCPU::~CAlphaCPU()
 
 
 #if defined(IDB)
+  char dbg_string[1000];
+#if !defined(LS_MASTER) && !defined(LS_SLAVE)
+  char * dbg_strptr;
+#endif
 
 void handle_debug_string(char * s)
 {
@@ -390,9 +397,9 @@ int CAlphaCPU::DoClock()
 
 #if defined(IDB)
   char * funcname = 0;
-  char dbg_string[1000] = "";
+  dbg_string[0] = '\0';
 #if !defined(LS_MASTER) && !defined(LS_SLAVE)
-  char * dbg_strptr = dbg_string;
+  dbg_strptr = dbg_string;
 #endif
 #endif
 

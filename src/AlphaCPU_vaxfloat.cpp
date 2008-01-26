@@ -27,7 +27,10 @@
  * \file 
  * Contains VAX floating point code for the Alpha CPU.
  *
- * $Id: AlphaCPU_vaxfloat.cpp,v 1.2 2008/01/22 21:33:42 iamcamiel Exp $
+ * $Id: AlphaCPU_vaxfloat.cpp,v 1.3 2008/01/26 12:21:40 iamcamiel Exp $
+ *
+ * X-1.3        Camiel Vanderhoeven                             26-JAN-2008
+ *      Made IDB compile again.
  *
  * X-1.2        Camiel Vanderhoeven                             22-JAN-2008
  *      Minor cleanup.
@@ -53,6 +56,15 @@
 #define UF_FRND		X64(0000008000000000)		/* F round */
 #define UF_DRND		X64(0000000000000080)		/* D round */
 #define UF_GRND		X64(0000000000000400)		/* G round */
+
+#if defined(IDB)
+  extern char dbg_string[1000];
+#if !defined(LS_MASTER) && !defined(LS_SLAVE)
+  extern char * dbg_strptr;
+#endif
+
+void handle_debug_string(char * s);
+#endif
 
 /* VAX floating point loads and stores */
 
