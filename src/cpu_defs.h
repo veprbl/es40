@@ -27,7 +27,14 @@
  * \file 
  * Contains some macro definitions and some inline functions for the Alpha CPU.
  *
- * $Id: cpu_defs.h,v 1.3 2008/01/25 16:03:45 iamcamiel Exp $
+ * $Id: cpu_defs.h,v 1.4 2008/01/26 12:22:21 iamcamiel Exp $
+ *
+ * X-1.4        Camiel Vanderhoeven                             26-JAN-2008
+ *      Do unaligned trap only when a page boundary is crossed. Something
+ *      is causing alignment traps in the SRM console, with the DAT bit set
+ *      to false, and no OS handler in place. Also, when OpenVMS boots there
+ *      are alignment traps that shouldn't happen. None of these cross page
+ *      boundaries, so we're safe for now.
  *
  * X-1.3        Camiel Vanderhoeven                             25-JAN-2008
  *      Trap on unalogned memory access. The previous implementation where
@@ -352,13 +359,22 @@ return quo;						/* return quotient */
 #define DISP_21 (sext_u64_21(ins))
 
 #define DATA_PHYS(addr,flags,align)                       \
-  if (addr & align)                                       \
+  if ((addr) & (align))                                   \
   {                                                       \
-    state.fault_va = addr;                                \
-    state.exc_sum = (REG_1 & 0x1f) << 8;                  \
-    state.mm_stat = I_GETOP(ins)<<4                       \
-                  | ((flags&ACCESS_WRITE)?1:0);           \
-    GO_PAL(UNALIGN);                                      \
+    u64 a1 = (addr);                                      \
+    u64 a2 = (addr) + (align);                            \
+    if ((a1 ^ a2) & ~X64(fff)) /*page boundary crossed*/  \
+    {                                                     \
+      state.fault_va = addr;                              \
+	  state.exc_sum = ((REG_1 & 0x1f) << 8);  			  \
+      state.mm_stat = I_GETOP(ins)<<4                     \
+                    | ((flags&ACCESS_WRITE)?1:0);         \
+      printf("data_phys %" LL "x, %d, %d -> trap!\n",addr,flags,align); \
+      printf("exc_sum = %" LL "x, fault_va = %" LL "x, mm_stat = %" LL "x.\n",state.exc_sum, state.fault_va, state.mm_stat);  \
+      printf("datfx_qword = %016" LL "x.\n",cSystem->ReadMem(cSystem->ReadMem(state.r[32+21]+0x10,64)+0x38,64));  \
+      if (cSystem->ReadMem(state.r[32+21]+0x170,64)==0) printf("ignored; no OS!\n"); else                        \
+      GO_PAL(UNALIGN);                                    \
+    }                                                     \
   }                                                       \
   if (virt2phys(addr, &phys_address, flags, NULL, ins))   \
     return 0
@@ -367,6 +383,8 @@ return quo;						/* return quotient */
 #define DATA_PHYS_NT(addr,flags) 				          \
     if (virt2phys(addr, &phys_address, flags, NULL, ins)) \
       return 0
+
+//#define DATA_PHYS(addr,flags,align) DATA_PHYS_NT(addr,flags)
 
 #define ALIGN_PHYS(a) (phys_address & ~((u64)((a)-1)))
 
@@ -425,5 +443,17 @@ return quo;						/* return quotient */
 #define V_2 RBV
 #define RC REG_3
 #define RCV state.r[RC]
+
+#define ACCESS_READ  0
+#define ACCESS_WRITE 1
+#define ACCESS_EXEC  2
+#define ACCESS_MODE  3
+#define NO_CHECK     4
+#define VPTE         8
+#define FAKE        16
+#define ALT         32
+#define RECUR      128
+#define PROBE      256
+#define PROBEW     512
 
 #endif
