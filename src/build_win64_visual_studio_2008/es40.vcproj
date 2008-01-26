@@ -361,7 +361,7 @@
 				InlineFunctionExpansion="2"
 				EnableIntrinsicFunctions="false"
 				FavorSizeOrSpeed="1"
-				WholeProgramOptimization="true"
+				WholeProgramOptimization="false"
 				AdditionalIncludeDirectories="c:\program files\winpcap\include;c:\program files\sdl\include"
 				PreprocessorDefinitions="WIN32;NDEBUG;_CONSOLE;IDB;HAVE_PCAP;HAVE_SDL"
 				StringPooling="false"
@@ -402,7 +402,7 @@
 				SubSystem="1"
 				OptimizeReferences="2"
 				EnableCOMDATFolding="2"
-				LinkTimeCodeGeneration="1"
+				LinkTimeCodeGeneration="0"
 				RandomizedBaseAddress="1"
 				DataExecutionPrevention="0"
 				TargetMachine="17"
@@ -4152,11 +4152,11 @@
 				>
 			</File>
 			<File
-				RelativePath="..\gui\vga.h"
+				RelativePath="..\VGA.h"
 				>
 			</File>
 			<File
-				RelativePath="..\VGA.h"
+				RelativePath="..\gui\vga.h"
 				>
 			</File>
 		</Filter>

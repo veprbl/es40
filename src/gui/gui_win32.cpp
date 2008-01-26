@@ -37,7 +37,7 @@
  * \file
  * Win32 GUI implementation. Allows use of gfx without SDL on WIndows
  *
- * $Id: gui_win32.cpp,v 1.3 2008/01/22 10:45:31 iamcamiel Exp $
+ * $Id: gui_win32.cpp,v 1.4 2008/01/26 12:36:02 iamcamiel Exp $
  *
  * X-1.3        Camiel Vanderhoeven                             22-JAN-2008
  *      Commented out mousewheel-code, doesn't work with older win32
@@ -130,10 +130,10 @@ static RGBQUAD* cmap_index;  // indeces into system colormap
 static HBITMAP MemoryBitmap = NULL;
 static HDC MemoryDC = NULL;
 static RECT updated_area;
-static BOOL updated_area_valid = FALSE;
+static BOOL updated_area_valid = false;
 static HWND desktopWindow;
 static RECT desktop;
-static BOOL queryFullScreen = FALSE;
+static BOOL queryFullScreen = false;
 static int desktop_x, desktop_y;
 
 // Text mode screen stuff
@@ -151,8 +151,8 @@ static u16 line_compare = 1023;
 static unsigned dimension_x, dimension_y, current_bpp;
 static unsigned stretched_x, stretched_y;
 static unsigned stretch_factor=1;
-static BOOL BxTextMode = TRUE;
-static BOOL fix_size = FALSE;
+static BOOL BxTextMode = true;
+static BOOL fix_size = false;
 static HWND hotKeyReceiver = NULL;
 static HWND saveParent = NULL;
 
@@ -570,7 +570,7 @@ void bx_win32_gui_c::specific_init(unsigned tilewidth, unsigned tileheight)
 
   static RGBQUAD black_quad={ 0, 0, 0, 0};
   stInfo.kill = 0;
-  stInfo.UIinited = FALSE;
+  stInfo.UIinited = false;
   InitializeCriticalSection(&stInfo.drawCS);
   InitializeCriticalSection(&stInfo.keyCS);
   InitializeCriticalSection(&stInfo.mouseCS);
@@ -578,9 +578,9 @@ void bx_win32_gui_c::specific_init(unsigned tilewidth, unsigned tileheight)
   x_tilesize = tilewidth;
   y_tilesize = tileheight;
 
-  mouseCaptureMode = FALSE;
-  mouseCaptureNew = FALSE;
-  mouseToggleReq = FALSE;
+  mouseCaptureMode = false;
+  mouseCaptureNew = false;
+  mouseToggleReq = false;
   
   mouse_buttons = GetSystemMetrics(SM_CMOUSEBUTTONS);
   BX_INFO(("Number of Mouse Buttons = %d", mouse_buttons));
@@ -651,7 +651,7 @@ void resize_main_window()
         "Going into fullscreen mode -- Alt-Enter to revert",
         "Going fullscreen",
         MB_APPLMODAL);
-      queryFullScreen = TRUE;
+      queryFullScreen = true;
     }
     // hide title bar
     mainStyle = GetWindowLong(stInfo.mainWnd, GWL_STYLE);
@@ -676,14 +676,14 @@ void resize_main_window()
     SetRect(&R, 0, 0, stretched_x, stretched_y);
     DWORD style = GetWindowLong(stInfo.simWnd, GWL_STYLE);
     DWORD exstyle = GetWindowLong(stInfo.simWnd, GWL_EXSTYLE);
-    AdjustWindowRectEx(&R, style, FALSE, exstyle);
+    AdjustWindowRectEx(&R, style, false, exstyle);
     style = GetWindowLong(stInfo.mainWnd, GWL_STYLE);
-    AdjustWindowRect(&R, style, FALSE);
+    AdjustWindowRect(&R, style, false);
     SetWindowPos(stInfo.mainWnd, HWND_TOP, 0, 0, R.right - R.left,
                R.bottom - R.top,
                SWP_NOMOVE | SWP_NOZORDER);
   }
-  fix_size = FALSE;
+  fix_size = false;
 }
 
 // This thread controls the GUI window.
@@ -722,9 +722,9 @@ VOID UIThread(PVOID pvoid) {
   SetRect(&wndRect, 0, 0, stretched_x, stretched_y);
   DWORD sim_style = WS_CHILD;
   DWORD sim_exstyle = WS_EX_CLIENTEDGE;
-  AdjustWindowRectEx(&wndRect, sim_style, FALSE, sim_exstyle);
+  AdjustWindowRectEx(&wndRect, sim_style, false, sim_exstyle);
   DWORD main_style = WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX;
-  AdjustWindowRect(&wndRect, main_style, FALSE);
+  AdjustWindowRect(&wndRect, main_style, false);
   stInfo.mainWnd = CreateWindow (szAppName,
                      szWindowName,
                      main_style,
@@ -762,7 +762,7 @@ VOID UIThread(PVOID pvoid) {
         BOOL (WINAPI *enableime)(HWND, BOOL);
         enableime = (BOOL (WINAPI *)(HWND, BOOL))GetProcAddress(hm, "WINNLSEnableIME");
         if (enableime) {
-          enableime(stInfo.simWnd, FALSE);
+          enableime(stInfo.simWnd, false);
           BX_INFO(("IME disabled"));
         }
       }
@@ -790,7 +790,7 @@ VOID UIThread(PVOID pvoid) {
         InitDebugDialog(stInfo.mainWnd);
       }
 #endif
-      stInfo.UIinited = TRUE;
+      stInfo.UIinited = true;
 
       bx_gui->clear_screen();
 
@@ -832,14 +832,14 @@ LRESULT CALLBACK mainWndProc(HWND hwnd, UINT iMsg, WPARAM wParam, LPARAM lParam)
       GetClientRect(hwnd, &R);
       x = R.right - R.left;
       y = R.bottom - R.top;
-      MoveWindow(stInfo.simWnd, R.left, R.top, x, y, TRUE);
+      MoveWindow(stInfo.simWnd, R.left, R.top, x, y, true);
       GetClientRect(stInfo.simWnd, &R);
       x = R.right - R.left;
       y = R.bottom - R.top;
       if ((x != (int)stretched_x) || (y != (int)stretched_y)) {
         BX_ERROR(("Sim client size(%d, %d) != stretched size(%d, %d)!",
           x, y, stretched_x, stretched_y));
-        if (!saveParent) fix_size = TRUE; // no fixing if fullscreen
+        if (!saveParent) fix_size = true; // no fixing if fullscreen
       }
     }
     break;
@@ -853,7 +853,7 @@ void SetMouseCapture()
 
   if (mouseToggleReq) {
     mouseCaptureMode = mouseCaptureNew;
-    mouseToggleReq = FALSE;
+    mouseToggleReq = false;
   } else {
   //  SIM->get_param_bool(BXPN_MOUSE_ENABLED)->set(mouseCaptureMode);
   }
@@ -869,7 +869,7 @@ LRESULT CALLBACK simWndProc(HWND hwnd, UINT iMsg, WPARAM wParam, LPARAM lParam)
   HDC hdc, hdcMem;
   PAINTSTRUCT ps;
   POINT pt;
-  static BOOL mouseModeChange = FALSE;
+  static BOOL mouseModeChange = false;
 
   switch (iMsg) {
 
@@ -948,9 +948,9 @@ LRESULT CALLBACK simWndProc(HWND hwnd, UINT iMsg, WPARAM wParam, LPARAM lParam)
       if (wParam == (MK_CONTROL | MK_LBUTTON | MK_RBUTTON)) {
         mouseCaptureMode = !mouseCaptureMode;
         SetMouseCapture();
-        mouseModeChange = TRUE;
+        mouseModeChange = true;
       } else if (mouseModeChange && (iMsg == WM_LBUTTONUP)) {
-        mouseModeChange = FALSE;
+        mouseModeChange = false;
       } else {
         processMouseXY( LOWORD(lParam), HIWORD(lParam), 0, wParam, 1);
       }
@@ -965,9 +965,9 @@ LRESULT CALLBACK simWndProc(HWND hwnd, UINT iMsg, WPARAM wParam, LPARAM lParam)
     if (wParam == (MK_CONTROL | MK_MBUTTON)) {
       mouseCaptureMode = !mouseCaptureMode;
       SetMouseCapture();
-      mouseModeChange = TRUE;
+      mouseModeChange = true;
     } else if (mouseModeChange && (iMsg == WM_MBUTTONUP)) {
-      mouseModeChange = FALSE;
+      mouseModeChange = false;
     } else {
       processMouseXY( LOWORD(lParam), HIWORD(lParam), 0, wParam, 4);
     }
@@ -980,9 +980,9 @@ LRESULT CALLBACK simWndProc(HWND hwnd, UINT iMsg, WPARAM wParam, LPARAM lParam)
       if (wParam == (MK_CONTROL | MK_LBUTTON | MK_RBUTTON)) {
         mouseCaptureMode = !mouseCaptureMode;
         SetMouseCapture();
-        mouseModeChange = TRUE;
+        mouseModeChange = true;
       } else if (mouseModeChange && (iMsg == WM_RBUTTONUP)) {
-        mouseModeChange = FALSE;
+        mouseModeChange = false;
       } else {
         processMouseXY( LOWORD(lParam), HIWORD(lParam), 0, wParam, 2);
       }
@@ -996,7 +996,7 @@ LRESULT CALLBACK simWndProc(HWND hwnd, UINT iMsg, WPARAM wParam, LPARAM lParam)
 
   case WM_DESTROY:
     KillTimer (hwnd, 1);
-    stInfo.UIinited = FALSE;
+    stInfo.UIinited = false;
 #if BX_USE_WINDOWS_FONTS
     DestroyFont();
 #endif
@@ -1059,12 +1059,12 @@ LRESULT CALLBACK simWndProc(HWND hwnd, UINT iMsg, WPARAM wParam, LPARAM lParam)
 
 void enq_key_event(u32 key, u32 press_release)
 {
-  static BOOL alt_pressed_l = FALSE;
-  static BOOL alt_pressed_r = FALSE;
-  static BOOL ctrl_pressed_l = FALSE;
-  static BOOL ctrl_pressed_r = FALSE;
-  static BOOL shift_pressed_l = FALSE;
-  static BOOL shift_pressed_r = FALSE;
+  static BOOL alt_pressed_l = false;
+  static BOOL alt_pressed_r = false;
+  static BOOL ctrl_pressed_l = false;
+  static BOOL ctrl_pressed_r = false;
+  static BOOL shift_pressed_l = false;
+  static BOOL shift_pressed_r = false;
 
   // Windows generates multiple keypresses when holding down these keys
   if (press_release == BX_KEY_PRESSED) {
@@ -1072,27 +1072,27 @@ void enq_key_event(u32 key, u32 press_release)
       case 0x1d:
         if (ctrl_pressed_l)
           return;
-        ctrl_pressed_l = TRUE;
+        ctrl_pressed_l = true;
         break;
       case 0x2a:
         if (shift_pressed_l)
           return;
-        shift_pressed_l = TRUE;
+        shift_pressed_l = true;
         break;
       case 0x36:
         if (shift_pressed_r)
           return;
-        shift_pressed_r = TRUE;
+        shift_pressed_r = true;
         break;
       case 0x38:
         if (alt_pressed_l)
           return;
-        alt_pressed_l = TRUE;
+        alt_pressed_l = true;
         break;
       case 0x011d:
         if (ctrl_pressed_r)
           return;
-        ctrl_pressed_r = TRUE;
+        ctrl_pressed_r = true;
         break;
       case 0x0138:
         if (alt_pressed_r)
@@ -1101,7 +1101,7 @@ void enq_key_event(u32 key, u32 press_release)
         if (ctrl_pressed_l) {
           enq_key_event(0x1d, BX_KEY_RELEASED);
         }
-        alt_pressed_r = TRUE;
+        alt_pressed_r = true;
         break;
     }
   } else {
@@ -1109,22 +1109,22 @@ void enq_key_event(u32 key, u32 press_release)
       case 0x1d:
         if (!ctrl_pressed_l)
           return;
-        ctrl_pressed_l = FALSE;
+        ctrl_pressed_l = false;
         break;
       case 0x2a:
-        shift_pressed_l = FALSE;
+        shift_pressed_l = false;
         break;
       case 0x36:
-        shift_pressed_r = FALSE;
+        shift_pressed_r = false;
         break;
       case 0x38:
-        alt_pressed_l = FALSE;
+        alt_pressed_l = false;
         break;
       case 0x011d:
-        ctrl_pressed_r = FALSE;
+        ctrl_pressed_r = false;
         break;
       case 0x0138:
-        alt_pressed_r = FALSE;
+        alt_pressed_r = false;
         break;
     }
   }
@@ -1224,8 +1224,8 @@ void bx_win32_gui_c::flush(void) {
     // slight bugfix
 	updated_area.right++;
 	updated_area.bottom++;
-	InvalidateRect( stInfo.simWnd, &updated_area, FALSE);
-	updated_area_valid = FALSE;
+	InvalidateRect( stInfo.simWnd, &updated_area, false);
+	updated_area_valid = false;
   }
   LeaveCriticalSection( &stInfo.drawCS);
 }
@@ -1281,7 +1281,7 @@ void bx_win32_gui_c::text_update(u8 *old_text, u8 *new_text,
   u8 *old_line, *new_line;
   u8 cAttr, cChar;
   unsigned int curs, hchars, i, offset, rows, x, y, xc, yc;
-  BOOL forceUpdate = FALSE;
+  BOOL forceUpdate = false;
 #if !BX_USE_WINDOWS_FONTS
   u8 *text_base;
   u8 cfwidth, cfheight, cfheight2, font_col, font_row, font_row2;
@@ -1309,7 +1309,7 @@ void bx_win32_gui_c::text_update(u8 *old_text, u8 *new_text,
         char_changed[c] = 0;
       }
     }
-    forceUpdate = TRUE;
+    forceUpdate = true;
     charmap_updated = 0;
   }
   for (i=0; i<16; i++) {
@@ -1741,13 +1741,13 @@ void updateUpdated(int x1, int y1, int x2, int y2) {
     if (y2 > updated_area.bottom) updated_area.bottom = y2;
   }
 
-  updated_area_valid = TRUE;
+  updated_area_valid = true;
 }
 
 void bx_win32_gui_c::mouse_enabled_changed_specific(bool val)
 {
   if ((val != (bool)mouseCaptureMode) && !mouseToggleReq) {
-    mouseToggleReq = TRUE;
+    mouseToggleReq = true;
     mouseCaptureNew = val;
   }
 }

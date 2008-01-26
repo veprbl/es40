@@ -1,9 +1,10 @@
 <?xml version="1.0" encoding="Windows-1252"?>
 <VisualStudioProject
 	ProjectType="Visual C++"
-	Version="8,00"
+	Version="9,00"
 	Name="es40"
 	ProjectGUID="{12DAE944-7704-4F51-A676-DDD555BD5F80}"
+	TargetFrameworkVersion="131072"
 	>
 	<Platforms>
 		<Platform
@@ -76,6 +77,8 @@
 				AdditionalLibraryDirectories="c:\program files\winpcap\lib"
 				ProgramDatabaseFile=".\Release NS/es40_ns.pdb"
 				SubSystem="1"
+				RandomizedBaseAddress="1"
+				DataExecutionPrevention="0"
 				TargetMachine="1"
 			/>
 			<Tool
@@ -97,9 +100,6 @@
 			/>
 			<Tool
 				Name="VCAppVerifierTool"
-			/>
-			<Tool
-				Name="VCWebDeploymentTool"
 			/>
 			<Tool
 				Name="VCPostBuildEventTool"
@@ -164,6 +164,8 @@
 				SuppressStartupBanner="true"
 				ProgramDatabaseFile=".\Release NN NS LSM/es40_nn_ns_lsm.pdb"
 				SubSystem="1"
+				RandomizedBaseAddress="1"
+				DataExecutionPrevention="0"
 				TargetMachine="1"
 			/>
 			<Tool
@@ -185,9 +187,6 @@
 			/>
 			<Tool
 				Name="VCAppVerifierTool"
-			/>
-			<Tool
-				Name="VCWebDeploymentTool"
 			/>
 			<Tool
 				Name="VCPostBuildEventTool"
@@ -254,6 +253,8 @@
 				AdditionalLibraryDirectories="c:\program files\sdl\lib"
 				ProgramDatabaseFile=".\Release NN LSM/es40_nn_lsm.pdb"
 				SubSystem="1"
+				RandomizedBaseAddress="1"
+				DataExecutionPrevention="0"
 				TargetMachine="1"
 			/>
 			<Tool
@@ -275,9 +276,6 @@
 			/>
 			<Tool
 				Name="VCAppVerifierTool"
-			/>
-			<Tool
-				Name="VCWebDeploymentTool"
 			/>
 			<Tool
 				Name="VCPostBuildEventTool"
@@ -342,6 +340,8 @@
 				SuppressStartupBanner="true"
 				ProgramDatabaseFile=".\Release NN NS IDB/es40_nn_ns_idb.pdb"
 				SubSystem="1"
+				RandomizedBaseAddress="1"
+				DataExecutionPrevention="0"
 				TargetMachine="1"
 			/>
 			<Tool
@@ -363,9 +363,6 @@
 			/>
 			<Tool
 				Name="VCAppVerifierTool"
-			/>
-			<Tool
-				Name="VCWebDeploymentTool"
 			/>
 			<Tool
 				Name="VCPostBuildEventTool"
@@ -432,6 +429,8 @@
 				AdditionalLibraryDirectories="c:\program files\sdl\lib"
 				ProgramDatabaseFile=".\Release NN IDB/es40_nn_idb.pdb"
 				SubSystem="1"
+				RandomizedBaseAddress="1"
+				DataExecutionPrevention="0"
 				TargetMachine="1"
 			/>
 			<Tool
@@ -453,9 +452,6 @@
 			/>
 			<Tool
 				Name="VCAppVerifierTool"
-			/>
-			<Tool
-				Name="VCWebDeploymentTool"
 			/>
 			<Tool
 				Name="VCPostBuildEventTool"
@@ -522,6 +518,8 @@
 				AdditionalLibraryDirectories="c:\program files\sdl\lib,c:\program files\winpcap\lib"
 				ProgramDatabaseFile=".\Release LSM/es40_lsm.pdb"
 				SubSystem="1"
+				RandomizedBaseAddress="1"
+				DataExecutionPrevention="0"
 				TargetMachine="1"
 			/>
 			<Tool
@@ -543,9 +541,6 @@
 			/>
 			<Tool
 				Name="VCAppVerifierTool"
-			/>
-			<Tool
-				Name="VCWebDeploymentTool"
 			/>
 			<Tool
 				Name="VCPostBuildEventTool"
@@ -612,6 +607,8 @@
 				AdditionalLibraryDirectories="c:\program files\winpcap\lib"
 				ProgramDatabaseFile=".\Release NS LSM/es40_ns_lsm.pdb"
 				SubSystem="1"
+				RandomizedBaseAddress="1"
+				DataExecutionPrevention="0"
 				TargetMachine="1"
 			/>
 			<Tool
@@ -633,9 +630,6 @@
 			/>
 			<Tool
 				Name="VCAppVerifierTool"
-			/>
-			<Tool
-				Name="VCWebDeploymentTool"
 			/>
 			<Tool
 				Name="VCPostBuildEventTool"
@@ -702,6 +696,8 @@
 				SuppressStartupBanner="true"
 				ProgramDatabaseFile=".\Release NN NS/es40_nn_ns.pdb"
 				SubSystem="1"
+				RandomizedBaseAddress="1"
+				DataExecutionPrevention="0"
 				TargetMachine="1"
 			/>
 			<Tool
@@ -723,9 +719,6 @@
 			/>
 			<Tool
 				Name="VCAppVerifierTool"
-			/>
-			<Tool
-				Name="VCWebDeploymentTool"
 			/>
 			<Tool
 				Name="VCPostBuildEventTool"
@@ -792,6 +785,8 @@
 				AdditionalLibraryDirectories="c:\program files\sdl\lib,c:\program files\winpcap\lib"
 				ProgramDatabaseFile=".\Release IDB/es40_idb.pdb"
 				SubSystem="1"
+				RandomizedBaseAddress="1"
+				DataExecutionPrevention="0"
 				TargetMachine="1"
 			/>
 			<Tool
@@ -813,9 +808,6 @@
 			/>
 			<Tool
 				Name="VCAppVerifierTool"
-			/>
-			<Tool
-				Name="VCWebDeploymentTool"
 			/>
 			<Tool
 				Name="VCPostBuildEventTool"
@@ -884,6 +876,8 @@
 				AdditionalLibraryDirectories="c:\program files\sdl\lib,c:\program files\winpcap\lib"
 				ProgramDatabaseFile=".\Release/es40.pdb"
 				SubSystem="1"
+				RandomizedBaseAddress="1"
+				DataExecutionPrevention="0"
 				TargetMachine="1"
 			/>
 			<Tool
@@ -905,9 +899,6 @@
 			/>
 			<Tool
 				Name="VCAppVerifierTool"
-			/>
-			<Tool
-				Name="VCWebDeploymentTool"
 			/>
 			<Tool
 				Name="VCPostBuildEventTool"
@@ -974,6 +965,8 @@
 				AdditionalLibraryDirectories="c:\program files\winpcap\lib"
 				ProgramDatabaseFile=".\Release NS IDB/es40_ns_idb.pdb"
 				SubSystem="1"
+				RandomizedBaseAddress="1"
+				DataExecutionPrevention="0"
 				TargetMachine="1"
 			/>
 			<Tool
@@ -995,9 +988,6 @@
 			/>
 			<Tool
 				Name="VCAppVerifierTool"
-			/>
-			<Tool
-				Name="VCWebDeploymentTool"
 			/>
 			<Tool
 				Name="VCPostBuildEventTool"
@@ -1062,6 +1052,8 @@
 				SuppressStartupBanner="true"
 				ProgramDatabaseFile=".\Release NN NS LSS/es40_nn_ns_lss.pdb"
 				SubSystem="1"
+				RandomizedBaseAddress="1"
+				DataExecutionPrevention="0"
 				TargetMachine="1"
 			/>
 			<Tool
@@ -1083,9 +1075,6 @@
 			/>
 			<Tool
 				Name="VCAppVerifierTool"
-			/>
-			<Tool
-				Name="VCWebDeploymentTool"
 			/>
 			<Tool
 				Name="VCPostBuildEventTool"
@@ -1152,6 +1141,8 @@
 				AdditionalLibraryDirectories="c:\program files\sdl\lib"
 				ProgramDatabaseFile=".\Release NN LSS/es40_nn_lss.pdb"
 				SubSystem="1"
+				RandomizedBaseAddress="1"
+				DataExecutionPrevention="0"
 				TargetMachine="1"
 			/>
 			<Tool
@@ -1173,9 +1164,6 @@
 			/>
 			<Tool
 				Name="VCAppVerifierTool"
-			/>
-			<Tool
-				Name="VCWebDeploymentTool"
 			/>
 			<Tool
 				Name="VCPostBuildEventTool"
@@ -1244,6 +1232,8 @@
 				AdditionalLibraryDirectories="c:\program files\sdl\lib"
 				ProgramDatabaseFile=".\Release NN/es40_nn.pdb"
 				SubSystem="1"
+				RandomizedBaseAddress="1"
+				DataExecutionPrevention="0"
 				TargetMachine="1"
 			/>
 			<Tool
@@ -1265,9 +1255,6 @@
 			/>
 			<Tool
 				Name="VCAppVerifierTool"
-			/>
-			<Tool
-				Name="VCWebDeploymentTool"
 			/>
 			<Tool
 				Name="VCPostBuildEventTool"
@@ -1334,6 +1321,8 @@
 				AdditionalLibraryDirectories="c:\program files\sdl\lib,c:\program files\winpcap\lib"
 				ProgramDatabaseFile=".\Release LSS/es40_lss.pdb"
 				SubSystem="1"
+				RandomizedBaseAddress="1"
+				DataExecutionPrevention="0"
 				TargetMachine="1"
 			/>
 			<Tool
@@ -1355,9 +1344,6 @@
 			/>
 			<Tool
 				Name="VCAppVerifierTool"
-			/>
-			<Tool
-				Name="VCWebDeploymentTool"
 			/>
 			<Tool
 				Name="VCPostBuildEventTool"
@@ -1427,6 +1413,8 @@
 				GenerateDebugInformation="true"
 				ProgramDatabaseFile=".\Debug/es40.pdb"
 				SubSystem="1"
+				RandomizedBaseAddress="1"
+				DataExecutionPrevention="0"
 				TargetMachine="1"
 			/>
 			<Tool
@@ -1448,9 +1436,6 @@
 			/>
 			<Tool
 				Name="VCAppVerifierTool"
-			/>
-			<Tool
-				Name="VCWebDeploymentTool"
 			/>
 			<Tool
 				Name="VCPostBuildEventTool"
@@ -1517,6 +1502,8 @@
 				AdditionalLibraryDirectories="c:\program files\winpcap\lib"
 				ProgramDatabaseFile=".\Release NS LSS/es40_ns_lss.pdb"
 				SubSystem="1"
+				RandomizedBaseAddress="1"
+				DataExecutionPrevention="0"
 				TargetMachine="1"
 			/>
 			<Tool
@@ -1538,9 +1525,6 @@
 			/>
 			<Tool
 				Name="VCAppVerifierTool"
-			/>
-			<Tool
-				Name="VCWebDeploymentTool"
 			/>
 			<Tool
 				Name="VCPostBuildEventTool"
@@ -2165,6 +2149,14 @@
 						PreprocessorDefinitions=""
 					/>
 				</FileConfiguration>
+			</File>
+			<File
+				RelativePath="..\AlphaCPU_ieeefloat.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\AlphaCPU_vaxfloat.cpp"
+				>
 			</File>
 			<File
 				RelativePath="..\AlphaCPU_vmspal.cpp"
@@ -3238,6 +3230,10 @@
 				</FileConfiguration>
 			</File>
 			<File
+				RelativePath="..\DiskDevice.cpp"
+				>
+			</File>
+			<File
 				RelativePath="..\DiskFile.cpp"
 				>
 				<FileConfiguration
@@ -4309,6 +4305,10 @@
 				</FileConfiguration>
 			</File>
 			<File
+				RelativePath="..\gui\gui_win32.cpp"
+				>
+			</File>
+			<File
 				RelativePath="..\gui\keymap.cpp"
 				>
 				<FileConfiguration
@@ -5225,6 +5225,14 @@
 						PreprocessorDefinitions=""
 					/>
 				</FileConfiguration>
+			</File>
+			<File
+				RelativePath="..\SCSIBus.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\SCSIDevice.cpp"
+				>
 			</File>
 			<File
 				RelativePath="..\gui\sdl.cpp"
@@ -6493,6 +6501,10 @@
 			</File>
 			<File
 				RelativePath="..\cpu_debug.h"
+				>
+			</File>
+			<File
+				RelativePath="..\cpu_defs.h"
 				>
 			</File>
 			<File

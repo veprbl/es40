@@ -27,7 +27,10 @@
  * \file 
  * Contains some macro definitions and some inline functions for the Alpha CPU.
  *
- * $Id: cpu_defs.h,v 1.4 2008/01/26 12:22:21 iamcamiel Exp $
+ * $Id: cpu_defs.h,v 1.5 2008/01/26 12:36:02 iamcamiel Exp $
+ *
+ * X-1.5        Brian Wheeler                                   26-JAN-2008
+ *      Make file end in newline.
  *
  * X-1.4        Camiel Vanderhoeven                             26-JAN-2008
  *      Do unaligned trap only when a page boundary is crossed. Something
