@@ -27,7 +27,10 @@
  * \file
  * Defines the entry point for the application.
  *
- * $Id: AlphaSim.cpp,v 1.37 2008/01/02 08:30:17 iamcamiel Exp $
+ * $Id: AlphaSim.cpp,v 1.38 2008/01/26 12:21:59 iamcamiel Exp $
+ *
+ * X-1.38       Camiel Vanderhoeven                             26-JAN-2008
+ *      Lifted hardcoded file-size limit of 10,000 bytes for config file.
  *
  * X-1.37       Camiel Vanderhoeven                             02-JAN-2008
  *      Version updated to 0.17.
@@ -238,12 +241,17 @@ int main(int argc, char* argv[])
         FAILURE("Configuration file not found.");
     }
 
-    char ch1[10000];
+    char * ch1;
     size_t ll1;
     f = fopen(filename,"rb");
-    ll1 = fread(ch1,1,10000,f);
+    fseek(f,0,SEEK_END);
+    ll1 = ftell(f);
+    ch1 = (char *) calloc(ll1,1);
+    fseek(f,0,SEEK_SET);
+    ll1 = fread(ch1,1,ll1,f);
     CConfigurator * c = new CConfigurator(0,0,0,ch1,ll1);
     fclose(f);
+    free(ch1);
 
 #if defined(IDB)
     trc = new CTraceEngine(theSystem);
