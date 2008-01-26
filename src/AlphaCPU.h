@@ -28,7 +28,10 @@
  * \file
  * Contains the definitions for the emulated DecChip 21264CB EV68 Alpha processor.
  *
- * $Id: AlphaCPU.h,v 1.39 2008/01/25 09:54:13 iamcamiel Exp $
+ * $Id: AlphaCPU.h,v 1.40 2008/01/26 12:22:49 iamcamiel Exp $
+ *
+ * X-1.40       Camiel Vanderhoeven                             26-JAN-2008
+ *      Moved some more macro's to cpu_defs.h.
  *
  * X-1.39       Camiel Vanderhoeven                             25-JAN-2008
  *      Added option to disable the icache.
@@ -207,18 +210,6 @@ struct STBEntry {
   int fault[3];         /**< Fault on access [read/write/execute]*/
   bool valid;		    /**< Valid entry*/
 };
-
-#define ACCESS_READ  0
-#define ACCESS_WRITE 1
-#define ACCESS_EXEC  2
-#define ACCESS_MODE  3
-#define NO_CHECK     4
-#define VPTE         8
-#define FAKE        16
-#define ALT         32
-#define RECUR      128
-#define PROBE      256
-#define PROBEW     512
 
 /**
  * \brief Emulated CPU.
