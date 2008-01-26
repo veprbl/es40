@@ -27,7 +27,10 @@
  * \file
  * Contains the code for the emulated Ali M1543C IDE chipset part.
  *
- * $Id: NewIde.cpp,v 1.10 2008/01/24 12:15:16 iamcamiel Exp $
+ * $Id: NewIde.cpp,v 1.11 2008/01/26 12:32:54 iamcamiel Exp $
+ *
+ * X-1.11       Brian Wheeler                                   26-JAN-2008
+ *      Don't repeat interrupt too soon.
  *
  * X-1.10       Camiel Vanderhoeven                             24-JAN-2008
  *      Use new CPCIDevice::do_pci_read and CPCIDevice::do_pci_write.
@@ -1546,6 +1549,7 @@ int CNewIde::DoClock()
 				           && CONTROLLER(index).data_ptr==0)
                         {
 				          raise_interrupt(index);
+					      SEL_COMMAND(index).command_cycle=1;
 				        }
 			            yield = true;  // yield.			    
 		              } else {			
