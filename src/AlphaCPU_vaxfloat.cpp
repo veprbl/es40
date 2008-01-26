@@ -27,7 +27,10 @@
  * \file 
  * Contains VAX floating point code for the Alpha CPU.
  *
- * $Id: AlphaCPU_vaxfloat.cpp,v 1.4 2008/01/26 12:31:46 iamcamiel Exp $
+ * $Id: AlphaCPU_vaxfloat.cpp,v 1.5 2008/01/26 23:36:30 iamcamiel Exp $
+ *
+ * X-1.4        Camiel Vanderhoeven                             26-JAN-2008
+ *      Bugfix in vax_stf.
  *
  * X-1.3        Camiel Vanderhoeven                             26-JAN-2008
  *      Made IDB compile again.
@@ -73,9 +76,11 @@ u64 CAlphaCPU::vax_ldf (u32 op)
 u32 exp = F_GETEXP (op);
 
 if (exp != 0) exp = exp + G_BIAS - F_BIAS;		/* zero? */	
-return (((u64) (op & F_SIGN))? FPR_SIGN: 0) |	/* finite non-zero */
+u64 res = (((u64) (op & F_SIGN))? FPR_SIGN: 0) |	/* finite non-zero */
 	(((u64) exp) << FPR_V_EXP) |
 	(((u64) SWAP_VAXF (op & ~(F_SIGN|F_EXP))) << F_V_FRAC);
+//printf("vax_ldf: %08x -> %016" LL "x.\n", op, res);
+return res;
 }
 
 u64 CAlphaCPU::vax_ldg (u64 op)
@@ -86,10 +91,23 @@ return SWAP_VAXG (op);					/* swizzle bits */
 u32 CAlphaCPU::vax_stf (u64 op)
 {
 u32 sign = FPR_GETSIGN (op)? F_SIGN: 0;
-u32 exp = ((u32) (op >> (FPR_V_EXP - F_V_EXP))) & F_EXP;
+//u32 exp = ((u32) (op >> (FPR_V_EXP - F_V_EXP))) & F_EXP;
+
+u32 exp = FPR_GETEXP (op);
+
+if (exp != 0) exp = exp - G_BIAS + F_BIAS;		/* zero? */	
+
+exp <<= F_V_EXP;
+
+exp &= F_EXP;
+
 u32 frac = (u32) (op >> F_V_FRAC);
 
-return sign | exp | (SWAP_VAXF (frac) & ~(F_SIGN|F_EXP));
+u32 res = sign | exp | (SWAP_VAXF (frac) & ~(F_SIGN|F_EXP));
+
+//printf("vax_stf: %016" LL "x -> %08x.\n", op, res);
+return res;
+
 }
 
 u64 CAlphaCPU::vax_stg (u64 op)
