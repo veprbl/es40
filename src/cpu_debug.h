@@ -27,6 +27,10 @@
  * \file 
  * Contains debugging macros used by AlphaCPU.cpp
  *
+ * X-1.19       Camiel Vanderhoeven                             27-JAN-2008
+ *      Have GO_PAL throw an exception, so we don't continue doing what we
+ *      were doing before the exception was taken.
+ *
  * X-1.18       Camiel Vanderhoeven                             21-JAN-2008
  *      Moved some macro's to cpu_defs.h.
  *
@@ -134,6 +138,7 @@ extern char * IPR_NAME[];
     {						                                        \
       state.exc_addr = state.current_pc;  						    \
       state.pc = state.pal_base | offset | 1;                       \
+      throw((char) 1); /* end CPU-cycle */                          \
     }
 #endif
 

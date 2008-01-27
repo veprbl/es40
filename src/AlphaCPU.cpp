@@ -27,7 +27,11 @@
  * \file 
  * Contains the code for the emulated DecChip 21264CB EV68 Alpha processor.
  *
- * $Id: AlphaCPU.cpp,v 1.59 2008/01/26 12:21:40 iamcamiel Exp $
+ * $Id: AlphaCPU.cpp,v 1.60 2008/01/27 11:34:32 iamcamiel Exp $
+ *
+ * X-1.60       Camiel Vanderhoeven                             27-JAN-2008
+ *      Have GO_PAL throw an exception, so we don't continue doing what we
+ *      were doing before the exception was taken.
  *
  * X-1.59       Camiel Vanderhoeven                             26-JAN-2008
  *      Made IDB compile again.
@@ -314,7 +318,7 @@ CAlphaCPU::CAlphaCPU(CConfigurator * cfg, CSystem * system) : CSystemComponent (
   bListing = false;
 #endif
   
-  printf("%s: $Id: AlphaCPU.cpp,v 1.59 2008/01/26 12:21:40 iamcamiel Exp $\n",devid_string);
+  printf("%s: $Id: AlphaCPU.cpp,v 1.60 2008/01/27 11:34:32 iamcamiel Exp $\n",devid_string);
 }
 
 /**
@@ -409,493 +413,500 @@ int CAlphaCPU::DoClock()
   state.instruction_count++;
 #endif
 
-  // Service interrupts
-  if (DO_ACTION)
-  {
-    if (state.check_timers)
+  try {
+
+    // Service interrupts
+    if (DO_ACTION)
     {
-      state.check_timers = false;
-      for (int i=0;i<6;i++)
+      if (state.check_timers)
       {
-        if (state.irq_h_timer[i])
+        state.check_timers = false;
+        for (int i=0;i<6;i++)
         {
-          state.irq_h_timer[i]--;
           if (state.irq_h_timer[i])
           {
-            state.check_timers = true;
-          }
-          else
-          {
-            state.eir |= (X64(1)<<i);
-            state.check_int = true;
+            state.irq_h_timer[i]--;
+            if (state.irq_h_timer[i])
+            {
+              state.check_timers = true;
+            }
+            else
+            {
+              state.eir |= (X64(1)<<i);
+              state.check_int = true;
+            }
           }
         }
       }
-    }
 
-    if (state.check_int && !(state.pc&1))
-    {
-      if (state.pal_vms)
+      if (state.check_int && !(state.pc&1))
       {
-        if (state.eir & state.eien & 6)
-          if (vmspal_ent_ext_int(state.eir&state.eien & 6))
-            return 0;
-
-        if (state.sir & state.sien & 0xfffc)
-          if (vmspal_ent_sw_int(state.sir&state.sien))
-            return 0;
-
-        if (state.asten && (state.aster & state.astrr & ((1<<(state.cm+1))-1) ))
-          if (vmspal_ent_ast_int(state.aster & state.astrr & ((1<<(state.cm+1))-1) ))
-            return 0;
-
-        if (state.sir & state.sien)
-          if (vmspal_ent_sw_int(state.sir&state.sien))
-            return 0;
-      }
-      else
-      {
-        if ((state.eien & state.eir) || 
-            (state.sien & state.sir) || 
-            (state.asten && (state.aster & state.astrr & ((1<<(state.cm+1))-1) )))
+        if (state.pal_vms)
         {
-          GO_PAL(INTERRUPT);
-          return 0;
-	    }
-      }
-      state.check_int = false;
-    }
+          if (state.eir & state.eien & 6)
+            if (vmspal_ent_ext_int(state.eir&state.eien & 6))
+              return 0;
 
-    // profile
+          if (state.sir & state.sien & 0xfffc)
+            if (vmspal_ent_sw_int(state.sir&state.sien))
+              return 0;
+
+          if (state.asten && (state.aster & state.astrr & ((1<<(state.cm+1))-1) ))
+            if (vmspal_ent_ast_int(state.aster & state.astrr & ((1<<(state.cm+1))-1) ))
+              return 0;
+
+          if (state.sir & state.sien)
+            if (vmspal_ent_sw_int(state.sir&state.sien))
+              return 0;
+        }
+        else
+        {
+          if ((state.eien & state.eir) || 
+              (state.sien & state.sir) || 
+              (state.asten && (state.aster & state.astrr & ((1<<(state.cm+1))-1) )))
+          {
+            GO_PAL(INTERRUPT);
+            return 0;
+	      }
+        }
+        state.check_int = false;
+      }
+
+      // profile
 #if defined(PROFILE)
-    PROFILE_DO(state.pc);
+      PROFILE_DO(state.pc);
 #endif
 
-    // get next instruction
-    if (get_icache(state.pc, &ins))
-      return 0;
-  } else {
-    ins = (u32)(cSystem->ReadMem(state.pc,32));
-  }
-
-  state.pc += 4;
-
-  // Clear "always zero" registers
-  state.r[31] = 0;
-  state.f[31] = 0;
-
-  if (state.cc_ena)
-  {
-    if (DO_ACTION)
-    {
-#if defined(CPU_THREADS)
-    state.cc+=20;
-#else
-	state.cc+=83;
-#endif
+      // get next instruction
+      if (get_icache(state.pc, &ins))
+        return 0;
+    } else {
+      ins = (u32)(cSystem->ReadMem(state.pc,32));
     }
-  }
 
-  // Decode and dispatch opcode.
-  opcode = ins >> 26;
-  switch (opcode)
+    state.pc += 4;
+
+    // Clear "always zero" registers
+    state.r[31] = 0;
+    state.f[31] = 0;
+
+    if (state.cc_ena)
     {
-    case 0x00: // CALL_PAL
-      function = ins & 0x1fffffff;
-      OP(CALL_PAL,PAL);
-//      switch (function)
-//      {
-//        case 0x123401: OP_FNC(vmspal_int_read_ide, NOP);
-//        default: OP(CALL_PAL,PAL);
-//      }
-
-    case 0x08: OP(LDA,MEM);
-    case 0x09: OP(LDAH,MEM);
-    case 0x0a: OP(LDBU,MEM);
-    case 0x0b: OP(LDQ_U,MEM);
-    case 0x0c: OP(LDWU,MEM);
-    case 0x0d: OP(STW,MEM);
-    case 0x0e: OP(STB,MEM);
-    case 0x0f: OP(STQ_U,MEM);
-
-    case 0x10: // INTA* instructions
-      function = (ins >> 5) & 0x7f;
-      switch (function)
+      if (DO_ACTION)
       {
-        case 0x40: OP(ADDL_V,R12_R3);
-        case 0x00: OP(ADDL,R12_R3);
-        case 0x02: OP(S4ADDL,R12_R3);
-        case 0x49: OP(SUBL_V,R12_R3);
-        case 0x09: OP(SUBL,R12_R3);
-        case 0x0b: OP(S4SUBL,R12_R3);
-        case 0x0f: OP(CMPBGE,R12_R3);
-        case 0x12: OP(S8ADDL,R12_R3);
-        case 0x1b: OP(S8SUBL,R12_R3);
-        case 0x1d: OP(CMPULT,R12_R3);
-        case 0x60: OP(ADDQ_V,R12_R3);
-        case 0x20: OP(ADDQ,R12_R3);
-        case 0x22: OP(S4ADDQ,R12_R3);
-        case 0x69: OP(SUBQ_V,R12_R3);
-        case 0x29: OP(SUBQ,R12_R3);
-        case 0x2b: OP(S4SUBQ,R12_R3);
-        case 0x2d: OP(CMPEQ,R12_R3);
-        case 0x32: OP(S8ADDQ,R12_R3);
-        case 0x3b: OP(S8SUBQ,R12_R3);
-        case 0x3d: OP(CMPULE,R12_R3);
-        case 0x4d: OP(CMPLT,R12_R3);
-        case 0x6d: OP(CMPLE,R12_R3);
-        default:   UNKNOWN2;
+#if defined(CPU_THREADS)
+      state.cc+=20;
+#else
+	  state.cc+=83;
+#endif
       }
-      break;
+    }
 
-    case 0x11: // INTL* instructions
-      function = (ins >> 5) & 0x7f;
-      switch (function)
+    // Decode and dispatch opcode.
+    opcode = ins >> 26;
+    switch (opcode)
       {
-        case 0x00: OP(AND,R12_R3);
-        case 0x08: OP(BIC,R12_R3);
-        case 0x14: OP(CMOVLBS,R12_R3);
-        case 0x16: OP(CMOVLBC,R12_R3);
-        case 0x20: OP(BIS,R12_R3);
-        case 0x24: OP(CMOVEQ,R12_R3);
-        case 0x26: OP(CMOVNE,R12_R3);
-        case 0x28: OP(ORNOT,R12_R3);
-        case 0x40: OP(XOR,R12_R3);
-        case 0x44: OP(CMOVLT,R12_R3);
-        case 0x46: OP(CMOVGE,R12_R3);
-        case 0x48: OP(EQV,R12_R3);
-        case 0x61: OP(AMASK,R2_R3);
-        case 0x64: OP(CMOVLE,R12_R3);
-        case 0x66: OP(CMOVGT,R12_R3);
-        case 0x6c: OP(IMPLVER,X_R3);
-        default:   UNKNOWN2;
-      }
-      break;
+      case 0x00: // CALL_PAL
+        function = ins & 0x1fffffff;
+        OP(CALL_PAL,PAL);
+  //      switch (function)
+  //      {
+  //        case 0x123401: OP_FNC(vmspal_int_read_ide, NOP);
+  //        default: OP(CALL_PAL,PAL);
+  //      }
 
-    case 0x12:  // INTS* instructions
-      function = (ins>>5) & 0x7f;
-      switch (function)
-      {
-        case 0x02: OP(MSKBL,R12_R3);
-        case 0x06: OP(EXTBL,R12_R3);
-        case 0x0b: OP(INSBL,R12_R3);
-        case 0x12: OP(MSKWL,R12_R3);
-        case 0x16: OP(EXTWL,R12_R3);
-        case 0x1b: OP(INSWL,R12_R3);
-        case 0x22: OP(MSKLL,R12_R3);
-        case 0x26: OP(EXTLL,R12_R3);
-        case 0x2b: OP(INSLL,R12_R3);
-        case 0x30: OP(ZAP,R12_R3);
-        case 0x31: OP(ZAPNOT,R12_R3);
-        case 0x32: OP(MSKQL,R12_R3);
-        case 0x34: OP(SRL,R12_R3);
-        case 0x36: OP(EXTQL,R12_R3);
-        case 0x39: OP(SLL,R12_R3);
-        case 0x3b: OP(INSQL,R12_R3);
-        case 0x3c: OP(SRA,R12_R3);
-        case 0x52: OP(MSKWH,R12_R3);
-        case 0x57: OP(INSWH,R12_R3);
-        case 0x5a: OP(EXTWH,R12_R3);
-        case 0x62: OP(MSKLH,R12_R3);
-        case 0x67: OP(INSLH,R12_R3);
-        case 0x6a: OP(EXTLH,R12_R3);
-        case 0x72: OP(MSKQH,R12_R3);
-        case 0x77: OP(INSQH,R12_R3);
-        case 0x7a: OP(EXTQH,R12_R3);
-        default:   UNKNOWN2;
-      }
-      break;
+      case 0x08: OP(LDA,MEM);
+      case 0x09: OP(LDAH,MEM);
+      case 0x0a: OP(LDBU,MEM);
+      case 0x0b: OP(LDQ_U,MEM);
+      case 0x0c: OP(LDWU,MEM);
+      case 0x0d: OP(STW,MEM);
+      case 0x0e: OP(STB,MEM);
+      case 0x0f: OP(STQ_U,MEM);
 
-    case 0x13:  // INTM* instructions
-      function = (ins>>5) & 0x7f;
-      switch (function) // ignore /V for now
-      {
-        case 0x40: OP(MULL_V,R12_R3);
-        case 0x00: OP(MULL,R12_R3);
-        case 0x60: OP(MULQ_V,R12_R3);
-        case 0x20: OP(MULQ,R12_R3);
-        case 0x30: OP(UMULH,R12_R3);
-        default:   UNKNOWN2;
-      }
-      break;
+      case 0x10: // INTA* instructions
+        function = (ins >> 5) & 0x7f;
+        switch (function)
+        {
+          case 0x40: OP(ADDL_V,R12_R3);
+          case 0x00: OP(ADDL,R12_R3);
+          case 0x02: OP(S4ADDL,R12_R3);
+          case 0x49: OP(SUBL_V,R12_R3);
+          case 0x09: OP(SUBL,R12_R3);
+          case 0x0b: OP(S4SUBL,R12_R3);
+          case 0x0f: OP(CMPBGE,R12_R3);
+          case 0x12: OP(S8ADDL,R12_R3);
+          case 0x1b: OP(S8SUBL,R12_R3);
+          case 0x1d: OP(CMPULT,R12_R3);
+          case 0x60: OP(ADDQ_V,R12_R3);
+          case 0x20: OP(ADDQ,R12_R3);
+          case 0x22: OP(S4ADDQ,R12_R3);
+          case 0x69: OP(SUBQ_V,R12_R3);
+          case 0x29: OP(SUBQ,R12_R3);
+          case 0x2b: OP(S4SUBQ,R12_R3);
+          case 0x2d: OP(CMPEQ,R12_R3);
+          case 0x32: OP(S8ADDQ,R12_R3);
+          case 0x3b: OP(S8SUBQ,R12_R3);
+          case 0x3d: OP(CMPULE,R12_R3);
+          case 0x4d: OP(CMPLT,R12_R3);
+          case 0x6d: OP(CMPLE,R12_R3);
+          default:   UNKNOWN2;
+        }
+        break;
 
-    case 0x14:  // ITFP* instructions
-      function = (ins>>5) & 0x7ff;
-      switch(function)
-      {
-        case 0x004: OP(ITOFS,R1_F3);
-        case 0x00a: 
-        case 0x08a: 
-        case 0x10a: 
-        case 0x18a: 
-        case 0x40a: 
-        case 0x48a: 
-        case 0x50a: 
-        case 0x58a: OP(SQRTF,F2_F3);
-        case 0x00b:
-        case 0x04b: 
-        case 0x08b: 
-        case 0x0cb: 
-        case 0x10b: 
-        case 0x14b: 
-        case 0x18b: 
-        case 0x1cb: 
-        case 0x50b: 
-        case 0x54b: 
-        case 0x58b: 
-        case 0x5cb: 
-        case 0x70b: 
-        case 0x74b: 
-        case 0x78b: 
-        case 0x7cb: OP(SQRTS,F2_F3);
-        case 0x014: OP(ITOFF,R1_F3);
-        case 0x024: OP(ITOFT,R1_F3);
-        case 0x02a: 
-        case 0x0aa: 
-        case 0x12a: 
-        case 0x1aa: 
-        case 0x42a: 
-        case 0x4aa: 
-        case 0x52a: 
-        case 0x5aa: OP(SQRTG,F2_F3);
-        case 0x02b: 
-        case 0x06b: 
-        case 0x0ab: 
-        case 0x0eb: 
-        case 0x12b: 
-        case 0x16b: 
-        case 0x1ab: 
-        case 0x1eb: 
-        case 0x52b: 
-        case 0x56b: 
-        case 0x5ab: 
-        case 0x5eb: 
-        case 0x72b: 
-        case 0x76b: 
-        case 0x7ab: 
-        case 0x7eb: OP(SQRTT,F2_F3);
-        default:    UNKNOWN2;
-      }
-      break;
+      case 0x11: // INTL* instructions
+        function = (ins >> 5) & 0x7f;
+        switch (function)
+        {
+          case 0x00: OP(AND,R12_R3);
+          case 0x08: OP(BIC,R12_R3);
+          case 0x14: OP(CMOVLBS,R12_R3);
+          case 0x16: OP(CMOVLBC,R12_R3);
+          case 0x20: OP(BIS,R12_R3);
+          case 0x24: OP(CMOVEQ,R12_R3);
+          case 0x26: OP(CMOVNE,R12_R3);
+          case 0x28: OP(ORNOT,R12_R3);
+          case 0x40: OP(XOR,R12_R3);
+          case 0x44: OP(CMOVLT,R12_R3);
+          case 0x46: OP(CMOVGE,R12_R3);
+          case 0x48: OP(EQV,R12_R3);
+          case 0x61: OP(AMASK,R2_R3);
+          case 0x64: OP(CMOVLE,R12_R3);
+          case 0x66: OP(CMOVGT,R12_R3);
+          case 0x6c: OP(IMPLVER,X_R3);
+          default:   UNKNOWN2;
+        }
+        break;
 
-    case 0x15:  // FLTV* instructions
-      function = (ins>>5) & 0x7ff;
-      switch(function)
-      {
-        case 0x0a5:
-        case 0x4a5: OP(CMPGEQ,F12_F3);
-        case 0x0a6:
-        case 0x4a6: OP(CMPGLT,F12_F3);
-        case 0x0a7:
-        case 0x4a7: OP(CMPGLE,F12_F3);
-        case 0x03c:
-        case 0x0bc: OP(CVTQF,F2_F3);
-        case 0x03e: 
-        case 0x0be: OP(CVTQG,F2_F3);
-        default: if (function & 0x200) {
+      case 0x12:  // INTS* instructions
+        function = (ins>>5) & 0x7f;
+        switch (function)
+        {
+          case 0x02: OP(MSKBL,R12_R3);
+          case 0x06: OP(EXTBL,R12_R3);
+          case 0x0b: OP(INSBL,R12_R3);
+          case 0x12: OP(MSKWL,R12_R3);
+          case 0x16: OP(EXTWL,R12_R3);
+          case 0x1b: OP(INSWL,R12_R3);
+          case 0x22: OP(MSKLL,R12_R3);
+          case 0x26: OP(EXTLL,R12_R3);
+          case 0x2b: OP(INSLL,R12_R3);
+          case 0x30: OP(ZAP,R12_R3);
+          case 0x31: OP(ZAPNOT,R12_R3);
+          case 0x32: OP(MSKQL,R12_R3);
+          case 0x34: OP(SRL,R12_R3);
+          case 0x36: OP(EXTQL,R12_R3);
+          case 0x39: OP(SLL,R12_R3);
+          case 0x3b: OP(INSQL,R12_R3);
+          case 0x3c: OP(SRA,R12_R3);
+          case 0x52: OP(MSKWH,R12_R3);
+          case 0x57: OP(INSWH,R12_R3);
+          case 0x5a: OP(EXTWH,R12_R3);
+          case 0x62: OP(MSKLH,R12_R3);
+          case 0x67: OP(INSLH,R12_R3);
+          case 0x6a: OP(EXTLH,R12_R3);
+          case 0x72: OP(MSKQH,R12_R3);
+          case 0x77: OP(INSQH,R12_R3);
+          case 0x7a: OP(EXTQH,R12_R3);
+          default:   UNKNOWN2;
+        }
+        break;
+
+      case 0x13:  // INTM* instructions
+        function = (ins>>5) & 0x7f;
+        switch (function) // ignore /V for now
+        {
+          case 0x40: OP(MULL_V,R12_R3);
+          case 0x00: OP(MULL,R12_R3);
+          case 0x60: OP(MULQ_V,R12_R3);
+          case 0x20: OP(MULQ,R12_R3);
+          case 0x30: OP(UMULH,R12_R3);
+          default:   UNKNOWN2;
+        }
+        break;
+
+      case 0x14:  // ITFP* instructions
+        function = (ins>>5) & 0x7ff;
+        switch(function)
+        {
+          case 0x004: OP(ITOFS,R1_F3);
+          case 0x00a: 
+          case 0x08a: 
+          case 0x10a: 
+          case 0x18a: 
+          case 0x40a: 
+          case 0x48a: 
+          case 0x50a: 
+          case 0x58a: OP(SQRTF,F2_F3);
+          case 0x00b:
+          case 0x04b: 
+          case 0x08b: 
+          case 0x0cb: 
+          case 0x10b: 
+          case 0x14b: 
+          case 0x18b: 
+          case 0x1cb: 
+          case 0x50b: 
+          case 0x54b: 
+          case 0x58b: 
+          case 0x5cb: 
+          case 0x70b: 
+          case 0x74b: 
+          case 0x78b: 
+          case 0x7cb: OP(SQRTS,F2_F3);
+          case 0x014: OP(ITOFF,R1_F3);
+          case 0x024: OP(ITOFT,R1_F3);
+          case 0x02a: 
+          case 0x0aa: 
+          case 0x12a: 
+          case 0x1aa: 
+          case 0x42a: 
+          case 0x4aa: 
+          case 0x52a: 
+          case 0x5aa: OP(SQRTG,F2_F3);
+          case 0x02b: 
+          case 0x06b: 
+          case 0x0ab: 
+          case 0x0eb: 
+          case 0x12b: 
+          case 0x16b: 
+          case 0x1ab: 
+          case 0x1eb: 
+          case 0x52b: 
+          case 0x56b: 
+          case 0x5ab: 
+          case 0x5eb: 
+          case 0x72b: 
+          case 0x76b: 
+          case 0x7ab: 
+          case 0x7eb: OP(SQRTT,F2_F3);
+          default:    UNKNOWN2;
+        }
+        break;
+
+      case 0x15:  // FLTV* instructions
+        function = (ins>>5) & 0x7ff;
+        switch(function)
+        {
+          case 0x0a5:
+          case 0x4a5: OP(CMPGEQ,F12_F3);
+          case 0x0a6:
+          case 0x4a6: OP(CMPGLT,F12_F3);
+          case 0x0a7:
+          case 0x4a7: OP(CMPGLE,F12_F3);
+          case 0x03c:
+          case 0x0bc: OP(CVTQF,F2_F3);
+          case 0x03e: 
+          case 0x0be: OP(CVTQG,F2_F3);
+          default: if (function & 0x200) {
+                     UNKNOWN2;
+                   }
+                   switch(function & 0x7f)
+                   {
+                   case 0x000: OP(ADDF,F12_F3);
+                   case 0x001: OP(SUBF,F12_F3);
+                   case 0x002: OP(MULF,F12_F3);
+                   case 0x003: OP(DIVF,F12_F3);
+                   case 0x01e: OP(CVTDG,F2_F3);
+                   case 0x020: OP(ADDG,F12_F3);
+                   case 0x021: OP(SUBG,F12_F3);
+	               case 0x022: OP(MULG,F12_F3);
+                   case 0x023: OP(DIVG,F12_F3);
+	               case 0x02c: OP(CVTGF,F12_F3);
+	               case 0x02d: OP(CVTGD,F2_F3);
+                   case 0x02f: OP(CVTGQ,F2_F3);
+                   default:   UNKNOWN2;
+                   }
+                   break;
+        }
+        break;
+
+      case 0x16:  // FLTI* instructions
+        function = (ins>>5) & 0x7ff;
+        switch(function)
+        {
+        case 0x0a4:
+        case 0x5a4: OP(CMPTUN,F12_F3);
+        case 0x0a5: 
+        case 0x5a5: OP(CMPTEQ,F12_F3);
+        case 0x0a6: 
+        case 0x5a6: OP(CMPTLT,F12_F3);
+        case 0x0a7: 
+        case 0x5a7: OP(CMPTLE,F12_F3);
+        case 0x2ac:
+        case 0x6ac: OP(CVTST,F2_F3);
+        default: if (((function & 0x600) == 0x200) || ((function & 0x500) == 0x400)) {
                    UNKNOWN2;
                  }
-                 switch(function & 0x7f)
+                 switch (function & 0x3f)
                  {
-                 case 0x000: OP(ADDF,F12_F3);
-                 case 0x001: OP(SUBF,F12_F3);
-                 case 0x002: OP(MULF,F12_F3);
-                 case 0x003: OP(DIVF,F12_F3);
-                 case 0x01e: OP(CVTDG,F2_F3);
-                 case 0x020: OP(ADDG,F12_F3);
-                 case 0x021: OP(SUBG,F12_F3);
-	             case 0x022: OP(MULG,F12_F3);
-                 case 0x023: OP(DIVG,F12_F3);
-	             case 0x02c: OP(CVTGF,F12_F3);
-	             case 0x02d: OP(CVTGD,F2_F3);
-                 case 0x02f: OP(CVTGQ,F2_F3);
+                 case 0x00: OP(ADDS,F12_F3);
+                 case 0x01: OP(SUBS,F12_F3);
+                 case 0x02: OP(MULS,F12_F3);
+                 case 0x03: OP(DIVS,F12_F3);
+                 case 0x20: OP(ADDT,F12_F3);
+                 case 0x21: OP(SUBT,F12_F3);
+                 case 0x22: OP(MULT,F12_F3);
+                 case 0x23: OP(DIVT,F12_F3);
+                 case 0x2c: OP(CVTTS,F2_F3);
+                 case 0x2f: OP(CVTTQ,F2_F3);
+                 case 0x3c: if ((function &0x300) == 0x100) {
+                              UNKNOWN2;
+                            }
+                            OP(CVTQS,F2_F3);
+                 case 0x3e: if ((function &0x300) == 0x100) {
+                              UNKNOWN2;
+                            }
+                            OP(CVTQT,F2_F3);
                  default:   UNKNOWN2;
                  }
                  break;
-      }
-      break;
+        }
+        break;
 
-    case 0x16:  // FLTI* instructions
-      function = (ins>>5) & 0x7ff;
-      switch(function)
-      {
-      case 0x0a4:
-      case 0x5a4: OP(CMPTUN,F12_F3);
-      case 0x0a5: 
-      case 0x5a5: OP(CMPTEQ,F12_F3);
-      case 0x0a6: 
-      case 0x5a6: OP(CMPTLT,F12_F3);
-      case 0x0a7: 
-      case 0x5a7: OP(CMPTLE,F12_F3);
-      case 0x2ac:
-      case 0x6ac: OP(CVTST,F2_F3);
-      default: if (((function & 0x600) == 0x200) || ((function & 0x500) == 0x400)) {
-                 UNKNOWN2;
-               }
-               switch (function & 0x3f)
-               {
-               case 0x00: OP(ADDS,F12_F3);
-               case 0x01: OP(SUBS,F12_F3);
-               case 0x02: OP(MULS,F12_F3);
-               case 0x03: OP(DIVS,F12_F3);
-               case 0x20: OP(ADDT,F12_F3);
-               case 0x21: OP(SUBT,F12_F3);
-               case 0x22: OP(MULT,F12_F3);
-               case 0x23: OP(DIVT,F12_F3);
-               case 0x2c: OP(CVTTS,F2_F3);
-               case 0x2f: OP(CVTTQ,F2_F3);
-               case 0x3c: if ((function &0x300) == 0x100) {
-                            UNKNOWN2;
-                          }
-                          OP(CVTQS,F2_F3);
-               case 0x3e: if ((function &0x300) == 0x100) {
-                            UNKNOWN2;
-                          }
-                          OP(CVTQT,F2_F3);
-               default:   UNKNOWN2;
-               }
-               break;
-      }
-      break;
-
-    case 0x17:  // FLTL* instructions
-      function = (ins>>5) & 0x7ff;
-      switch (function)
-      {
-      case 0x010: OP(CVTLQ,F2_F3);
-      case 0x020: OP(CPYS,F12_F3);
-      case 0x021: OP(CPYSN,F12_F3);
-      case 0x022: OP(CPYSE,F12_F3);
-      case 0x024: OP(MT_FPCR,X_F1);
-      case 0x025: OP(MF_FPCR,X_F1);
-      case 0x02a: OP(FCMOVEQ,F12_F3);
-      case 0x02b: OP(FCMOVNE,F12_F3);
-      case 0x02c: OP(FCMOVLT,F12_F3);
-      case 0x02d: OP(FCMOVGE,F12_F3);
-      case 0x02e: OP(FCMOVLE,F12_F3);
-      case 0x02f: OP(FCMOVGT,F12_F3);
-      case 0x030:
-      case 0x130:
-      case 0x530: OP(CVTQL,F12_F3);
-      default:   UNKNOWN2;
-      }
-      break;
-
-    case 0x18:  // MISC* instructions
-      function = (ins & 0xffff);
-      switch (function)
-	  {
-	    case 0x0000: OP(TRAPB,NOP);
-	    case 0x0400: OP(EXCB,NOP);
-	    case 0x4000: OP(MB,NOP);
-	    case 0x4400: OP(WMB,NOP);
-	    case 0x8000: OP(FETCH,NOP);
-	    case 0xA000: OP(FETCH_M,NOP);
-	    case 0xC000: OP(RPCC,X_R1);
-	    case 0xE000: OP(RC,X_R1);
-	    case 0xE800: OP(ECB,NOP);
-	    case 0xF000: OP(RS,X_R1);
-	    case 0xF800: OP(WH64,NOP);
-	    case 0xFC00: OP(WH64EN,NOP);
-	    default:     UNKNOWN2;
-	  }
-      break;
-
-    case 0x19: // HW_MFPR
-      function = (ins>>8) & 0xff;
-      OP(HW_MFPR,MFPR);
-
-    case 0x1a:  // JSR* instructions
-      OP(JMP,JMP);
-
-    case 0x1b: // PAL reserved - HW_LD
-      function = (ins>>12) & 0xf;
-      if (function&1) {
-	    OP(HW_LDQ,HW_LD);
-      } else {
-	    OP(HW_LDL,HW_LD);
-      }
-
-
-    case 0x1c: // FPTI* instructions
-      function = (ins>>5) & 0x7f;
-      switch (function)
+      case 0x17:  // FLTL* instructions
+        function = (ins>>5) & 0x7ff;
+        switch (function)
         {
-        case 0x00: OP(SEXTB,R2_R3);
-        case 0x01: OP(SEXTW,R2_R3);
-        case 0x30: OP(CTPOP,R2_R3);
-        case 0x31: OP(PERR,R2_R3);
-        case 0x32: OP(CTLZ,R2_R3);
-        case 0x33: OP(CTTZ,R2_R3);
-        case 0x34: OP(UNPKBW,R2_R3);
-        case 0x35: OP(UNPKBL,R2_R3);
-        case 0x36: OP(PKWB,R2_R3);
-        case 0x37: OP(PKLB,R2_R3);
-        case 0x38: OP(MINSB8,R12_R3);
-        case 0x39: OP(MINSW4,R12_R3);
-        case 0x3a: OP(MINUB8,R12_R3);
-        case 0x3b: OP(MINUW4,R12_R3);
-        case 0x3c: OP(MAXUB8,R12_R3);
-        case 0x3d: OP(MAXUW4,R12_R3);
-        case 0x3e: OP(MAXSB8,R12_R3);
-        case 0x3f: OP(MAXSW4,R12_R3);
-        case 0x70: OP(FTOIT,F1_R3);
-        case 0x78: OP(FTOIS,F1_R3);
+        case 0x010: OP(CVTLQ,F2_F3);
+        case 0x020: OP(CPYS,F12_F3);
+        case 0x021: OP(CPYSN,F12_F3);
+        case 0x022: OP(CPYSE,F12_F3);
+        case 0x024: OP(MT_FPCR,X_F1);
+        case 0x025: OP(MF_FPCR,X_F1);
+        case 0x02a: OP(FCMOVEQ,F12_F3);
+        case 0x02b: OP(FCMOVNE,F12_F3);
+        case 0x02c: OP(FCMOVLT,F12_F3);
+        case 0x02d: OP(FCMOVGE,F12_F3);
+        case 0x02e: OP(FCMOVLE,F12_F3);
+        case 0x02f: OP(FCMOVGT,F12_F3);
+        case 0x030:
+        case 0x130:
+        case 0x530: OP(CVTQL,F12_F3);
         default:   UNKNOWN2;
         }
-      break;
+        break;
 
-    case 0x1d: // HW_MTPR
-      function = (ins>>8) & 0xff;
-      OP(HW_MTPR,MTPR);
+      case 0x18:  // MISC* instructions
+        function = (ins & 0xffff);
+        switch (function)
+	    {
+	      case 0x0000: OP(TRAPB,NOP);
+	      case 0x0400: OP(EXCB,NOP);
+	      case 0x4000: OP(MB,NOP);
+	      case 0x4400: OP(WMB,NOP);
+	      case 0x8000: OP(FETCH,NOP);
+	      case 0xA000: OP(FETCH_M,NOP);
+	      case 0xC000: OP(RPCC,X_R1);
+	      case 0xE000: OP(RC,X_R1);
+	      case 0xE800: OP(ECB,NOP);
+	      case 0xF000: OP(RS,X_R1);
+	      case 0xF800: OP(WH64,NOP);
+	      case 0xFC00: OP(WH64EN,NOP);
+	      default:     UNKNOWN2;
+	    }
+        break;
 
-    case 0x1e: OP(HW_RET,RET);
+      case 0x19: // HW_MFPR
+        function = (ins>>8) & 0xff;
+        OP(HW_MFPR,MFPR);
 
-    case 0x1f: // HW_ST
-      function = (ins>>12) & 0xf;
-      if (function&1) {
-	    OP(HW_STQ,HW_ST);
-      } else {
-	    OP(HW_STL,HW_ST);
-      }
+      case 0x1a:  // JSR* instructions
+        OP(JMP,JMP);
 
-    case 0x20: OP(LDF, FMEM);
-    case 0x21: OP(LDG, FMEM);
-    case 0x22: OP(LDS, FMEM);
-    case 0x23: OP(LDT,FMEM);
-    case 0x24: OP(STF,FMEM);
-    case 0x25: OP(STG,FMEM);
-    case 0x26: OP(STS,FMEM);
-    case 0x27: OP(STT,FMEM);
-    case 0x28: OP(LDL,MEM);
-    case 0x29: OP(LDQ,MEM);
-    case 0x2a: OP(LDL_L,MEM);
-    case 0x2b: OP(LDQ_L,MEM);
-    case 0x2c: OP(STL,MEM);
-    case 0x2d: OP(STQ,MEM);
-    case 0x2e: OP(STL_C,MEM);
-    case 0x2f: OP(STQ_C,MEM);
-    case 0x30: OP(BR,BR);
-    case 0x31: OP(FBEQ,FCOND);
-    case 0x32: OP(FBLT,FCOND);
-    case 0x33: OP(FBLE,FCOND);
-    case 0x34: OP(BSR,BSR);
-    case 0x35: OP(FBNE,FCOND);
-    case 0x36: OP(FBGE,FCOND);
-    case 0x37: OP(FBGT,FCOND);
-    case 0x38: OP(BLBC,COND);
-    case 0x39: OP(BEQ,COND);
-    case 0x3a: OP(BLT,COND);
-    case 0x3b: OP(BLE,COND);
-    case 0x3c: OP(BLBS,COND);
-    case 0x3d: OP(BNE,COND);
-    case 0x3e: OP(BGE,COND);
-    case 0x3f: OP(BGT,COND);
+      case 0x1b: // PAL reserved - HW_LD
+        function = (ins>>12) & 0xf;
+        if (function&1) {
+	      OP(HW_LDQ,HW_LD);
+        } else {
+	      OP(HW_LDL,HW_LD);
+        }
 
-    default:
-      UNKNOWN1;
+
+      case 0x1c: // FPTI* instructions
+        function = (ins>>5) & 0x7f;
+        switch (function)
+          {
+          case 0x00: OP(SEXTB,R2_R3);
+          case 0x01: OP(SEXTW,R2_R3);
+          case 0x30: OP(CTPOP,R2_R3);
+          case 0x31: OP(PERR,R2_R3);
+          case 0x32: OP(CTLZ,R2_R3);
+          case 0x33: OP(CTTZ,R2_R3);
+          case 0x34: OP(UNPKBW,R2_R3);
+          case 0x35: OP(UNPKBL,R2_R3);
+          case 0x36: OP(PKWB,R2_R3);
+          case 0x37: OP(PKLB,R2_R3);
+          case 0x38: OP(MINSB8,R12_R3);
+          case 0x39: OP(MINSW4,R12_R3);
+          case 0x3a: OP(MINUB8,R12_R3);
+          case 0x3b: OP(MINUW4,R12_R3);
+          case 0x3c: OP(MAXUB8,R12_R3);
+          case 0x3d: OP(MAXUW4,R12_R3);
+          case 0x3e: OP(MAXSB8,R12_R3);
+          case 0x3f: OP(MAXSW4,R12_R3);
+          case 0x70: OP(FTOIT,F1_R3);
+          case 0x78: OP(FTOIS,F1_R3);
+          default:   UNKNOWN2;
+          }
+        break;
+
+      case 0x1d: // HW_MTPR
+        function = (ins>>8) & 0xff;
+        OP(HW_MTPR,MTPR);
+
+      case 0x1e: OP(HW_RET,RET);
+
+      case 0x1f: // HW_ST
+        function = (ins>>12) & 0xf;
+        if (function&1) {
+	      OP(HW_STQ,HW_ST);
+        } else {
+	      OP(HW_STL,HW_ST);
+        }
+
+      case 0x20: OP(LDF, FMEM);
+      case 0x21: OP(LDG, FMEM);
+      case 0x22: OP(LDS, FMEM);
+      case 0x23: OP(LDT,FMEM);
+      case 0x24: OP(STF,FMEM);
+      case 0x25: OP(STG,FMEM);
+      case 0x26: OP(STS,FMEM);
+      case 0x27: OP(STT,FMEM);
+      case 0x28: OP(LDL,MEM);
+      case 0x29: OP(LDQ,MEM);
+      case 0x2a: OP(LDL_L,MEM);
+      case 0x2b: OP(LDQ_L,MEM);
+      case 0x2c: OP(STL,MEM);
+      case 0x2d: OP(STQ,MEM);
+      case 0x2e: OP(STL_C,MEM);
+      case 0x2f: OP(STQ_C,MEM);
+      case 0x30: OP(BR,BR);
+      case 0x31: OP(FBEQ,FCOND);
+      case 0x32: OP(FBLT,FCOND);
+      case 0x33: OP(FBLE,FCOND);
+      case 0x34: OP(BSR,BSR);
+      case 0x35: OP(FBNE,FCOND);
+      case 0x36: OP(FBGE,FCOND);
+      case 0x37: OP(FBGT,FCOND);
+      case 0x38: OP(BLBC,COND);
+      case 0x39: OP(BEQ,COND);
+      case 0x3a: OP(BLT,COND);
+      case 0x3b: OP(BLE,COND);
+      case 0x3c: OP(BLBS,COND);
+      case 0x3d: OP(BNE,COND);
+      case 0x3e: OP(BGE,COND);
+      case 0x3f: OP(BGT,COND);
+
+      default:
+        UNKNOWN1;
+    }
   }
-
+  catch(char)
+  {
+    // GO_PAL occurred
+    return 0;
+  }
   return 0;
 }
 
