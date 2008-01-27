@@ -28,10 +28,10 @@
  * \file
  * Contains the definitions for the emulated DecChip 21264CB EV68 Alpha processor.
  *
- * $Id: AlphaCPU.h,v 1.41 2008/01/26 12:33:48 iamcamiel Exp $
+ * $Id: AlphaCPU.h,v 1.42 2008/01/27 11:37:58 iamcamiel Exp $
  *
- * X-1.40       Camiel Vanderhoeven                             26-JAN-2008
- *      Moved some more macro's to cpu_defs.h.
+ * X-1.40       Camiel Vanderhoeven                             27-JAN-2008
+ *      Minor floating-point improvements.
  *
  * X-1.39       Camiel Vanderhoeven                             25-JAN-2008
  *      Added option to disable the icache.
@@ -321,13 +321,13 @@ private:
   u64 vax_ldg (u64 op);
   u32 vax_stf (u64 op);
   u64 vax_stg (u64 op);
-  void arith_trap(u64 mask, u32 ins);
-  bool vax_unpack (u64 op, UFP *r, u32 ins);
-  bool vax_unpack_d (u64 op, UFP *r, u32 ins);
+  void vax_trap(u64 mask, u32 ins);
+  void vax_unpack (u64 op, UFP *r, u32 ins);
+  void vax_unpack_d (u64 op, UFP *r, u32 ins);
   void vax_norm (UFP *r);
   u64 vax_rpack (UFP *r, u32 ins, u32 dp);
   u64 vax_rpack_d (UFP *r, u32 ins);
-  s32  vax_fcmp (u64 s1, u64 s2, u32 ins);
+  s32 vax_fcmp (u64 s1, u64 s2, u32 ins);
   u64 vax_cvtif (u64 val, u32 ins, u32 dp);
   u64 vax_cvtfi (u64 op, u32 ins);
   u64 vax_fadd (u64 s1, u64 s2, u32 ins, u32 dp, bool sub);

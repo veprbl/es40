@@ -27,7 +27,10 @@
  * \file 
  * Contains VAX floating point code for the Alpha CPU.
  *
- * $Id: AlphaCPU_vaxfloat.cpp,v 1.5 2008/01/26 23:36:30 iamcamiel Exp $
+ * $Id: AlphaCPU_vaxfloat.cpp,v 1.6 2008/01/27 11:37:58 iamcamiel Exp $
+ *
+ * X-1.5        Camiel Vanderhoeven                             27-JAN-2008
+ *      Minor floating-point improvements.
  *
  * X-1.4        Camiel Vanderhoeven                             26-JAN-2008
  *      Bugfix in vax_stf.
@@ -45,16 +48,12 @@
 
 #include "StdAfx.h"
 #include "AlphaCPU.h"
-
 #include "cpu_debug.h"
-
-/* VAX */
 
 #define IPMAX		X64(7FFFFFFFFFFFFFFF)		/* plus MAX (int) */
 #define IMMAX		X64(8000000000000000)		/* minus MAX (int) */
 
 /* Unpacked rounding constants */
-/* VAX */
 
 #define UF_FRND		X64(0000008000000000)		/* F round */
 #define UF_DRND		X64(0000000000000080)		/* D round */
@@ -69,87 +68,155 @@
 void handle_debug_string(char * s);
 #endif
 
-/* VAX floating point loads and stores */
+/***************************************************************************//**
+ * \name VAX_fp_load_store
+ * VAX floating point load and store functions
+ ******************************************************************************/
+//\{
 
+/**
+ * \brief Convert the VAX F-floating memory format to the VAX floating register
+ * format.
+ *
+ * Adjust the exponent base, reorder the bytes of the fraction to compensate for
+ * the VAX byte-order, and widen the exponent and fraction fields.
+ *
+ * \param op	32-bit VAX F-floating value in memory format.
+ * \return		The value op converted to 64-bit VAX floating in register format.
+ **/
 u64 CAlphaCPU::vax_ldf (u32 op)
 {
-u32 exp = F_GETEXP (op);
-
-if (exp != 0) exp = exp + G_BIAS - F_BIAS;		/* zero? */	
-u64 res = (((u64) (op & F_SIGN))? FPR_SIGN: 0) |	/* finite non-zero */
+  u32 exp = F_GETEXP (op);
+  if (exp != 0) exp = exp + G_BIAS - F_BIAS;		/* zero? */	
+  u64 res = (((u64) (op & F_SIGN))? FPR_SIGN: 0) |	/* finite non-zero */
 	(((u64) exp) << FPR_V_EXP) |
 	(((u64) SWAP_VAXF (op & ~(F_SIGN|F_EXP))) << F_V_FRAC);
-//printf("vax_ldf: %08x -> %016" LL "x.\n", op, res);
-return res;
+  //printf("vax_ldf: %08x -> %016" LL "x.\n", op, res);
+  return res;
 }
 
+/**
+ * \brief Convert the VAX G-floating memory format to the VAX floating register
+ * format.
+ *
+ * Reorder the bytes to compensate for the VAX byte-order.
+ *
+ * \param op  64-bit VAX G-floating value in memory format.
+ * \return    The value op converted to 64-bit VAX floating in register format.
+ **/
 u64 CAlphaCPU::vax_ldg (u64 op)
 {
-return SWAP_VAXG (op);					/* swizzle bits */
+  return SWAP_VAXG (op);					/* swizzle bits */
 }
 
+/**
+ * \brief Convert the VAX floating register format to the VAX F-floating memory
+ * format.
+ *
+ * Adjust the exponent base, make the exponent and fraction fields smaller, and
+ * reorder the bytes of the fraction to compensate for the VAX byte-order.
+ *
+ * \param op  64-bit VAX floating in register format.
+ * \return    The value op converted to 32-bit VAX F-floating value in memory format.
+ **/
 u32 CAlphaCPU::vax_stf (u64 op)
 {
-u32 sign = FPR_GETSIGN (op)? F_SIGN: 0;
-//u32 exp = ((u32) (op >> (FPR_V_EXP - F_V_EXP))) & F_EXP;
+  u32 sign = FPR_GETSIGN (op)? F_SIGN: 0;
+  //u32 exp = ((u32) (op >> (FPR_V_EXP - F_V_EXP))) & F_EXP;
 
-u32 exp = FPR_GETEXP (op);
+  u32 exp = FPR_GETEXP (op);
+  if (exp != 0) exp = exp + F_BIAS - G_BIAS;		/* zero? */	
+  exp = (exp << F_V_EXP) & F_EXP;
 
-if (exp != 0) exp = exp - G_BIAS + F_BIAS;		/* zero? */	
+  u32 frac = (u32) (op >> F_V_FRAC);
 
-exp <<= F_V_EXP;
+  u32 res = sign | exp | (SWAP_VAXF (frac) & ~(F_SIGN|F_EXP));
 
-exp &= F_EXP;
-
-u32 frac = (u32) (op >> F_V_FRAC);
-
-u32 res = sign | exp | (SWAP_VAXF (frac) & ~(F_SIGN|F_EXP));
-
-//printf("vax_stf: %016" LL "x -> %08x.\n", op, res);
-return res;
-
+  //printf("vax_stf: %016" LL "x -> %08x.\n", op, res);
+  return res;
 }
 
+/**
+ * \brief Convert the VAX floating register format to the VAX G-floating memory
+ * format.
+ *
+ * Reorder the bytes to compensate for the VAX byte-order.
+ *
+ * \param op  64-bit VAX floating in register format.
+ * \return    The value op converted to 64-bit VAX G-floating value in memory format.
+ **/
 u64 CAlphaCPU::vax_stg (u64 op)
 {
-return SWAP_VAXG (op);					/* swizzle bits */
+  return SWAP_VAXG (op);					/* swizzle bits */
 }
+//\}
 
-/* Set arithmetic trap */
+/***************************************************************************//**
+ * \name VAX_fp_support
+ * VAX floating point support functions
+ ******************************************************************************/
+//\{
 
-void CAlphaCPU::arith_trap(u64 mask, u32 ins)
+/**
+ * \brief Set VAX floating-point trap
+ *
+ * Called when a VAX floating-point operation detects an exception.
+ *
+ * \param mask  A bitmask in which the bits are set that correspond to
+ *              the exception that occurred.
+ * \param ins   The instruction currently being executed. Used to properly
+ *              set some registers for the trap to be handled.
+ **/
+void CAlphaCPU::vax_trap(u64 mask, u32 ins)
 {
   ARITH_TRAP(mask | ((ins & I_FTRP_S) ? TRAP_SWC : 0)
-                  , I_GETRC(ins));
+             , I_GETRC(ins));
 }
 
-/* Support routines */
-
-bool CAlphaCPU::vax_unpack (u64 op, UFP *r, u32 ins)
+/**
+ * \brief Unpack VAX floating-point value
+ *
+ * Converts a VAX floating-point value to it's sign, exponent and fraction
+ * components.
+ *
+ * \param op  64-bit VAX floating in register format.
+ * \param r   Pointer to the unpacked-floating-point UFP structure
+ *            where the results are to be returned.
+ * \param ins The instruction currently being executed. Used to properly
+ *            handle exceptions
+ **/
+void CAlphaCPU::vax_unpack (u64 op, UFP *r, u32 ins)
 {
-r->sign = FPR_GETSIGN (op);				/* get sign */
-r->exp = FPR_GETEXP (op);				/* get exponent */
-r->frac = FPR_GETFRAC (op);				/* get fraction */
-if (r->exp == 0) {					/* exp = 0? */
-	if (op != 0) arith_trap (TRAP_INV, ins); 	/* rsvd op? */
+  r->sign = FPR_GETSIGN (op); /* get sign */
+  r->exp = FPR_GETEXP (op); /* get exponent */
+  r->frac = FPR_GETFRAC (op); /* get fraction */
+  if (r->exp == 0) /* exp = 0? */
+  {
+	if (r->sign != 0) /* rsvd op? */
+      vax_trap (TRAP_INV, ins);
+    // zero
 	r->frac = r->sign = 0;
-	return true;  }
-r->frac = (r->frac | FPR_HB) << FPR_GUARD;		/* ins hidden bit, guard */
-return false;
+	return; 
+  }
+  r->frac = (r->frac | FPR_HB) << FPR_GUARD;		/* ins hidden bit, guard */
+  return;
 }
 
-bool CAlphaCPU::vax_unpack_d (u64 op, UFP *r, u32 ins)
+void CAlphaCPU::vax_unpack_d (u64 op, UFP *r, u32 ins)
 {
-r->sign = FDR_GETSIGN (op);				/* get sign */
-r->exp = FDR_GETEXP (op);				/* get exponent */
-r->frac = FDR_GETFRAC (op);				/* get fraction */
-if (r->exp == 0) {					/* exp = 0? */
-	if (op != 0) arith_trap (TRAP_INV, ins); 	/* rsvd op? */
+  r->sign = FDR_GETSIGN (op);				/* get sign */
+  r->exp = FDR_GETEXP (op);				/* get exponent */
+  r->frac = FDR_GETFRAC (op);				/* get fraction */
+  if (r->exp == 0) 				/* exp = 0? */
+  {
+	if (op != 0) /* rsvd op? */
+      vax_trap (TRAP_INV, ins); 	
 	r->frac = r->sign = 0;
-	return true;  }
-r->exp = r->exp + G_BIAS - D_BIAS;			/* change to G bias */
-r->frac = (r->frac | FDR_HB) << FDR_GUARD;		/* ins hidden bit, guard */
-return false;
+	return; 
+  }
+  r->exp = r->exp + G_BIAS - D_BIAS;			/* change to G bias */
+  r->frac = (r->frac | FDR_HB) << FDR_GUARD;		/* ins hidden bit, guard */
+  return;
 }
 
 /* VAX normalize */
@@ -190,10 +257,10 @@ if (rndm) {						/* round? */
 	    r->frac = (r->frac >> 1) | UF_NM;		/* renormalize */
 	    r->exp = r->exp + 1;  }  }
 if (r->exp > expmax[dp]) {				/* ovflo? */
-	arith_trap (TRAP_OVF, ins);			/* set trap */
+	vax_trap (TRAP_OVF, ins);			/* set trap */
 	r->exp = expmax[dp];  }				/* return max */
 if (r->exp <= expmin[dp]) {				/* underflow? */
-	if (ins & I_FTRP_V) arith_trap (TRAP_UNF, ins);	/* enabled? set trap */
+	if (ins & I_FTRP_V) vax_trap (TRAP_UNF, ins);	/* enabled? set trap */
 	return 0;  }					/* underflow to 0 */
 return (((u64) r->sign) << FPR_V_SIGN) |
 	(((u64) r->exp) << FPR_V_EXP) |
@@ -205,27 +272,28 @@ u64 CAlphaCPU::vax_rpack_d (UFP *r, u32 ins)
 if (r->frac == 0) return 0;				/* result 0? */
 r->exp = r->exp + D_BIAS - G_BIAS;			/* rebias */
 if (r->exp > FDR_M_EXP) {				/* ovflo? */
-	arith_trap (TRAP_OVF, ins);			/* set trap */
+	vax_trap (TRAP_OVF, ins);			/* set trap */
 	r->exp = FDR_M_EXP;  }				/* return max */
 if (r->exp <= 0) {					/* underflow? */
-	if (ins & I_FTRP_V) arith_trap (TRAP_UNF, ins);	/* enabled? set trap */
+	if (ins & I_FTRP_V) vax_trap (TRAP_UNF, ins);	/* enabled? set trap */
 	return 0;  }					/* underflow to 0 */
 return (((u64) r->sign) << FDR_V_SIGN) |
 	(((u64) r->exp) << FDR_V_EXP) |
 	((r->frac >> FDR_GUARD) & FDR_FRAC);
 }
+//\}
 
 /* VAX floating compare */
 
 s32 CAlphaCPU:: vax_fcmp (u64 s1, u64 s2, u32 ins)
 {
-UFP a, b;
+  UFP a, b;
 
-if (vax_unpack (s1, &a, ins)) return +1;			/* unpack, rsv? */
-if (vax_unpack (s2, &b, ins)) return +1;			/* unpack, rsv? */
-if (s1 == s2) return 0;					/* equal? */
-if (a.sign != b.sign) return (a.sign? -1: +1);		/* opp signs? */
-return (((s1 < s2) ^ a.sign)? -1: +1);			/* like signs */
+  vax_unpack (s1, &a, ins);
+  vax_unpack (s2, &b, ins);
+  if (s1 == s2) return 0;					/* equal? */
+  if (a.sign != b.sign) return (a.sign? -1: +1);		/* opp signs? */
+  return (((s1 < s2) ^ a.sign)? -1: +1);			/* like signs */
 }
 
 /* VAX integer to floating convert */
@@ -255,7 +323,7 @@ UFP a;
 u32 rndm = I_GETFRND (ins);
 s32 ubexp;
 
-if (vax_unpack (op, &a, ins)) return 0;			/* unpack, rsv? */
+vax_unpack (op, &a, ins);
 ubexp = a.exp - G_BIAS;					/* unbiased exp */
 if (ubexp < 0) return 0;				/* zero or too small? */
 if (ubexp <= UF_V_NM) {					/* in range? */
@@ -264,11 +332,11 @@ if (ubexp <= UF_V_NM) {					/* in range? */
 	a.frac = a.frac >> 1;				/* now justified */
 	if ((a.frac > (a.sign? IMMAX: IPMAX)) &&	/* out of range? */
 	    (ins & I_FTRP_V))				/* trap enabled? */
-	    arith_trap (TRAP_IOV, ins);  }		/* set overflow */
+	    vax_trap (TRAP_IOV, ins);  }		/* set overflow */
 else {	if (ubexp > (UF_V_NM + 64)) a.frac = 0;		/* out of range */
 	else a.frac = (a.frac << (ubexp - UF_V_NM - 1)) & X64_QUAD;	/* no rnd bit */
 	if (ins & I_FTRP_V)				/* trap enabled? */
-	    arith_trap (TRAP_IOV, ins);  }		/* set overflow */
+	    vax_trap (TRAP_IOV, ins);  }		/* set overflow */
 return (a.sign? NEG_Q (a.frac): a.frac);
 }
 
@@ -280,8 +348,8 @@ UFP a, b, t;
 u32 sticky;
 s32 ediff;
 
-if (vax_unpack (s1, &a, ins)) return 0;			/* unpack, rsv? */
-if (vax_unpack (s2, &b, ins)) return 0;			/* unpack, rsv? */
+vax_unpack (s1, &a, ins);
+vax_unpack (s2, &b, ins);
 if (sub) b.sign = b.sign ^ 1;				/* sub? invert b sign */
 if (a.exp == 0) a = b;					/* s1 = 0? */
 else if (b.exp) {					/* s2 != 0? */
@@ -315,8 +383,8 @@ u64 CAlphaCPU::vax_fmul (u64 s1, u64 s2, u32 ins, u32 dp)
 {
 UFP a, b;
 
-if (vax_unpack (s1, &a, ins)) return 0;			/* unpack, rsv? */
-if (vax_unpack (s2, &b, ins)) return 0;			/* unpack, rsv? */
+vax_unpack (s1, &a, ins);
+vax_unpack (s2, &b, ins);
 if ((a.exp == 0) || (b.exp == 0)) return 0;		/* zero argument? */
 a.sign = a.sign ^ b.sign;				/* sign of result */
 a.exp = a.exp + b.exp - G_BIAS;				/* add exponents */
@@ -334,10 +402,10 @@ u64 CAlphaCPU::vax_fdiv (u64 s1, u64 s2, u32 ins, u32 dp)
 {
 UFP a, b;
 
-if (vax_unpack (s1, &a, ins)) return 0;			/* unpack, rsv? */
-if (vax_unpack (s2, &b, ins)) return 0;			/* unpack, rsv? */
+vax_unpack (s1, &a, ins);
+vax_unpack (s2, &b, ins);
 if (b.exp == 0) {					/* divr = 0? */
-	arith_trap (TRAP_DZE, ins);			/* dze trap */
+	vax_trap (TRAP_DZE, ins);			/* dze trap */
 	return 0;  }
 if (a.exp == 0) return 0;				/* divd = 0? */
 a.sign = a.sign ^ b.sign;				/* result sign */
@@ -357,10 +425,10 @@ u64 op;
 UFP b;
 
 op = state.f[I_GETRB (ins)];					/* get F[rb] */
-if (vax_unpack (op, &b, ins)) return 0;			/* unpack, rsv? */
+vax_unpack (op, &b, ins);
 if (b.exp == 0) return 0;				/* zero? */
 if (b.sign) {						/* minus? */
-	arith_trap (TRAP_INV, ins);			/* invalid operand */
+	vax_trap (TRAP_INV, ins);			/* invalid operand */
 	return 0;  }
 b.exp = ((b.exp + 1 - G_BIAS) >> 1) + G_BIAS;		/* result exponent */
 b.frac = fsqrt64 (b.frac, b.exp);			/* result fraction */

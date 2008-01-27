@@ -28,7 +28,10 @@
  * Contains code macros for the processor floating-point operate instructions.
  * Based on ARM chapter 4.10.
  *
- * $Id: cpu_fp_operate.h,v 1.13 2008/01/22 12:55:35 iamcamiel Exp $
+ * $Id: cpu_fp_operate.h,v 1.14 2008/01/27 11:37:59 iamcamiel Exp $
+ *
+ * X-1.14       Camiel Vanderhoeven                             27-JAN-2008
+ *      Minor floating-point improvements.
  *
  * X-1.13       Camiel Vanderhoeven                             22-JAN-2008
  *      Completed new floating-point code.
@@ -207,7 +210,7 @@
                   (state.f[FREG_2] < 0xFFFFFFFF80000000) :          \
 		          (state.f[FREG_2] > 0x000000007FFFFFFF))           \
    {                                                                \
-     if (ins & I_FTRP_V) arith_trap (TRAP_IOV, ins);                \
+     if (ins & I_FTRP_V) vax_trap (TRAP_IOV, ins);					\
    }
 
 #define DO_CVTLQ                                                    \
@@ -242,15 +245,18 @@
 
 #define DO_CVTGD                                                    \
   if (state.fpen == 0) GO_PAL(FEN);		  /* flt point disabled? */ \
-  state.f[FREG_3] = (vax_unpack (state.f[FREG_2], &ufp2, ins)) ? 0 : vax_rpack_d (&ufp2, ins);
+  vax_unpack (state.f[FREG_2], &ufp2, ins);                         \
+  state.f[FREG_3] = vax_rpack_d (&ufp2, ins);
 
 #define DO_CVTDG                                                    \
   if (state.fpen == 0) GO_PAL(FEN);		  /* flt point disabled? */ \
-  state.f[FREG_3] = (vax_unpack_d (state.f[FREG_2], &ufp2, ins))? 0 : vax_rpack (&ufp2, ins, DT_G);;
+  vax_unpack_d (state.f[FREG_2], &ufp2, ins);                       \
+  state.f[FREG_3] = vax_rpack (&ufp2, ins, DT_G);
 
 #define DO_CVTGF                                                    \
   if (state.fpen == 0) GO_PAL(FEN);		  /* flt point disabled? */ \
-  state.f[FREG_3] = (vax_unpack (state.f[FREG_2], &ufp2, ins)) ? 0 : vax_rpack (&ufp2, ins, DT_F);
+  vax_unpack (state.f[FREG_2], &ufp2, ins);                         \
+  state.f[FREG_3] = vax_rpack (&ufp2, ins, DT_F);
 
 #define DO_CVTST                                                    \
   if (state.fpen == 0) GO_PAL(FEN);		  /* flt point disabled? */ \
@@ -268,7 +274,6 @@
 #define DO_FTOIT                                                    \
   if (state.fpen == 0) GO_PAL(FEN);		  /* flt point disabled? */ \
   state.r[REG_3] = state.f[FREG_1];
-
 
 #define DO_ITOFT                                                    \
   if (state.fpen == 0) GO_PAL(FEN);		  /* flt point disabled? */ \
