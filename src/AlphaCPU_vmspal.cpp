@@ -29,7 +29,10 @@
  * DecChip 21264CB EV68 Alpha processor. Based on disassembly of original VMS
  * PALcode, HRM, and OpenVMS AXP Internals and Data Structures.
  *
- * $Id: AlphaCPU_vmspal.cpp,v 1.7 2008/01/21 21:33:24 iamcamiel Exp $
+ * $Id: AlphaCPU_vmspal.cpp,v 1.8 2008/01/27 11:46:26 iamcamiel Exp $
+ *
+ * X-1.8        Camiel Vanderhoeven                             27-JAN-2008
+ *      Comments.
  *
  * X-1.7        Camiel Vanderhoeven                             21-JAN-2008
  *      Fixed typo.
@@ -182,6 +185,12 @@ static int ipl_ier_mask[32][6] = {
   {0x31,  0,  1,  3,      0,   0},
   {0x10,  0,  1,  3,      0,   0}
 };
+
+/***************************************************************************//**
+ * \name VMS_pal_call
+ * VMS PALcode CALL replacement routines.
+ ******************************************************************************/
+//\{
 
 /**
  * Implementation of CALL_PAL CFLUSH opcode.
@@ -939,11 +948,17 @@ void CAlphaCPU::vmspal_call_write_unq()
   hw_ldq(p21+0x10,t);
   hw_stq(t+0x48,r16);
 }
+//\}
+
+/***************************************************************************//**
+ * \name VMS_pal_int
+ * Internal routines used by VMS PALcode replacement.
+ ******************************************************************************/
+//\{
 
 /**
  * Pass control to the OS for handling the exception.
  **/
-
 int CAlphaCPU::vmspal_int_initiate_exception()
 {
   u64 phys_address;
@@ -1043,6 +1058,13 @@ int CAlphaCPU::vmspal_int_initiate_interrupt()
   state.pc = r2;
   return -1;
 }
+//\}
+
+/***************************************************************************//**
+ * \name VMS_pal_ent
+ * VMS PALcode replacement trap/exception entry-points.
+ ******************************************************************************/
+//\{
 
 /**
  * Interrupt entry point for Software Interrupts.
@@ -1621,3 +1643,4 @@ int CAlphaCPU::vmspal_ent_dfault(int flags)
   hw_stq(p21+0x150,p6);
   return vmspal_int_initiate_exception();
 }
+//\}
