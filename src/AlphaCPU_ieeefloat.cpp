@@ -27,7 +27,10 @@
  * \file 
  * Contains IEEE floating point code for the Alpha CPU.
  *
- * $Id: AlphaCPU_ieeefloat.cpp,v 1.1 2008/01/21 22:39:25 iamcamiel Exp $
+ * $Id: AlphaCPU_ieeefloat.cpp,v 1.2 2008/01/27 09:56:06 iamcamiel Exp $
+ *
+ * X-1.2        Camiel Vanderhoeven                             27-JAN-2008
+ *      Bugfix in ieee_sts.
  *
  * X-1.1        Camiel Vanderhoeven                             21-JAN-2008
  *      File created. Contains code based upon the SIMH Alpha pre-
@@ -77,7 +80,10 @@ return (((u64) (op & S_SIGN))? FPR_SIGN: 0) |	/* reg format */
 u32 CAlphaCPU::ieee_sts (u64 op)
 {
 u32 sign = FPR_GETSIGN (op)? S_SIGN: 0;
-u32 exp = ((u32) (op >> (FPR_V_EXP - S_V_EXP))) & S_EXP;
+u32 exp = FPR_GETEXP(op);
+if (exp == FPR_NAN) exp = S_NAN;			/* inf or NaN? */
+else if (exp != 0) exp = exp + S_BIAS - T_BIAS;		/* zero or denorm? */
+exp = (exp << S_V_EXP) & S_EXP;
 u32 frac = ((u32) (op >> S_V_FRAC)) & X64_LONG;
 
 return sign | exp | (frac & ~(S_SIGN|S_EXP));
