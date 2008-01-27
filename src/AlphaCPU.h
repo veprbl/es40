@@ -28,7 +28,10 @@
  * \file
  * Contains the definitions for the emulated DecChip 21264CB EV68 Alpha processor.
  *
- * $Id: AlphaCPU.h,v 1.42 2008/01/27 11:37:58 iamcamiel Exp $
+ * $Id: AlphaCPU.h,v 1.43 2008/01/27 17:38:57 iamcamiel Exp $
+ *
+ * X-1.43       Camiel Vanderhoeven                             27-JAN-2008
+ *      Comments.
  *
  * X-1.40       Camiel Vanderhoeven                             27-JAN-2008
  *      Minor floating-point improvements.
@@ -44,7 +47,7 @@
  *      NOTA BENE: This is very experimental, and has several problems.
  *
  * X-1.35       Camiel Vanderhoeven                             18-JAN-2008
- *      Comment.
+ *      Comments.
  *
  * X-1.34       Camiel Vanderhoeven                             18-JAN-2008
  *      Process device interrupts after a 100-cpu-cycle delay.
@@ -298,7 +301,6 @@ private:
   void tbia(int flags);
   void tbiap(int flags);
   void tbis(u64 virt, int flags);
-  void go_pal(u32 pal_offset);
 
   /* Floating Point routines */
   u64 ieee_lds (u32 op);

@@ -27,7 +27,10 @@
  * \file 
  * Contains IEEE floating point code for the Alpha CPU.
  *
- * $Id: AlphaCPU_ieeefloat.cpp,v 1.3 2008/01/27 11:37:58 iamcamiel Exp $
+ * $Id: AlphaCPU_ieeefloat.cpp,v 1.4 2008/01/27 17:38:57 iamcamiel Exp $
+ *
+ * X-1.4        Camiel Vanderhoeven                             27-JAN-2008
+ *      Comments.
  *
  * X-1.3        Camiel Vanderhoeven                             27-JAN-2008
  *      Minor floating-point improvements.
@@ -66,6 +69,12 @@
 #define UF_TRND		X64(0000000000000400)		/* T normal round */
 #define UF_TINF		X64(00000000000007FF)		/* T infinity round */
 
+/***************************************************************************//**
+ * \name IEEE_fp_load_store
+ * IEEE floating point load and store functions
+ ******************************************************************************/
+//\{
+
 /* IEEE S load */
 
 u64 CAlphaCPU::ieee_lds (u32 op)
@@ -92,6 +101,13 @@ u32 frac = ((u32) (op >> S_V_FRAC)) & X64_LONG;
 
 return sign | exp | (frac & ~(S_SIGN|S_EXP));
 }
+//\}
+
+/***************************************************************************//**
+ * \name IEEE_fp_conversion
+ * IEEE floating point conversion routines
+ ******************************************************************************/
+//\{
 
 /* IEEE S to T convert - LDS doesn't handle denorms correctly */
 
@@ -120,6 +136,13 @@ if (ftpb == UFT_NAN) return (op | QNAN);		/* nan? cvt to quiet */
 if (ftpb == UFT_INF) return op;				/* inf? unchanged */
 return 0;						/* denorm? 0 */
 }
+//\}
+
+/***************************************************************************//**
+ * \name IEEE_fp_operations
+ * IEEE floating point operations
+ ******************************************************************************/
+//\{
 
 /* IEEE floating compare
 
@@ -374,8 +397,13 @@ b.exp = ((b.exp - T_BIAS) >> 1) + T_BIAS;		/* result exponent */
 b.frac = fsqrt64 (b.frac, b.exp);			/* result fraction */
 return ieee_rpack (&b, ins, dp);				/* round and pack */
 }
-
-/* Support routines */
+//\}
+
+/***************************************************************************//**
+ * \name IEEE_fp_support
+ * IEEE floating point support functions
+ ******************************************************************************/
+//\{
 
 int CAlphaCPU::ieee_unpack (u64 op, UFP *r, u32 ins)
 {
@@ -558,3 +586,4 @@ if ((zsig & 0x1FF) <= 5) {				/* close to even? */
 zsig = (zsig << 1) | sticky;				/* left justify result */
 return zsig;
 }
+//\}
