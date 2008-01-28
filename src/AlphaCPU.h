@@ -28,7 +28,10 @@
  * \file
  * Contains the definitions for the emulated DecChip 21264CB EV68 Alpha processor.
  *
- * $Id: AlphaCPU.h,v 1.43 2008/01/27 17:38:57 iamcamiel Exp $
+ * $Id: AlphaCPU.h,v 1.44 2008/01/28 19:54:19 iamcamiel Exp $
+ *
+ * X-1.44       Camiel Vanderhoeven                             28-JAN-2008
+ *      Better floating-point exception handling.
  *
  * X-1.43       Camiel Vanderhoeven                             27-JAN-2008
  *      Comments.
@@ -313,12 +316,11 @@ private:
   u64 ieee_fadd (u64 s1, u64 s2, u32 ins, u32 dp, bool sub);
   u64 ieee_fmul (u64 s1, u64 s2, u32 ins, u32 dp);
   u64 ieee_fdiv (u64 s1, u64 s2, u32 ins, u32 dp);
-  u64 ieee_sqrt (u32 ins, u32 dp);
+  u64 ieee_sqrt (u64 op, u32 ins, u32 dp);
   int ieee_unpack (u64 op, UFP *r, u32 ins);
   void ieee_norm (UFP *r);
   u64 ieee_rpack (UFP *r, u32 ins, u32 dp);
   void ieee_trap (u64 trap, u32 instenb, u64 fpcrdsb, u32 ins);
-  u64 fsqrt64 (u64 asig, s32 exp);
   u64 vax_ldf (u32 op);
   u64 vax_ldg (u64 op);
   u32 vax_stf (u64 op);
@@ -329,13 +331,13 @@ private:
   void vax_norm (UFP *r);
   u64 vax_rpack (UFP *r, u32 ins, u32 dp);
   u64 vax_rpack_d (UFP *r, u32 ins);
-  s32 vax_fcmp (u64 s1, u64 s2, u32 ins);
+  int vax_fcmp (u64 s1, u64 s2, u32 ins);
   u64 vax_cvtif (u64 val, u32 ins, u32 dp);
   u64 vax_cvtfi (u64 op, u32 ins);
   u64 vax_fadd (u64 s1, u64 s2, u32 ins, u32 dp, bool sub);
   u64 vax_fmul (u64 s1, u64 s2, u32 ins, u32 dp);
   u64 vax_fdiv (u64 s1, u64 s2, u32 ins, u32 dp);
-  u64 vax_sqrt (u32 ins, u32 dp);
+  u64 vax_sqrt (u64 op, u32 ins, u32 dp);
 
   /* VMS PALcode call: */
   void vmspal_call_cflush();

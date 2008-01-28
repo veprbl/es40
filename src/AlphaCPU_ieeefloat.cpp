@@ -27,7 +27,10 @@
  * \file 
  * Contains IEEE floating point code for the Alpha CPU.
  *
- * $Id: AlphaCPU_ieeefloat.cpp,v 1.4 2008/01/27 17:38:57 iamcamiel Exp $
+ * $Id: AlphaCPU_ieeefloat.cpp,v 1.5 2008/01/28 19:54:20 iamcamiel Exp $
+ *
+ * X-1.5        Camiel Vanderhoeven                             28-JAN-2008
+ *      Better floating-point exception handling.
  *
  * X-1.4        Camiel Vanderhoeven                             27-JAN-2008
  *      Comments.
@@ -48,7 +51,6 @@
 #include "cpu_debug.h"
 
 /* Register format constants */
-/* IEEE */
 
 #define QNAN		X64(0008000000000000)		/* quiet NaN flag */
 #define CQNAN		X64(FFF8000000000000)		/* canonical quiet NaN */
@@ -62,7 +64,6 @@
 #define IMMAX		X64(8000000000000000)		/* minus MAX (int) */
 
 /* Unpacked rounding constants */
-/* IEEE */
 
 #define UF_SRND		X64(0000008000000000)		/* S normal round */
 #define UF_SINF		X64(000000FFFFFFFFFF)		/* S infinity round */
@@ -75,31 +76,45 @@
  ******************************************************************************/
 //\{
 
-/* IEEE S load */
-
+/**
+ * \brief Convert the IEEE S-floating memory format to the IEEE floating register
+ * format.
+ *
+ * Adjust the exponent base, and widen the exponent and fraction fields.
+ *
+ * \param op	32-bit IEEE S-floating value in memory format.
+ * \return		The value op converted to 64-bit IEEE floating in register format.
+ **/
 u64 CAlphaCPU::ieee_lds (u32 op)
 {
-u32 exp = S_GETEXP (op);				/* get exponent */
+  u32 exp = S_GETEXP (op);				/* get exponent */
 
-if (exp == S_NAN) exp = FPR_NAN;			/* inf or NaN? */
-else if (exp != 0) exp = exp + T_BIAS - S_BIAS;		/* zero or denorm? */
-return (((u64) (op & S_SIGN))? FPR_SIGN: 0) |	/* reg format */
-	(((u64) exp) << FPR_V_EXP) |
-	(((u64) (op & ~(S_SIGN|S_EXP))) << S_V_FRAC);
+  if (exp == S_NAN) exp = FPR_NAN;			/* inf or NaN? */
+  else if (exp != 0) exp = exp + T_BIAS - S_BIAS;		/* zero or denorm? */
+  return (((u64) (op & S_SIGN))? FPR_SIGN: 0) |	/* reg format */
+	  (((u64) exp) << FPR_V_EXP) |
+	  (((u64) (op & ~(S_SIGN|S_EXP))) << S_V_FRAC);
 }
 
-/* IEEE S store */
-
+/**
+ * \brief Convert the IEEE floating register format to the IEEE S-floating memory
+ * format.
+ *
+ * Adjust the exponent base, and make the exponent and fraction fields smaller.
+ *
+ * \param op  64-bit IEEE floating in register format.
+ * \return    The value op converted to 32-bit IEEE S-floating value in memory format.
+ **/
 u32 CAlphaCPU::ieee_sts (u64 op)
 {
-u32 sign = FPR_GETSIGN (op)? S_SIGN: 0;
-u32 exp = FPR_GETEXP(op);
-if (exp == FPR_NAN) exp = S_NAN;			/* inf or NaN? */
-else if (exp != 0) exp = exp + S_BIAS - T_BIAS;		/* zero or denorm? */
-exp = (exp << S_V_EXP) & S_EXP;
-u32 frac = ((u32) (op >> S_V_FRAC)) & X64_LONG;
+  u32 sign = FPR_GETSIGN (op)? S_SIGN: 0;
+  u32 exp = FPR_GETEXP(op);
+  if (exp == FPR_NAN) exp = S_NAN;			/* inf or NaN? */
+  else if (exp != 0) exp = exp + S_BIAS - T_BIAS;		/* zero or denorm? */
+  exp = (exp << S_V_EXP) & S_EXP;
+  u32 frac = ((u32) (op >> S_V_FRAC)) & X64_LONG;
 
-return sign | exp | (frac & ~(S_SIGN|S_EXP));
+  return sign | exp | (frac & ~(S_SIGN|S_EXP));
 }
 //\}
 
@@ -109,32 +124,52 @@ return sign | exp | (frac & ~(S_SIGN|S_EXP));
  ******************************************************************************/
 //\{
 
-/* IEEE S to T convert - LDS doesn't handle denorms correctly */
 
+/**
+ * \brief Convert an IEEE S-floating in register format to an IEEE T-floating
+ * in register format.
+ *
+ * LDS doesn't handle denorms correctly.
+ *
+ * \param op  64-bit IEEE S-floating value in register format.
+ * \param ins The instruction currently being executed. Used to properly
+ *            handle exceptions.
+ * \return	  64-bit IEEE T-floating in register format.
+ **/
 u64 CAlphaCPU::ieee_cvtst (u64 op, u32 ins)
 {
-UFP b;
-u32 ftpb;
+  UFP b;
+  u32 ftpb;
 
-ftpb = ieee_unpack (op, &b, ins);			/* unpack; norm dnorm */
-if (ftpb == UFT_DENORM) {				/* denormal? */
+  ftpb = ieee_unpack (op, &b, ins);			/* unpack; norm dnorm */
+  if (ftpb == UFT_DENORM)				/* denormal? */
+  {
+    // i'm not completely sure this is correct...
 	b.exp = b.exp + T_BIAS - S_BIAS;		/* change 0 exp to T */
-	return ieee_rpack (&b, ins, DT_T);  }		/* round, pack */
-else return op;						/* identity */
+	return ieee_rpack (&b, ins, DT_T);		/* round, pack */
+  }
+  else return op;						/* identity */
 }
 
-/* IEEE T to S convert */
-
+/**
+ * \brief Convert an IEEE T-floating in register format to an IEEE S-floating
+ * in register format.
+ *
+ * \param op  64-bit IEEE T-floating value in register format.
+ * \param ins The instruction currently being executed. Used to properly
+ *            handle exceptions and to determine the rounding mode.
+ * \return	  64-bit IEEE S-floating in register format.
+ **/
 u64 CAlphaCPU::ieee_cvtts (u64 op, u32 ins)
 {
-UFP b;
-u32 ftpb;
+  UFP b;
+  u32 ftpb;
 
-ftpb = ieee_unpack (op, &b, ins);			/* unpack */
-if (Q_FINITE (ftpb)) return ieee_rpack (&b, ins, DT_S);	/* finite? round, pack */
-if (ftpb == UFT_NAN) return (op | QNAN);		/* nan? cvt to quiet */
-if (ftpb == UFT_INF) return op;				/* inf? unchanged */
-return 0;						/* denorm? 0 */
+  ftpb = ieee_unpack (op, &b, ins);			/* unpack */
+  if (Q_FINITE (ftpb)) return ieee_rpack (&b, ins, DT_S);	/* finite? round, pack */
+  if (ftpb == UFT_NAN) return (op | QNAN);		/* nan? cvt to quiet */
+  if (ftpb == UFT_INF) return op;				/* inf? unchanged */
+  return 0;						/* denorm? 0 */
 }
 //\}
 
@@ -144,258 +179,342 @@ return 0;						/* denorm? 0 */
  ******************************************************************************/
 //\{
 
-/* IEEE floating compare
-
-   - Take care of NaNs
-   - Force -0 to +0
-   - Then normal compare will work (even on inf and denorms) */
-
+/**
+ * \brief Compare 2 IEEE floating-point values.
+ *
+ * The following steps are taken:
+ *   - Take care of NaNs
+ *   - Force -0 to +0
+ *   - Then normal compare will work (even on inf and denorms)
+ *   .
+ *
+ * \param s1  First 64-bit IEEE floating in register format to be compared.
+ * \param s1  Second 64-bit IEEE floating in register format to be compared.
+ * \param ins The instruction currently being executed. Used to properly
+ *            handle exceptions.
+ * \return    0 if s1==s2, 1 if s1>s2, -1 if s1<s2.
+ **/
 s32 CAlphaCPU::ieee_fcmp (u64 s1, u64 s2, u32 ins, u32 trap_nan)
 {
-UFP a, b;
-u32 ftpa, ftpb;
+  UFP a, b;
+  u32 ftpa, ftpb;
 
-ftpa = ieee_unpack (s1, &a, ins);
-ftpb = ieee_unpack (s2, &b, ins);
-if ((ftpa == UFT_NAN) || (ftpb == UFT_NAN)) {		/* NaN involved? */
-	if (trap_nan) ieee_trap (TRAP_INV, 1, FPCR_INVD, ins);
-	return +1;  }					/* force failure */
-if (ftpa == UFT_ZERO) a.sign = 0;			/* only +0 allowed */
-if (ftpb == UFT_ZERO) b.sign = 0;
-if (a.sign != b.sign) return (a.sign? -1: +1);		/* unequal signs? */
-if (a.exp != b.exp) return ((a.sign ^ (a.exp < b.exp))? -1: +1);
-if (a.frac != b.frac) return ((a.sign ^ (a.frac < b.frac))? -1: +1);
-return 0;
+  ftpa = ieee_unpack (s1, &a, ins);
+  ftpb = ieee_unpack (s2, &b, ins);
+  if ((ftpa == UFT_NAN) || (ftpb == UFT_NAN)) {		/* NaN involved? */
+	  if (trap_nan) ieee_trap (TRAP_INV, 1, FPCR_INVD, ins);
+	  return +1;  }					/* force failure */
+  if (ftpa == UFT_ZERO) a.sign = 0;			/* only +0 allowed */
+  if (ftpb == UFT_ZERO) b.sign = 0;
+  if (a.sign != b.sign) return (a.sign? -1: +1);		/* unequal signs? */
+  if (a.exp != b.exp) return ((a.sign ^ (a.exp < b.exp))? -1: +1);
+  if (a.frac != b.frac) return ((a.sign ^ (a.frac < b.frac))? -1: +1);
+  return 0;
 }
 
-/* IEEE integer to floating convert */
-
+/**
+ * \brief Convert 64-bit signed integer to IEEE floating-point value.
+ *
+ * \param val 64-bit signed integer to be converted.
+ * \param ins The instruction currently being executed. Used to properly
+ *            handle exceptions and to determine the rounding mode.
+ * \param dp  DT_S for S-floating or DT_T for T-floating.  
+ * \return    64-bit IEEE floating in register format.
+ **/
 u64 CAlphaCPU::ieee_cvtif (u64 val, u32 ins, u32 dp)
 {
-UFP a;
+  UFP a;
 
-if (val == 0) return 0;					/* 0? return +0 */
-if (val < 0) {						/* < 0? */
-	a.sign = 1;					/* set sign */
-	val = NEG_Q (val);  }				/* |val| */
-else a.sign = 0;
-a.exp = 63 + T_BIAS;					/* set exp */
-a.frac = val;						/* set frac */
-ieee_norm (&a);						/* normalize */
-return ieee_rpack (&a, ins, dp);				/* round and pack */
+  if (val == 0) return 0;					/* 0? return +0 */
+  if (val < 0) {						/* < 0? */
+	  a.sign = 1;					/* set sign */
+	  val = NEG_Q (val);  }				/* |val| */
+  else a.sign = 0;
+  a.exp = 63 + T_BIAS;					/* set exp */
+  a.frac = val;						/* set frac */
+  ieee_norm (&a);						/* normalize */
+  return ieee_rpack (&a, ins, dp);				/* round and pack */
 }
 
-/* IEEE floating to integer convert - rounding code from SoftFloat
-   The Alpha architecture specifies return of the low order bits of
-   the true result, whereas the IEEE standard specifies the return
-   of the maximum plus or minus value */
-
+/**
+ * \brief Convert IEEE floating-point value to 64-bit signed integer.
+ *
+ * Rounding code from SoftFloat.
+ *
+ * The Alpha architecture specifies return of the low order bits of
+ * the true result, whereas the IEEE standard specifies the return
+ * of the maximum plus or minus value
+ *
+ * \param op  64-bit IEEE floating in register format to be converted.
+ * \param ins The instruction currently being executed. Used to properly
+ *            handle exceptions.
+ * \return    64-bit signed integer.
+ **/
 u64 CAlphaCPU::ieee_cvtfi (u64 op, u32 ins)
 {
-UFP a;
-u64 sticky;
-u32 rndm, ftpa, ovf = 0;
-s32 ubexp;
+  UFP a;
+  u64 sticky;
+  u32 rndm, ftpa, ovf = 0;
+  s32 ubexp;
 
-ftpa = ieee_unpack (op, &a, ins);			/* unpack */
-if (!Q_FINITE (ftpa)) {					/* inf, NaN, dnorm? */
-	ieee_trap (TRAP_INV, 1, FPCR_INVD, ins);		/* inv operation */
-	return 0;  }
-if (ftpa == UFT_ZERO) return 0;				/* zero? */
-ubexp = a.exp - T_BIAS;					/* unbiased exp */
-if (ubexp < 0) {					/* < 1? */
-	if (ubexp == -1) sticky = a.frac;		/* [.5,1)? */
+  ftpa = ieee_unpack (op, &a, ins);			/* unpack */
+  if (!Q_FINITE (ftpa))					/* inf, NaN, dnorm? */
+  {
+    ieee_trap (TRAP_INV, 1, FPCR_INVD, ins);		/* inv operation */
+	return 0;  
+  }
+  if (ftpa == UFT_ZERO) 
+    return 0;				/* zero? */
+  ubexp = a.exp - T_BIAS;					/* unbiased exp */
+  if (ubexp < 0) 					/* < 1? */
+  {
+	if (ubexp == -1) 
+      sticky = a.frac;		/* [.5,1)? */
 	else sticky = 1;				/* (0,.5) */
-	a.frac = 0;  }
-else if (ubexp <= UF_V_NM) {				/* in range? */
-	a.frac = a.frac >> (UF_V_NM - ubexp);		/* result */
-	sticky = (a.frac << (64 - (UF_V_NM - ubexp))) & X64_QUAD;  }
-else {	if ((ubexp - UF_V_NM) > 63) a.frac = 0;		/* out of range */
-	else a.frac = (a.frac << (ubexp - UF_V_NM)) & X64_QUAD;
+	a.frac = 0;  
+  }
+  else if (ubexp <= UF_V_NM)				/* in range? */
+  {
+    sticky = (a.frac << (64 - (UF_V_NM - ubexp))) & X64_QUAD;  
+    a.frac = a.frac >> (UF_V_NM - ubexp);		/* result */
+  }
+  else 
+  {	
+    if ((ubexp - UF_V_NM) > 63) 
+      a.frac = 0;		/* out of range */
+	else 
+      a.frac = (a.frac << (ubexp - UF_V_NM)) & X64_QUAD;
 	ovf = 1;					/* overflow */
-	sticky = 0;  }					/* no rounding */
-rndm = I_GETFRND (ins);					/* get round mode */
-if (((rndm == I_FRND_N) && (sticky & Q_SIGN)) ||	/* nearest? */
-    ((rndm == I_FRND_P) && !a.sign && sticky) ||	/* +inf and +? */
-    ((rndm == I_FRND_M) && a.sign && sticky)) {		/* -inf and -? */
-	a.frac = (a.frac + 1) & X64_QUAD;
-	if (a.frac == 0) ovf = 1;			/* overflow? */
+	sticky = 0;  					/* no rounding */
+  }
+  rndm = I_GETFRND (ins);					/* get round mode */
+  if (((rndm == I_FRND_N) && (sticky & Q_SIGN)) ||	/* nearest? */
+      ((rndm == I_FRND_P) && !a.sign && sticky) ||	/* +inf and +? */
+      ((rndm == I_FRND_M) && a.sign && sticky)) 		/* -inf and -? */
+  {
+    a.frac = (a.frac + 1) & X64_QUAD;
+    if (a.frac == 0) 
+      ovf = 1;			/* overflow? */
 	if ((rndm == I_FRND_N) && (sticky == Q_SIGN))	/* round nearest hack */
-	    a.frac = a.frac & ~1;  }
-if (a.frac > (a.sign? IMMAX: IPMAX)) ovf = 1;		/* overflow? */
-ieee_trap (TRAP_IOV, ins & I_FTRP_V, 0, 0);		/* overflow trap */
-if (ovf || sticky)					/* ovflo or round? */
+	  a.frac = a.frac & ~1;  
+  }
+  if (a.frac > (a.sign? IMMAX: IPMAX)) 
+    ovf = 1;		/* overflow? */
+
+  if (ovf)
+    ieee_trap (TRAP_IOV, ins & I_FTRP_V, 0, 0);		/* overflow trap */
+  if (ovf || sticky)					/* ovflo or round? */
 	ieee_trap (TRAP_INE, Q_SUI (ins), FPCR_INED, ins);
-return (a.sign? NEG_Q (a.frac): a.frac);
+  return (a.sign? NEG_Q (a.frac): a.frac);
 }
-
-/* IEEE floating add
 
-   - Take care of NaNs and infinites
-   - Test for zero (fast exit)
-   - Sticky logic for floating add
-	> If result normalized, sticky in right place
-	> If result carries out, renormalize, retain sticky
-   - Sticky logic for floating subtract
-	> If shift < guard, no sticky bits; 64b result is exact
-	  If shift <= 1, result may require extensive normalization,
-	  but there are no sticky bits to worry about
-	> If shift >= guard, there is a sticky bit,
-	  but normalization is at most 1 place, sticky bit is retained
-	  for rounding purposes (but not in low order bit) */
-
+/**
+ * \brief Add or subtract 2 IEEE floating-point values.
+ *
+ * The following steps are taken:
+ *   - Take care of NaNs and infinites
+ *   - Test for zero (fast exit)
+ *   - Sticky logic for floating add
+ *	    - If result normalized, sticky in right place
+ *	    - If result carries out, renormalize, retain sticky
+ *      .
+ *   - Sticky logic for floating subtract
+ *	    - If shift < guard, no sticky bits; 64b result is exact
+ *	    - If shift <= 1, result may require extensive normalization,
+ *	      but there are no sticky bits to worry about
+ *	    - If shift >= guard, there is a sticky bit,
+ *	      but normalization is at most 1 place, sticky bit is retained
+ *	      for rounding purposes (but not in low order bit)
+ *      .
+ *   .
+ *
+ * \param s1  Augend or minuend in 64-bit IEEE floating register format.
+ * \param s2  Addend or subtrahend in 64-bit IEEE floating register format.
+ * \param ins The instruction currently being executed. Used to properly
+ *            handle exceptions.
+ * \param dp  DT_S for S-floating or DT_T for T-floating.  
+ * \param sub subtract if true, add if false.
+ * \return    64-bit IEEE floating in register format.
+ **/
 u64 CAlphaCPU::ieee_fadd (u64 s1, u64 s2, u32 ins, u32 dp, bool sub)
 {
-UFP a, b, t;
-u32 ftpa, ftpb;
-u32 sticky;
-s32 ediff;
+  UFP a, b, t;
+  u32 ftpa, ftpb;
+  u32 sticky;
+  s32 ediff;
 
-ftpa = ieee_unpack (s1, &a, ins);			/* unpack operands */
-ftpb = ieee_unpack (s2, &b, ins);
-if (ftpb == UFT_NAN) return s2 | QNAN;			/* B = NaN? quiet B */
-if (ftpa == UFT_NAN) return s1 | QNAN;			/* A = NaN? quiet A */
-if (sub) b.sign = b.sign ^ 1;				/* sign of B */
-if (ftpb == UFT_INF) {					/* B = inf? */
-	if ((ftpa == UFT_INF) && (a.sign ^ b.sign)) {	/* eff sub of inf? */
-	    ieee_trap (TRAP_INV, 1, FPCR_INVD, ins);	/* inv op trap */
-	    return CQNAN;  }				/* canonical NaN */
-	return (sub? (s2 ^ FPR_SIGN): s2);  }		/* return B */
-if (ftpa == UFT_INF) return s1;				/* A = inf? ret A */
-if (ftpa == UFT_ZERO) a = b;				/* s1 = 0? */
-else if (ftpb != UFT_ZERO) {				/* s2 != 0? */
-	if ((a.exp < b.exp) ||				/* s1 < s2? swap */
-	   ((a.exp == b.exp) && (a.frac < b.frac))) {
-	    t = a;
-	    a = b;
-	    b = t;  }
-	ediff = a.exp - b.exp;				/* exp diff */
-	if (ediff > 63) b.frac = 1;			/* >63? retain sticky */
-	else if (ediff) {				/* [1,63]? shift */
-	    sticky = ((b.frac << (64 - ediff)) & X64_QUAD)? 1: 0;	/* lost bits */
-	    b.frac = ((b.frac >> ediff) & X64_QUAD) | sticky;  }
-	if (a.sign ^ b.sign) {				/* eff sub? */
-	    a.frac = (a.frac - b.frac) & X64_QUAD;		/* subtract fractions */
-	    ieee_norm (&a);  }				/* normalize */
-	else {						/* eff add */
-	    a.frac = (a.frac + b.frac) & X64_QUAD;		/* add frac */
-	    if (a.frac < b.frac) {			/* chk for carry */
-		a.frac = UF_NM | (a.frac >> 1) |	/* shift in carry */
-		    (a.frac & 1);			/* retain sticky */
-		a.exp = a.exp + 1;  }  }		/* skip norm */
-	}						/* end else if */
-return ieee_rpack (&a, ins, dp);				/* round and pack */
+  ftpa = ieee_unpack (s1, &a, ins);			/* unpack operands */
+  ftpb = ieee_unpack (s2, &b, ins);
+  if (ftpb == UFT_NAN) return s2 | QNAN;			/* B = NaN? quiet B */
+  if (ftpa == UFT_NAN) return s1 | QNAN;			/* A = NaN? quiet A */
+  if (sub) b.sign = b.sign ^ 1;				/* sign of B */
+  if (ftpb == UFT_INF) {					/* B = inf? */
+	  if ((ftpa == UFT_INF) && (a.sign ^ b.sign)) {	/* eff sub of inf? */
+	      ieee_trap (TRAP_INV, 1, FPCR_INVD, ins);	/* inv op trap */
+	      return CQNAN;  }				/* canonical NaN */
+	  return (sub? (s2 ^ FPR_SIGN): s2);  }		/* return B */
+  if (ftpa == UFT_INF) return s1;				/* A = inf? ret A */
+  if (ftpa == UFT_ZERO) a = b;				/* s1 = 0? */
+  else if (ftpb != UFT_ZERO) {				/* s2 != 0? */
+	  if ((a.exp < b.exp) ||				/* s1 < s2? swap */
+	     ((a.exp == b.exp) && (a.frac < b.frac))) {
+	      t = a;
+	      a = b;
+	      b = t;  }
+	  ediff = a.exp - b.exp;				/* exp diff */
+	  if (ediff > 63) b.frac = 1;			/* >63? retain sticky */
+	  else if (ediff) {				/* [1,63]? shift */
+	      sticky = ((b.frac << (64 - ediff)) & X64_QUAD)? 1: 0;	/* lost bits */
+	      b.frac = ((b.frac >> ediff) & X64_QUAD) | sticky;  }
+	  if (a.sign ^ b.sign) {				/* eff sub? */
+	      a.frac = (a.frac - b.frac) & X64_QUAD;		/* subtract fractions */
+	      ieee_norm (&a);  }				/* normalize */
+	  else {						/* eff add */
+	      a.frac = (a.frac + b.frac) & X64_QUAD;		/* add frac */
+	      if (a.frac < b.frac) {			/* chk for carry */
+		  a.frac = UF_NM | (a.frac >> 1) |	/* shift in carry */
+		      (a.frac & 1);			/* retain sticky */
+		  a.exp = a.exp + 1;  }  }		/* skip norm */
+	  }						/* end else if */
+  return ieee_rpack (&a, ins, dp);				/* round and pack */
 }
 
-/* IEEE floating multiply 
-
-   - Take care of NaNs and infinites
-   - Test for zero operands (fast exit)
-   - 64b x 64b fraction multiply, yielding 128b result
-   - Normalize (at most 1 bit)
-   - Insert "sticky" bit in low order fraction, for rounding
-   
-   Because IEEE fractions have a range of [1,2), the result can have a range
-   of [1,4).  Results in the range of [1,2) appear to be denormalized by one
-   place, when in fact they are correct.  Results in the range of [2,4) appear
-   to be in correct, when in fact they are 2X larger.  This problem is taken
-   care of in the result exponent calculation. */
-
+/**
+ * \brief Multiply 2 IEEE floating-point values.
+ *
+ * The following steps are taken:
+ *   - Take care of NaNs and infinites
+ *   - Test for zero operands (fast exit)
+ *   - 64b x 64b fraction multiply, yielding 128b result
+ *   - Normalize (at most 1 bit)
+ *   - Insert "sticky" bit in low order fraction, for rounding
+ *   .
+ *   
+ * Because IEEE fractions have a range of [1,2), the result can have a range
+ * of [1,4).  Results in the range of [1,2) appear to be denormalized by one
+ * place, when in fact they are correct.  Results in the range of [2,4) appear
+ * to be in correct, when in fact they are 2X larger.  This problem is taken
+ * care of in the result exponent calculation.
+ *
+ * \param s1  Multiplicand in 64-bit IEEE floating register format.
+ * \param s2  Multiplier in 64-bit IEEE floating register format.
+ * \param ins The instruction currently being executed. Used to properly
+ *            handle exceptions.
+ * \param dp  DT_S for S-floating or DT_T for T-floating.  
+ * \return    64-bit IEEE floating in register format.
+ **/
 u64 CAlphaCPU::ieee_fmul (u64 s1, u64 s2, u32 ins, u32 dp)
 {
-UFP a, b;
-u32 ftpa, ftpb;
-u64 resl;
+  UFP a, b;
+  u32 ftpa, ftpb;
+  u64 resl;
 
-ftpa = ieee_unpack (s1, &a, ins);			/* unpack operands */
-ftpb = ieee_unpack (s2, &b, ins);
-if (ftpb == UFT_NAN) return s2 | QNAN;			/* B = NaN? quiet B */
-if (ftpa == UFT_NAN) return s1 | QNAN;			/* A = NaN? quiet A */
-a.sign = a.sign ^ b.sign;				/* sign of result */
-if ((ftpa == UFT_ZERO) || (ftpb == UFT_ZERO)) {		/* zero operand? */
-	if ((ftpa == UFT_INF) || (ftpb == UFT_INF)) {	/* 0 * inf? */
-	    ieee_trap (TRAP_INV, 1, FPCR_INVD, ins);	/* inv op trap */
-	    return CQNAN;  }				/* canonical NaN */
-	return (a.sign? FMZERO: FPZERO);  }		/* return signed 0 */
-if (ftpb == UFT_INF) return (a.sign? FMINF: FPINF);	/* B = inf? */
-if (ftpa == UFT_INF) return (a.sign? FMINF: FPINF);	/* A = inf? */
-a.exp = a.exp + b.exp + 1 - T_BIAS;			/* add exponents */
-resl = uemul64 (a.frac, b.frac, &a.frac);		/* multiply fracs */
-ieee_norm (&a);						/* normalize */
-a.frac = a.frac | (resl? 1: 0);				/* sticky bit */
-return ieee_rpack (&a, ins, dp);				/* round and pack */
+  ftpa = ieee_unpack (s1, &a, ins);			/* unpack operands */
+  ftpb = ieee_unpack (s2, &b, ins);
+  if (ftpb == UFT_NAN) return s2 | QNAN;			/* B = NaN? quiet B */
+  if (ftpa == UFT_NAN) return s1 | QNAN;			/* A = NaN? quiet A */
+  a.sign = a.sign ^ b.sign;				/* sign of result */
+  if ((ftpa == UFT_ZERO) || (ftpb == UFT_ZERO)) {		/* zero operand? */
+	  if ((ftpa == UFT_INF) || (ftpb == UFT_INF)) {	/* 0 * inf? */
+	      ieee_trap (TRAP_INV, 1, FPCR_INVD, ins);	/* inv op trap */
+	      return CQNAN;  }				/* canonical NaN */
+	  return (a.sign? FMZERO: FPZERO);  }		/* return signed 0 */
+  if (ftpb == UFT_INF) return (a.sign? FMINF: FPINF);	/* B = inf? */
+  if (ftpa == UFT_INF) return (a.sign? FMINF: FPINF);	/* A = inf? */
+  a.exp = a.exp + b.exp + 1 - T_BIAS;			/* add exponents */
+  resl = uemul64 (a.frac, b.frac, &a.frac);		/* multiply fracs */
+  ieee_norm (&a);						/* normalize */
+  a.frac = a.frac | (resl? 1: 0);				/* sticky bit */
+  return ieee_rpack (&a, ins, dp);				/* round and pack */
 }
 
-/* Floating divide
-
-   - Take care of NaNs and infinites
-   - Check for zero cases
-   - Divide fractions (55b to develop a rounding bit)
-   - Set sticky bit if remainder non-zero
-   
-   Because IEEE fractions have a range of [1,2), the result can have a range
-   of (.5,2).  Results in the range of [1,2) are correct.  Results in the
-   range of (.5,1) need to be normalized by one place. */
-
+/**
+ * \brief Divide 2 IEEE floating-point values.
+ *
+ * The following steps are taken:
+ *   - Take care of NaNs and infinites
+ *   - Check for zero cases
+ *   - Divide fractions (55b to develop a rounding bit)
+ *   - Set sticky bit if remainder non-zero
+ *   .
+ *
+ * Because IEEE fractions have a range of [1,2), the result can have a range
+ * of (.5,2).  Results in the range of [1,2) are correct.  Results in the
+ * range of (.5,1) need to be normalized by one place.
+ *
+ * \param s1  Dividend in 64-bit IEEE floating register format.
+ * \param s2  Divisor in 64-bit IEEE floating register format.
+ * \param ins The instruction currently being executed. Used to properly
+ *            handle exceptions.
+ * \param dp  DT_S for S-floating or DT_T for T-floating.  
+ * \return    64-bit IEEE floating in register format.
+ **/
 u64 CAlphaCPU::ieee_fdiv (u64 s1, u64 s2, u32 ins, u32 dp)
 {
-UFP a, b;
-u32 ftpa, ftpb, sticky;
+  UFP a, b;
+  u32 ftpa, ftpb, sticky;
 
-ftpa = ieee_unpack (s1, &a, ins);
-ftpb = ieee_unpack (s2, &b, ins);
-if (ftpb == UFT_NAN) return s2 | QNAN;			/* B = NaN? quiet B */
-if (ftpa == UFT_NAN) return s1 | QNAN;			/* A = NaN? quiet A */
-a.sign = a.sign ^ b.sign;				/* sign of result */
-if (ftpb == UFT_INF) {					/* B = inf? */
-	if (ftpa == UFT_INF) {				/* inf/inf? */
-	    ieee_trap (TRAP_INV, 1, FPCR_INVD, ins);	/* inv op trap */
-	    return CQNAN;  }				/* canonical NaN */
-	return (a.sign? FMZERO: FPZERO);  }		/* !inf/inf, ret 0 */
-if (ftpa == UFT_INF) {					/* A = inf? */
-	if (ftpb == UFT_ZERO)				/* inf/0? */
-	    ieee_trap (TRAP_DZE, 1, FPCR_DZED, ins);	/* div by 0 trap */
-	return (a.sign? FMINF: FPINF);  }		/* return inf */
-if (ftpb == UFT_ZERO) {					/* B = 0? */
-	if (ftpa == UFT_ZERO) {				/* 0/0? */
-	    ieee_trap (TRAP_INV, 1, FPCR_INVD, ins);	/* inv op trap */
-	    return CQNAN;  }				/* canonical NaN */
-	ieee_trap (TRAP_DZE, 1, FPCR_DZED, ins);		/* div by 0 trap */
-	return (a.sign? FMINF: FPINF);  }		/* return inf */
-if (ftpa == UFT_ZERO) return (a.sign? FMZERO: FPZERO);	/* A = 0? */
-a.exp = a.exp - b.exp + T_BIAS;				/* unbiased exp */
-a.frac = a.frac >> 1;					/* allow 1 bit left */
-b.frac = b.frac >> 1;
-a.frac = ufdiv64 (a.frac, b.frac, 55, &sticky);		/* divide */
-ieee_norm (&a);						/* normalize */
-a.frac = a.frac | sticky;				/* insert sticky */
-return ieee_rpack (&a, ins, dp);				/* round and pack */
+  ftpa = ieee_unpack (s1, &a, ins);
+  ftpb = ieee_unpack (s2, &b, ins);
+  if (ftpb == UFT_NAN) return s2 | QNAN;			/* B = NaN? quiet B */
+  if (ftpa == UFT_NAN) return s1 | QNAN;			/* A = NaN? quiet A */
+  a.sign = a.sign ^ b.sign;				/* sign of result */
+  if (ftpb == UFT_INF) {					/* B = inf? */
+	  if (ftpa == UFT_INF) {				/* inf/inf? */
+	      ieee_trap (TRAP_INV, 1, FPCR_INVD, ins);	/* inv op trap */
+	      return CQNAN;  }				/* canonical NaN */
+	  return (a.sign? FMZERO: FPZERO);  }		/* !inf/inf, ret 0 */
+  if (ftpa == UFT_INF) {					/* A = inf? */
+	  if (ftpb == UFT_ZERO)				/* inf/0? */
+	      ieee_trap (TRAP_DZE, 1, FPCR_DZED, ins);	/* div by 0 trap */
+	  return (a.sign? FMINF: FPINF);  }		/* return inf */
+  if (ftpb == UFT_ZERO) {					/* B = 0? */
+	  if (ftpa == UFT_ZERO) {				/* 0/0? */
+	      ieee_trap (TRAP_INV, 1, FPCR_INVD, ins);	/* inv op trap */
+	      return CQNAN;  }				/* canonical NaN */
+	  ieee_trap (TRAP_DZE, 1, FPCR_DZED, ins);		/* div by 0 trap */
+	  return (a.sign? FMINF: FPINF);  }		/* return inf */
+  if (ftpa == UFT_ZERO) return (a.sign? FMZERO: FPZERO);	/* A = 0? */
+  a.exp = a.exp - b.exp + T_BIAS;				/* unbiased exp */
+  a.frac = a.frac >> 1;					/* allow 1 bit left */
+  b.frac = b.frac >> 1;
+  a.frac = ufdiv64 (a.frac, b.frac, 55, &sticky);		/* divide */
+  ieee_norm (&a);						/* normalize */
+  a.frac = a.frac | sticky;				/* insert sticky */
+  return ieee_rpack (&a, ins, dp);				/* round and pack */
 }
 
-/* IEEE floating square root
-
-   - Take care of NaNs, +infinite, zero
-   - Check for negative operand
-   - Compute result exponent
-   - Compute sqrt of fraction */
-
-u64 CAlphaCPU::ieee_sqrt (u32 ins, u32 dp)
+/**
+ * \brief Determine principal square root of a IEEE floating-point value.
+ *
+ * The following steps are taken:
+ *   - Take care of NaNs, +infinite, zero
+ *   - Check for negative operand
+ *   - Compute result exponent
+ *   - Compute sqrt of fraction 
+ *   .
+ *
+ * \param op  64-bit IEEE floating in register format.
+ * \param ins The instruction currently being executed. Used to properly
+ *            handle exceptions.
+ * \param dp  DT_S for S-floating or DT_T for T-floating.  
+ * \return    64-bit IEEE floating in register format.
+ **/
+u64 CAlphaCPU::ieee_sqrt (u64 op, u32 ins, u32 dp)
 {
-u64 op;
-u32 ftpb;
-UFP b;
+  u32 ftpb;
+  UFP b;
 
-op = state.f[I_GETRB (ins)];					/* get F[rb] */
-ftpb = ieee_unpack (op, &b, ins);			/* unpack */
-if (ftpb == UFT_NAN) return op | QNAN;			/* NaN? */
-if ((ftpb == UFT_ZERO) ||				/* zero? */
-    ((ftpb == UFT_INF) && !b.sign)) return op;		/* +infinity? */
-if (b.sign) {						/* minus? */
-	ieee_trap (TRAP_INV, 1, FPCR_INVD, ins);		/* signal inv op */
-	return CQNAN;  }
-b.exp = ((b.exp - T_BIAS) >> 1) + T_BIAS;		/* result exponent */
-b.frac = fsqrt64 (b.frac, b.exp);			/* result fraction */
-return ieee_rpack (&b, ins, dp);				/* round and pack */
+  ftpb = ieee_unpack (op, &b, ins);			/* unpack */
+  if (ftpb == UFT_NAN) return op | QNAN;			/* NaN? */
+  if ((ftpb == UFT_ZERO) ||				/* zero? */
+      ((ftpb == UFT_INF) && !b.sign)) return op;		/* +infinity? */
+  if (b.sign) {						/* minus? */
+	  ieee_trap (TRAP_INV, 1, FPCR_INVD, ins);		/* signal inv op */
+	  return CQNAN;  }
+  b.exp = ((b.exp - T_BIAS) >> 1) + T_BIAS;		/* result exponent */
+  b.frac = fsqrt64 (b.frac, b.exp);			/* result fraction */
+  return ieee_rpack (&b, ins, dp);				/* round and pack */
 }
 //\}
 
@@ -405,114 +524,166 @@ return ieee_rpack (&b, ins, dp);				/* round and pack */
  ******************************************************************************/
 //\{
 
+/**
+ * \brief Unpack IEEE floating-point value
+ *
+ * Converts a IEEE floating-point value to it's sign, exponent and fraction
+ * components.
+ *
+ * \param op  64-bit IEEE floating.
+ * \param r   Pointer to the unpacked-floating-point UFP structure
+ *            where the results are to be returned.
+ * \param ins The instruction currently being executed. Used to properly
+ *            handle exceptions.
+ * \return    Returns the type of value (UFT_ZERO, UFT_FIN, etc.). 
+ **/
 int CAlphaCPU::ieee_unpack (u64 op, UFP *r, u32 ins)
 {
-r->sign = FPR_GETSIGN (op);				/* get sign */
-r->exp = FPR_GETEXP (op);				/* get exponent */
-r->frac = FPR_GETFRAC (op);				/* get fraction */
-if (r->exp == 0) {					/* exponent = 0? */
-	if (r->frac == 0) return UFT_ZERO;		/* frac = 0? then true 0 */
-	if (state.fpcr & FPCR_DNZ) {				/* denorms to 0? */
-	    r->frac = 0;				/* clear fraction */
-	    return UFT_ZERO;  }
+  r->sign = FPR_GETSIGN (op);				/* get sign */
+  r->exp = FPR_GETEXP (op);				/* get exponent */
+  r->frac = FPR_GETFRAC (op);				/* get fraction */
+  if (r->exp == 0)					/* exponent = 0? */
+  {
+    if (r->frac == 0) return UFT_ZERO;		/* frac = 0? then true 0 */
+    if (state.fpcr & FPCR_DNZ) 				/* denorms to 0? */
+    {
+	  r->frac = 0;				/* clear fraction */
+	  return UFT_ZERO;  
+    }
 	r->frac = r->frac << FPR_GUARD;			/* guard fraction */
 	ieee_norm (r);					/* normalize dnorm */
 	ieee_trap (TRAP_INV, 1, FPCR_INVD, ins);		/* signal inv op */
-    return UFT_DENORM;  }
-if (r->exp == FPR_NAN) {				/* exponent = max? */
-  if (r->frac == 0) return UFT_INF;		/* frac = 0? then inf */
+    return UFT_DENORM;  
+  }
+  if (r->exp == FPR_NAN) 				/* exponent = max? */
+  {
+    if (r->frac == 0) 
+      return UFT_INF;		/* frac = 0? then inf */
 	if (!(r->frac & QNAN))				/* signaling NaN? */
-	    ieee_trap (TRAP_INV, 1, FPCR_INVD, ins);	/* signal inv op */
-    return UFT_NAN;  }
-r->frac = (r->frac | FPR_HB) << FPR_GUARD;		/* ins hidden bit, guard */
-return UFT_FIN;						/* finite */
+	  ieee_trap (TRAP_INV, 1, FPCR_INVD, ins);	/* signal inv op */
+    return UFT_NAN;  
+  }
+  r->frac = (r->frac | FPR_HB) << FPR_GUARD;		/* ins hidden bit, guard */
+  return UFT_FIN;						/* finite */
 }
 
-/* Normalize - input must be zero, finite, or denorm */
-
+/**
+ * \brief Normalize IEEE floating-point value
+ *
+ * Normalize exponent and fraction components. Input must be zero, finite, or denorm.
+ *
+ * \param r   Pointer to the unpacked-floating-point UFP structure
+ *            containing the value to be normalized, and where the
+ *            results are to be returned.
+ **/
 void CAlphaCPU::ieee_norm (UFP *r)
 {
-s32 i;
-static u64 normmask[5] = {
- 0xc000000000000000, 0xf000000000000000, 0xff00000000000000,
- 0xffff000000000000, 0xffffffff00000000 };
-static s32 normtab[6] = { 1, 2, 4, 8, 16, 32};
+  s32 i;
+  static u64 normmask[5] = {
+   X64(c000000000000000), X64(f000000000000000), X64(ff00000000000000),
+   X64(ffff000000000000), X64(ffffffff00000000) };
+  static s32 normtab[6] = { 1, 2, 4, 8, 16, 32};
 
-r->frac = r->frac & X64_QUAD;
-if (r->frac == 0) {					/* if fraction = 0 */
-	r->exp = 0;					/* result is signed 0 */
-	return;  }
-while ((r->frac & UF_NM) == 0) {			/* normalized? */
-	for (i = 0; i < 5; i++) {			/* find first 1 */
-	    if (r->frac & normmask[i]) break;  }
-	r->frac = r->frac << normtab[i];		/* shift frac */
-	r->exp = r->exp - normtab[i];  }		/* decr exp */
-return;
+  r->frac = r->frac & X64_QUAD;
+  if (r->frac == 0) {					/* if fraction = 0 */
+	  r->exp = 0;					/* result is signed 0 */
+	  return;  }
+  while ((r->frac & UF_NM) == 0) {			/* normalized? */
+	  for (i = 0; i < 5; i++) {			/* find first 1 */
+	      if (r->frac & normmask[i]) break;  }
+	  r->frac = r->frac << normtab[i];		/* shift frac */
+	  r->exp = r->exp - normtab[i];  }		/* decr exp */
+  return;
 }
 
-/* Round and pack
-
-   Much of the treachery of the IEEE standard is buried here
-   - Rounding modes (chopped, +infinity, nearest, -infinity)
-   - Inexact (set if there are any rounding bits, regardless of rounding)
-   - Overflow (result is infinite if rounded, max if not)
-   - Underflow (no denorms!)
-   
-   Underflow handling is particularly complicated
-   - Result is always 0
-   - UNF and INE are always set in FPCR
-   - If /U is set,
-     o If /S is clear, trap
-     o If /S is set, UNFD is set, but UNFZ is clear, ignore UNFD and
-       trap, because the hardware cannot produce denormals
-     o If /S is set, UNFD is set, and UNFZ is set, do not trap
-   - If /SUI is set, and INED is clear, trap */
-
+/**
+ * \brief Round and pack IEEE floating-point value
+ *
+ * Converts sign, exponent and fraction components to a register-format IEEE
+ * floating point value.
+ *
+ * Much of the treachery of the IEEE standard is buried here:
+ *   - Rounding modes (chopped, +infinity, nearest, -infinity).
+ *   - Inexact (set if there are any rounding bits, regardless of rounding).
+ *   - Overflow (result is infinite if rounded, max if not).
+ *   - Underflow (no denorms!).
+ *   .
+ *
+ * Underflow handling is particularly complicated:
+ *   - Result is always 0.
+ *   - UNF and INE are always set in FPCR.
+ *   - If /U is set,
+ *      - If /S is clear, trap.
+ *      - If /S is set, UNFD is set, but UNFZ is clear, ignore UNFD and
+ *        trap, because the hardware cannot produce denormals.
+ *      - If /S is set, UNFD is set, and UNFZ is set, do not trap.
+ *      .
+ *   - If /SUI is set, and INED is clear, trap 
+ *   .
+ *
+ * \param r   Pointer to the unpacked-floating-point UFP structure
+ *            to be packed.
+ * \param ins The instruction currently being executed. Used to properly
+ *            handle exceptions and to determine the rounding mode.
+ * \param dp  DT_S for S-floating or DT_T for T-floating.  
+ * \return    64-bit IEEE floating.
+ **/
 u64 CAlphaCPU::ieee_rpack (UFP *r, u32 ins, u32 dp)
 {
-static const u64 stdrnd[2] = { UF_SRND, UF_TRND };
-static const u64 infrnd[2] = { UF_SINF, UF_TINF };
-static const s32 expmax[2] = { T_BIAS - S_BIAS + S_M_EXP - 1, T_M_EXP - 1 };
-static const s32 expmin[2] = { T_BIAS - S_BIAS, 0 };
-u64 rndadd, rndbits, res;
-u64 rndm;
+  static const u64 stdrnd[2] = { UF_SRND, UF_TRND };
+  static const u64 infrnd[2] = { UF_SINF, UF_TINF };
+  static const s32 expmax[2] = { T_BIAS - S_BIAS + S_M_EXP - 1, T_M_EXP - 1 };
+  static const s32 expmin[2] = { T_BIAS - S_BIAS, 0 };
+  u64 rndadd, rndbits, res;
+  u64 rndm;
 
-if (r->frac == 0) return (((u64)r->sign) << FPR_V_SIGN);	/* result 0? */
-rndm = I_GETFRND (ins);					/* inst round mode */
-if (rndm == I_FRND_D) rndm = FPCR_GETFRND (state.fpcr);	/* dynamic? use FPCR */
-rndbits = r->frac & infrnd[dp];				/* isolate round bits */
-if (rndm == I_FRND_N) rndadd = stdrnd[dp];		/* round to nearest? */
-else if (((rndm == I_FRND_P) && !r->sign) ||		/* round to inf and */
-	((rndm == I_FRND_M) && r->sign))		/* right sign? */
-	rndadd = infrnd[dp];
-else rndadd = 0;
-r->frac = (r->frac + rndadd) & X64_QUAD;			/* round */
-if ((r->frac & UF_NM) == 0) {				/* carry out? */
-	r->frac = (r->frac >> 1) | UF_NM;		/* renormalize */
-	r->exp = r->exp + 1;  }
-if (rndbits)						/* inexact? */
-	ieee_trap (TRAP_INE, Q_SUI (ins), FPCR_INED, ins);/* set inexact */
-if (r->exp > expmax[dp]) {				/* ovflo? */
-	ieee_trap (TRAP_OVF, 1, FPCR_OVFD, ins);		/* set overflow trap */
-	ieee_trap (TRAP_INE, Q_SUI (ins), FPCR_INED, ins);/* set inexact */
-	if (rndadd)					/* did we round? */
-	    return (r->sign? FMINF: FPINF);		/* return infinity */
-	return (r->sign? FMMAX: FPMAX);  }		/* no, return max */
-if (r->exp <= expmin[dp]) {				/* underflow? */
-	ieee_trap (TRAP_UNF, ins & I_FTRP_U,		/* set underflow trap */
-	    (state.fpcr & FPCR_UNDZ)? FPCR_UNFD: 0, ins);	/* (dsbl only if UNFZ set) */
-	ieee_trap (TRAP_INE, Q_SUI (ins), FPCR_INED, ins);/* set inexact */
-	return 0;  }					/* underflow to +0 */
-res = (((u64) r->sign) << FPR_V_SIGN) |		/* form result */
-	(((u64) r->exp) << FPR_V_EXP) |
-	((r->frac >> FPR_GUARD) & FPR_FRAC);
-if ((rndm == I_FRND_N) && (rndbits == stdrnd[dp]))	/* nearest and halfway? */
-	res = res & ~1;					/* clear lo bit */
-return res;
+  if (r->frac == 0) return (((u64)r->sign) << FPR_V_SIGN);	/* result 0? */
+  rndm = I_GETFRND (ins);					/* inst round mode */
+  if (rndm == I_FRND_D) rndm = FPCR_GETFRND (state.fpcr);	/* dynamic? use FPCR */
+  rndbits = r->frac & infrnd[dp];				/* isolate round bits */
+  if (rndm == I_FRND_N) rndadd = stdrnd[dp];		/* round to nearest? */
+  else if (((rndm == I_FRND_P) && !r->sign) ||		/* round to inf and */
+	  ((rndm == I_FRND_M) && r->sign))		/* right sign? */
+	  rndadd = infrnd[dp];
+  else rndadd = 0;
+  r->frac = (r->frac + rndadd) & X64_QUAD;			/* round */
+  if ((r->frac & UF_NM) == 0) {				/* carry out? */
+	  r->frac = (r->frac >> 1) | UF_NM;		/* renormalize */
+	  r->exp = r->exp + 1;  }
+  if (rndbits)						/* inexact? */
+	  ieee_trap (TRAP_INE, Q_SUI (ins), FPCR_INED, ins);/* set inexact */
+  if (r->exp > expmax[dp]) {				/* ovflo? */
+	  ieee_trap (TRAP_OVF, 1, FPCR_OVFD, ins);		/* set overflow trap */
+	  ieee_trap (TRAP_INE, Q_SUI (ins), FPCR_INED, ins);/* set inexact */
+	  if (rndadd)					/* did we round? */
+	      return (r->sign? FMINF: FPINF);		/* return infinity */
+	  return (r->sign? FMMAX: FPMAX);  }		/* no, return max */
+  if (r->exp <= expmin[dp]) {				/* underflow? */
+	  ieee_trap (TRAP_UNF, ins & I_FTRP_U,		/* set underflow trap */
+	      (state.fpcr & FPCR_UNDZ)? FPCR_UNFD: 0, ins);	/* (dsbl only if UNFZ set) */
+	  ieee_trap (TRAP_INE, Q_SUI (ins), FPCR_INED, ins);/* set inexact */
+	  return 0;  }					/* underflow to +0 */
+  res = (((u64) r->sign) << FPR_V_SIGN) |		/* form result */
+	  (((u64) r->exp) << FPR_V_EXP) |
+	  ((r->frac >> FPR_GUARD) & FPR_FRAC);
+  if ((rndm == I_FRND_N) && (rndbits == stdrnd[dp]))	/* nearest and halfway? */
+	  res = res & ~1;					/* clear lo bit */
+  return res;
 }
 
-/* IEEE arithmetic trap - only one can be set at a time! */
-
+/**
+ * \brief Set IEEE floating-point trap
+ *
+ * Called when a IEEE floating-point operation detects an exception.
+ *
+ * \param trap    A bitmask in which the bits are set that correspond to
+ *                the exception that occurred.
+ * \param instenb True if the exception is enabled in the instruction.
+ * \param fpcrdsb A bitmask containing the bits that, if set in the floating-
+ *                point control register (fpcr), disable the trap.
+ * \param ins     The instruction currently being executed. Used to properly
+ *                set some registers for the trap to be handled.
+ **/
 void CAlphaCPU::ieee_trap (u64 trap, u32 instenb, u64 fpcrdsb, u32 ins)
 {
   u64 real_trap = X64(0);
@@ -528,62 +699,5 @@ void CAlphaCPU::ieee_trap (u64 trap, u32 instenb, u64 fpcrdsb, u32 ins)
     ARITH_TRAP(real_trap | ((ins & I_FTRP_S) ? TRAP_SWC : 0)
                , I_GETRC(ins));
   return;
-}
-
-/* Fraction square root routine - code from SoftFloat */
-
-u64 CAlphaCPU::fsqrt64 (u64 asig, s32 exp)
-{
-static const u32 sqrtOdd[] = {
-	0x0004, 0x0022, 0x005D, 0x00B1, 0x011D, 0x019F, 0x0236, 0x02E0,
-	0x039C, 0x0468, 0x0545, 0x0631, 0x072B, 0x0832, 0x0946, 0x0A67 };
-static const u32 sqrtEven[] = {
-	0x0A2D, 0x08AF, 0x075A, 0x0629, 0x051A, 0x0429, 0x0356, 0x029E,
-	0x0200, 0x0179, 0x0109, 0x00AF, 0x0068, 0x0034, 0x0012, 0x0002 };
-
-u64 zsig, remh, reml, t;
-u32 index, z, a, sticky = 0;
-
-/* Calculate an approximation to the square root of the 32-bit significand given
-   by 'a'.  Considered as an integer, 'a' must be at least 2^31.  If bit 0 of
-   'exp' (the least significant bit) is 1, the integer returned approximates
-   2^31*sqrt('a'/2^31), where 'a' is considered an integer.  If bit 0 of 'exp'
-   is 0, the integer returned approximates 2^31*sqrt('a'/2^30).  In either
-   case, the approximation returned lies strictly within +/-2 of the exact
-   value. */
-
-a = (u32) (asig >> 32);				/* high order frac */
-index = (a >> 27) & 0xF;				/* bits<30:27> */
-if (exp & 1) {						/* odd exp? */
-	z = 0x4000 + (a >> 17) - sqrtOdd[index];	/* initial guess */
-	z = ((a / z) << 14) + (z << 15);		/* Newton iteration */
-	a = a >> 1;  }
-else {	z = 0x8000 + (a >> 17) - sqrtEven[index];	/* initial guess */
-        z = (a / z) + z;				/* Newton iteration */
-        z = (z >= 0x20000) ? 0xFFFF8000: (z << 15);
-        if (z <= a) z = (a >> 1) | 0x80000000;      }
-zsig = (((((u64) a) << 31) / ((u64) z)) + (z >> 1)) & X64_LONG;
-
-/* Calculate the final answer in two steps.  First, do one iteration of
-   Newton's approximation.  The divide-by-2 is accomplished by clever
-   positioning of the operands.  Then, check the bits just below the
-   (double precision) rounding bit to see if they are close to zero
-   (that is, the rounding bits are close to midpoint).  If so, make
-   sure that the result^2 is <below> the input operand */
-
-asig = asig >> ((exp & 1)? 3: 2);			/* leave 2b guard */
-zsig = ufdiv64 (asig, zsig << 32, 64, NULL) + (zsig << 30); /* Newton iteration */
-if ((zsig & 0x1FF) <= 5) {				/* close to even? */
-	remh = uemul64 (zsig, zsig, &reml);		/* result^2 */
-	remh = (asig - remh - (reml? 1:0)) & X64_QUAD;	/* arg - result^2 */
-	reml = NEG_Q (reml);
-	while (Q_GETSIGN (remh) != 0) {			/* if arg < result^2 */
-            zsig = (zsig - 1) & X64_QUAD;			/* decr result */
-	    t = ((zsig << 1) & X64_QUAD) | 1;		/* incr result^2 */
-	    reml = (reml + t) & X64_QUAD;			/* and retest */
-	    remh = (remh + (zsig >> 63) + ((reml < t)? 1: 0)) & X64_QUAD;  }
-        if ((remh | reml) != 0 ) sticky = 1;  }		/* not exact? */
-zsig = (zsig << 1) | sticky;				/* left justify result */
-return zsig;
 }
 //\}
