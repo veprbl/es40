@@ -27,7 +27,10 @@
  * \file 
  * Contains some macro definitions and some inline functions for the Alpha CPU.
  *
- * $Id: cpu_defs.h,v 1.5 2008/01/26 12:36:02 iamcamiel Exp $
+ * $Id: cpu_defs.h,v 1.6 2008/01/28 19:54:24 iamcamiel Exp $
+ *
+ * X-1.6        Camiel Vanderhoeven                             28-JAN-2008
+ *      Better floating-point exception handling.
  *
  * X-1.5        Brian Wheeler                                   26-JAN-2008
  *      Make file end in newline.
@@ -55,25 +58,6 @@
 
 #if !defined(__CPU_DEFS__)
 #define __CPU_DEFS__
-
-/* Traps - corresponds to arithmetic trap summary register */
-
-#define TRAP_SWC	X64(01)				/* software completion */
-#define TRAP_INV	X64(02)				/* invalid operand */
-#define TRAP_DZE	X64(04)				/* divide by zero */
-#define TRAP_OVF	X64(08)				/* overflow */
-#define TRAP_UNF	X64(10)				/* underflow */
-#define TRAP_INE	X64(20)				/* inexact */
-#define TRAP_IOV	X64(40)				/* integer overflow */
-
-#define TRAP_INT    X64(80)             /* exception register is integer reg */
-
-#define ARITH_TRAP(flags, reg)                                      \
-    {                                                               \
-      state.exc_sum = flags              /* cause of trap */        \
-                    | (reg & 0x1f) << 8; /* destination register */ \
-      GO_PAL(ARITH);                     /* trap */                 \
-    }
 
 /* Instruction formats */
 
@@ -233,7 +217,7 @@ struct ufp {
 typedef struct ufp UFP;
 
 #define UF_V_NM		63
-#define UF_NM		0x8000000000000000		/* normalized */
+#define UF_NM		X64(8000000000000000)		/* normalized */
 
 /* Bit patterns */
 
@@ -327,6 +311,62 @@ for (i = 0; (i < prec) && dvd; i++) {			/* divide loop */
 quo = quo << (UF_V_NM - i + 1);				/* shift quo */
 if (sticky) *sticky = (dvd? 1: 0);			/* set sticky bit */
 return quo;						/* return quotient */
+}
+
+/* Fraction square root routine - code from SoftFloat */
+inline u64 fsqrt64 (u64 asig, s32 exp)
+{
+static const u32 sqrtOdd[] = {
+	0x0004, 0x0022, 0x005D, 0x00B1, 0x011D, 0x019F, 0x0236, 0x02E0,
+	0x039C, 0x0468, 0x0545, 0x0631, 0x072B, 0x0832, 0x0946, 0x0A67 };
+static const u32 sqrtEven[] = {
+	0x0A2D, 0x08AF, 0x075A, 0x0629, 0x051A, 0x0429, 0x0356, 0x029E,
+	0x0200, 0x0179, 0x0109, 0x00AF, 0x0068, 0x0034, 0x0012, 0x0002 };
+
+u64 zsig, remh, reml, t;
+u32 index, z, a, sticky = 0;
+
+/* Calculate an approximation to the square root of the 32-bit significand given
+   by 'a'.  Considered as an integer, 'a' must be at least 2^31.  If bit 0 of
+   'exp' (the least significant bit) is 1, the integer returned approximates
+   2^31*sqrt('a'/2^31), where 'a' is considered an integer.  If bit 0 of 'exp'
+   is 0, the integer returned approximates 2^31*sqrt('a'/2^30).  In either
+   case, the approximation returned lies strictly within +/-2 of the exact
+   value. */
+
+a = (u32) (asig >> 32);				/* high order frac */
+index = (a >> 27) & 0xF;				/* bits<30:27> */
+if (exp & 1) {						/* odd exp? */
+	z = 0x4000 + (a >> 17) - sqrtOdd[index];	/* initial guess */
+	z = ((a / z) << 14) + (z << 15);		/* Newton iteration */
+	a = a >> 1;  }
+else {	z = 0x8000 + (a >> 17) - sqrtEven[index];	/* initial guess */
+        z = (a / z) + z;				/* Newton iteration */
+        z = (z >= 0x20000) ? 0xFFFF8000: (z << 15);
+        if (z <= a) z = (a >> 1) | 0x80000000;      }
+zsig = (((((u64) a) << 31) / ((u64) z)) + (z >> 1)) & X64_LONG;
+
+/* Calculate the final answer in two steps.  First, do one iteration of
+   Newton's approximation.  The divide-by-2 is accomplished by clever
+   positioning of the operands.  Then, check the bits just below the
+   (double precision) rounding bit to see if they are close to zero
+   (that is, the rounding bits are close to midpoint).  If so, make
+   sure that the result^2 is <below> the input operand */
+
+asig = asig >> ((exp & 1)? 3: 2);			/* leave 2b guard */
+zsig = ufdiv64 (asig, zsig << 32, 64, NULL) + (zsig << 30); /* Newton iteration */
+if ((zsig & 0x1FF) <= 5) {				/* close to even? */
+	remh = uemul64 (zsig, zsig, &reml);		/* result^2 */
+	remh = (asig - remh - (reml? 1:0)) & X64_QUAD;	/* arg - result^2 */
+	reml = NEG_Q (reml);
+	while (Q_GETSIGN (remh) != 0) {			/* if arg < result^2 */
+            zsig = (zsig - 1) & X64_QUAD;			/* decr result */
+	    t = ((zsig << 1) & X64_QUAD) | 1;		/* incr result^2 */
+	    reml = (reml + t) & X64_QUAD;			/* and retest */
+	    remh = (remh + (zsig >> 63) + ((reml < t)? 1: 0)) & X64_QUAD;  }
+        if ((remh | reml) != 0 ) sticky = 1;  }		/* not exact? */
+zsig = (zsig << 1) | sticky;				/* left justify result */
+return zsig;
 }
 
 // INTERRUPT VECTORS
@@ -458,5 +498,38 @@ return quo;						/* return quotient */
 #define RECUR      128
 #define PROBE      256
 #define PROBEW     512
+
+#define FPSTART                                     \
+  if (state.fpen == 0) /* flt point disabled? */    \
+  {                                                 \
+    GO_PAL (FEN);	/* set trap */                  \
+    break;      /* and stop current instruction */  \
+  }                                                 \
+  state.exc_sum = 0
+
+/* Traps - corresponds to arithmetic trap summary register */
+
+#define TRAP_SWC	X64(01)				/* software completion */
+#define TRAP_INV	X64(02)				/* invalid operand */
+#define TRAP_DZE	X64(04)				/* divide by zero */
+#define TRAP_OVF	X64(08)				/* overflow */
+#define TRAP_UNF	X64(10)				/* underflow */
+#define TRAP_INE	X64(20)				/* inexact */
+#define TRAP_IOV	X64(40)				/* integer overflow */
+
+#define TRAP_INT    X64(80)             /* exception register is integer reg */
+
+#define ARITH_TRAP(flags, reg)                                      \
+  {                                                                 \
+    state.exc_sum |= flags;             /* cause of trap */         \
+    state.exc_sum |= (reg & 0x1f) << 8; /* destination register */  \
+    GO_PAL(ARITH);                     /* trap */                   \
+  }
+
+#define ARITH_TRAP_I(flags, reg)                                    \
+  {                                                                 \
+    state.exc_sum = 0;                                              \
+    ARITH_TRAP(TRAP_INT | flags, reg)                               \
+  }
 
 #endif

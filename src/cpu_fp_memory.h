@@ -29,6 +29,9 @@
  * Contains code macros for the processor floating-point load/store instructions.
  * Based on ARM chapter 4.8.
  *
+ * X-1.10       Camiel Vanderhoeven                             28-JAN-2008
+ *      Better floating-point exception handling.
+ *
  * X-1.9        Camiel Vanderhoeven                             25-JAN-2008
  *      Trap on unalogned memory access. The previous implementation where
  *      unaligned accesses were silently allowed could go wrong when page
@@ -61,49 +64,49 @@
  **/
 
 #define DO_LDF									                    \
-	if (state.fpen == 0) GO_PAL (FEN);	/* flt point disabled? */   \
+	FPSTART; \
 	if (FREG_1 != 31) {							                    \
 	  DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_READ, 3);	        \
 	  state.f[FREG_1] = vax_ldf((u32)READ_PHYS(32));                \
     }
 
 #define DO_LDG									                    \
-	if (state.fpen == 0) GO_PAL (FEN);	/* flt point disabled? */   \
+	FPSTART; \
 	if (FREG_1 != 31) {							                    \
 	  DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_READ, 7);          \
 	  state.f[FREG_1] = vax_ldg(READ_PHYS(64));                     \
     }
 
 #define DO_LDS									                    \
-	if (state.fpen == 0) GO_PAL (FEN);	/* flt point disabled? */   \
+	FPSTART; \
 	if (FREG_1 != 31) {							                    \
 	  DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_READ, 3);          \
 	  state.f[FREG_1] = ieee_lds((u32)READ_PHYS(32));               \
     }
 
 #define DO_LDT									                    \
-	if (state.fpen == 0) GO_PAL (FEN);	/* flt point disabled? */   \
+	FPSTART; \
 	if (FREG_1 != 31) {							                    \
 	  DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_READ, 7);          \
 	  state.f[FREG_1] = READ_PHYS(64);                              \
     }
 
 #define DO_STF									                    \
-	if (state.fpen == 0) GO_PAL (FEN);	/* flt point disabled? */   \
+	FPSTART; \
 	  DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_WRITE, 3);         \
 	  WRITE_PHYS(vax_stf(state.f[FREG_1]),32);
 
 #define DO_STG									                    \
-	if (state.fpen == 0) GO_PAL (FEN);	/* flt point disabled? */   \
+	FPSTART; \
 	  DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_WRITE, 7);         \
 	  WRITE_PHYS(vax_stg(state.f[FREG_1]),64);
 
 #define DO_STS									                    \
-	if (state.fpen == 0) GO_PAL (FEN);	/* flt point disabled? */   \
+	FPSTART; \
 	  DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_WRITE, 3);	        \
 	  WRITE_PHYS(ieee_sts(state.f[FREG_1]),32);
 
 #define DO_STT									                    \
-	if (state.fpen == 0) GO_PAL (FEN);	/* flt point disabled? */   \
+	FPSTART; \
 	  DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_WRITE, 7);	        \
 	  WRITE_PHYS(state.f[FREG_1],64);

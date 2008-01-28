@@ -28,7 +28,10 @@
  * Contains code macros for the processor integer arithmetic instructions.
  * Based on ARM chapter 4.4.
  *
- * $Id: cpu_arith.h,v 1.12 2008/01/24 17:40:07 iamcamiel Exp $
+ * $Id: cpu_arith.h,v 1.13 2008/01/28 19:54:23 iamcamiel Exp $
+ *
+ * X-1.13       Camiel Vanderhoeven                             28-JAN-2008
+ *      Better floating-point exception handling.
  *
  * X-1.12      Camiel Vanderhoeven                             24-JAN-2008
  *      Fixed some overflow-detection issues.
@@ -89,7 +92,7 @@
     RCV = rav + rbv;                                    \
     /* test for integer overflow */                     \
     if (((~rav ^ rbv) & (rav ^ RCV)) & Q_SIGN) {        \
-      ARITH_TRAP(TRAP_INT | TRAP_IOV, RC);              \
+      ARITH_TRAP_I(TRAP_IOV, RC);              \
       printf("ADDQ_V %016" LL "x + %016" LL "x = %016" LL "x + TRAP.\n",rav,rbv,RCV); \
     }                                                   \
   }
@@ -105,7 +108,7 @@
     RCV = sext_u64_32(rav + rbv);                       \
     /* test for integer overflow */                     \
     if (((~rav ^ rbv) & (rav ^ RCV)) & L_SIGN) {        \
-      ARITH_TRAP(TRAP_INT | TRAP_IOV, RC);              \
+      ARITH_TRAP_I(TRAP_IOV, RC);              \
       printf("ADDL_V %016" LL "x + %016" LL "x = %016" LL "x + TRAP.\n",rav,rbv,RCV); \
     }                                                   \
   }
@@ -152,7 +155,7 @@
 	u64 sr = sext_u64_32(rav) * sext_u64_32(rbv);       \
     RCV = sext_u64_32(sr);                              \
     if ((RCV ^ sr) & X64(ffffffff00000000)) {           \
-      ARITH_TRAP(TRAP_INT | TRAP_IOV, RC);              \
+      ARITH_TRAP_I(TRAP_IOV, RC);              \
       printf("MULL_V %016" LL "x * %016" LL "x = %016" LL "x + TRAP.\n",rav,rbv,RCV); \
     }                                                   \
   }
@@ -168,7 +171,7 @@
     if (Q_GETSIGN(rav)) t64 -= rbv;                    \
     if (Q_GETSIGN(rbv)) t64 -= rav;                    \
     if (Q_GETSIGN(RCV)? (t64 != X64_QUAD): (t64 != 0)) { \
-      ARITH_TRAP(TRAP_INT | TRAP_IOV, RC);             \
+      ARITH_TRAP_I(TRAP_IOV, RC);             \
       printf("MULQ_V %016" LL "x * %016" LL "x = %016" LL "x + TRAP.\n",rav,rbv,RCV); \
     }                                                   \
   }
@@ -187,7 +190,7 @@
     RCV = rav - rbv;                                        \
     /* test for integer overflow */                         \
     if (((rav ^ rbv) & (rav ^ RCV)) & Q_SIGN) {            \
-      ARITH_TRAP(TRAP_INT | TRAP_IOV, RC);                  \
+      ARITH_TRAP_I(TRAP_IOV, RC);                  \
       printf("SUBQ_V %016" LL "x - %016" LL "x = %016" LL "x + TRAP.\n",rav,rbv,RCV); \
     }                                                   \
   }
@@ -203,7 +206,7 @@
     RCV = sext_u64_32(rav - rbv);                           \
     /* test for integer overflow */                         \
     if (((rav ^ rbv) & (rav ^ RCV)) & L_SIGN) {            \
-      ARITH_TRAP(TRAP_INT | TRAP_IOV, RC);                  \
+      ARITH_TRAP_I(TRAP_IOV, RC);                  \
       printf("SUBL_V %016" LL "x - %016" LL "x = %016" LL "x + TRAP.\n",rav,rbv,RCV); \
     }                                                   \
   }

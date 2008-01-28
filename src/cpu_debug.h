@@ -27,6 +27,9 @@
  * \file 
  * Contains debugging macros used by AlphaCPU.cpp
  *
+ * X-1.20       Camiel Vanderhoeven                             28-JAN-2008
+ *      Better floating-point exception handling.
+ *
  * X-1.19       Camiel Vanderhoeven                             27-JAN-2008
  *      Have GO_PAL throw an exception, so we don't continue doing what we
  *      were doing before the exception was taken.
@@ -105,6 +108,14 @@
 extern char * PAL_NAME[];
 extern char * IPR_NAME[];
 
+extern char dbg_string[1000];
+#if !defined(LS_MASTER) && !defined(LS_SLAVE)
+extern char * dbg_strptr;
+#endif
+
+void handle_debug_string(char * s);
+
+
 #define TRC_(down,up,x,y) {						\
     if (bTrace)								\
       trc->trace(this, state.current_pc, state.pc, down, up, x, y); }
@@ -138,7 +149,6 @@ extern char * IPR_NAME[];
     {						                                        \
       state.exc_addr = state.current_pc;  						    \
       state.pc = state.pal_base | offset | 1;                       \
-      throw((char) 1); /* end CPU-cycle */                          \
     }
 #endif
 
