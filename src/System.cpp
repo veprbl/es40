@@ -27,7 +27,10 @@
  * \file 
  * Contains the code for the emulated Typhoon Chipset devices.
  *
- * $Id: System.cpp,v 1.58 2008/01/25 09:54:13 iamcamiel Exp $
+ * $Id: System.cpp,v 1.59 2008/01/28 19:55:42 iamcamiel Exp $
+ *
+ * X-1.59       Camiel Vanderhoeven                             28-JAN-2008
+ *      Avoid compiler warnings.
  *
  * X-1.58       Camiel Vanderhoeven                             25-JAN-2008
  *      Added option to disable the icache.
@@ -317,7 +320,7 @@ CSystem::CSystem(CConfigurator * cfg)
 
   CHECK_ALLOCATION(memory = calloc(1<<iNumMemoryBits,1));
 
-  printf("%s(%s): $Id: System.cpp,v 1.58 2008/01/25 09:54:13 iamcamiel Exp $\n",cfg->get_myName(),cfg->get_myValue());
+  printf("%s(%s): $Id: System.cpp,v 1.59 2008/01/28 19:55:42 iamcamiel Exp $\n",cfg->get_myName(),cfg->get_myValue());
 }
 
 /**
@@ -2117,7 +2120,7 @@ void CSystem::SaveState(char *fn)
   unsigned int j;
   int * mem = (int*) memory;
   int int0 = 0;
-  unsigned int memints = (1<<iNumMemoryBits)/sizeof(int);
+  unsigned int memints = (1<<iNumMemoryBits)/(unsigned int)sizeof(int);
   u32 temp_32;
 
   f = fopen(fn,"wb");
@@ -2177,7 +2180,7 @@ void CSystem::RestoreState(char *fn)
   unsigned int m;
   unsigned int j;
   int * mem = (int*) memory;
-  unsigned int memints = (1<<iNumMemoryBits)/sizeof(int);
+  unsigned int memints = (1<<iNumMemoryBits)/(unsigned int)sizeof(int);
   u32 temp_32;
 
   f = fopen(fn,"rb");
@@ -2246,7 +2249,7 @@ void CSystem::DumpMemory(unsigned int filenum)
   sprintf(file,"memory_%012d.dmp",filenum);
   f = fopen(file,"wb");
 
-  x = (1<<iNumMemoryBits)/sizeof(int)/2;
+  x = (1<<iNumMemoryBits)/(unsigned int)sizeof(int)/2;
 
   while (!mem[x-1])
     x--;

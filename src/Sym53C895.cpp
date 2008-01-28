@@ -27,7 +27,10 @@
  * \file
  * Contains the code for the emulated Symbios SCSI controller.
  *
- * $Id: Sym53C895.cpp,v 1.20 2008/01/24 11:28:35 iamcamiel Exp $
+ * $Id: Sym53C895.cpp,v 1.21 2008/01/28 19:55:42 iamcamiel Exp $
+ *
+ * X-1.21       Camiel Vanderhoeven                             28-JAN-2008
+ *      Avoid compiler warnings.
  *
  * X-1.20       Camiel Vanderhoeven                             24-JAN-2008
  *      Use new CPCIDevice::do_pci_read and CPCIDevice::do_pci_write.
@@ -400,7 +403,7 @@ CSym53C895::CSym53C895(CConfigurator * cfg, CSystem * c, int pcibus, int pcidev)
   CSCSIBus * a = new CSCSIBus(cfg, c);
   scsi_register(0, a, 7); // scsi id 7 by default
 
-  printf("%s: $Id: Sym53C895.cpp,v 1.20 2008/01/24 11:28:35 iamcamiel Exp $\n",devid_string);
+  printf("%s: $Id: Sym53C895.cpp,v 1.21 2008/01/28 19:55:42 iamcamiel Exp $\n",devid_string);
 }
 
 CSym53C895::~CSym53C895()
@@ -1119,9 +1122,6 @@ int CSym53C895::DoClock()
 
 int CSym53C895::execute()
 {
-  u64 cmda0;
-  u64 cmda1;
-
   int optype;
 
     // single step mode
@@ -1218,7 +1218,7 @@ int CSym53C895::execute()
           if ((size_t)count > scsi_expected_xfer(0))
           {
             printf("SYM: attempt to xfer more bytes than expected.\n");
-            count = scsi_expected_xfer(0);
+            count = (u32)scsi_expected_xfer(0);
           }
           u8 * scsi_data_ptr = (u8*) scsi_xfer_ptr(0, count);
           u8 * org_sdata_ptr = scsi_data_ptr;

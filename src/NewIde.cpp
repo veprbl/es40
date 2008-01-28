@@ -27,7 +27,10 @@
  * \file
  * Contains the code for the emulated Ali M1543C IDE chipset part.
  *
- * $Id: NewIde.cpp,v 1.11 2008/01/26 12:32:54 iamcamiel Exp $
+ * $Id: NewIde.cpp,v 1.12 2008/01/28 19:55:41 iamcamiel Exp $
+ *
+ * X-1.12       Camiel Vanderhoeven                             28-JAN-2008
+ *      Avoid compiler warnings.
  *
  * X-1.11       Brian Wheeler                                   26-JAN-2008
  *      Don't repeat interrupt too soon.
@@ -1470,13 +1473,13 @@ int CNewIde::DoClock()
                     {
                     case SCSI_PHASE_DATA_IN:
                       {
-                        u32 num_bytes = scsi_expected_xfer(index);
+                        size_t num_bytes = scsi_expected_xfer(index);
                         void * data_ptr = scsi_xfer_ptr(index, num_bytes);
                         memcpy(CONTROLLER(index).data, data_ptr, num_bytes);
                         scsi_xfer_done(index);
                         SEL_COMMAND(index).packet_phase = PACKET_DP34;
-		                SEL_REGISTERS(index).BYTE_COUNT=num_bytes; 
-		                CONTROLLER(index).data_size=num_bytes/2; // word count.
+		                SEL_REGISTERS(index).BYTE_COUNT=(int)num_bytes; 
+		                CONTROLLER(index).data_size=(int)num_bytes/2; // word count.
 		                CONTROLLER(index).data_ptr=0;
                       }
                       break;
@@ -1844,7 +1847,7 @@ int CNewIde::DoClock()
 
 int CNewIde::do_dma_transfer(int index, u8 *buffer, u32 buffersize, bool direction) {
   u8 xfer;
-  u32 xfersize = 0;
+  size_t xfersize = 0;
   u8 status = 0;
   u8 count = 0;
   u32 prd = endian_32(*(u32 *)(&CONTROLLER(index).busmaster[4]));
