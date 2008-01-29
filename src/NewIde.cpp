@@ -27,7 +27,11 @@
  * \file
  * Contains the code for the emulated Ali M1543C IDE chipset part.
  *
- * $Id: NewIde.cpp,v 1.12 2008/01/28 19:55:41 iamcamiel Exp $
+ * $Id: NewIde.cpp,v 1.13 2008/01/29 10:19:43 iamcamiel Exp $
+ *
+ * X-1.13       Brian Wheeler                                   29-JAN-2008
+ *      Avoid firing interrupts that occurred while interrupts were
+ *      disabled.
  *
  * X-1.12       Camiel Vanderhoeven                             28-JAN-2008
  *      Avoid compiler warnings.
@@ -1343,6 +1347,10 @@ int CNewIde::DoClock()
 	      } 
           else 
           {
+#ifdef DEBUG_IDE
+  	        printf("Original c: %d, h: %d, s: %d\n", SEL_DISK(index)->get_cylinders(), SEL_DISK(index)->get_heads(), SEL_DISK(index)->get_sectors());
+	        printf("Requested c: %d, h: %d, s: %d\n", SEL_REGISTERS(index).cylinder_no, SEL_REGISTERS(index).head_no+1, SEL_REGISTERS(index).sector_count);
+#endif
 	        if(SEL_DISK(index)->get_heads() == (SEL_REGISTERS(index).head_no+1)
 	           && SEL_DISK(index)->get_sectors() == SEL_REGISTERS(index).sector_count) 
             {
@@ -1352,13 +1360,11 @@ int CNewIde::DoClock()
 	          SEL_STATUS(index).fault=false;
 	          SEL_STATUS(index).drq=false;
 	          SEL_STATUS(index).err=false;
-	          raise_interrupt(index); // maybe?
+	          raise_interrupt(index);
 	        } 
             else 
             {
 #ifdef DEBUG_IDE
-              printf("Original h: %d, s: %d\n", SEL_DISK(index)->get_heads(), SEL_DISK(index)->get_sectors());
-	          printf("Requested h: %d, s: %d\n", SEL_REGISTERS(index).head_no+1, SEL_REGISTERS(index).sector_count);
 	          PAUSE("INIT DEV PARAMS -- geometry not supported!");
 #endif
 	          SEL_STATUS(index).busy=false;
@@ -1829,13 +1835,21 @@ int CNewIde::DoClock()
       }
     } 
 
-    if (CONTROLLER(index).interrupt_pending) {
-      if(!CONTROLLER(index).disable_irq) {
+    if (CONTROLLER(index).interrupt_pending) 
+    {
+      if(!CONTROLLER(index).disable_irq) 
+      {
 #ifdef DEBUG_IDE_INTERRUPT
   	    printf("%%IDE-I-INTERRUPT: Interrupt raised on controller %d.\n",index);
 #endif
 	    CONTROLLER(index).busmaster[2] |= 0x04;
 	    theAli->pic_interrupt(1, 6+index);
+	    CONTROLLER(index).interrupt_pending=false;
+      } 
+      else 
+      {
+	    // if interrupts are disabled, make sure that we don't
+        // accidentally fire one later when they are enabled.
 	    CONTROLLER(index).interrupt_pending=false;
       }
     }
