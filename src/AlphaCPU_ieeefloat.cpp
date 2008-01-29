@@ -27,7 +27,10 @@
  * \file 
  * Contains IEEE floating point code for the Alpha CPU.
  *
- * $Id: AlphaCPU_ieeefloat.cpp,v 1.5 2008/01/28 19:54:20 iamcamiel Exp $
+ * $Id: AlphaCPU_ieeefloat.cpp,v 1.6 2008/01/29 09:38:13 iamcamiel Exp $
+ *
+ * X-1.6        Camiel Vanderhoeven                             29-JAN-2008
+ *      Comments.
  *
  * X-1.5        Camiel Vanderhoeven                             28-JAN-2008
  *      Better floating-point exception handling.
@@ -49,6 +52,86 @@
 #include "StdAfx.h"
 #include "AlphaCPU.h"
 #include "cpu_debug.h"
+
+/***************************************************************************//**
+ * \page IEEE IEEE floating point arithmetic
+ *
+ * \section IEEE_fmt IEEE Floating-point formats
+ * The Alpha processor supports two different floating-point formats; S- and T-
+ * floating formats. 
+ *
+ * \subsection IEEE_S S-Floating
+ * An IEEE single precision, or S-Floating, is a 32-bit floating point value.
+ * In memory, it's layout is as follows:
+ * \code
+ *     31 30      23 22                      0
+ *   +---+----------+-------------------------+
+ *   | S | Exponent |         Fraction        |
+ *   +---+----------+-------------------------+
+ * \endcode
+ *
+ * In the floating point registers, the S-Floating is left-justified to occupy
+ * 64 bits:
+ * \code
+ *     63 62          52 51                     29 28                   0
+ *   +---+--------------+-------------------------+----------------------+
+ *   | S |    Exponent  |         Fraction        |            0         |
+ *   +---+--------------+-------------------------+----------------------+
+ * \endcode
+ *
+ * The exponent is mapped from the 8-bit memory-format exponent to the 11-bit
+ * register-format as follows:
+ * \code
+ *  +----------------+------------------+--------------------------------+
+ *  | Memory <30:23> | Register <62:52> | Meaning                        |
+ *  +----------------+------------------+--------------------------------+
+ *  |      1 1111111 |    1 111 1111111 | frac <> 0: NaN (not-a-number)  |
+ *  |                |                  | frac == 0: +/- Infinity        |
+ *  +----------------+------------------+--------------------------------+
+ *  |      1 xxxxxxx |    1 000 xxxxxxx | Finite number                  |
+ *  |      0 xxxxxxx |    0 111 xxxxxxx | Finite number                  |
+ *  +----------------+------------------+--------------------------------+
+ *  |      0 0000000 |    0 000 0000000 | frac <> 0: Subnormal finite    |
+ *  |                |                  | frac == 0: +/- Zero            |
+ *  +----------------+------------------+--------------------------------+
+ * \endcode
+ *
+ * \subsection IEEE_T T-Floating
+ * An IEEE double precision, or T-Floating, is a 64-bit floating point value.
+ * Both in memory, and in the flowting point registers it's layout is as
+ * follows:
+ * \code
+ *     63 62          52 51                                             0
+ *   +---+--------------+------------------------------------------------+
+ *   | S |    Exponent  |                   Fraction                     |
+ *   +---+--------------+------------------------------------------------+
+ * \endcode
+ *
+ * The value (V) of a T-Floating value can be determined from the Sign (S),
+ * Exponent (E) and Fraction (F) as follows:
+ * \code
+ *  +--------------+--------+--------+--------------------------+
+ *  | E == 2047    | F <> 0 |        | V = NaN                  |
+ *  +--------------+--------+--------+--------------------------+
+ *  | E == 2047    | F == 0 | S == 0 | V = + Infinity           |
+ *  +--------------+--------+--------+--------------------------+
+ *  | E == 2047    | F == 0 | S == 1 | V = - Infinity           |
+ *  +--------------+--------+--------+--------------------------+
+ *  | 0 < E < 2047 |        | S == 0 | V = + (1.F) * 2^(E-1023) |
+ *  +--------------+--------+--------+--------------------------+
+ *  | 0 < E < 2047 |        | S == 1 | V = - (1.F) * 2^(E-1023) |
+ *  +--------------+--------+--------+--------------------------+
+ *  | E == 0       | F <> 0 | S == 0 | V = + (0.F) * 2^(-1022)  |
+ *  +--------------+--------+--------+--------------------------+
+ *  | E == 0       | F <> 0 | S == 1 | V = - (0.F) * 2^(-1022)  |
+ *  +--------------+--------+--------+--------------------------+
+ *  | E == 0       | F == 0 | S == 0 | V = + 0                  |
+ *  +--------------+--------+--------+--------------------------+
+ *  | E == 0       | F == 0 | S == 1 | V = - 0                  |
+ *  +--------------+--------+--------+--------------------------+
+ * \endcode
+ *
+ ******************************************************************************/
 
 /* Register format constants */
 
@@ -72,18 +155,17 @@
 
 /***************************************************************************//**
  * \name IEEE_fp_load_store
- * IEEE floating point load and store functions
+ * IEEE floating point load and store functions.
  ******************************************************************************/
 //\{
 
 /**
- * \brief Convert the IEEE S-floating memory format to the IEEE floating register
- * format.
+ * \brief Convert an IEEE S-floating from memory format to register format.
  *
  * Adjust the exponent base, and widen the exponent and fraction fields.
  *
- * \param op	32-bit IEEE S-floating value in memory format.
- * \return		The value op converted to 64-bit IEEE floating in register format.
+ * \param op	IEEE S-floating value in memory format.
+ * \return		IEEE S-floating value in register format.
  **/
 u64 CAlphaCPU::ieee_lds (u32 op)
 {
@@ -97,13 +179,12 @@ u64 CAlphaCPU::ieee_lds (u32 op)
 }
 
 /**
- * \brief Convert the IEEE floating register format to the IEEE S-floating memory
- * format.
+ * \brief Convert an IEEE S-floating from register format to memory format.
  *
  * Adjust the exponent base, and make the exponent and fraction fields smaller.
  *
- * \param op  64-bit IEEE floating in register format.
- * \return    The value op converted to 32-bit IEEE S-floating value in memory format.
+ * \param op  IEEE S-floating value in register format.
+ * \return    IEEE S-floating value in memory format.
  **/
 u32 CAlphaCPU::ieee_sts (u64 op)
 {
@@ -126,15 +207,14 @@ u32 CAlphaCPU::ieee_sts (u64 op)
 
 
 /**
- * \brief Convert an IEEE S-floating in register format to an IEEE T-floating
- * in register format.
+ * \brief Convert an IEEE S-floating to an IEEE T-floating.
  *
  * LDS doesn't handle denorms correctly.
  *
- * \param op  64-bit IEEE S-floating value in register format.
+ * \param op  IEEE S-floating value.
  * \param ins The instruction currently being executed. Used to properly
  *            handle exceptions.
- * \return	  64-bit IEEE T-floating in register format.
+ * \return	  IEEE T-floating value.
  **/
 u64 CAlphaCPU::ieee_cvtst (u64 op, u32 ins)
 {
@@ -152,13 +232,12 @@ u64 CAlphaCPU::ieee_cvtst (u64 op, u32 ins)
 }
 
 /**
- * \brief Convert an IEEE T-floating in register format to an IEEE S-floating
- * in register format.
+ * \brief Convert an IEEE T-floating to an IEEE S-floating.
  *
- * \param op  64-bit IEEE T-floating value in register format.
+ * \param op  IEEE T-floating value.
  * \param ins The instruction currently being executed. Used to properly
  *            handle exceptions and to determine the rounding mode.
- * \return	  64-bit IEEE S-floating in register format.
+ * \return	  IEEE S-floating.
  **/
 u64 CAlphaCPU::ieee_cvtts (u64 op, u32 ins)
 {
@@ -188,8 +267,8 @@ u64 CAlphaCPU::ieee_cvtts (u64 op, u32 ins)
  *   - Then normal compare will work (even on inf and denorms)
  *   .
  *
- * \param s1  First 64-bit IEEE floating in register format to be compared.
- * \param s1  Second 64-bit IEEE floating in register format to be compared.
+ * \param s1  First IEEE floating to be compared.
+ * \param s1  Second IEEE floating to be compared.
  * \param ins The instruction currently being executed. Used to properly
  *            handle exceptions.
  * \return    0 if s1==s2, 1 if s1>s2, -1 if s1<s2.
@@ -219,7 +298,7 @@ s32 CAlphaCPU::ieee_fcmp (u64 s1, u64 s2, u32 ins, u32 trap_nan)
  * \param ins The instruction currently being executed. Used to properly
  *            handle exceptions and to determine the rounding mode.
  * \param dp  DT_S for S-floating or DT_T for T-floating.  
- * \return    64-bit IEEE floating in register format.
+ * \return    IEEE floating.
  **/
 u64 CAlphaCPU::ieee_cvtif (u64 val, u32 ins, u32 dp)
 {
@@ -245,7 +324,7 @@ u64 CAlphaCPU::ieee_cvtif (u64 val, u32 ins, u32 dp)
  * the true result, whereas the IEEE standard specifies the return
  * of the maximum plus or minus value
  *
- * \param op  64-bit IEEE floating in register format to be converted.
+ * \param op  IEEE floating to be converted.
  * \param ins The instruction currently being executed. Used to properly
  *            handle exceptions.
  * \return    64-bit signed integer.
@@ -328,13 +407,13 @@ u64 CAlphaCPU::ieee_cvtfi (u64 op, u32 ins)
  *      .
  *   .
  *
- * \param s1  Augend or minuend in 64-bit IEEE floating register format.
- * \param s2  Addend or subtrahend in 64-bit IEEE floating register format.
+ * \param s1  Augend or minuend.
+ * \param s2  Addend or subtrahend.
  * \param ins The instruction currently being executed. Used to properly
  *            handle exceptions.
  * \param dp  DT_S for S-floating or DT_T for T-floating.  
  * \param sub subtract if true, add if false.
- * \return    64-bit IEEE floating in register format.
+ * \return    IEEE floating.
  **/
 u64 CAlphaCPU::ieee_fadd (u64 s1, u64 s2, u32 ins, u32 dp, bool sub)
 {
@@ -396,12 +475,12 @@ u64 CAlphaCPU::ieee_fadd (u64 s1, u64 s2, u32 ins, u32 dp, bool sub)
  * to be in correct, when in fact they are 2X larger.  This problem is taken
  * care of in the result exponent calculation.
  *
- * \param s1  Multiplicand in 64-bit IEEE floating register format.
- * \param s2  Multiplier in 64-bit IEEE floating register format.
+ * \param s1  Multiplicand.
+ * \param s2  Multiplier.
  * \param ins The instruction currently being executed. Used to properly
  *            handle exceptions.
  * \param dp  DT_S for S-floating or DT_T for T-floating.  
- * \return    64-bit IEEE floating in register format.
+ * \return    IEEE floating.
  **/
 u64 CAlphaCPU::ieee_fmul (u64 s1, u64 s2, u32 ins, u32 dp)
 {
@@ -442,12 +521,12 @@ u64 CAlphaCPU::ieee_fmul (u64 s1, u64 s2, u32 ins, u32 dp)
  * of (.5,2).  Results in the range of [1,2) are correct.  Results in the
  * range of (.5,1) need to be normalized by one place.
  *
- * \param s1  Dividend in 64-bit IEEE floating register format.
- * \param s2  Divisor in 64-bit IEEE floating register format.
+ * \param s1  Dividend.
+ * \param s2  Divisor.
  * \param ins The instruction currently being executed. Used to properly
  *            handle exceptions.
  * \param dp  DT_S for S-floating or DT_T for T-floating.  
- * \return    64-bit IEEE floating in register format.
+ * \return    IEEE floating.
  **/
 u64 CAlphaCPU::ieee_fdiv (u64 s1, u64 s2, u32 ins, u32 dp)
 {
@@ -494,11 +573,11 @@ u64 CAlphaCPU::ieee_fdiv (u64 s1, u64 s2, u32 ins, u32 dp)
  *   - Compute sqrt of fraction 
  *   .
  *
- * \param op  64-bit IEEE floating in register format.
+ * \param op  IEEE floating.
  * \param ins The instruction currently being executed. Used to properly
  *            handle exceptions.
  * \param dp  DT_S for S-floating or DT_T for T-floating.  
- * \return    64-bit IEEE floating in register format.
+ * \return    IEEE floating.
  **/
 u64 CAlphaCPU::ieee_sqrt (u64 op, u32 ins, u32 dp)
 {
@@ -530,7 +609,7 @@ u64 CAlphaCPU::ieee_sqrt (u64 op, u32 ins, u32 dp)
  * Converts a IEEE floating-point value to it's sign, exponent and fraction
  * components.
  *
- * \param op  64-bit IEEE floating.
+ * \param op  IEEE floating.
  * \param r   Pointer to the unpacked-floating-point UFP structure
  *            where the results are to be returned.
  * \param ins The instruction currently being executed. Used to properly
@@ -599,8 +678,8 @@ void CAlphaCPU::ieee_norm (UFP *r)
 /**
  * \brief Round and pack IEEE floating-point value
  *
- * Converts sign, exponent and fraction components to a register-format IEEE
- * floating point value.
+ * Converts sign, exponent and fraction components to an IEEE floating
+ * point value.
  *
  * Much of the treachery of the IEEE standard is buried here:
  *   - Rounding modes (chopped, +infinity, nearest, -infinity).
@@ -626,7 +705,7 @@ void CAlphaCPU::ieee_norm (UFP *r)
  * \param ins The instruction currently being executed. Used to properly
  *            handle exceptions and to determine the rounding mode.
  * \param dp  DT_S for S-floating or DT_T for T-floating.  
- * \return    64-bit IEEE floating.
+ * \return    IEEE floating.
  **/
 u64 CAlphaCPU::ieee_rpack (UFP *r, u32 ins, u32 dp)
 {
