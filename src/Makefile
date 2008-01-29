@@ -27,12 +27,16 @@
 #
 # Makefile for GNU Linux. (And possibly many UNIX'es).
 #
-# $Id: Makefile,v 1.18 2008/01/26 12:30:44 iamcamiel Exp $
+# $Id: Makefile,v 1.19 2008/01/29 15:18:35 iamcamiel Exp $
 #
-# X-1.6         Camiel Vanderhoeven             26-JAN-2008
+# X-1.19		Brian Wheeler      				29-JAN-2008
+#	More information about available flags, and make depend
+#   works now.
+#
+# X-1.18        Camiel Vanderhoeven             26-JAN-2008
 #   Added new floating point cpp's.
 #
-# X-1.5         Camiel Vanderhoeven             20-JAN-2008
+# X-1.17        Camiel Vanderhoeven             20-JAN-2008
 #   Added X11 GUI.
 #
 # X-1.16		Brian Wheeler      				12-JAN-2008
@@ -84,20 +88,78 @@
 #
 ################################################################################
 
-#to use G++
+# use G++
 CC = g++
-LDFLAGS =
+LD = g++
 
-#to use Intel's ICC
-#CC = /home/bdwheele/intel/cce/10.1.008/bin/icc
-#LDFLAGS = -L/home/bdwheele/intel/cce/10.1.008/lib -lirc -lintlc
+#
+# CTUNINGFLAGS - tuning options for the compiler
+#
+# Samples for g++ on x86:
+#  -O3   -- optimize at level 3
+#  -mtune=<cpu>   -- cpu is one of:  generic, core2, athlon64, pentium4, etc
+#
+CTUNINGFLAGS = -O3 -mtune=generic 
 
-CFLAGS = -g  -O2 -I. -I.. -I/usr/include/SDL -DHAVE_SDL -DHAVE_PCAP -DHAVE_X11
-LDFLAGS = -lpcap -lSDL
+#
+# CDEBUGFLAGS - turn on debugging in ES40
+#
+# Supported flags:
+#   -g  		Include information for gdb
+#   -DHIDE_COUNTER	Do not show the cycle counter
+#   -DDEBUG_VGA		Turn on VGA Debugging
+#   -DDEBUG_SERIAL	Turn on Serial Debugging
+#   -DDEBUG_IDE		Turn on all IDE Debugging.
+#   -DDEBUG_IDE_<opt>	Turn on specific IDE debugging.  Options are:
+#			BUSMASTER, COMMAND, DMA, INTERRUPT, REG_COMMAND,
+#			REG_CONTROL, PACKET
+#   -DDEBUG_UNKMEM	Turn on unknown memory access debugging
+#   -DDEBUG_PCI		Turn on PCI Debugging
+#   -DDEBUG_TB		Turn on Translation Buffer debugging
+#   -DDEBUG_PORTACCESS	Turn on i/o port access debugging
+#   -DDEBUG_SCSI	Turn on SCSI debugging
+#   -DDEBUG_KBD		Turn on keyboard debugging
+#   -DDEBUG_PIC		Turn on Programmable Interrupt Controller debugging
+#
+CDEBUGFLAGS = -g -DHIDE_COUNTER 
+
+#
+# ES40 Options
+#
+# -DHAVE_SDL 		Use the SDL Library for GUI
+# -DHAVE_X11		Use X11 for GUI
+# -DHAVE_PCAP		Use Networking via PCAP
+# -DHAVE_NEW_IDE	Use the 'new' IDE Driver
+#
+OPTIONS = -DHAVE_SDL -DHAVE_X11 -DHAVE_PCAP -DHAVE_NEW_IDE
+
+
+####################################
+# No user servicable parts inside.
+####################################
+
+ifneq ($(findstring "-DHAVE_SDL",$(OPTIONS)),"")
+COPTIONFLAGS += -I/usr/include/SDL
+LDOPTIONFLAGS += -lSDL
+endif
+
+ifneq ($(findstring "-DHAVE_X11",$(OPTIONS)),"")
+LDOPTIONFLAGS += -lX11
+endif
+
+ifneq ($(findstring "-DHAVE_PCAP",$(OPTIONS)),"")
+LDOPTIONFLAGS += -lpcap
+endif
+
+
+CFLAGS =  -I. -I..  \
+	$(CDEBUGFLAGS) $(CTUNINGFLAGS) $(OPTIONS) $(COPTIONFLAGS)
+LDFLAGS = $(LDOPTIONFLAGS)
+
 IDB_CFLAGS = -DIDB 
 LSM_CFLAGS = -DIDB -DLS_MASTER
 LSS_CFLAGS = -DIDB -DLS_SLAVE
-LD = g++
+
 
 DEPEND = makedepend $(CFLAGS)
 
@@ -144,6 +206,7 @@ OBJS = AliM1543C.o \
 IDB_OBJS = $(subst .o,.do,$(OBJS))
 LSM_OBJS = $(subst .o,.mao,$(OBJS))
 LSS_OBJS = $(subst .o,.slo,$(OBJS))
+SRCS = $(subst .o,.cpp,$(OBJS))
 
 .SUFFIXES: .do .mao .slo
 
