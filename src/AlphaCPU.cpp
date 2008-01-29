@@ -27,7 +27,10 @@
  * \file 
  * Contains the code for the emulated DecChip 21264CB EV68 Alpha processor.
  *
- * $Id: AlphaCPU.cpp,v 1.61 2008/01/29 10:09:38 iamcamiel Exp $
+ * $Id: AlphaCPU.cpp,v 1.62 2008/01/29 15:11:58 iamcamiel Exp $
+ *
+ * X-1.62       Camiel Vanderhoeven                             29-JAN-2008
+ *      Comments.
  *
  * X-1.61       Camiel Vanderhoeven                             29-JAN-2008
  *      Undid last change, remember separate last found translation-buffer
@@ -322,7 +325,7 @@ CAlphaCPU::CAlphaCPU(CConfigurator * cfg, CSystem * system) : CSystemComponent (
   bListing = false;
 #endif
   
-  printf("%s: $Id: AlphaCPU.cpp,v 1.61 2008/01/29 10:09:38 iamcamiel Exp $\n",devid_string);
+  printf("%s: $Id: AlphaCPU.cpp,v 1.62 2008/01/29 15:11:58 iamcamiel Exp $\n",devid_string);
 }
 
 /**
@@ -1085,7 +1088,49 @@ int CAlphaCPU::FindTBEntry(u64 virt, int flags)
   return -1;
 }
 
-int CAlphaCPU::virt2phys(u64 virt, u64 * phys, int flags,bool *asm_bit,u32 ins)
+/**
+ * \brief Translate a virtual address to a physical address.
+ *
+ * Translate a 64-bit virtual address into a 64-bit physical address, using
+ * the page table buffers.
+ *
+ * The following steps are taken to resolve the address:
+ *  - See if the address can be found in the translation buffer.
+ *  - If not, try to load the right page table entry into the translation
+ *    buffer, if this is not possible, trap to the OS.
+ *  - Check access privileges.
+ *  - Check fault bits.
+ *  .
+ *
+ * \param virt    Virtual address to be translated.
+ * \param phys    Pointer to where the physical address is to be returned.
+ * \param flags   Set of flags that determine the exact functioning of the
+ *                function. A combination of the following flags:
+ *                  - ACCESS_READ   Data-read-access. 
+ *                  - ACCESS_WRITE  Data-write-access.
+ *                  - ACCESS_EXEC   Code-read-access.
+ *                  - NO_CHECK      Do not perform access checks.
+ *                  - VPTE          VPTE access; if this misses, it's a double miss.
+ *                  - FAKE          Access is not initiated by executing code, but by
+ *                                  the debugger. If a translation can't be found
+ *                                  through the translation buffer, don't bother.
+ *                  - ALT           Use alt_cm for access checks instead of cm.
+ *                  - RECUR         Recursive try. We tried to find this address
+ *                                  before, added a TB entry, and now it should sail
+ *                                  through.
+ *                  - PROBE         Access is for a PROBER or PROBEW access; Don't
+ *                                  swap in the page if it is outswapped.
+ *                  - PROBEW        Access is for a PROBEW access.
+ *                  .
+ * \param asm_bit Status of the ASM (address space match) bit in the page-table-entry.
+ * \param ins     Instruction currently being executed. Important for the correct
+ *                handling of traps.
+ *               
+ * \return        0 on success, -1 if address could not be converted without
+ *                help (in this case state.pc contains the address of the
+ *                next instruction to execute (PALcode or OS entry point).
+ **/
+int CAlphaCPU::virt2phys(u64 virt, u64 * phys, int flags, bool *asm_bit, u32 ins)
 {
   int t = (flags&ACCESS_EXEC)?1:0;
   int i;
@@ -1112,7 +1157,8 @@ int CAlphaCPU::virt2phys(u64 virt, u64 * phys, int flags,bool *asm_bit,u32 ins)
     printf("TB %" LL "x,%x: ", virt,flags);
 #endif
 
-if (spe && !cm)
+  // try superpage first.
+  if (spe && !cm)
   {
 #if defined(DEBUG_TB)
   if (forreal)
@@ -1121,6 +1167,9 @@ if (spe && !cm)
 #endif
     printf("try spe...");
 #endif
+    // HRM 5.3.9: SPE[2], when set, enables superpage mapping when VA[47:46] = 2.
+    // In this mode, VA[43:13] are mapped directly to PA[43:13] and VA[45:44] are
+    // ignored.
     if ((move_bits_64(virt,47,46,0) == X64(2)) && (spe&4))
 	{
 	  *phys = keep_bits_64(virt,43,0);
@@ -1135,6 +1184,9 @@ if (spe && !cm)
 #endif
 	  return 0;
 	}
+    // SPE[1], when set, enables superpage mapping when VA[47:41] = 7E. In
+    // this mode, VA[40:13] are mapped directly to PA[40:13] and PA[43:41] are
+    // copies of PA[40] (sign extension).
     else if ((move_bits_64(virt,47,41,0) == X64(7e)) && (spe&2))
 	{
 	  *phys = keep_bits_64(virt,40,0) 
@@ -1150,7 +1202,10 @@ if (spe && !cm)
 #endif
 	  return 0;
 	}
-      else if ((move_bits_64(virt,47,30,0) == X64(3fffe)) && (spe & 1))
+    // SPE[0], when set, enables superpage mapping when VA[47:30] = 3FFFE.
+    // In this mode, VA[29:13] are mapped directly to PA[29:13] and PA[43:30] are
+    // cleared.
+    else if ((move_bits_64(virt,47,30,0) == X64(3fffe)) && (spe & 1))
 	{
 	  *phys = keep_bits_64(virt,29,0);
       if (asm_bit)
@@ -1166,66 +1221,81 @@ if (spe && !cm)
 	}
   }
 
+  // try to find it in the translation buffer
   i = FindTBEntry(virt,flags);
 
-  if (i<0)
+  if (i<0) // not found, either trap to PALcode, or try to load the TB entry and try again.
   {
-    if (!forreal)
-        return -1;
-    if (!state.pal_vms)
+    if (!forreal) // debugger-lookup of the address 
+      return -1;  // report failure, and don't look any further
+    if (!state.pal_vms) // unknown PALcode
     {
-        state.exc_addr = state.current_pc;
-        if (flags & VPTE)
-        {
-          state.fault_va = virt;
-          state.exc_sum = (u64)REG_1<<8;
-          state.pc = state.pal_base + 0x101;
-        }
-        else if (flags & ACCESS_EXEC)
-        {
-          state.pc = state.pal_base + 0x581;
-        }
-        else
-        {
-          state.fault_va = virt;
-          state.exc_sum = (u64)REG_1<<8;
-          u32 opcode = move_bits_32(ins,31,26,0);
-          state.mm_stat =  ((opcode==0x1b||opcode==0x1f)?opcode-0x18:opcode)<<4 | (flags & ACCESS_WRITE);
-          state.pc = state.pal_base + 0x301;
-        }
-        return -1;
+      // transfer execution to PALcode
+      state.exc_addr = state.current_pc;
+      if (flags & VPTE)
+      {
+        state.fault_va = virt;
+        state.exc_sum = (u64)REG_1<<8;
+        state.pc = state.pal_base + DTBM_DOUBLE_3 + 1;
+      }
+      else if (flags & ACCESS_EXEC)
+      {
+        state.pc = state.pal_base + ITB_MISS + 1;
+      }
+      else
+      {
+        state.fault_va = virt;
+        state.exc_sum = (u64)REG_1<<8;
+        u32 opcode = move_bits_32(ins,31,26,0);
+        state.mm_stat =  ((opcode==0x1b||opcode==0x1f)?opcode-0x18:opcode)<<4 | (flags & ACCESS_WRITE);
+        state.pc = state.pal_base + DTBM_SINGLE + 1;
+      }
+      return -1;
     }
-    else
+    else // VMS PALcode
     {
-        if (flags & RECUR)
-            return -1;
+      if (flags & RECUR) // we already tried this
+      {
+        printf("Translationbuffer RECUR lookup failed!\n");
+        return -1;
+      }
 
-        state.exc_addr = state.current_pc;
-        if (flags & VPTE)
-        {
-          if (res = vmspal_ent_dtbm_double_3(flags))
-            return res;
-          return virt2phys(virt,phys,flags | RECUR, asm_bit, ins);
-        }
-        else if (flags & ACCESS_EXEC)
-        {
-          if (res = vmspal_ent_itbm(flags))
-            return res;
-          return virt2phys(virt,phys,flags | RECUR, asm_bit, ins);
-        }
-        else
-        {
-          state.fault_va = virt;
-          state.exc_sum = (u64)REG_1<<8;
-          u32 opcode = move_bits_32(ins,31,26,0);
-          state.mm_stat =  ((opcode==0x1b||opcode==0x1f)?opcode-0x18:opcode)<<4 | (flags & ACCESS_WRITE);
-          if (res = vmspal_ent_dtbm_single(flags))
-            return res;
-          return virt2phys(virt,phys,flags | RECUR, asm_bit, ins);
-        }
+      state.exc_addr = state.current_pc;
+      if (flags & VPTE)
+      {
+        // try to handle the double miss. If this needs to transfer control
+        // to the OS, it will return non-zero value.
+        if (res = vmspal_ent_dtbm_double_3(flags))
+          return res;
+        // Double miss succesfully handled. Try to get the physical address again.
+        return virt2phys(virt,phys,flags | RECUR, asm_bit, ins);
+      }
+      else if (flags & ACCESS_EXEC)
+      {
+        // try to handle the ITB miss. If this needs to transfer control
+        // to the OS, it will return non-zero value.
+        if (res = vmspal_ent_itbm(flags))
+          return res;
+        // ITB miss succesfully handled. Try to get the physical address again.
+        return virt2phys(virt,phys,flags | RECUR, asm_bit, ins);
+      }
+      else
+      {
+        state.fault_va = virt;
+        state.exc_sum = (u64)REG_1<<8;
+        u32 opcode = move_bits_32(ins,31,26,0);
+        state.mm_stat =  ((opcode==0x1b||opcode==0x1f)?opcode-0x18:opcode)<<4 | (flags & ACCESS_WRITE);
+        // try to handle the single miss. If this needs to transfer control
+        // to the OS, it will return non-zero value.
+        if (res = vmspal_ent_dtbm_single(flags))
+          return res;
+        // Single miss succesfully handled. Try to get the physical address again.
+        return virt2phys(virt,phys,flags | RECUR, asm_bit, ins);
+      }
     }
   }
 
+  // If we get here, the number of the matching TB entry is in i.
 #if defined(DEBUG_TB)
   else
   {
@@ -1237,9 +1307,9 @@ if (spe && !cm)
   }
 #endif
 
-  // check access...
   if (!(flags&NO_CHECK))
   {
+    // check if requested access is allowed
     if (!state.tb[t][i].access[flags&ACCESS_WRITE][cm])
     {
 #if defined(DEBUG_TB)
@@ -1251,6 +1321,7 @@ if (spe && !cm)
 #endif
       if (flags & ACCESS_EXEC)
       {
+        // handle I-stream access violation
         state.exc_addr = state.current_pc;
         state.exc_sum = 0;
         if (state.pal_vms)
@@ -1260,12 +1331,13 @@ if (spe && !cm)
         }
         else
         {
-          state.pc = state.pal_base + 0x481;
+          state.pc = state.pal_base + IACV + 1;
           return -1;
         }
       }
       else
       {
+        // Handle D-stream access violation
         state.exc_addr = state.current_pc;
         state.fault_va = virt;
         state.exc_sum = (u64)REG_1<<8;
@@ -1278,11 +1350,13 @@ if (spe && !cm)
         }
         else
         {
-          state.pc = state.pal_base + 0x381;
+          state.pc = state.pal_base + DFAULT + 1;
           return -1;
         }
       }
     }
+
+    // check if requested access doesn't fault
     if (state.tb[t][i].fault[flags&ACCESS_MODE])
     {
 #if defined(DEBUG_TB)
@@ -1294,6 +1368,7 @@ if (spe && !cm)
 #endif
       if (flags & ACCESS_EXEC)
       {
+        // handle I-stream access fault
         state.exc_addr = state.current_pc;
         state.exc_sum = 0;
         if (state.pal_vms)
@@ -1303,12 +1378,13 @@ if (spe && !cm)
         }
         else
         {
-          state.pc = state.pal_base + 0x481;
+          state.pc = state.pal_base + IACV + 1;
           return -1;
         }
       }
       else
       {
+        // handle D-stream access fault
         state.exc_addr = state.current_pc;
         state.fault_va = virt;
         state.exc_sum = (u64)REG_1<<8;
@@ -1321,15 +1397,16 @@ if (spe && !cm)
         }
         else
         {
-          state.pc = state.pal_base + 0x381;
+          state.pc = state.pal_base + DFAULT + 1;
           return -1;
         }
       }
     }
   }
-  // all is ok...
 
+  // No access violations or faults
 
+  // Return the converted address
   *phys = state.tb[t][i].phys | (virt & state.tb[t][i].keep_mask);
   if (asm_bit)
     *asm_bit = state.tb[t][i].asm_bit?true:false;
@@ -1345,6 +1422,15 @@ if (spe && !cm)
   return 0;
 }
 
+/**
+ * \brief Add translation-buffer entry
+ *
+ * Add a translation-buffer entry to one of the translation buffers.
+ *
+ * \param virt    Virtual address.
+ * \param pte     Translation in DTB_PTE format (see add_tb_d).
+ * \param flags   ACCESS_EXEC determines which translation buffer to use.
+ **/
 void CAlphaCPU::add_tb(u64 virt, u64 pte, int flags)
 {
   int t = (flags&ACCESS_EXEC)?1:0;
@@ -1437,16 +1523,63 @@ void CAlphaCPU::add_tb(u64 virt, u64 pte, int flags)
 
 }
 
+/**
+ * \brief Add translation-buffer entry to the DTB
+ *
+ * The format of the PTE field is:
+ * \code
+ *   63 62           32 31     16  15  14  13  12  11  10  9   8  7 6  5  4  3  2   1  0
+ *  +--+---------------+---------+---+---+---+---+---+---+---+---+-+----+---+-+---+---+-+
+ *  |  |  PA <43:13>   |         |UWE|SWE|EWE|KWE|URE|SRE|ERE|KRE| | GH |ASM| |FOW|FOR| |
+ *  +--+---------------+---------+---+---+---+---+---+---+---+---+-+----+---+-+---+---+-+
+ *                               +-------------------------------+    |   |   +-------+
+ *                                                           |        |   |       |
+ *  (user,supervisor,executive,kernel)(read,write)enable ----+        |   |       |
+ *                                              granularity hint -----+   |       |
+ *                                               address space match -----+       |
+ *                                                      fault-on-(read,write) ----+
+ * \endcode
+ *
+ * \param virt    Virtual address.
+ * \param pte     Translation in DTB_PTE format.
+ **/
 void CAlphaCPU::add_tb_d(u64 virt, u64 pte)
 {
   add_tb(virt,pte,ACCESS_READ);
 }
 
+/**
+ * \brief Add translation-buffer entry to the ITB
+ *
+ * The format of the PTE field is:
+ * \code
+ *   63              44 43           13 12  11  10  9   8  7 6  5  4  3   0
+ *  +------------------+---------------+--+---+---+---+---+-+----+---+-----+
+ *  |                  |  PA <43:13>   |  |URE|SRE|ERE|KRE| | GH |ASM|     |
+ *  +------------------+---------------+--+---+---+---+---+-+----+---+-----+
+ *                                        +---------------+    |   |   
+ *                                                    |        |   |       
+ *  (user,supervisor,executive,kernel)read enable ----+        |   |       
+ *                                       granularity hint -----+   |       
+ *                                        address space match -----+       
+ *
+ * \endcode
+ *
+ * \param virt    Virtual address.
+ * \param pte     Translation in ITB_PTE format.
+ **/
 void CAlphaCPU::add_tb_i(u64 virt, u64 pte)
 {
   add_tb(virt, keep_bits_64(pte,12,0) | move_bits_64(pte,43,13,32), ACCESS_EXEC);
 }
 
+/**
+ * \brief Invalidate all translation-buffer entries
+ *
+ * Invalidate all translation-buffer entries in one of the translation buffers.
+ *
+ * \param flags   ACCESS_EXEC determines which translation buffer to use.
+ **/
 void CAlphaCPU::tbia(int flags)
 {
   int t = (flags&ACCESS_EXEC)?1:0;
@@ -1458,6 +1591,14 @@ void CAlphaCPU::tbia(int flags)
   state.next_tb[t] = 0;
 }
 
+/**
+ * \brief Invalidate all process-specific translation-buffer entries
+ *
+ * Invalidate all translation-buffer entries that do not have the ASM bit
+ * set in one of the translation buffers.
+ *
+ * \param flags   ACCESS_EXEC determines which translation buffer to use.
+ **/
 void CAlphaCPU::tbiap(int flags)
 {
   int t = (flags&ACCESS_EXEC)?1:0;
@@ -1467,6 +1608,12 @@ void CAlphaCPU::tbiap(int flags)
       state.tb[t][i].valid = false;
 }
 
+/**
+ * \brief Invalidate single translation-buffer entry
+ *
+ * \param virt    Virtual address for which the entry should be invalidated.
+ * \param flags   ACCESS_EXEC determines which translation buffer to use.
+ **/
 void CAlphaCPU::tbis(u64 virt,int flags)
 {
   int t = (flags&ACCESS_EXEC)?1:0;
