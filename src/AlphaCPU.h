@@ -28,7 +28,11 @@
  * \file
  * Contains the definitions for the emulated DecChip 21264CB EV68 Alpha processor.
  *
- * $Id: AlphaCPU.h,v 1.44 2008/01/28 19:54:19 iamcamiel Exp $
+ * $Id: AlphaCPU.h,v 1.45 2008/01/29 10:09:38 iamcamiel Exp $
+ *
+ * X-1.45       Camiel Vanderhoeven                             29-JAN-2008
+ *      Remember separate last found translation-buffer entries for read
+ *      and write operations. This should help with memory copy operations.
  *
  * X-1.44       Camiel Vanderhoeven                             28-JAN-2008
  *      Better floating-point exception handling.
@@ -462,7 +466,7 @@ private:
     int last_found_icache;                  /**< Number of last cache entry found */
     struct STBEntry tb[2][TB_ENTRIES];      /**< Translation buffer entries */
     int next_tb[2];                         /**< Number of next translation buffer entry to use */
-    int last_found_tb[2];                   /**< Number of last translation buffer entry found */
+    int last_found_tb[2][2];                /**< Number of last translation buffer entry found */
     bool lock_flag;
     u64 f[64];			                    /**< Floating point registers (0-31 normal, 32-63 shadow) */
     int iProcNum;			                /**< number of the current processor (0 in a 1-processor system) */
