@@ -28,7 +28,10 @@
  * \file
  * Contains the definitions for the emulated DecChip 21264CB EV68 Alpha processor.
  *
- * $Id: AlphaCPU.h,v 1.45 2008/01/29 10:09:38 iamcamiel Exp $
+ * $Id: AlphaCPU.h,v 1.46 2008/01/30 13:20:58 iamcamiel Exp $
+ *
+ * X-1.46       Camiel Vanderhoeven                             29-JAN-2008
+ *      Cleanup.
  *
  * X-1.45       Camiel Vanderhoeven                             29-JAN-2008
  *      Remember separate last found translation-buffer entries for read
@@ -185,41 +188,7 @@
 #define ICACHE_INDEX_MASK       (u64)(ICACHE_LINE_SIZE-X64(1))
 #define ICACHE_BYTE_MASK        (u64)(ICACHE_INDEX_MASK<<2)
 
-/**
- * \brief Instruction cache entry.
- *
- * An instruction cache entry contains the address and address space number
- * (ASN) + 16 32-bit instructions. [HRM 2-11]
- **/
- 
-struct SICache {
-  int asn;		                /**< Address Space Number */
-  u32 data[ICACHE_LINE_SIZE];	/**< Actual cached instructions  */
-  u64 address;		            /**< Address of first instruction */
-  u64 p_address;	            /**< Physical address of first instruction */
-  bool asm_bit;		            /**< Address Space Match bit */
-  bool valid;		            /**< Valid cache entry */
-};
-
 #define TB_ENTRIES              16
-
-/**
- * \brief Translation Buffer Entry.
- *
- * A translation buffer entry provides the mapping from a page of virtual memory to a page of physical memory.
- **/
-
-struct STBEntry {
-  u64 virt;		        /**< Virtual address of page*/
-  u64 phys;		        /**< Physical address of page*/
-  u64 match_mask;       /**< The virtual address has to match for these bits to be a hit*/
-  u64 keep_mask;        /**< This part of the virtual address is OR-ed with the phys address*/
-  int asn;		        /**< Address Space Number*/
-  int asm_bit;		    /**< Address Space Match bit*/
-  int access[2][4];	    /**< Access permitted [read/write][current mode]*/
-  int fault[3];         /**< Fault on access [read/write/execute]*/
-  bool valid;		    /**< Valid entry*/
-};
 
 /**
  * \brief Emulated CPU.
@@ -232,7 +201,6 @@ struct STBEntry {
  *  - Alpha Architecture Reference Manual, fourth edition [ARM] (http://download.majix.org/dec/alpha_arch_ref.pdf)
  *	.
  **/
-
 class CAlphaCPU : public CSystemComponent  
 {
  public:
@@ -269,8 +237,6 @@ class CAlphaCPU : public CSystemComponent
   void set_pc(u64 p_pc);
 
 //  CTranslationBuffer * get_tb(bool bIBOX);
-  int get_asn(bool bIBOX);
-  int get_spe(bool bIBOX);
   u64 va_form(u64 address, bool bIBOX);
 
 #if defined(IDB)
@@ -461,10 +427,40 @@ private:
     u64 fpcr;				                /**< Floating-Point Control Register [HRM p 2-36] */
     bool bIntrFlag;			
     u64 current_pc;			                /**< Virtual address of current instruction */
-    struct SICache icache[ICACHE_ENTRIES];  /**< Instruction cache entries [HRM p 2-11] */
+  
+    /**
+     * \brief Instruction cache entry.
+     *
+     * An instruction cache entry contains the address and address space number
+     * (ASN) + 16 32-bit instructions. [HRM 2-11]
+     **/
+      struct SICache {
+      int asn;		                /**< Address Space Number */
+      u32 data[ICACHE_LINE_SIZE];	/**< Actual cached instructions  */
+      u64 address;		            /**< Address of first instruction */
+      u64 p_address;	            /**< Physical address of first instruction */
+      bool asm_bit;		            /**< Address Space Match bit */
+      bool valid;		            /**< Valid cache entry */
+    } icache[ICACHE_ENTRIES];  /**< Instruction cache entries [HRM p 2-11] */
     int next_icache;			            /**< Number of next cache entry to use */
     int last_found_icache;                  /**< Number of last cache entry found */
-    struct STBEntry tb[2][TB_ENTRIES];      /**< Translation buffer entries */
+    /**
+     * \brief Translation Buffer Entry.
+     *
+     * A translation buffer entry provides the mapping from a page of virtual memory to a page of physical memory.
+     **/
+
+    struct STBEntry {
+      u64 virt;		        /**< Virtual address of page*/
+      u64 phys;		        /**< Physical address of page*/
+      u64 match_mask;       /**< The virtual address has to match for these bits to be a hit*/
+      u64 keep_mask;        /**< This part of the virtual address is OR-ed with the phys address*/
+      int asn;		        /**< Address Space Number*/
+      int asm_bit;		    /**< Address Space Match bit*/
+      int access[2][4];	    /**< Access permitted [read/write][current mode]*/
+      int fault[3];         /**< Fault on access [read/write/execute]*/
+      bool valid;		    /**< Valid entry*/
+    } tb[2][TB_ENTRIES];      /**< Translation buffer entries */
     int next_tb[2];                         /**< Number of next translation buffer entry to use */
     int last_found_tb[2][2];                /**< Number of last translation buffer entry found */
     bool lock_flag;
@@ -488,7 +484,6 @@ private:
 /**
  * Empty the instruction cache.
  **/
-
 inline void CAlphaCPU::flush_icache()
 {
   if (icache_enabled)
@@ -508,7 +503,6 @@ inline void CAlphaCPU::flush_icache()
 /**
  * Empty the instruction cache of lines with the ASM bit clear.
  **/
-
 inline void CAlphaCPU::flush_icache_asm()
 {
   if (icache_enabled)
@@ -642,7 +636,6 @@ inline int CAlphaCPU::get_icache(u64 address, u32 * data)
  * Convert a virtual address to va_form format.
  * Used for IPR VA_FORM [HRM 5-5..6] and IPR IVA_FORM [HRM 5-9].
  **/
-
 inline u64 CAlphaCPU::va_form(u64 address, bool bIBOX)
 {
   switch( bIBOX?state.i_ctl_va_mode:state.va_ctl_va_mode)
@@ -664,7 +657,6 @@ inline u64 CAlphaCPU::va_form(u64 address, bool bIBOX)
 /**
  * Return processor number.
  **/
-
 inline int CAlphaCPU::get_cpuid()
 {
   return state.iProcNum;
@@ -673,7 +665,6 @@ inline int CAlphaCPU::get_cpuid()
 /**
  * Assert or release an external interrupt line to the cpu.
  **/
-
 inline void CAlphaCPU::irq_h(int number, bool assert, int delay)
 {
   bool active = (state.eir & (X64(1)<<number)) || state.irq_h_timer[number];
@@ -736,7 +727,6 @@ inline void CAlphaCPU::irq_h(int number, bool assert, int delay)
 /**
  * Return program counter value.
  **/
-
 inline u64 CAlphaCPU::get_pc()
 {
   return state.pc;
@@ -756,7 +746,6 @@ inline u64 CAlphaCPU::get_current_pc_physical()
 /**
  * Return program counter value without PALmode bit.
  **/
-
 inline u64 CAlphaCPU::get_clean_pc()
 {
   return state.pc & ~X64(3);
@@ -765,7 +754,6 @@ inline u64 CAlphaCPU::get_clean_pc()
 /**
  * Jump to next instruction
  **/
-
 inline void CAlphaCPU::next_pc()
 {
   state.pc += 4;
@@ -774,7 +762,6 @@ inline void CAlphaCPU::next_pc()
 /**
  * Set program counter to a certain value.
  **/
-
 inline void CAlphaCPU::set_pc(u64 p_pc)
 {
   state.pc = p_pc;
@@ -784,7 +771,6 @@ inline void CAlphaCPU::set_pc(u64 p_pc)
  * Get a register value.
  * If \a translate is true, use shadow registers if currently enabled.
  **/
-
 inline u64 CAlphaCPU::get_r(int i, bool translate)
 {
   if (translate)
@@ -796,7 +782,6 @@ inline u64 CAlphaCPU::get_r(int i, bool translate)
 /**
  * Get a fp register value.
  **/
-
 inline u64 CAlphaCPU::get_f(int i)
 {
   return state.f[i];
@@ -809,7 +794,6 @@ inline void CAlphaCPU::set_r(int reg, u64 value)
 {
   state.r[reg]=value;
 }
-
 /** 
  * Set a fp register value
  **/
@@ -821,7 +805,6 @@ inline void CAlphaCPU::set_f(int reg, u64 value)
 /**
  * Get the PALcode base register.
  **/
-
 inline u64 CAlphaCPU::get_pal_base()
 {
   return state.pal_base;
@@ -831,7 +814,6 @@ inline u64 CAlphaCPU::get_pal_base()
  * Get the processor base register.
  * A bit fuzzy...
  **/
-
 inline u64 CAlphaCPU::get_prbr(void)
 {
   u64 v_prbr;	// virtual
@@ -855,7 +837,6 @@ inline u64 CAlphaCPU::get_prbr(void)
 /**
  * Get the hardware process control block address.
  **/
-
 inline u64 CAlphaCPU::get_hwpcb(void)
 {
   u64 v_pcb;	// virtual
@@ -874,30 +855,6 @@ inline u64 CAlphaCPU::get_hwpcb(void)
     p_pcb = 0;
 
   return p_pcb;
-}
-
-/**
- * Get the address space number.
- **/
-
-inline int CAlphaCPU::get_asn(bool bIBOX)
-{
-  if (bIBOX)
-    return state.asn;
-  else
-    return state.asn0;
-}
-
-/**
- * Get the super-page-enable bits.
- **/
-
-inline int CAlphaCPU::get_spe(bool bIBOX)
-{
-  if (bIBOX)
-    return state.i_ctl_spe;
-  else
-    return state.m_ctl_spe;
 }
 
 extern bool bTB_Debug;
