@@ -27,7 +27,7 @@
  * \file 
  * Contains the code for the emulated Typhoon Chipset devices.
  *
- * $Id: System.cpp,v 1.59 2008/01/28 19:55:42 iamcamiel Exp $
+ * $Id: System.cpp,v 1.60 2008/01/30 14:02:46 iamcamiel Exp $
  *
  * X-1.59       Camiel Vanderhoeven                             28-JAN-2008
  *      Avoid compiler warnings.
@@ -248,8 +248,6 @@
  *
  * X-1.1        Camiel Vanderhoeven                             19-JAN-2007
  *      Initial version in CVS.
- *
- * \author Camiel Vanderhoeven (camiel@camicom.com / http://www.camicom.com)
  **/
 
 #include "StdAfx.h"
@@ -320,7 +318,7 @@ CSystem::CSystem(CConfigurator * cfg)
 
   CHECK_ALLOCATION(memory = calloc(1<<iNumMemoryBits,1));
 
-  printf("%s(%s): $Id: System.cpp,v 1.59 2008/01/28 19:55:42 iamcamiel Exp $\n",cfg->get_myName(),cfg->get_myValue());
+  printf("%s(%s): $Id: System.cpp,v 1.60 2008/01/30 14:02:46 iamcamiel Exp $\n",cfg->get_myName(),cfg->get_myValue());
 }
 
 /**

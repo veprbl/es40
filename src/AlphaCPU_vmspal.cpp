@@ -29,7 +29,12 @@
  * DecChip 21264CB EV68 Alpha processor. Based on disassembly of original VMS
  * PALcode, HRM, and OpenVMS AXP Internals and Data Structures.
  *
- * $Id: AlphaCPU_vmspal.cpp,v 1.8 2008/01/27 11:46:26 iamcamiel Exp $
+ * $Id: AlphaCPU_vmspal.cpp,v 1.9 2008/01/30 14:02:46 iamcamiel Exp $
+ *
+ * X-1.9        Camiel Vanderhoeven                             30-JAN-2008
+ *      Remember number of instructions left in current memory page, so
+ *      that the translation-buffer doens't need to be consulted on every
+ *      instruction fetch when the Icache is disabled.
  *
  * X-1.8        Camiel Vanderhoeven                             27-JAN-2008
  *      Comments.
@@ -55,8 +60,6 @@
  *
  * X-1.1        Camiel Vanderhoeven                             2-DEC-2007
  *      Initial version in CVS.
- *
- * \author Camiel Vanderhoeven (camiel@camicom.com / http://www.camicom.com)
  **/
 
 #include "StdAfx.h"
@@ -331,42 +334,54 @@ void CAlphaCPU::vmspal_call_cserve()
     break;
   case 0x12:
     state.pc = 0x12e21;
+    state.rem_ins_in_page = 0;
     break;
   case 0x13:
     state.pc = 0x12f95;
+    state.rem_ins_in_page = 0;
     break;
   case 0x14:
     state.pc = 0x13115;
+    state.rem_ins_in_page = 0;
     break;
   case 0x15:
     state.pc = 0x131c1;
+    state.rem_ins_in_page = 0;
     break;
   case 0x40:
     state.pc = 0x13249;
+    state.rem_ins_in_page = 0;
     break;
   case 0x41:
     hw_ldq(p21+0x98,r0);
     break;
   case 0x42:
     state.pc = 0x13781;
+    state.rem_ins_in_page = 0;
     break;
   case 0x43:
     state.pc = 0x13261;
+    state.rem_ins_in_page = 0;
     break;
   case 0x44:
     state.pc = r17;
+    state.rem_ins_in_page = 0;
     break;
   case 0x45:
     state.pc = 0x13289;
+    state.rem_ins_in_page = 0;
     break;
   case 0x65:
     state.pc = 0x132bd;
+    state.rem_ins_in_page = 0;
     break;
   case 0x3e:
     state.pc = 0x1344d;
+    state.rem_ins_in_page = 0;
     break;
   case 0x66:
     state.pc = 0x133e9;
+    state.rem_ins_in_page = 0;
     break;
   }
 }
@@ -829,6 +844,7 @@ int CAlphaCPU::vmspal_call_rei()
     hw_stq(p7,p20);
     hw_ldq(p6,r30);
     state.pc = p23;
+    state.rem_ins_in_page = 0;
     return 0;
   }
 
@@ -866,6 +882,7 @@ int CAlphaCPU::vmspal_call_rei()
     state.asten = ipl_ier_mask[0][5];
     state.check_int = true;
     state.pc = p23;
+    state.rem_ins_in_page = 0;
     return 0;
   }
   p5 = (p20>>56) & 0xff;
@@ -884,6 +901,7 @@ int CAlphaCPU::vmspal_call_rei()
   state.asten = ipl_ier_mask[p7][5];
   state.check_int = true;
   state.pc = p23;
+  state.rem_ins_in_page = 0;
   return 0;
 }
 
@@ -1003,6 +1021,7 @@ int CAlphaCPU::vmspal_int_initiate_exception()
   stq(r30 + X64(30), p6);
 
   state.pc = r2;
+  state.rem_ins_in_page = 0;
   return -1;
 }
 
@@ -1056,6 +1075,7 @@ int CAlphaCPU::vmspal_int_initiate_interrupt()
   stq(r30 + X64(30), p6);
 
   state.pc = r2;
+  state.rem_ins_in_page = 0;
   return -1;
 }
 //\}
@@ -1342,6 +1362,7 @@ int CAlphaCPU::vmspal_ent_dtbm_single(int flags)
       state.r[25] = t25;
       state.r[26] = t26;
       state.pc = 0xd981;
+      state.rem_ins_in_page = 0;
       return -1;
       //return vmspal_int_dfault_in_palmode();
     }
@@ -1353,6 +1374,7 @@ int CAlphaCPU::vmspal_ent_dtbm_single(int flags)
     {
       // write "MISC" or read to R31
       state.pc = state.current_pc + 4;
+      state.rem_ins_in_page = 0;
       return -1;
     }
     p5 &= X64(1);
@@ -1508,6 +1530,7 @@ int CAlphaCPU::vmspal_ent_dtbm_double_3(int flags)
     state.r[25] = t25;
     state.r[26] = t26;
     state.pc = 0xd981;
+    state.rem_ins_in_page = 0;
     return -1;
   }
 
@@ -1529,6 +1552,7 @@ int CAlphaCPU::vmspal_ent_dtbm_double_3(int flags)
       || (!test_bit_64(p5,0) && ((p7>>8)&0x1f)==0x1f) )
   {
     state.pc = p23 + 4;
+    state.rem_ins_in_page = 0;
     return -1;
   }
   p5 <<= 0x3f;
@@ -1557,6 +1581,7 @@ int CAlphaCPU::vmspal_ent_iacv(int flags)
     hw_stq(p21+0xc8,p20);
     p23 = state.current_pc;
     state.pc = 0xde01;
+    state.rem_ins_in_page = 0;
     return -1;
   }
   hw_stq(p21+0x160,state.current_pc);
@@ -1620,6 +1645,7 @@ int CAlphaCPU::vmspal_ent_dfault(int flags)
     state.r[25] = t25;
     state.r[26] = t26;
     state.pc = 0xd981;
+    state.rem_ins_in_page = 0;
     return -1;
   }
 
@@ -1628,6 +1654,7 @@ int CAlphaCPU::vmspal_ent_dfault(int flags)
       || (!(state.mm_stat & 1) && (((state.exc_sum>>8)&0x1f)==0x1f))  )
   {
     state.pc = state.current_pc + 4;
+    state.rem_ins_in_page = 0;
     return -1;
   }
   p7 = 0x80;

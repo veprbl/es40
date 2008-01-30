@@ -27,6 +27,11 @@
  * \file 
  * Contains debugging macros used by AlphaCPU.cpp
  *
+ * X-1.21       Camiel Vanderhoeven                             30-JAN-2008
+ *      Remember number of instructions left in current memory page, so
+ *      that the translation-buffer doens't need to be consulted on every
+ *      instruction fetch when the Icache is disabled.
+ *
  * X-1.20       Camiel Vanderhoeven                             28-JAN-2008
  *      Better floating-point exception handling.
  *
@@ -99,8 +104,6 @@
  *
  * X-1.1        Camiel Vanderhoeven                             12-FEB-2007
  *      File created. Contains code previously found in AlphaCPU.h
- *
- * \author Camiel Vanderhoeven (camiel@camicom.com / http://www.camicom.com)
  **/
 
 #if defined(IDB)
@@ -130,14 +133,15 @@ void handle_debug_string(char * s);
 #define GO_PAL(offset) {						\
     if (bDisassemble) {							\
       sprintf(dbg_strptr," ==> PAL %x!\n",offset);			\
-      dbg_strptr += strlen(dbg_strptr);					\
-    }									\
-    handle_debug_string(dbg_string);					\
-    state.exc_addr = state.current_pc;						\
-    state.pc =  state.pal_base | offset | 1;					\
+      dbg_strptr += strlen(dbg_strptr);					            \
+    }									                            \
+    handle_debug_string(dbg_string);					            \
+    state.exc_addr = state.current_pc;						        \
+    state.pc =  state.pal_base | offset | 1;					    \
+    state.rem_ins_in_page = 0;                                      \
     if ((offset==DTBM_SINGLE || offset==ITB_MISS) && bTrace)		\
       trc->set_waitfor(this, state.exc_addr&~X64(3));				\
-    else								\
+    else								                            \
       TRC_(true,false,"GO_PAL %04x",offset); }
 
 #else
@@ -149,6 +153,7 @@ void handle_debug_string(char * s);
     {						                                        \
       state.exc_addr = state.current_pc;  						    \
       state.pc = state.pal_base | offset | 1;                       \
+      state.rem_ins_in_page = 0;                                    \
     }
 #endif
 

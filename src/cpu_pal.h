@@ -28,7 +28,12 @@
  * Contains code macros for the processor PALmode instructions.
  * Based on HRM.
  *
- * $Id: cpu_pal.h,v 1.11 2008/01/25 16:03:45 iamcamiel Exp $
+ * $Id: cpu_pal.h,v 1.12 2008/01/30 14:02:46 iamcamiel Exp $
+ *
+ * X-1.12       Camiel Vanderhoeven                             30-JAN-2008
+ *      Remember number of instructions left in current memory page, so
+ *      that the translation-buffer doens't need to be consulted on every
+ *      instruction fetch when the Icache is disabled.
  *
  * X-1.11       Camiel Vanderhoeven                             25-JAN-2008
  *      Trap on unalogned memory access. The previous implementation where
@@ -309,7 +314,12 @@
     }										\
   }
 
-#define DO_HW_RET state.pc = state.r[REG_2];
+#define DO_HW_RET                                                 \
+  {                                                               \
+    state.pc = state.r[REG_2];                                    \
+    state.rem_ins_in_page = 0;                                    \
+  }
+
 
 #define DO_HW_LDL								\
       switch(function)								\

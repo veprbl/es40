@@ -1,7 +1,7 @@
 /* ES40 emulator.
- * Copyright (C) 2007 by Camiel Vanderhoeven
+ * Copyright (C) 2007-2008 by the ES40 Emulator Project
  *
- * Website: www.camicom.com
+ * WWW    : http://sourceforge.net/projects/es40
  * E-mail : camiel@camicom.com
  * 
  * This program is free software; you can redistribute it and/or
@@ -21,12 +21,17 @@
  * Although this is not required, the author would appreciate being notified of, 
  * and receiving any modifications you may make to the source code that might serve
  * the general public.
- */ 
+ */
 
 /**
  * \file 
  * Contains code macros for miscellaneous processor instructions.
  * Based on ARM chapter 4.11.
+ *
+ * X-1.9        Camiel Vanderhoeven                             30-JAN-2008
+ *      Remember number of instructions left in current memory page, so
+ *      that the translation-buffer doens't need to be consulted on every
+ *      instruction fetch when the Icache is disabled.
  *
  * X-1.8        Camiel Vanderhoeven                             2-DEC-2007
  *      Use vmspal_call functions.
@@ -52,8 +57,6 @@
  *
  * X-1.1        Camiel Vanderhoeven                             18-FEB-2007
  *      File created. Contains code previously found in AlphaCPU.h
- *
- * \author Camiel Vanderhoeven (camiel@camicom.com / http://www.camicom.com)
  **/
 
 #define DO_AMASK state.r[REG_3] = V_2 & ~CPU_AMASK; 
@@ -227,6 +230,7 @@
 	          | (((u64)(function & 0x80)) <<5 )	\
 	          | (((u64)(function & 0x3f)) << 6 )	\
 	          | X64(1);				            \
+            state.rem_ins_in_page = 0;          \
 	        TRC(true,false)			            \
           }                                       \
         } else {                                  \
@@ -236,6 +240,7 @@
             | (((u64)(function & 0x80)) <<5 )	\
             | (((u64)(function & 0x3f)) << 6 )	\
             | X64(1);				            \
+          state.rem_ins_in_page = 0;            \
           TRC(true,false)			            \
         }                                         \
       }

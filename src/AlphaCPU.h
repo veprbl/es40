@@ -28,7 +28,12 @@
  * \file
  * Contains the definitions for the emulated DecChip 21264CB EV68 Alpha processor.
  *
- * $Id: AlphaCPU.h,v 1.46 2008/01/30 13:20:58 iamcamiel Exp $
+ * $Id: AlphaCPU.h,v 1.47 2008/01/30 14:02:46 iamcamiel Exp $
+ *
+ * X-1.47       Camiel Vanderhoeven                             30-JAN-2008
+ *      Remember number of instructions left in current memory page, so
+ *      that the translation-buffer doens't need to be consulted on every
+ *      instruction fetch when the Icache is disabled.
  *
  * X-1.46       Camiel Vanderhoeven                             29-JAN-2008
  *      Cleanup.
@@ -171,8 +176,6 @@
  *
  * X-1.1        Camiel Vanderhoeven                             19-JAN-2007
  *      Initial version in CVS.
- *
- * \author Camiel Vanderhoeven (camiel@camicom.com / http://www.camicom.com)
  **/
 
 #if !defined(INCLUDED_ALPHACPU_H)
@@ -463,6 +466,8 @@ private:
     } tb[2][TB_ENTRIES];      /**< Translation buffer entries */
     int next_tb[2];                         /**< Number of next translation buffer entry to use */
     int last_found_tb[2][2];                /**< Number of last translation buffer entry found */
+    u32 rem_ins_in_page;     /**< Number of instructions remaining in current page */
+    u64 pc_phys;
     bool lock_flag;
     u64 f[64];			                    /**< Floating point registers (0-31 normal, 32-63 shadow) */
     int iProcNum;			                /**< number of the current processor (0 in a 1-processor system) */
@@ -546,8 +551,7 @@ inline void CAlphaCPU::set_PAL_BASE(u64 pb)
 inline int CAlphaCPU::get_icache(u64 address, u32 * data)
 {
   int i = state.last_found_icache;
-  u64 v_a;
-  u64 p_a;
+  u64 v_a, p_a;
   int result;
   bool asm_bit;
 
@@ -615,21 +619,28 @@ inline int CAlphaCPU::get_icache(u64 address, u32 * data)
       state.next_icache = 0;
     return 0;
   }
-  else // icache disabled
+  
+  // icache disabled
+  if (address & 1)
   {
-    if (address & 1)
+    state.pc_phys = address & ~X64(3);
+    state.rem_ins_in_page = 1;
+  }
+  else
+  {
+    if (!state.rem_ins_in_page)
     {
-      p_a = address & ~X64(3);
-    }
-    else
-    {
-      result = virt2phys(address, &p_a, ACCESS_EXEC, &asm_bit, 0);
+      result = virt2phys(address, &state.pc_phys, ACCESS_EXEC, &asm_bit, 0);
       if (result)
         return result;
+      state.rem_ins_in_page = 2048 - ((((u32)address)>>2) & 2047);
     }
-    *data = (u32)cSystem->ReadMem(p_a, 32);
-    return 0;
   }
+
+  *data = (u32)cSystem->ReadMem(state.pc_phys, 32);
+  state.pc_phys += 4;
+  state.rem_ins_in_page--;
+  return 0;
 }
 
 /**
@@ -757,6 +768,9 @@ inline u64 CAlphaCPU::get_clean_pc()
 inline void CAlphaCPU::next_pc()
 {
   state.pc += 4;
+  state.pc_phys += 4;
+  if (state.rem_ins_in_page)
+    state.rem_ins_in_page--;
 }
 
 /**
@@ -765,6 +779,7 @@ inline void CAlphaCPU::next_pc()
 inline void CAlphaCPU::set_pc(u64 p_pc)
 {
   state.pc = p_pc;
+  state.rem_ins_in_page = 0;
 }
 
 /**

@@ -1,7 +1,7 @@
 /* ES40 emulator.
- * Copyright (C) 2007 by Camiel Vanderhoeven
+ * Copyright (C) 2007-2008 by the ES40 Emulator Project
  *
- * Website: www.camicom.com
+ * WWW    : http://sourceforge.net/projects/es40
  * E-mail : camiel@camicom.com
  * 
  * This program is free software; you can redistribute it and/or
@@ -28,6 +28,11 @@
  * Contains code macros for the processor floating-point branch instructions.
  * Based on ARM chapter 4.9.
  *
+ * X-1.7        Camiel Vanderhoeven                             30-JAN-2008
+ *      Remember number of instructions left in current memory page, so
+ *      that the translation-buffer doens't need to be consulted on every
+ *      instruction fetch when the Icache is disabled.
+ *
  * X-1.6        Camiel Vanderhoeven                             28-JAN-2008
  *      Better floating-point exception handling.
  *
@@ -46,38 +51,54 @@
  *
  * X-1.1        Camiel Vanderhoeven                             18-FEB-2007
  *      File created. Contains code previously found in AlphaCPU.h
- *
- * \author Camiel Vanderhoeven (camiel@camicom.com / http://www.camicom.com)
  **/
 
 #define DO_FBEQ                                                         \
-  FPSTART; \
-  if ((state.f[FREG_1] & ~FPR_SIGN) == 0)            /* +0 or - 0? */ \
-    state.pc += (DISP_21 * 4);
+  FPSTART;                                                              \
+  if ((state.f[FREG_1] & ~FPR_SIGN) == 0)            /* +0 or - 0? */   \
+  {                                                                     \
+    state.pc += (DISP_21 * 4);                                          \
+    state.rem_ins_in_page = 0;                                          \
+  }
 
 #define DO_FBGE                                                         \
-  FPSTART; \
-  if (state.f[FREG_1] <= FPR_SIGN)                   /* +0 to + n? */ \
-    state.pc += (DISP_21 * 4);
+  FPSTART;                                                              \
+  if (state.f[FREG_1] <= FPR_SIGN)                   /* +0 to + n? */   \
+  {                                                                     \
+    state.pc += (DISP_21 * 4);                                          \
+    state.rem_ins_in_page = 0;                                          \
+  }
 
 #define DO_FBGT                                                         \
-  FPSTART; \
-  if (!(state.f[FREG_1] & FPR_SIGN) && (state.f[FREG_1] != 0))        \
-                                               /* not - and not 0? */ \
-    state.pc += (DISP_21 * 4);
+  FPSTART;                                                              \
+  if (!(state.f[FREG_1] & FPR_SIGN) && (state.f[FREG_1] != 0))          \
+                                               /* not - and not 0? */   \
+  {                                                                     \
+    state.pc += (DISP_21 * 4);                                          \
+    state.rem_ins_in_page = 0;                                          \
+  }
 
 #define DO_FBLE                                                         \
-  FPSTART; \
-  if ((state.f[FREG_1] & FPR_SIGN) || (state.f[FREG_1] == 0))         \
-                                                        /* - or 0? */ \
-    state.pc += (DISP_21 * 4);
+  FPSTART;                                                              \
+  if ((state.f[FREG_1] & FPR_SIGN) || (state.f[FREG_1] == 0))           \
+                                                        /* - or 0? */   \
+  {                                                                     \
+    state.pc += (DISP_21 * 4);                                          \
+    state.rem_ins_in_page = 0;                                          \
+  }
 
 #define DO_FBLT                                                         \
-  FPSTART; \
-  if (state.f[FREG_1] > FPR_SIGN)                     /* -0 to -n? */ \
-    state.pc += (DISP_21 * 4);
+  FPSTART;                                                              \
+  if (state.f[FREG_1] > FPR_SIGN)                     /* -0 to -n? */   \
+  {                                                                     \
+    state.pc += (DISP_21 * 4);                                          \
+    state.rem_ins_in_page = 0;                                          \
+  }
 
 #define DO_FBNE                                                         \
-  FPSTART; \
-  if ((state.f[FREG_1] & ~FPR_SIGN) != 0)         /* not +0 or -0? */ \
-    state.pc += (DISP_21 * 4);
+  FPSTART;                                                              \
+  if ((state.f[FREG_1] & ~FPR_SIGN) != 0)         /* not +0 or -0? */   \
+  {                                                                     \
+    state.pc += (DISP_21 * 4);                                          \
+    state.rem_ins_in_page = 0;                                          \
+  }
