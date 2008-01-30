@@ -28,6 +28,11 @@
  * Contains code macros for the processor control instructions.
  * Based on ARM chapter 4.3
  *
+ * $Id: cpu_control.h,v 1.5 2008/01/30 17:22:45 iamcamiel Exp $
+ *
+ * X-1.5        Camiel Vanderhoeven                             30-JAN-2008
+ *      Always use set_pc or add_pc to change the program counter.
+ *
  * X-1.4        Camiel Vanderhoeven                             30-JAN-2008
  *      Remember number of instructions left in current memory page, so
  *      that the translation-buffer doens't need to be consulted on every
@@ -47,65 +52,40 @@
 
 #define DO_BEQ                                                          \
   if (!state.r[REG_1])                                                  \
-  {                                                                     \
-    state.pc += (DISP_21 * 4);                                          \
-    state.rem_ins_in_page = 0;                                          \
-  }
+    add_pc(DISP_21 * 4);
 
 #define DO_BGE                                                          \
   if ((s64)state.r[REG_1]>=0)                                           \
-  {                                                                     \
-    state.pc += (DISP_21 * 4);                                          \
-    state.rem_ins_in_page = 0;                                          \
-  }
+    add_pc(DISP_21 * 4);
 
 #define DO_BGT                                                          \
   if ((s64)state.r[REG_1]>0)                                            \
-  {                                                                     \
-    state.pc += (DISP_21 * 4);                                          \
-    state.rem_ins_in_page = 0;                                          \
-  }
+    add_pc(DISP_21 * 4);
 
 #define DO_BLBC                                                         \
   if (!(state.r[REG_1] & 1))                                            \
-  {                                                                     \
-    state.pc += (DISP_21 * 4);                                          \
-    state.rem_ins_in_page = 0;                                          \
-  }
+    add_pc(DISP_21 * 4);
 
 #define DO_BLBS                                                         \
   if (state.r[REG_1] & 1)                                               \
-  {                                                                     \
-    state.pc += (DISP_21 * 4);                                          \
-    state.rem_ins_in_page = 0;                                          \
-  }
+    add_pc(DISP_21 * 4);
 
 #define DO_BLE                                                          \
   if ((s64)state.r[REG_1]<=0)                                           \
-  {                                                                     \
-    state.pc += (DISP_21 * 4);                                          \
-    state.rem_ins_in_page = 0;                                          \
-  }
+    add_pc(DISP_21 * 4);
 
 #define DO_BLT                                                          \
   if ((s64)state.r[REG_1]<0)                                            \
-  {                                                                     \
-    state.pc += (DISP_21 * 4);                                          \
-    state.rem_ins_in_page = 0;                                          \
-  }
+    add_pc(DISP_21 * 4);
 
 #define DO_BNE                                                          \
   if (state.r[REG_1])                                                   \
-  {                                                                     \
-    state.pc += (DISP_21 * 4);                                          \
-    state.rem_ins_in_page = 0;                                          \
-  }
+    add_pc(DISP_21 * 4);
 
 #define DO_BR					                                        \
   {                                                                     \
     state.r[REG_1] = state.pc & ~X64(3);		                        \
-    state.pc += (DISP_21 * 4);                                          \
-    state.rem_ins_in_page = 0;                                          \
+    add_pc(DISP_21 * 4);                                                \
   }
 
 #define DO_BSR DO_BR
@@ -114,8 +94,7 @@
   {                                                                     \
     temp_64 = state.r[REG_2] & ~X64(3);		                            \
     state.r[REG_1] = state.pc & ~X64(3);		                        \
-    state.pc = temp_64 | (state.pc & 3);                                \
-    state.rem_ins_in_page = 0;                                          \
+    set_pc(temp_64 | (state.pc & 3));                                   \
   }
 
 // JSR, RET and JSR_COROUTINE is really JMP, just with different prediction bits.

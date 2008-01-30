@@ -27,6 +27,11 @@
  * \file 
  * Contains debugging macros used by AlphaCPU.cpp
  *
+ * $Id: cpu_debug.h,v 1.22 2008/01/30 17:22:45 iamcamiel Exp $
+ *
+ * X-1.22       Camiel Vanderhoeven                             30-JAN-2008
+ *      Always use set_pc or add_pc to change the program counter.
+ *
  * X-1.21       Camiel Vanderhoeven                             30-JAN-2008
  *      Remember number of instructions left in current memory page, so
  *      that the translation-buffer doens't need to be consulted on every
@@ -137,8 +142,7 @@ void handle_debug_string(char * s);
     }									                            \
     handle_debug_string(dbg_string);					            \
     state.exc_addr = state.current_pc;						        \
-    state.pc =  state.pal_base | offset | 1;					    \
-    state.rem_ins_in_page = 0;                                      \
+    set_pc(state.pal_base | offset | 1);					        \
     if ((offset==DTBM_SINGLE || offset==ITB_MISS) && bTrace)		\
       trc->set_waitfor(this, state.exc_addr&~X64(3));				\
     else								                            \
@@ -152,8 +156,7 @@ void handle_debug_string(char * s);
 #define GO_PAL(offset)                                              \
     {						                                        \
       state.exc_addr = state.current_pc;  						    \
-      state.pc = state.pal_base | offset | 1;                       \
-      state.rem_ins_in_page = 0;                                    \
+      set_pc(state.pal_base | offset | 1);                          \
     }
 #endif
 

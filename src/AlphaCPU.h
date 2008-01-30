@@ -28,7 +28,10 @@
  * \file
  * Contains the definitions for the emulated DecChip 21264CB EV68 Alpha processor.
  *
- * $Id: AlphaCPU.h,v 1.47 2008/01/30 14:02:46 iamcamiel Exp $
+ * $Id: AlphaCPU.h,v 1.48 2008/01/30 17:22:45 iamcamiel Exp $
+ *
+ * X-1.48       Camiel Vanderhoeven                             30-JAN-2008
+ *      Always use set_pc or add_pc to change the program counter.
  *
  * X-1.47       Camiel Vanderhoeven                             30-JAN-2008
  *      Remember number of instructions left in current memory page, so
@@ -238,6 +241,7 @@ class CAlphaCPU : public CSystemComponent
   u64 get_clean_pc();
   void next_pc();
   void set_pc(u64 p_pc);
+  void add_pc(u64 a_pc);
 
 //  CTranslationBuffer * get_tb(bool bIBOX);
   u64 va_form(u64 address, bool bIBOX);
@@ -638,8 +642,6 @@ inline int CAlphaCPU::get_icache(u64 address, u32 * data)
   }
 
   *data = (u32)cSystem->ReadMem(state.pc_phys, 32);
-  state.pc_phys += 4;
-  state.rem_ins_in_page--;
   return 0;
 }
 
@@ -779,6 +781,15 @@ inline void CAlphaCPU::next_pc()
 inline void CAlphaCPU::set_pc(u64 p_pc)
 {
   state.pc = p_pc;
+  state.rem_ins_in_page = 0;
+}
+
+/**
+ * Add  value to the program counter.
+ **/
+inline void CAlphaCPU::add_pc(u64 a_pc)
+{
+  state.pc += a_pc;
   state.rem_ins_in_page = 0;
 }
 

@@ -28,6 +28,11 @@
  * Contains code macros for miscellaneous processor instructions.
  * Based on ARM chapter 4.11.
  *
+ * $Id: cpu_misc.h,v 1.10 2008/01/30 17:22:45 iamcamiel Exp $
+ *
+ * X-1.10       Camiel Vanderhoeven                             30-JAN-2008
+ *      Always use set_pc or add_pc to change the program counter.
+ *
  * X-1.9        Camiel Vanderhoeven                             30-JAN-2008
  *      Remember number of instructions left in current memory page, so
  *      that the translation-buffer doens't need to be consulted on every
@@ -225,22 +230,20 @@
             break;                                \
           default:                                \
 	        state.r[32+23] = state.pc;			\
-	        state.pc = state.pal_base				\
-	          | (X64(1)<<13 )			            \
-	          | (((u64)(function & 0x80)) <<5 )	\
-	          | (((u64)(function & 0x3f)) << 6 )	\
-	          | X64(1);				            \
-            state.rem_ins_in_page = 0;          \
+	        set_pc(state.pal_base				\
+	               | (1<<13)			            \
+	               | ((function & 0x80) <<5)	\
+	               | ((function & 0x3f) << 6)	\
+	               | 1 );				            \
 	        TRC(true,false)			            \
           }                                       \
         } else {                                  \
           state.r[32+23] = state.pc;			\
-          state.pc = state.pal_base				\
-            | (X64(1)<<13 )			            \
-            | (((u64)(function & 0x80)) <<5 )	\
-            | (((u64)(function & 0x3f)) << 6 )	\
-            | X64(1);				            \
-          state.rem_ins_in_page = 0;            \
+          set_pc(state.pal_base				\
+                 | (1<<13)			            \
+                 | ((function & 0x80) <<5)	\
+                 | ((function & 0x3f) << 6)	\
+                 | 1 );				            \
           TRC(true,false)			            \
         }                                         \
       }

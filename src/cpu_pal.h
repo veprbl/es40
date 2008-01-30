@@ -28,7 +28,10 @@
  * Contains code macros for the processor PALmode instructions.
  * Based on HRM.
  *
- * $Id: cpu_pal.h,v 1.12 2008/01/30 14:02:46 iamcamiel Exp $
+ * $Id: cpu_pal.h,v 1.13 2008/01/30 17:22:45 iamcamiel Exp $
+ *
+ * X-1.13       Camiel Vanderhoeven                             30-JAN-2008
+ *      Always use set_pc or add_pc to change the program counter.
  *
  * X-1.12       Camiel Vanderhoeven                             30-JAN-2008
  *      Remember number of instructions left in current memory page, so
@@ -315,11 +318,7 @@
   }
 
 #define DO_HW_RET                                                 \
-  {                                                               \
-    state.pc = state.r[REG_2];                                    \
-    state.rem_ins_in_page = 0;                                    \
-  }
-
+  set_pc(state.r[REG_2])
 
 #define DO_HW_LDL								\
       switch(function)								\

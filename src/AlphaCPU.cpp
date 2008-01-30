@@ -27,7 +27,10 @@
  * \file 
  * Contains the code for the emulated DecChip 21264CB EV68 Alpha processor.
  *
- * $Id: AlphaCPU.cpp,v 1.63 2008/01/30 14:02:45 iamcamiel Exp $
+ * $Id: AlphaCPU.cpp,v 1.64 2008/01/30 17:22:45 iamcamiel Exp $
+ *
+ * X-1.64       Camiel Vanderhoeven                             30-JAN-2008
+ *      Always use set_pc or add_pc to change the program counter.
  *
  * X-1.63       Camiel Vanderhoeven                             30-JAN-2008
  *      Remember number of instructions left in current memory page, so
@@ -328,7 +331,7 @@ CAlphaCPU::CAlphaCPU(CConfigurator * cfg, CSystem * system) : CSystemComponent (
   bListing = false;
 #endif
   
-  printf("%s: $Id: AlphaCPU.cpp,v 1.63 2008/01/30 14:02:45 iamcamiel Exp $\n",devid_string);
+  printf("%s: $Id: AlphaCPU.cpp,v 1.64 2008/01/30 17:22:45 iamcamiel Exp $\n",devid_string);
 }
 
 /**
@@ -502,7 +505,7 @@ int CAlphaCPU::DoClock()
     ins = (u32)(cSystem->ReadMem(state.pc,32));
   }
 
-  state.pc += 4;
+  next_pc();
 
   // Clear "always zero" registers
   state.r[31] = 0;
@@ -1239,13 +1242,11 @@ int CAlphaCPU::virt2phys(u64 virt, u64 * phys, int flags, bool *asm_bit, u32 ins
       {
         state.fault_va = virt;
         state.exc_sum = (u64)REG_1<<8;
-        state.pc = state.pal_base + DTBM_DOUBLE_3 + 1;
-        state.rem_ins_in_page = 0;
+        set_pc(state.pal_base + DTBM_DOUBLE_3 + 1);
       }
       else if (flags & ACCESS_EXEC)
       {
-        state.pc = state.pal_base + ITB_MISS + 1;
-        state.rem_ins_in_page = 0;
+        set_pc(state.pal_base + ITB_MISS + 1);
       }
       else
       {
@@ -1253,8 +1254,7 @@ int CAlphaCPU::virt2phys(u64 virt, u64 * phys, int flags, bool *asm_bit, u32 ins
         state.exc_sum = (u64)REG_1<<8;
         u32 opcode = move_bits_32(ins,31,26,0);
         state.mm_stat =  ((opcode==0x1b||opcode==0x1f)?opcode-0x18:opcode)<<4 | (flags & ACCESS_WRITE);
-        state.pc = state.pal_base + DTBM_SINGLE + 1;
-        state.rem_ins_in_page = 0;
+        set_pc(state.pal_base + DTBM_SINGLE + 1);
       }
       return -1;
     }
@@ -1337,8 +1337,7 @@ int CAlphaCPU::virt2phys(u64 virt, u64 * phys, int flags, bool *asm_bit, u32 ins
         }
         else
         {
-          state.pc = state.pal_base + IACV + 1;
-          state.rem_ins_in_page = 0;
+          set_pc(state.pal_base + IACV + 1);
           return -1;
         }
       }
@@ -1357,8 +1356,7 @@ int CAlphaCPU::virt2phys(u64 virt, u64 * phys, int flags, bool *asm_bit, u32 ins
         }
         else
         {
-          state.pc = state.pal_base + DFAULT + 1;
-          state.rem_ins_in_page = 0;
+          set_pc(state.pal_base + DFAULT + 1);
           return -1;
         }
       }
@@ -1386,8 +1384,7 @@ int CAlphaCPU::virt2phys(u64 virt, u64 * phys, int flags, bool *asm_bit, u32 ins
         }
         else
         {
-          state.pc = state.pal_base + IACV + 1;
-          state.rem_ins_in_page = 0;
+          set_pc(state.pal_base + IACV + 1);
           return -1;
         }
       }
@@ -1406,8 +1403,7 @@ int CAlphaCPU::virt2phys(u64 virt, u64 * phys, int flags, bool *asm_bit, u32 ins
         }
         else
         {
-          state.pc = state.pal_base + DFAULT + 1;
-          state.rem_ins_in_page = 0;
+          set_pc(state.pal_base + DFAULT + 1);
           return -1;
         }
       }
