@@ -27,7 +27,10 @@
  * \file 
  * Contains the code for the emulated DecChip 21264CB EV68 Alpha processor.
  *
- * $Id: AlphaCPU.cpp,v 1.64 2008/01/30 17:22:45 iamcamiel Exp $
+ * $Id: AlphaCPU.cpp,v 1.65 2008/02/01 09:41:13 iamcamiel Exp $
+ *
+ * X-1.65       Camiel Vanderhoeven                             01-FEB-2008
+ *      Avoid unnecessary shift-operations to calculate constant values.
  *
  * X-1.64       Camiel Vanderhoeven                             30-JAN-2008
  *      Always use set_pc or add_pc to change the program counter.
@@ -325,13 +328,13 @@ CAlphaCPU::CAlphaCPU(CConfigurator * cfg, CSystem * system) : CSystemComponent (
   state.smc = 1;
 
   // SROM imitation...
-  add_tb(0, X64(ff61),ACCESS_READ);
+  add_tb(0, 0, X64(ff61),ACCESS_READ);
 
 #if defined(IDB)
   bListing = false;
 #endif
   
-  printf("%s: $Id: AlphaCPU.cpp,v 1.64 2008/01/30 17:22:45 iamcamiel Exp $\n",devid_string);
+  printf("%s: $Id: AlphaCPU.cpp,v 1.65 2008/02/01 09:41:13 iamcamiel Exp $\n",devid_string);
 }
 
 /**
@@ -1173,12 +1176,13 @@ int CAlphaCPU::virt2phys(u64 virt, u64 * phys, int flags, bool *asm_bit, u32 ins
 #endif
     printf("try spe...");
 #endif
+
     // HRM 5.3.9: SPE[2], when set, enables superpage mapping when VA[47:46] = 2.
     // In this mode, VA[43:13] are mapped directly to PA[43:13] and VA[45:44] are
     // ignored.
-    if ((move_bits_64(virt,47,46,0) == X64(2)) && (spe&4))
+    if (((virt & SPE_2_MASK) == SPE_2_MATCH) && (spe&4))
 	{
-	  *phys = keep_bits_64(virt,43,0);
+	  *phys = virt & SPE_2_MAP;
       if (asm_bit)
 	    *asm_bit = false;
 #if defined(DEBUG_TB)
@@ -1193,10 +1197,10 @@ int CAlphaCPU::virt2phys(u64 virt, u64 * phys, int flags, bool *asm_bit, u32 ins
     // SPE[1], when set, enables superpage mapping when VA[47:41] = 7E. In
     // this mode, VA[40:13] are mapped directly to PA[40:13] and PA[43:41] are
     // copies of PA[40] (sign extension).
-    else if ((move_bits_64(virt,47,41,0) == X64(7e)) && (spe&2))
+    else if (((virt & SPE_1_MASK) == SPE_1_MATCH) && (spe&2))
 	{
-	  *phys = keep_bits_64(virt,40,0) 
-	        | extend_bit_64(virt,43,41,40);
+	  *phys = (virt & SPE_1_MAP)
+            | ((virt & SPE_1_TEST)?SPE_1_ADD:0);
       if (asm_bit)
 	    *asm_bit = false;
 #if defined(DEBUG_TB)
@@ -1211,9 +1215,9 @@ int CAlphaCPU::virt2phys(u64 virt, u64 * phys, int flags, bool *asm_bit, u32 ins
     // SPE[0], when set, enables superpage mapping when VA[47:30] = 3FFFE.
     // In this mode, VA[29:13] are mapped directly to PA[29:13] and PA[43:30] are
     // cleared.
-    else if ((move_bits_64(virt,47,30,0) == X64(3fffe)) && (spe & 1))
+    else if (((virt & SPE_0_MASK) == SPE_0_MATCH) && (spe&4))
 	{
-	  *phys = keep_bits_64(virt,29,0);
+	  *phys = virt & SPE_0_MAP;
       if (asm_bit)
 	    *asm_bit = false;
 #if defined(DEBUG_TB)
@@ -1252,7 +1256,7 @@ int CAlphaCPU::virt2phys(u64 virt, u64 * phys, int flags, bool *asm_bit, u32 ins
       {
         state.fault_va = virt;
         state.exc_sum = (u64)REG_1<<8;
-        u32 opcode = move_bits_32(ins,31,26,0);
+        u32 opcode = I_GETOP(ins);
         state.mm_stat =  ((opcode==0x1b||opcode==0x1f)?opcode-0x18:opcode)<<4 | (flags & ACCESS_WRITE);
         set_pc(state.pal_base + DTBM_SINGLE + 1);
       }
@@ -1289,7 +1293,7 @@ int CAlphaCPU::virt2phys(u64 virt, u64 * phys, int flags, bool *asm_bit, u32 ins
       {
         state.fault_va = virt;
         state.exc_sum = (u64)REG_1<<8;
-        u32 opcode = move_bits_32(ins,31,26,0);
+        u32 opcode = I_GETOP(ins);
         state.mm_stat =  ((opcode==0x1b||opcode==0x1f)?opcode-0x18:opcode)<<4 | (flags & ACCESS_WRITE);
         // try to handle the single miss. If this needs to transfer control
         // to the OS, it will return non-zero value.
@@ -1347,7 +1351,7 @@ int CAlphaCPU::virt2phys(u64 virt, u64 * phys, int flags, bool *asm_bit, u32 ins
         state.exc_addr = state.current_pc;
         state.fault_va = virt;
         state.exc_sum = (u64)REG_1<<8;
-        u32 opcode = move_bits_32(ins,31,26,0);
+        u32 opcode = I_GETOP(ins);
         state.mm_stat =  ((opcode==0x1b||opcode==0x1f)?opcode-0x18:opcode)<<4 | (flags & ACCESS_WRITE) | 2;
         if (state.pal_vms)
         {
@@ -1394,7 +1398,7 @@ int CAlphaCPU::virt2phys(u64 virt, u64 * phys, int flags, bool *asm_bit, u32 ins
         state.exc_addr = state.current_pc;
         state.fault_va = virt;
         state.exc_sum = (u64)REG_1<<8;
-        u32 opcode = move_bits_32(ins,31,26,0);
+        u32 opcode = I_GETOP(ins);
         state.mm_stat =  ((opcode==0x1b||opcode==0x1f)?opcode-0x18:opcode)<<4 | (flags & ACCESS_WRITE) | ((flags&ACCESS_WRITE)?8:4);
         if (state.pal_vms)
         {
@@ -1437,7 +1441,7 @@ int CAlphaCPU::virt2phys(u64 virt, u64 * phys, int flags, bool *asm_bit, u32 ins
  * \param pte     Translation in DTB_PTE format (see add_tb_d).
  * \param flags   ACCESS_EXEC determines which translation buffer to use.
  **/
-void CAlphaCPU::add_tb(u64 virt, u64 pte, int flags)
+void CAlphaCPU::add_tb(u64 virt, u64 pte_phys, u64 pte_flags, int flags)
 {
   int t = (flags&ACCESS_EXEC)?1:0;
   int rw = (flags&ACCESS_WRITE)?1:0;
@@ -1447,27 +1451,39 @@ void CAlphaCPU::add_tb(u64 virt, u64 pte, int flags)
   int i;
   int asn = (flags & ACCESS_EXEC)?state.asn:state.asn0;
 
-  switch (pte & 0x60)
+  switch (pte_flags & 0x60) // granularity hint
   {
 	case 0:
-	  match_mask = make_mask_64(42,13);
-	  phys_mask  = make_mask_64(63,13);
-      keep_mask  = make_mask_64(12,0);
+#define GH_0_MATCH  X64(000007ffffffe000) /* <42:13> */
+#define GH_0_PHYS   X64(00000fffffffe000) /* <43:13> */
+#define GH_0_KEEP   X64(0000000000001fff) /* <12:0>  */
+	  match_mask = GH_0_MATCH;
+	  phys_mask  = GH_0_PHYS;
+      keep_mask  = GH_0_KEEP;
 	  break;
 	case 0x20:
-	  match_mask = make_mask_64(42,16);
-	  phys_mask  = make_mask_64(63,16);
-      keep_mask  = make_mask_64(15,0);
+#define GH_1_MATCH  X64(000007ffffff0000)
+#define GH_1_PHYS   X64(00000fffffff0000)
+#define GH_1_KEEP   X64(000000000000ffff)
+	  match_mask = GH_1_MATCH;
+	  phys_mask  = GH_1_PHYS;
+      keep_mask  = GH_1_KEEP;
 	  break;
 	case 0x40:
-	  match_mask = make_mask_64(42,19);
-	  phys_mask  = make_mask_64(63,19);
-      keep_mask  = make_mask_64(18,0);
+#define GH_2_MATCH  X64(000007fffff80000)
+#define GH_2_PHYS   X64(00000ffffff80000)
+#define GH_2_KEEP   X64(000000000007ffff)
+	  match_mask = GH_2_MATCH;
+	  phys_mask  = GH_2_PHYS;
+      keep_mask  = GH_2_KEEP;
 	  break;
 	case 0x60:
-	  match_mask = make_mask_64(42,22);
-	  phys_mask  = make_mask_64(63,22);
-      keep_mask  = make_mask_64(21,0);
+#define GH_3_MATCH  X64(000007ffffc00000)
+#define GH_3_PHYS   X64(00000fffffc00000)
+#define GH_3_KEEP   X64(00000000003fffff)
+	  match_mask = GH_3_MATCH;
+	  phys_mask  = GH_3_PHYS;
+      keep_mask  = GH_3_KEEP;
 	  break;
   }
   i = FindTBEntry(virt,flags);
@@ -1482,19 +1498,19 @@ void CAlphaCPU::add_tb(u64 virt, u64 pte, int flags)
   state.tb[t][i].match_mask = match_mask;
   state.tb[t][i].keep_mask = keep_mask;
   state.tb[t][i].virt = virt & match_mask;
-  state.tb[t][i].phys = move_bits_64(pte,62,32,13) & phys_mask;
-  state.tb[t][i].fault[0] = (int)pte & 2;
-  state.tb[t][i].fault[1] = (int)pte & 4;
-  state.tb[t][i].fault[2] = (int)pte & 8;
-  state.tb[t][i].access[0][0] = (int)pte & 0x100;
-  state.tb[t][i].access[1][0] = (int)pte & 0x1000;
-  state.tb[t][i].access[0][1] = (int)pte & 0x200;
-  state.tb[t][i].access[1][1] = (int)pte & 0x2000;
-  state.tb[t][i].access[0][2] = (int)pte & 0x400;
-  state.tb[t][i].access[1][2] = (int)pte & 0x4000;
-  state.tb[t][i].access[0][3] = (int)pte & 0x800;
-  state.tb[t][i].access[1][3] = (int)pte & 0x8000;
-  state.tb[t][i].asm_bit = (int)pte & 0x10;
+  state.tb[t][i].phys = pte_phys & phys_mask;
+  state.tb[t][i].fault[0] = (int)pte_flags & 2;
+  state.tb[t][i].fault[1] = (int)pte_flags & 4;
+  state.tb[t][i].fault[2] = (int)pte_flags & 8;
+  state.tb[t][i].access[0][0] = (int)pte_flags & 0x100;
+  state.tb[t][i].access[1][0] = (int)pte_flags & 0x1000;
+  state.tb[t][i].access[0][1] = (int)pte_flags & 0x200;
+  state.tb[t][i].access[1][1] = (int)pte_flags & 0x2000;
+  state.tb[t][i].access[0][2] = (int)pte_flags & 0x400;
+  state.tb[t][i].access[1][2] = (int)pte_flags & 0x4000;
+  state.tb[t][i].access[0][3] = (int)pte_flags & 0x800;
+  state.tb[t][i].access[1][3] = (int)pte_flags & 0x8000;
+  state.tb[t][i].asm_bit = (int)pte_flags & 0x10;
   state.tb[t][i].asn = asn;
   state.tb[t][i].valid = true;
   state.last_found_tb[t][rw] = i;
@@ -1551,7 +1567,7 @@ void CAlphaCPU::add_tb(u64 virt, u64 pte, int flags)
  **/
 void CAlphaCPU::add_tb_d(u64 virt, u64 pte)
 {
-  add_tb(virt,pte,ACCESS_READ);
+  add_tb(virt,pte>>(32-13),pte,ACCESS_READ);
 }
 
 /**
@@ -1576,7 +1592,7 @@ void CAlphaCPU::add_tb_d(u64 virt, u64 pte)
  **/
 void CAlphaCPU::add_tb_i(u64 virt, u64 pte)
 {
-  add_tb(virt, keep_bits_64(pte,12,0) | move_bits_64(pte,43,13,32), ACCESS_EXEC);
+  add_tb(virt, pte, pte & 0xf70, ACCESS_EXEC);
 }
 
 /**

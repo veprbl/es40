@@ -27,7 +27,10 @@
  * \file 
  * Contains the code for the emulated Typhoon Chipset devices.
  *
- * $Id: System.cpp,v 1.60 2008/01/30 14:02:46 iamcamiel Exp $
+ * $Id: System.cpp,v 1.61 2008/02/01 09:41:13 iamcamiel Exp $
+ *
+ * X-1.60       Camiel Vanderhoeven                             01-FEB-2008
+ *      Avoid unnecessary shift-operations to calculate constant values.
  *
  * X-1.59       Camiel Vanderhoeven                             28-JAN-2008
  *      Avoid compiler warnings.
@@ -318,7 +321,7 @@ CSystem::CSystem(CConfigurator * cfg)
 
   CHECK_ALLOCATION(memory = calloc(1<<iNumMemoryBits,1));
 
-  printf("%s(%s): $Id: System.cpp,v 1.60 2008/01/30 14:02:46 iamcamiel Exp $\n",cfg->get_myName(),cfg->get_myValue());
+  printf("%s(%s): $Id: System.cpp,v 1.61 2008/02/01 09:41:13 iamcamiel Exp $\n",cfg->get_myName(),cfg->get_myValue());
 }
 
 /**
@@ -887,7 +890,17 @@ u64 CSystem::ReadMem(u64 address, int dsize)
           || (a>=X64(803fe000000) && a<X64(803ff000000)) )
       {
         // Unused PCI configuration space
-        return make_mask_64(dsize-1,0);
+        switch(dsize)
+        {
+        case 8:
+          return X64_BYTE;
+        case 16:
+          return X64_WORD;
+        case 32:
+          return X64_LONG;
+        case 64:
+          return X64_QUAD;
+        }
       }
 
       if (a>=X64(800000c0000) && a<X64(801000e0000))
@@ -1925,8 +1938,8 @@ u64 CSystem::PCI_Phys(int pcibus, u32 address)
   printf("--------------------------------------------------------------\n");
 #endif
 
-  if (   !test_bit_64(state.pchip[pcibus].pctl, 5) // hole disabled
-      || (address < 0x00080000) || (address > 0x000fffff)) // or address outside hole
+  if (   !(state.pchip[pcibus].pctl & PCI_PCTL_HOLE) // hole disabled
+      || (address < PCI_PCTL_HOLE_START) || (address > PCI_PCTL_HOLE_END)) // or address outside hole
   {
    
     //Step through windows
@@ -1999,10 +2012,10 @@ u64 CSystem::PCI_Phys_direct_mapped(u32 address, u64 wsm, u64 tba)
 {
   u64 a;
 
-  tba &= ~(wsm & make_mask_64(31,20));
-  
-  a = (address & ((wsm & make_mask_64(31,20)) | make_mask_64(19,0)))
-    | (tba & make_mask_64(34,20));
+  wsm &= PCI_WSM_MASK;
+
+  a = (address & (wsm | PCI_ADD_MASK) )
+    | (tba & ~wsm & PCI_TBA_MASK);
 
   return a;
 }
@@ -2080,23 +2093,19 @@ u64 CSystem::PCI_Phys_scatter_gather(u32 address, u64 wsm, u64 tba)
 {
   u64 pte_a, pte, a;
 
+  wsm &= PCI_WSM_MASK;
 
-  pte_a = ((   address 
-            & ((wsm & make_mask_64(31,20)) | make_mask_64(19,13))
-          ) >> 10) // ad part of pte address
-        | (  tba 
-           & make_mask_64(34,10) 
-           & ~((wsm>>10) & make_mask_64(31,20))
-           );                          // tba part of pte address
+  pte_a = ((   address & (wsm | PCI_PTE_ADD_MASK) ) >> PCI_PTE_ADD_SHIFT) // ad part of pte address
+        | (  tba & PCI_PTE_TBA_MASK & ~(wsm>>PCI_PTE_ADD_SHIFT));         // tba part of pte address
 
   pte = ReadMem(pte_a,64);
   if (pte & 1)
   {
-    a = ((pte<<12) & make_mask_64(34,13))
-      | (address   & make_mask_64(12,0));
+    a = ((pte<<PCI_PTE_SHIFT) & PCI_PTE_MASK)
+      | (address   & PCI_PTE_ADD2_MASK);
 
-    if (test_bit_64(pte,28) || test_bit_64(pte,31)) // peer-to-peer
-      a |= (X64(1)<<43); // PIO access.
+    if (pte & PCI_PTE_PEER_BIT) // peer-to-peer
+      a |= (PHYS_PIO_ACCESS); // PIO access.
       
     return a;
   }

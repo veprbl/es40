@@ -28,7 +28,10 @@
  * \file
  * Contains the definitions for the emulated DecChip 21264CB EV68 Alpha processor.
  *
- * $Id: AlphaCPU.h,v 1.48 2008/01/30 17:22:45 iamcamiel Exp $
+ * $Id: AlphaCPU.h,v 1.49 2008/02/01 09:41:13 iamcamiel Exp $
+ *
+ * X-1.49       Camiel Vanderhoeven                             01-FEB-2008
+ *      Avoid unnecessary shift-operations to calculate constant values.
  *
  * X-1.48       Camiel Vanderhoeven                             30-JAN-2008
  *      Always use set_pc or add_pc to change the program counter.
@@ -275,7 +278,7 @@ private:
  private:
   int get_icache(u64 address, u32 * data);
   int FindTBEntry(u64 virt, int flags);
-  void add_tb(u64 virt, u64 pte, int flags);
+  void add_tb(u64 virt, u64 pte_phys, u64 pte_flags, int flags);
   void add_tb_i(u64 virt, u64 pte);
   void add_tb_d(u64 virt, u64 pte);
   void tbia(int flags);

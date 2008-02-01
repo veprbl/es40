@@ -29,7 +29,10 @@
  * DecChip 21264CB EV68 Alpha processor. Based on disassembly of original VMS
  * PALcode, HRM, and OpenVMS AXP Internals and Data Structures.
  *
- * $Id: AlphaCPU_vmspal.cpp,v 1.10 2008/01/30 17:22:45 iamcamiel Exp $
+ * $Id: AlphaCPU_vmspal.cpp,v 1.11 2008/02/01 09:41:13 iamcamiel Exp $
+ *
+ * X-1.11       Camiel Vanderhoeven                             01-FEB-2008
+ *      Avoid unnecessary shift-operations to calculate constant values.
  *
  * X-1.10       Camiel Vanderhoeven                             30-JAN-2008
  *      Always use set_pc or add_pc to change the program counter.
@@ -1294,7 +1297,7 @@ int CAlphaCPU::vmspal_ent_dtbm_single(int flags)
 
     p4 <<= 0x20;
     p4 |= p5;
-    add_tb(p6,p4,ACCESS_READ);
+    add_tb_d(p6,p4);
     return 0;
   }
 
@@ -1372,7 +1375,7 @@ int CAlphaCPU::vmspal_ent_dtbm_single(int flags)
     hw_stq(p21+X64(158),p20);
     return vmspal_int_initiate_exception();
   }
-  add_tb(p6,p4,ACCESS_READ);
+  add_tb_d(p6,p4);
   return 0;
 }
 
@@ -1459,7 +1462,7 @@ int CAlphaCPU::vmspal_ent_dtbm_double_3(int flags)
     hw_ldq(t25, t25);
     if (t25 & 1)
     {
-      add_tb(p4,t25,ACCESS_READ);
+      add_tb_d(p4,t25);
       return 0;
     }
   }

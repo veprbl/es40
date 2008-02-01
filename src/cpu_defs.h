@@ -27,7 +27,10 @@
  * \file 
  * Contains some macro definitions and some inline functions for the Alpha CPU.
  *
- * $Id: cpu_defs.h,v 1.6 2008/01/28 19:54:24 iamcamiel Exp $
+ * $Id: cpu_defs.h,v 1.7 2008/02/01 09:41:13 iamcamiel Exp $
+ *
+ * X-1.7        Camiel Vanderhoeven                             01-FEB-2008
+ *      Avoid unnecessary shift-operations to calculate constant values.
  *
  * X-1.6        Camiel Vanderhoeven                             28-JAN-2008
  *      Better floating-point exception handling.
@@ -531,5 +534,20 @@ return zsig;
     state.exc_sum = 0;                                              \
     ARITH_TRAP(TRAP_INT | flags, reg)                               \
   }
+
+#define SPE_0_MASK    X64(0000ffffc0000000) /* <47:30> */
+#define SPE_0_MATCH   X64(0000ffff80000000) /* <47:31> */
+#define SPE_0_MAP     X64(000000003fffffff) /* <29:0>  */
+
+#define SPE_1_MASK    X64(0000fe0000000000) /* <47:41> */
+#define SPE_1_MATCH   X64(0000fc0000000000) /* <47:42> */
+#define SPE_1_MAP     X64(000001ffffffffff) /* <40:0>  */
+#define SPE_1_TEST    X64(0000010000000000) /* <40>    */
+#define SPE_1_ADD     X64(00000e0000000000) /* <43:41> */
+
+#define SPE_2_MASK    X64(0000c00000000000) /* <47:46> */
+#define SPE_2_MATCH   X64(0000800000000000) /* <47>    */
+#define SPE_2_MAP     X64(00000fffffffffff) /* <43:0>  */
+
 
 #endif

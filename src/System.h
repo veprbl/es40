@@ -27,7 +27,10 @@
  * \file 
  * Contains the definitions for the emulated Typhoon Chipset devices.
  *
- * $Id: System.h,v 1.23 2008/01/08 19:15:36 iamcamiel Exp $
+ * $Id: System.h,v 1.24 2008/02/01 09:41:13 iamcamiel Exp $
+ *
+ * X-1.24       Camiel Vanderhoeven                             01-FEB-2008
+ *      Avoid unnecessary shift-operations to calculate constant values.
  *
  * X-1.23       Camiel Vanderhoeven                             08-JAN-2008
  *      Layout of comments.
@@ -447,5 +450,25 @@ inline void CSystem::set_c_dim(int ProcNum,u64 value)
 }
 
 extern CSystem * theSystem;
+
+/* constants for P-Chip CSR's */
+
+#define PCI_PCTL_HOLE       X64(0000000000000020) /* <5>     */
+#define PCI_PCTL_HOLE_START 0x00080000
+#define PCI_PCTL_HOLE_END   0x000fffff
+
+/* constants for pci-to-phys-address-mapping */
+#define PCI_WSM_MASK        X64(00000000fff00000) /* <31:20> */
+#define PCI_ADD_MASK        X64(00000000000fffff) /* <19:0>  */
+#define PCI_TBA_MASK        X64(00000007fff00000) /* <34:20> */
+#define PCI_PTE_ADD_MASK    X64(00000000000fe000) /* <19:13> */
+#define PCI_PTE_ADD_SHIFT   10
+#define PCI_PTE_TBA_MASK    X64(00000007fffffc00) /* <34:10> */
+#define PCI_PTE_MASK        X64(00000007ffffe000) /* <34:13> */
+#define PCI_PTE_SHIFT       2
+#define PCI_PTE_ADD2_MASK   X64(0000000000001fff) /* <12:0>  */
+#define PCI_PTE_PEER_BIT    X64(0000000090000000) /* <31,28> */
+
+#define PHYS_PIO_ACCESS     X64(0000080000000000) /* <43>    */
 
 #endif // !defined(INCLUDED_SYSTEM_H)

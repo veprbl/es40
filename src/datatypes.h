@@ -27,7 +27,10 @@
  * \file
  * Contains the datatype definitions for use with Microsoft Visual C++ and Linux.
  *
- * $Id: datatypes.h,v 1.15 2008/01/18 20:58:20 iamcamiel Exp $
+ * $Id: datatypes.h,v 1.16 2008/02/01 09:41:13 iamcamiel Exp $
+ *
+ * X-1.16       Camiel Vanderhoeven                             01-FEB-2008
+ *      Avoid unnecessary shift-operations to calculate constant values.
  *
  * X-1.15       Camiel Vanderhoeven                             18-JAN-2008
  *      Replaced sext_64 inlines with sext_u64_<bits> inlines for
@@ -149,47 +152,6 @@ typedef s64 int64_t;
 #define X16(a) 0x##a
 #define X8(a) 0x##a
 
-inline u64 keep_bits_64(u64 x, int hibit, int lobit)
-{
-    u64 r = x;
-    if (hibit<63)
-      r &=  ((X64(1)<<(hibit+1))-X64(1));
-    r   &= ~((X64(1)<<(lobit))-X64(1));
-    return r;
-}
-
-inline u64 make_mask_64(int hibit, int lobit)
-{
-    u64 r = X64(ffffffffffffffff);
-    if (hibit<63)
-      r &=  ((X64(1)<<(hibit+1))-X64(1));
-    r   &= ~((X64(1)<<(lobit))-X64(1));
-    return r;
-}
-
-inline u64 move_bits_64(u64 x, int hibit, int lobit, int destlobit)
-{
-    u64 r = x;
-    if (hibit<63)
-      r &=  ((X64(1)<<(hibit+1))-X64(1));
-    r   &= ~((X64(1)<<(lobit))-X64(1));
-    r = (lobit<destlobit)?r<<(destlobit-lobit):r>>(lobit-destlobit);
-    return r;
-}
-
-inline u64 extend_bit_64(u64 x, int hibit, int lobit, int srcbit)
-{
-   if (x & (X64(1)<<srcbit))
-   {
-     u64 r = X64(ffffffffffffffff);
-     if (hibit<63)
-        r &=  ((X64(1)<<(hibit+1))-X64(1));
-      r   &= ~((X64(1)<<(lobit))-X64(1));
-    return r;
-   }
-   return 0;
-}
-
 /**
  * Sign-extend an 8-bit value to 64 bits.
  **/
@@ -263,52 +225,6 @@ inline u64 sext_u64_48(u64 a)
 inline bool test_bit_64(u64 x, int bit)
 {
   return (x & (X64(1)<<bit))?true:false;
-}
-
-inline u32 keep_bits_32(u32 x, int hibit, int lobit)
-{
-    u32 r = x;
-    if (hibit<31)
-      r &=  ((1<<(hibit+1))-1);
-    r   &= ~((1<<(lobit))-1);
-    return r;
-}
-
-inline u32 make_mask_32(int hibit, int lobit)
-{
-    u32 r = 0xffffffff;
-    if (hibit<31)
-      r &=  ((1<<(hibit+1))-1);
-    r   &= ~((1<<(lobit))-1);
-    return r;
-}
-
-inline u32 move_bits_32(u32 x, int hibit, int lobit, int destlobit)
-{
-    u32 r = x;
-    if (hibit<31)
-      r &=  ((1<<(hibit+1))-1);
-    r   &= ~((1<<(lobit))-1);
-    r = (lobit<destlobit)?r<<(destlobit-lobit):r>>(lobit-destlobit);
-    return r;
-}
-
-inline u32 extend_bit_32(u32 x, int hibit, int lobit, int srcbit)
-{
-   if (x & (1<<srcbit))
-   {
-     u32 r = 0xffffffff;
-     if (hibit<31)
-        r &=  ((1<<(hibit+1))-1);
-      r   &= ~((1<<(lobit))-1);
-    return r;
-   }
-   return 0;
-}
-
-inline bool test_bit_32(u32 x, int bit)
-{
-  return (x & (1<<bit))?true:false;
 }
 
 /**
