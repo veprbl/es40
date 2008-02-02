@@ -27,7 +27,10 @@
 #
 # Makefile for GNU Linux. (And possibly many UNIX'es).
 #
-# $Id: Makefile,v 1.19 2008/01/29 15:18:35 iamcamiel Exp $
+# $Id: Makefile,v 1.20 2008/02/02 16:43:01 iamcamiel Exp $
+#
+# X-1.20		Brian Wheeler      				02-FEB-2008
+#	Add DEBUG_LPT flag.
 #
 # X-1.19		Brian Wheeler      				29-JAN-2008
 #	More information about available flags, and make depend
@@ -105,21 +108,22 @@ CTUNINGFLAGS = -O3 -mtune=generic
 # CDEBUGFLAGS - turn on debugging in ES40
 #
 # Supported flags:
-#   -g  		Include information for gdb
-#   -DHIDE_COUNTER	Do not show the cycle counter
-#   -DDEBUG_VGA		Turn on VGA Debugging
-#   -DDEBUG_SERIAL	Turn on Serial Debugging
-#   -DDEBUG_IDE		Turn on all IDE Debugging.
+#   -g  		        Include information for gdb
+#   -DHIDE_COUNTER	    Do not show the cycle counter
+#   -DDEBUG_VGA		    Turn on VGA Debugging
+#   -DDEBUG_SERIAL	    Turn on Serial Debugging
+#   -DDEBUG_IDE		    Turn on all IDE Debugging.
 #   -DDEBUG_IDE_<opt>	Turn on specific IDE debugging.  Options are:
-#			BUSMASTER, COMMAND, DMA, INTERRUPT, REG_COMMAND,
-#			REG_CONTROL, PACKET
-#   -DDEBUG_UNKMEM	Turn on unknown memory access debugging
-#   -DDEBUG_PCI		Turn on PCI Debugging
-#   -DDEBUG_TB		Turn on Translation Buffer debugging
+#	            		BUSMASTER, COMMAND, DMA, INTERRUPT, REG_COMMAND,
+#           			REG_CONTROL, PACKET
+#   -DDEBUG_UNKMEM	    Turn on unknown memory access debugging
+#   -DDEBUG_PCI		    Turn on PCI Debugging
+#   -DDEBUG_TB		    Turn on Translation Buffer debugging
 #   -DDEBUG_PORTACCESS	Turn on i/o port access debugging
-#   -DDEBUG_SCSI	Turn on SCSI debugging
-#   -DDEBUG_KBD		Turn on keyboard debugging
-#   -DDEBUG_PIC		Turn on Programmable Interrupt Controller debugging
+#   -DDEBUG_SCSI	    Turn on SCSI debugging
+#   -DDEBUG_KBD		    Turn on keyboard debugging
+#   -DDEBUG_PIC		    Turn on Programmable Interrupt Controller debugging
+#   -DDEBUG_LPT         Turn on debugging for LPT Port
 #
 CDEBUGFLAGS = -g -DHIDE_COUNTER 
 

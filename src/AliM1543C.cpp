@@ -27,7 +27,10 @@
  * \file 
  * Contains the code for the emulated Ali M1543C chipset devices.
  *
- * $Id: AliM1543C.cpp,v 1.51 2008/01/15 20:07:17 iamcamiel Exp $
+ * $Id: AliM1543C.cpp,v 1.52 2008/02/02 16:43:01 iamcamiel Exp $
+ *
+ * X-1.52       Brian Wheeler                                   02-FEB-2008
+ *      Completed LPT support so it works with FreeBSD as a guest OS.
  *
  * X-1.51       Brian wheeler                                   15-JAN-2008
  *      When a keyboard self-test command is received, and the queue is
@@ -415,12 +418,13 @@ CAliM1543C::CAliM1543C(CConfigurator * cfg, CSystem * c, int pcibus, int pcidev)
   add_legacy_io(27,0x3bc,4);
   filename=myCfg->get_text_value("lpt.outfile");
   if(filename) {
-    lpt=fopen(filename,"wb");
+    lpt=fopen(filename,"ab");
   } else {
     lpt=NULL;
   }
+  lpt_reset();
 
-  printf("%s: $Id: AliM1543C.cpp,v 1.51 2008/01/15 20:07:17 iamcamiel Exp $\n",devid_string);
+  printf("%s: $Id: AliM1543C.cpp,v 1.52 2008/02/02 16:43:01 iamcamiel Exp $\n",devid_string);
 }
 
 /**
@@ -429,6 +433,8 @@ CAliM1543C::CAliM1543C(CConfigurator * cfg, CSystem * c, int pcibus, int pcidev)
 
 CAliM1543C::~CAliM1543C()
 {
+  if(lpt)
+    fclose(lpt);
 }
 
 /**
@@ -1536,6 +1542,45 @@ int CAliM1543C::RestoreState(FILE *f)
   return 0;
 }
 
+ /**
+ * Parallel Port information:
+ * address 0 (R/W):  data pins.  On read, the last byte written is returned.
+ *
+ *
+ * address 1 (R): status register
+ * \code
+ *   1 0 0 0 0 0 00 <-- default
+ *   ^ ^ ^ ^ ^ ^ ^
+ *   | | | | | | +- Undefined
+ *   | | | | | +--- IRQ (undefined?)
+ *   | | | | +----- printer has error condition
+ *   | | | +------- printer is not selected.
+ *   | | +--------- printer has paper (online)
+ *   | +----------- printer is asserting 'ack'
+ *   +------------- printer busy (active low).
+ * \endcode
+ *
+ * address 2 (R/W): control register.
+ * \code
+ *   00 0 0 1 0 1 1  <-- default
+ *   ^  ^ ^ ^ ^ ^ ^
+ *   |  | | | | | +-- Strobe (active low)
+ *   |  | | | | +---- Auto feed (active low)
+ *   |  | | | +------ Initialize
+ *   |  | | +-------- Select (active low)
+ *   |  | +---------- Interrupt Control
+ *   |  +------------ Bidirectional control (unimplemented)
+ *   +--------------- Unused
+ * \endcode
+ **/
+
+void CAliM1543C::lpt_reset() {
+  state.lpt_data = ~0;
+  state.lpt_status = 0xd8; // busy, ack, online, error
+  state.lpt_control = 0x0c; // select, init
+  state.lpt_init = false;
+}
+
 /**
  * Read a byte from one of the parallel port controller's registers.
  **/
@@ -1547,17 +1592,23 @@ u8 CAliM1543C::lpt_read(u32 address) {
     data=state.lpt_data;
     break;
   case 1:
-    // 1 0 0 0 1 000
-    // ^ ^ ^ ^ ^----- printer has no-error condition
-    // | | | +------- printer is not selected.
-    // | | +--------- printer has paper
-    // | +----------- printer is asserting 'ack'
-    // +------------- printer is not busy.
-    data = 0x88;
+    data = state.lpt_status;
+    if((state.lpt_status & 0x80)==0 && (state.lpt_control & 0x01)==0) {
+      if(state.lpt_status & 0x40) { // test ack
+  	    state.lpt_status &= ~ 0x40; // turn off ack
+      } else {
+	    state.lpt_status |= 0x40; // set ack.
+	    state.lpt_status |= 0x80; // set (not) busy.
+      }
+    }
     break;
   case 2:
     data = state.lpt_control;
   }
+#ifdef DEBUG_LPT
+  printf("%%LPT-I-READ: port %d = %x\n",address,data);
+#endif
+
   return data;
 }
 
@@ -1566,17 +1617,34 @@ u8 CAliM1543C::lpt_read(u32 address) {
  **/
 
 void CAliM1543C::lpt_write(u32 address, u8 data) {
+#ifdef DEBUG_LPT
+  printf("%%LPT-I-WRITE: port %d = %x\n",address,data);
+#endif
   switch(address) {
   case 0:
     state.lpt_data=data;
-    if(lpt)
-      fputc(data,lpt);
-    if(state.lpt_control & 0x10)
-      pic_interrupt(0,7);
     break;
   case 1:
     break;
   case 2:
+    if((data & 0x04)==0) {
+      state.lpt_init=true;
+      state.lpt_status = 0xd8;
+    } else {
+      if(data & 0x08) { // select bit
+	    if(data & 0x01) { // strobe?
+	      state.lpt_status &= ~0x80;  // we're busy
+	      // do the write!
+	      if(lpt && state.lpt_init)
+	        fputc(state.lpt_data,lpt);
+	      if(state.lpt_control & 0x10) {
+	        pic_interrupt(0,7);
+	      }
+	    } else {
+	      // ?
+	    }
+      }
+    }
     state.lpt_control=data;
   }
 }

@@ -3,6 +3,8 @@
 
 \section c018 version 0.17 -> 0.17+
 
+ - Completed LPT support so it works with FreeBSD as a guest OS. 
+   (02-feb-2008, Brian Wheeler)
  - Avoid unnecessary shift-operations to calculate constant values. 
    (01-feb-2008, Camiel Vanderhoeven)
  - Improved speed by remembering the number of instructions left in current

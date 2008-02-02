@@ -27,7 +27,10 @@
  * \file 
  * Contains the definitions for the ISA part of the emulated Ali M1543C chipset.
  *
- * $Id: AliM1543C.h,v 1.25 2008/01/08 16:38:08 iamcamiel Exp $
+ * $Id: AliM1543C.h,v 1.26 2008/02/02 16:43:01 iamcamiel Exp $
+ *
+ * X-1.26       Brian Wheeler                                   02-FEB-2008
+ *      Completed LPT support so it works with FreeBSD as a guest OS.
  *
  * X-1.25       Camiel Vanderhoeven                             08-JAN-2008
  *      Comments.
@@ -201,6 +204,7 @@ class CAliM1543C : public CPCIDevice
   // LPT controller
   u8 lpt_read(u32 address);
   void lpt_write(u32 address, u8 data);
+  void lpt_reset();
 
   /// The state structure contains all elements that need to be saved to the statefile.
   struct SAli_state {
@@ -362,6 +366,8 @@ class CAliM1543C : public CPCIDevice
 
     u8 lpt_data;
     u8 lpt_control;
+    u8 lpt_status;
+    bool lpt_init;
   } state;
 
   FILE *lpt;
