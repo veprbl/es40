@@ -27,7 +27,11 @@
  * \file 
  * Contains the definitions for the emulated Typhoon Chipset devices.
  *
- * $Id: System.h,v 1.24 2008/02/01 09:41:13 iamcamiel Exp $
+ * $Id: System.h,v 1.25 2008/02/04 16:15:29 iamcamiel Exp $
+ *
+ * X-1.25       Camiel Vanderhoeven                             04-FEB-2008
+ *      Corrected a typo in the definition of PTE_SHIFT (2 should be 12)
+ *      that caused an OpenVMS procgone bugcheck.
  *
  * X-1.24       Camiel Vanderhoeven                             01-FEB-2008
  *      Avoid unnecessary shift-operations to calculate constant values.
@@ -465,7 +469,7 @@ extern CSystem * theSystem;
 #define PCI_PTE_ADD_SHIFT   10
 #define PCI_PTE_TBA_MASK    X64(00000007fffffc00) /* <34:10> */
 #define PCI_PTE_MASK        X64(00000007ffffe000) /* <34:13> */
-#define PCI_PTE_SHIFT       2
+#define PCI_PTE_SHIFT       12
 #define PCI_PTE_ADD2_MASK   X64(0000000000001fff) /* <12:0>  */
 #define PCI_PTE_PEER_BIT    X64(0000000090000000) /* <31,28> */
 
