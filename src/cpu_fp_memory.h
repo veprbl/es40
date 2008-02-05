@@ -29,6 +29,9 @@
  * Contains code macros for the processor floating-point load/store instructions.
  * Based on ARM chapter 4.8.
  *
+ * X-1.11       Camiel Vanderhoeven                             05-FEB-2008
+ *      Only use new floating-point code when HAVE_NEW_FP has been defined.
+ *
  * X-1.10       Camiel Vanderhoeven                             28-JAN-2008
  *      Better floating-point exception handling.
  *
@@ -62,6 +65,8 @@
  * X-1.1        Camiel Vanderhoeven                             18-FEB-2007
  *      File created. Contains code previously found in AlphaCPU.h
  **/
+
+#if defined(HAVE_NEW_FP)
 
 #define DO_LDF									                    \
 	FPSTART; \
@@ -110,3 +115,42 @@
 	FPSTART; \
 	  DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_WRITE, 7);	        \
 	  WRITE_PHYS(state.f[FREG_1],64);
+
+#else
+
+#define DO_LDF									\
+	if (FREG_1 != 31) {							\
+	  DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_READ,3);	\
+	  state.f[FREG_1] = load_f((u32)READ_PHYS(32)); }
+
+#define DO_LDG									\
+	if (FREG_1 != 31) {							\
+	  DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_READ,7);	\
+	  state.f[FREG_1] = load_g(READ_PHYS(64)); }
+
+#define DO_LDS									\
+	if (FREG_1 != 31) {							\
+	  DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_READ,3);	\
+	  state.f[FREG_1] = load_s((u32)READ_PHYS(32)); }
+
+#define DO_LDT									\
+	if (FREG_1 != 31) {							\
+	  DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_READ,7);	\
+	  state.f[FREG_1] = READ_PHYS(64); }
+
+#define DO_STF									\
+	  DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_WRITE,3);	\
+	  WRITE_PHYS(store_f(state.f[FREG_1]),32);
+#define DO_STG									\
+	  DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_WRITE,7);	\
+	  WRITE_PHYS(store_g(state.f[FREG_1]),64);
+
+#define DO_STS									\
+	  DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_WRITE,3);	\
+	  WRITE_PHYS(store_s(state.f[FREG_1]),32);
+
+#define DO_STT									\
+	  DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_WRITE,7);	\
+	  WRITE_PHYS(state.f[FREG_1],64);
+
+#endif

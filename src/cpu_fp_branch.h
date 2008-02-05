@@ -28,7 +28,10 @@
  * Contains code macros for the processor floating-point branch instructions.
  * Based on ARM chapter 4.9.
  *
- * $Id: cpu_fp_branch.h,v 1.8 2008/01/30 17:22:45 iamcamiel Exp $
+ * $Id: cpu_fp_branch.h,v 1.9 2008/02/05 15:51:33 iamcamiel Exp $
+ *
+ * X-1.9        Camiel Vanderhoeven                             05-FEB-2008
+ *      Only use new floating-point code when HAVE_NEW_FP has been defined.
  *
  * X-1.8        Camiel Vanderhoeven                             30-JAN-2008
  *      Always use set_pc or add_pc to change the program counter.
@@ -57,6 +60,8 @@
  * X-1.1        Camiel Vanderhoeven                             18-FEB-2007
  *      File created. Contains code previously found in AlphaCPU.h
  **/
+
+#if defined(HAVE_NEW_FP)
 
 #define DO_FBEQ                                                         \
   FPSTART;                                                              \
@@ -89,3 +94,15 @@
   FPSTART;                                                              \
   if ((state.f[FREG_1] & ~FPR_SIGN) != 0)         /* not +0 or -0? */   \
     add_pc(DISP_21 * 4);
+
+#else
+
+#define DO_FBEQ  if (state.f[FREG_1] == X64(0000000000000000) || state.f[FREG_1] == X64(8000000000000000))	add_pc(DISP_21 * 4);
+#define DO_FBGE  if (!(state.f[FREG_1]& X64(8000000000000000)) || state.f[FREG_1] == X64(8000000000000000))	add_pc(DISP_21 * 4);
+#define DO_FBGT  if (!(state.f[FREG_1]& X64(8000000000000000)) && state.f[FREG_1] != X64(0000000000000000))	add_pc(DISP_21 * 4);
+#define DO_FBLE  if ((state.f[FREG_1]& X64(8000000000000000)) || state.f[FREG_1] == X64(0000000000000000))	add_pc(DISP_21 * 4);
+#define DO_FBLT  if ((state.f[FREG_1]& X64(8000000000000000)) && state.f[FREG_1] != X64(8000000000000000))	add_pc(DISP_21 * 4);
+#define DO_FBNE  if (state.f[FREG_1] != X64(0000000000000000) && state.f[FREG_1] != X64(8000000000000000))	add_pc(DISP_21 * 4);
+
+
+#endif

@@ -27,7 +27,10 @@
  * \file 
  * Contains the code for the emulated DecChip 21264CB EV68 Alpha processor.
  *
- * $Id: AlphaCPU.cpp,v 1.65 2008/02/01 09:41:13 iamcamiel Exp $
+ * $Id: AlphaCPU.cpp,v 1.66 2008/02/05 15:51:33 iamcamiel Exp $
+ *
+ * X-1.66       Camiel Vanderhoeven                             05-FEB-2008
+ *      Only use new floating-point code when HAVE_NEW_FP has been defined.
  *
  * X-1.65       Camiel Vanderhoeven                             01-FEB-2008
  *      Avoid unnecessary shift-operations to calculate constant values.
@@ -294,8 +297,9 @@
 #include "cpu_pal.h"
 #include "cpu_debug.h"
 
-//#include "Serial.h"
-//#include "AliM1543C.h"
+#if !defined(HAVE_NEW_FP)
+#include "es40_float.h"
+#endif
 
 /**
  * Constructor.
@@ -334,7 +338,7 @@ CAlphaCPU::CAlphaCPU(CConfigurator * cfg, CSystem * system) : CSystemComponent (
   bListing = false;
 #endif
   
-  printf("%s: $Id: AlphaCPU.cpp,v 1.65 2008/02/01 09:41:13 iamcamiel Exp $\n",devid_string);
+  printf("%s: $Id: AlphaCPU.cpp,v 1.66 2008/02/05 15:51:33 iamcamiel Exp $\n",devid_string);
 }
 
 /**
