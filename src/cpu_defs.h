@@ -27,9 +27,12 @@
  * \file 
  * Contains some macro definitions and some inline functions for the Alpha CPU.
  *
- * $Id: cpu_defs.h,v 1.8 2008/02/05 15:54:15 iamcamiel Exp $
+ * $Id: cpu_defs.h,v 1.9 2008/02/05 15:55:11 iamcamiel Exp $
  *
- * X-1.7        Camiel Vanderhoeven                             01-FEB-2008
+ * X-1.9        Camiel Vanderhoeven                             05-FEB-2008
+ *      Bug description added.
+ *
+ * X-1.8        Camiel Vanderhoeven                             01-FEB-2008
  *      Disable unaligned access check alltogether; it doesn't work
  *      properly for some reason.
  *
@@ -61,6 +64,8 @@
  *      File created. Contains code pulled from various older source files,
  *      and some floating-point definitions based upon the SIMH Alpha pre-
  *      implementation, which is Copyright (c) 2003, Robert M Supnik.
+ *
+ * \bug Fix unaligned access traps.
  **/
 
 #if !defined(__CPU_DEFS__)
