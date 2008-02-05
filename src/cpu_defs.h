@@ -27,7 +27,11 @@
  * \file 
  * Contains some macro definitions and some inline functions for the Alpha CPU.
  *
- * $Id: cpu_defs.h,v 1.7 2008/02/01 09:41:13 iamcamiel Exp $
+ * $Id: cpu_defs.h,v 1.8 2008/02/05 15:54:15 iamcamiel Exp $
+ *
+ * X-1.7        Camiel Vanderhoeven                             01-FEB-2008
+ *      Disable unaligned access check alltogether; it doesn't work
+ *      properly for some reason.
  *
  * X-1.7        Camiel Vanderhoeven                             01-FEB-2008
  *      Avoid unnecessary shift-operations to calculate constant values.
@@ -430,7 +434,8 @@ return zsig;
     if (virt2phys(addr, &phys_address, flags, NULL, ins)) \
       return 0
 
-//#define DATA_PHYS(addr,flags,align) DATA_PHYS_NT(addr,flags)
+#undef DATA_PHYS
+#define DATA_PHYS(addr,flags,align) DATA_PHYS_NT(addr,flags)
 
 #define ALIGN_PHYS(a) (phys_address & ~((u64)((a)-1)))
 

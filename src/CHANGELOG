@@ -3,12 +3,14 @@
 
 \section c018 version 0.17 -> 0.17+
 
+ - Disable unaligned access check alltogether; it doesn't work properly
+   for some reason. (05-feb-2008, Camiel Vanderhoeven)
  - The new floating point code (21-jan-2008) has some unidentified
    problems. The OpenVMS installation routine fails with this new code. 
    For now, the old floating point code has been restored, and the new
    floating-point code is used only when HAVE_NEW_FP has been defined.
    The new code should be fixed, so we can take advantage of floating
-   point exceptions.
+   point exceptions. (05-feb-2008, Camiel Vanderhoeven)
  - Display a message when system initialization has failed. (05-feb-2008,
    Brian Wheeler)
  - Put X64 around 64-bit constants in DO_CVTQL. (compilation issue on some
