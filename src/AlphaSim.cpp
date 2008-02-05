@@ -27,7 +27,10 @@
  * \file
  * Defines the entry point for the application.
  *
- * $Id: AlphaSim.cpp,v 1.38 2008/01/26 12:21:59 iamcamiel Exp $
+ * $Id: AlphaSim.cpp,v 1.39 2008/02/05 10:15:57 iamcamiel Exp $
+ *
+ * X-1.39       Brian Wheeler                                   05-FEB-2008
+ *      Display a message when system initialization has failed.
  *
  * X-1.38       Camiel Vanderhoeven                             26-JAN-2008
  *      Lifted hardcoded file-size limit of 10,000 bytes for config file.
@@ -252,6 +255,12 @@ int main(int argc, char* argv[])
     CConfigurator * c = new CConfigurator(0,0,0,ch1,ll1);
     fclose(f);
     free(ch1);
+
+    if(!theSystem) 
+    {
+      printf("%%SYS-F-INIT: Initialization of system has failed. Syntax error in config?.\n");
+      exit(1);
+    }
 
 #if defined(IDB)
     trc = new CTraceEngine(theSystem);
