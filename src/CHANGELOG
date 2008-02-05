@@ -7,8 +7,9 @@
    Brian Wheeler)
  - Put X64 around 64-bit constants in DO_CVTQL. (compilation issue on some
    Linux'es) (05-feb-2008, Camiel Vanderhoeven)
- - Corrected a typo in the definition of PTE_SHIFT (2 should be 12) that 
-   caused an OpenVMS procgone bugcheck. (04-feb-2008, Camiel Vanderhoeven)
+ - Corrected a typo in the definition of PCI_PTE_SHIFT (2 should be 12)
+   that caused an OpenVMS procgone bugcheck. (04-feb-2008, Camiel
+   Vanderhoeven)
  - Completed LPT support so it works with FreeBSD as a guest OS. 
    (02-feb-2008, Brian Wheeler)
  - Avoid unnecessary shift-operations to calculate constant values. 
