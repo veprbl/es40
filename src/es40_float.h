@@ -30,7 +30,10 @@
  * point registers, and to convert them to/from the host's native floating point 
  * format when required.
  *
- * $Id: es40_float.h,v 1.18 2008/02/05 15:51:34 iamcamiel Exp $
+ * $Id: es40_float.h,v 1.19 2008/02/06 10:59:52 iamcamiel Exp $
+ *
+ * X-1.18       Camiel Vanderhoeven                             06-FEB-2008
+ *      Check for FPEN in old floating point code. 
  *
  * X-1.17       Camiel Vanderhoeven                             05-FEB-2008
  *      File restored. Only use new floating-point code when HAVE_NEW_FP

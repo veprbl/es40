@@ -29,6 +29,9 @@
  * Contains code macros for the processor floating-point load/store instructions.
  * Based on ARM chapter 4.8.
  *
+ * X-1.12       Camiel Vanderhoeven                             06-FEB-2008
+ *      Check for FPEN in old floating point code. 
+ *
  * X-1.11       Camiel Vanderhoeven                             05-FEB-2008
  *      Only use new floating-point code when HAVE_NEW_FP has been defined.
  *
@@ -118,38 +121,47 @@
 
 #else
 
-#define DO_LDF									\
+#define DO_LDF                                                   \
+  FPSTART;                                                          \
 	if (FREG_1 != 31) {							\
 	  DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_READ,3);	\
 	  state.f[FREG_1] = load_f((u32)READ_PHYS(32)); }
 
-#define DO_LDG									\
-	if (FREG_1 != 31) {							\
+#define DO_LDG                                                   \
+  FPSTART;                                                          \
+  	if (FREG_1 != 31) {							\
 	  DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_READ,7);	\
 	  state.f[FREG_1] = load_g(READ_PHYS(64)); }
 
-#define DO_LDS									\
-	if (FREG_1 != 31) {							\
+#define DO_LDS                                                   \
+  FPSTART;                                                          \
+  	if (FREG_1 != 31) {							\
 	  DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_READ,3);	\
 	  state.f[FREG_1] = load_s((u32)READ_PHYS(32)); }
 
-#define DO_LDT									\
-	if (FREG_1 != 31) {							\
+#define DO_LDT                                                   \
+  FPSTART;                                                          \
+  	if (FREG_1 != 31) {							\
 	  DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_READ,7);	\
 	  state.f[FREG_1] = READ_PHYS(64); }
 
-#define DO_STF									\
-	  DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_WRITE,3);	\
+#define DO_STF                                                   \
+  FPSTART;                                                          \
+  	  DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_WRITE,3);	\
 	  WRITE_PHYS(store_f(state.f[FREG_1]),32);
-#define DO_STG									\
-	  DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_WRITE,7);	\
+
+#define DO_STG                                                   \
+  FPSTART;                                                          \
+  	  DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_WRITE,7);	\
 	  WRITE_PHYS(store_g(state.f[FREG_1]),64);
 
-#define DO_STS									\
-	  DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_WRITE,3);	\
+#define DO_STS                                                   \
+  FPSTART;                                                          \
+  	  DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_WRITE,3);	\
 	  WRITE_PHYS(store_s(state.f[FREG_1]),32);
 
-#define DO_STT									\
+#define DO_STT                                                   \
+  FPSTART;									\
 	  DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_WRITE,7);	\
 	  WRITE_PHYS(state.f[FREG_1],64);
 

@@ -3,8 +3,10 @@
 
 \section c018 version 0.17 -> 0.17+
 
+ - Check for FPEN in old floating point code. (06-feb-2008, Camiel
+   Vanderhoeven)
  - Proper interrupt handling in serial port device. Fixes an
-   initialization bug spotted by David Hittner (05-feb-2008, Camiel
+   initialization bug spotted by David Hittner. (06-feb-2008, Camiel
    Vanderhoeven)
  - Disable unaligned access check alltogether; it doesn't work properly
    for some reason. (05-feb-2008, Camiel Vanderhoeven)
