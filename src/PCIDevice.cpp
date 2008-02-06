@@ -27,7 +27,10 @@
  * \file
  * Contains the code for the PCI device class.
  *
- * $Id: PCIDevice.cpp,v 1.11 2008/01/24 11:28:34 iamcamiel Exp $
+ * $Id: PCIDevice.cpp,v 1.12 2008/02/06 16:23:18 iamcamiel Exp $
+ *
+ * X-1.12       Camiel Vanderhoeven                             06-FEB-2008
+ *      Fixed registration of ROM expansion address.
  *
  * X-1.11       Camiel Vanderhoeven                             24-JAN-2008
  *      Added do_pci_read and do_pci_write. Thanks to David Hittner for
@@ -213,10 +216,10 @@ void CPCIDevice::config_write(int func, u32 address, int dsize, u32 data)
 void CPCIDevice::register_bar(int func, int bar, u32 data, u32 mask)
 {
   int id = PCI_RANGE_BASE + (func*8) + bar;
-  u32 length = (~mask) + 1;
+  u32 length = ((~mask) | 1) + 1;
   u64 t;
 
-  if (data & 1)
+  if ((data & 1) && bar != 6)
   {
     // io space
     pci_range_is_io[func][bar] = true;
@@ -227,7 +230,7 @@ void CPCIDevice::register_bar(int func, int bar, u32 data, u32 mask)
                                + (data & ~0x3),length);
 //    printf("%s(%s).%d PCI BAR %d set to IO  % " LL "x, len %x.\n",myCfg->get_myName(), myCfg->get_myValue(), func,bar,t,length);
   }
-  else
+  else if ((data & 1) || bar != 6)
   {
     // io space
     pci_range_is_io[func][bar] = true;
@@ -237,6 +240,11 @@ void CPCIDevice::register_bar(int func, int bar, u32 data, u32 mask)
                                + (X64(0000000200000000) * myPCIBus)
                                + (data & ~0xf),length);
 //    printf("%s(%s).%d PCI BAR %d set to MEM % " LL "x, len %x.\n",myCfg->get_myName(), myCfg->get_myValue(), func,bar,t,length);
+  }
+  else
+  {
+    // disabled...
+//    printf("%s(%s).%d PCI BAR %d should be disabled...\n",myCfg->get_myName(), myCfg->get_myValue(), func,bar);
   }
 }
 

@@ -3,6 +3,8 @@
 
 \section c018 version 0.17 -> 0.17+
 
+ - Fixed registration of ROM expansion address. (06-feb-2008, Camiel
+   Vanderhoeven)
  - Check for FPEN in old floating point code. (06-feb-2008, Camiel
    Vanderhoeven)
  - Proper interrupt handling in serial port device. Fixes an
