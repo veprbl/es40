@@ -27,7 +27,10 @@
  * \file
  * Contains the code for the emulated Serial Port devices.
  *
- * $Id: Serial.cpp,v 1.35 2008/01/02 08:51:13 iamcamiel Exp $
+ * $Id: Serial.cpp,v 1.36 2008/02/06 10:57:35 iamcamiel Exp $
+ *
+ * X-1.36       Camiel Vanderhoeven                             06-JAN-2008
+ *      Proper interrupt handling. 
  *
  * X-1.35       Camiel Vanderhoeven                             02-JAN-2008
  *      Cleanup. 
@@ -323,7 +326,9 @@ CSerial::CSerial(CConfigurator * cfg, CSystem * c, u16 number) : CSystemComponen
   state.bMSR = 0x30; // CTS, DSR
   state.bIIR = 0x01; // no interrupt
 
-  printf("%s: $Id: Serial.cpp,v 1.35 2008/01/02 08:51:13 iamcamiel Exp $\n",devid_string);
+  state.irq_active = false;
+
+  printf("%s: $Id: Serial.cpp,v 1.36 2008/02/06 10:57:35 iamcamiel Exp $\n",devid_string);
 }
 
 /**
@@ -405,41 +410,36 @@ void CSerial::WriteMem(int index, u64 address, int dsize, u64 data)
 
   switch (address)
     {
-    case 0:						// data buffer
-      if (state.bLCR & 0x80)
-        {
-	  state.bBRB_LSB = d;
-        }
+    case 0:
+      if (state.bLCR & 0x80) // divisor latch access bit set
+      {
+        // LSB of divisor latch
+	    state.bBRB_LSB = d;
+      }
       else
-        {
-	  sprintf(s,"%c",d);
-	  write(s);
-	  TRC_DEV4("Write character %02x (%c) on serial port %d\n",d,printable(d),state.iNumber);
+      {
+        // Transmit Hold Register
+	    sprintf(s,"%c",d);
+	    write(s);
+	    TRC_DEV4("Write character %02x (%c) on serial port %d\n",d,printable(d),state.iNumber);
 #if defined(DEBUG_SERIAL)
-		  printf("Write character %02x (%c) on serial port %d\n",d,printable(d),state.iNumber);
+        printf("Write character %02x (%c) on serial port %d\n",d,printable(d),state.iNumber);
 #endif
-	  if (state.bIER & 0x2)
-            {
-	      state.bIIR = (state.bIIR>0x02)?state.bIIR:0x02;
-	      theAli->pic_interrupt(0, 4 - state.iNumber);
-            }
-        }
+        eval_interrupts();
+      }
       break;
     case 1:
-      if (state.bLCR & 0x80)
-        {
-	  state.bBRB_MSB = d;
-        }
+      if (state.bLCR & 0x80) // divisor latch access bit set
+      {
+        // MSB of divisor latch
+	    state.bBRB_MSB = d;
+      }
       else
-        {
-	  state.bIER = d;
-	  state.bIIR = 0x01;
-	  if (state.bIER & 0x2)
-            {
-	      state.bIIR = (state.bIIR>0x02)?state.bIIR:0x02;
-	      theAli->pic_interrupt(0, 4 - state.iNumber);
-            }
-        }
+      {
+        // Interrupt Enable Register
+	    state.bIER = d;
+        eval_interrupts();
+      }
       break;
     case 2:			
       state.bFCR = d;
@@ -453,6 +453,28 @@ void CSerial::WriteMem(int index, u64 address, int dsize, u64 data)
     default:
       state.bSPR = d;
     }
+}
+
+void CSerial::eval_interrupts()
+{
+  state.bIIR = 0x01; // no interrupt
+  if ((state.bIER & 0x01) && (state.rcvR != state.rcvW))
+    state.bIIR = 0x04;
+  else if (state.bIER & 0x2) //transmitter buffer empty enabled?
+    state.bIIR = 0x02; //transmitter buffer empty
+  else
+    state.bIIR = 0x01; // no interrupt
+
+  if (state.bIIR>0x01)
+  {
+    if (!state.irq_active)
+      theAli->pic_interrupt(0, 4 - state.iNumber);
+  }
+  else
+  {
+    if (state.irq_active)
+      theAli->pic_deassert(0, 4 - state.iNumber);
+  }
 }
 
 void CSerial::write(char *s)
@@ -472,15 +494,12 @@ void CSerial::receive(const char* data)
 	  if (state.rcvW == FIFO_SIZE)
 	    state.rcvW = 0;
 	  x++;
-	  if (state.bIER & 0x1)
-	  {
-	    state.bIIR = (state.bIIR>0x04)?state.bIIR:0x04;
-	    theAli->pic_interrupt(0, 4 - state.iNumber);
-      }
+      eval_interrupts();
     }
 }
 
-int CSerial::DoClock() {
+int CSerial::DoClock() 
+{
   fd_set readset;
   unsigned char buffer[FIFO_SIZE+1];
   unsigned char cbuffer[FIFO_SIZE+1];  // cooked buffer
@@ -489,12 +508,14 @@ int CSerial::DoClock() {
   struct timeval tv;
 
   state.serial_cycles++;
-  if(state.serial_cycles >= RECV_TICKS) {
+  if(state.serial_cycles >= RECV_TICKS) 
+  {
     FD_ZERO(&readset);
     FD_SET(connectSocket,&readset);
     tv.tv_sec=0;
     tv.tv_usec=0;
-    if(select(connectSocket+1,&readset,NULL,NULL,&tv) > 0) {
+    if(select(connectSocket+1,&readset,NULL,NULL,&tv) > 0) 
+    {
 #if defined(_WIN32)
       // Windows Sockets has no direct equivalent of BSD's read
       size = recv(connectSocket,(char*)buffer,FIFO_SIZE, 0);
@@ -504,90 +525,106 @@ int CSerial::DoClock() {
       buffer[size+1]=0; // force null termination.
       b=buffer;
       c=cbuffer;
-      while((ssize_t)(b - buffer) < size) {
+      while((ssize_t)(b - buffer) < size) 
+      {
 		if (*b == 0x0a)
 		{
 		  b++;	// skip LF
 		  continue;
 		}
-	if(*b == IAC) {
-	  if(*(b+1) == IAC) { // escaped IAC.
-	    b++;
-	  } else if(*(b+1) >= WILL) { // will/won't/do/don't
-	    b+=3;  // skip this byte, and following two. (telnet escape)
-	    continue;
-	  } else if(*(b+1) == SB) { // skip until IAC SE
-	    b+=2; // now we're at start of subnegotiation.
-	    while(*b!=IAC && *(b+1)!=SE) b++;
-	    b+=2;
-	    continue;
-	  } else if(*(b+1) == BREAK) { // break (== halt button?)
-	    b+=2;
-	    write("\r\n<BREAK> received. What do you want to do?\r\n");
-	    write("     0. Continue\r\n");
+	    if(*b == IAC) 
+        {
+	      if(*(b+1) == IAC) 
+          { // escaped IAC.
+	        b++;
+	      } 
+          else if(*(b+1) >= WILL) 
+          { // will/won't/do/don't
+	        b+=3;  // skip this byte, and following two. (telnet escape)
+	        continue;
+	      } 
+          else if(*(b+1) == SB) 
+          { // skip until IAC SE
+	        b+=2; // now we're at start of subnegotiation.
+	        while(*b!=IAC && *(b+1)!=SE) b++;
+	        b+=2;
+	        continue;
+	      } 
+          else if(*(b+1) == BREAK) 
+          { // break (== halt button?)
+	        b+=2;
+	        write("\r\n<BREAK> received. What do you want to do?\r\n");
+	        write("     0. Continue\r\n");
 #if defined(IDB)
-	    write("     1. End run\r\n");
+	        write("     1. End run\r\n");
 #else
-	    write("     1. Exit emulator gracefully\r\n");
-	    write("     2. Abort emulator (no changes saved)\r\n");
-        write("     3. Save state to autosave.axp and continue\r\n");
-        write("     4. Load state from autosave.axp and continue\r\n");
+	        write("     1. Exit emulator gracefully\r\n");
+	        write("     2. Abort emulator (no changes saved)\r\n");
+            write("     3. Save state to autosave.axp and continue\r\n");
+            write("     4. Load state from autosave.axp and continue\r\n");
 #endif
-	    for (;;)
-	    {
-	      FD_ZERO(&readset);
-	      FD_SET(connectSocket,&readset);
-	      tv.tv_sec = 60;
-	      tv.tv_usec = 0;
-	      if (select(connectSocket+1,&readset,NULL,NULL,&tv) <= 0) 
-	      {
-		write("%SRL-I-TIMEOUT: no timely answer received. Continuing emulation.\r\n");
-		return 0;
-	      }
+	        for (;;)
+	        {
+	          FD_ZERO(&readset);
+	          FD_SET(connectSocket,&readset);
+	          tv.tv_sec = 60;
+	          tv.tv_usec = 0;
+	          if (select(connectSocket+1,&readset,NULL,NULL,&tv) <= 0) 
+	          {
+		        write("%SRL-I-TIMEOUT: no timely answer received. Continuing emulation.\r\n");
+		        return 0;
+	          }
 #if defined(_WIN32)
-	      size = recv(connectSocket,(char*)buffer,FIFO_SIZE, 0);
+	          size = recv(connectSocket,(char*)buffer,FIFO_SIZE, 0);
 #else
               size = read(connectSocket,&buffer,FIFO_SIZE);
 #endif
- 	      switch (buffer[0])
-	      {
-	      case '0':
-	        write("%SRL-I-CONTINUE: continuing emulation.\r\n");
-	        return 0;
-	      case '1':
-	        write("%SRL-I-EXIT: exiting emulation gracefully.\r\n");
-	        return 1;
-	      case '2':
-	        write("%SRL-I-ABORT: aborting emulation.\r\n");
-	        return -1;
-          case '3':
-            write("%SRL-I-SAVESTATE: Saving state to autosave.axp.\r\n");
-            cSystem->SaveState("autosave.axp");
-	        write("%SRL-I-CONTINUE: continuing emulation.\r\n");
-	        return 0;
-          case '4':
-            write("%SRL-I-LOADSTATE: Loading state from autosave.axp.\r\n");
-            cSystem->RestoreState("autosave.axp");
-	        write("%SRL-I-CONTINUE: continuing emulation.\r\n");
-	        return 0;
+ 	          switch (buffer[0])
+	          {
+	          case '0':
+	            write("%SRL-I-CONTINUE: continuing emulation.\r\n");
+	            return 0;
+	          case '1':
+	            write("%SRL-I-EXIT: exiting emulation gracefully.\r\n");
+	            return 1;
+	          case '2':
+	            write("%SRL-I-ABORT: aborting emulation.\r\n");
+	            return -1;
+              case '3':
+                write("%SRL-I-SAVESTATE: Saving state to autosave.axp.\r\n");
+                cSystem->SaveState("autosave.axp");
+	            write("%SRL-I-CONTINUE: continuing emulation.\r\n");
+	            return 0;
+              case '4':
+                write("%SRL-I-LOADSTATE: Loading state from autosave.axp.\r\n");
+                cSystem->RestoreState("autosave.axp");
+	            write("%SRL-I-CONTINUE: continuing emulation.\r\n");
+	            return 0;
+	          }
+	          write("%SRL-W-INVALID: Not a valid answer.\r\n");
+	        }
+	      } 
+          else if(*(b+1) == AYT) 
+          { // are you there?
+    	    
+	      } 
+          else 
+          { // misc single byte command.
+	        b+=2;
+	        continue;
 	      }
-	      write("%SRL-W-INVALID: Not a valid answer.\r\n");
 	    }
-	  } else if(*(b+1) == AYT) { // are you there?
-	    
-	  } else { // misc single byte command.
-	    b+=2;
-	    continue;
-	  }
-	}
-	*c=*b;
-	c++; b++;
+	    *c=*b;
+	    c++; b++;
       }
       *c=0; // null terminate it.
       this->receive((const char*)&cbuffer);
     }
     state.serial_cycles=0;
   }
+
+  eval_interrupts();
+
   return 0;
 }
 

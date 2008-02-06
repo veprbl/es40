@@ -3,6 +3,9 @@
 
 \section c018 version 0.17 -> 0.17+
 
+ - Proper interrupt handling in serial port device. Fixes an
+   initialization bug spotted by David Hittner (05-feb-2008, Camiel
+   Vanderhoeven)
  - Disable unaligned access check alltogether; it doesn't work properly
    for some reason. (05-feb-2008, Camiel Vanderhoeven)
  - The new floating point code (21-jan-2008) has some unidentified

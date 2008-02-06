@@ -27,7 +27,10 @@
  * \file 
  * Contains the definitions for the emulated Serial Port devices.
  *
- * $Id: Serial.h,v 1.13 2008/01/02 09:30:20 iamcamiel Exp $
+ * $Id: Serial.h,v 1.14 2008/02/06 10:57:35 iamcamiel Exp $
+ *
+ * X-1.14       Camiel Vanderhoeven                             06-JAN-2008
+ *      Proper interrupt handling. 
  *
  * X-1.13       Camiel Vanderhoeven                             02-JAN-2008
  *      Comments.
@@ -97,27 +100,29 @@ class CSerial : public CSystemComponent
   int DoClock();
   virtual int SaveState(FILE * f);
   virtual int RestoreState(FILE * f);
+  void eval_interrupts();
 
  private:
   /// The state structure contains all elements that need to be saved to the statefile.
   struct SSrl_state {
-    u8 bTHR;
-    u8 bRDR;
+    u8 bTHR;      /**< Transmit Hold Register */
+    u8 bRDR;      /**< Received Data Register */
     u8 bBRB_LSB;
     u8 bBRB_MSB;
-    u8 bIER;
-    u8 bIIR;
-    u8 bFCR;
-    u8 bLCR;
-    u8 bMCR;
-    u8 bLSR;
-    u8 bMSR;
-    u8 bSPR;
+    u8 bIER;      /**< Interrupt Enable Register */
+    u8 bIIR;      /**< Interrupt Identification Register */
+    u8 bFCR;      
+    u8 bLCR;      /**< Line Control Register (Data Format Register) */
+    u8 bMCR;      /**< Modem Control Register */
+    u8 bLSR;      /**< Line Status Register */
+    u8 bMSR;      /**< Modem Status Register */
+    u8 bSPR;      /**< Scratch Pad Register */
     int serial_cycles;
     char rcvBuffer[1024];
     int rcvW;
     int rcvR;
     int iNumber;
+    bool irq_active;
   } state;
   int listenSocket;
   int connectSocket;
