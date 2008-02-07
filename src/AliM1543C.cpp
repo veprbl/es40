@@ -27,7 +27,10 @@
  * \file 
  * Contains the code for the emulated Ali M1543C chipset devices.
  *
- * $Id: AliM1543C.cpp,v 1.52 2008/02/02 16:43:01 iamcamiel Exp $
+ * $Id: AliM1543C.cpp,v 1.53 2008/02/07 21:32:35 iamcamiel Exp $
+ *
+ * X-1.53       Camiel Vanderhoeven                             07-FEB-2008
+ *      Comments.
  *
  * X-1.52       Brian Wheeler                                   02-FEB-2008
  *      Completed LPT support so it works with FreeBSD as a guest OS.
@@ -224,6 +227,8 @@
  *
  * \author Camiel Vanderhoeven (camiel@camicom.com / http://www.camicom.com)
  **/
+
+#define DEBUG_KBD
 
 #include "StdAfx.h"
 #include "AliM1543C.h"
@@ -424,7 +429,7 @@ CAliM1543C::CAliM1543C(CConfigurator * cfg, CSystem * c, int pcibus, int pcidev)
   }
   lpt_reset();
 
-  printf("%s: $Id: AliM1543C.cpp,v 1.52 2008/02/02 16:43:01 iamcamiel Exp $\n",devid_string);
+  printf("%s: $Id: AliM1543C.cpp,v 1.53 2008/02/07 21:32:35 iamcamiel Exp $\n",devid_string);
 }
 
 /**
@@ -585,7 +590,7 @@ void CAliM1543C::kbd_gen_scancode(u32 key)
   u8  i;
 
 #if defined(DEBUG_KBD)
-  printf("gen_scancode(): %s %s  \n", bx_keymap.getBXKeyName(key), (key >> 31)?"released":"pressed");
+  printf("gen_scancode(): %s %s  \n", bx_keymap->getBXKeyName(key), (key >> 31)?"released":"pressed");
   if (!state.kbd_controller.scancodes_translate)
     BX_DEBUG(("keyboard: gen_scancode with scancode_translate cleared"));
 #endif
@@ -598,12 +603,96 @@ void CAliM1543C::kbd_gen_scancode(u32 key)
   if (state.kbd_internal_buffer.scanning_enabled==0)
     return;
 
-  // Switch between make and break code
+  // Source: http://www.win.tue.nl/~aeb/linux/kbd/scancodes-10.html
+  //
+  // Three scancode sets
+  //
+  // The usual PC keyboards are capable of producing three sets
+  // of scancodes. Writing 0xf0 followed by 1, 2 or 3 to port
+  // 0x60 will put the keyboard in scancode mode 1, 2 or 3.
+  // Writing 0xf0 followed by 0 queries the mode, resulting in
+  // a scancode byte 43, 41 or 3f from the keyboard.
+  //
+  // Set 1 contains the values that the XT keyboard (with only
+  // one set of scancodes) produced, with extensions for new
+  // keys. Someone decided that another numbering was more
+  // logical and invented scancode Set 2. However, it was
+  // realized that new scancodes would break old programs, so
+  // the keyboard output was fed to a 8042 microprocessor on
+  // the motherboard that could translate Set 2 back into Set
+  // 1. Indeed a smart construction. This is the default today.
+  // Finally there is the PS/2 version, Set 3, more regular,
+  // but used by almost nobody.
+  //
+  // Sets 2 and 3 are designed to be translated by the 8042.
+  // Set 1 should not be translated. 
+  //
+  // Make and Break Codes
+  //
+  // The key press / key release is coded as follows:
+  //
+  // For Set 1, if the make code of a key is c, the break 
+  // code will be c+0x80. If the make code is e0 c, the 
+  // break code will be e0 c+0x80. The Pause key has make 
+  // code e1 1d 45 e1 9d c5 and does not generate a break code.
+  //
+  // For Set 2, if the make code of a key is c, the break code
+  // will be f0 c. If the make code is e0 c, the break code
+  // will be e0 f0 c. The Pause key has the 8-byte make code
+  // e1 14 77 e1 f0 14 f0 77.
+  //
+  // For Set 3, by default most keys do not generate a break
+  // code - only CapsLock, LShift, RShift, LCtrl and LAlt do.
+  // However, by default all non-traditional keys do generate
+  // a break code - thus, LWin, RWin, Menu do, and for example
+  // on the Microsoft Internet keyboard, so do Back, Forward,
+  // Stop, Mail, Search, Favorites, Web/Home, MyComputer,
+  // Calculator, Sleep. On my BTC keyboard, also the Macro key
+  // does.
+  //
+  // In Scancode Mode 3 it is possible to enable or disable
+  // key repeat and the production of break codes either on a
+  // key-by-key basis or for all keys at once. And just like
+  // for Set 2, key release is indicated by a f0 prefix in
+  // those cases where it is indicated. There is nothing
+  // special with the Pause key in scancode mode 3. 
+
   if (key & BX_KEY_RELEASED)
     scancode=(unsigned char *)scancodes[(key&0xFF)][state.kbd_controller.current_scancodes_set].brek;
   else
     scancode=(unsigned char *)scancodes[(key&0xFF)][state.kbd_controller.current_scancodes_set].make;
 
+  // Translation
+  //
+  // The 8042 microprocessor translates the incoming byte stream
+  // produced by the keyboard, and turns an f0 prefix into an OR
+  // with 80 for the next byte. 
+  //
+  // Unless told not to translate, the keyboard controller translates
+  // keyboard scancodes into the scancodes it returns to the CPU using
+  // the following table (in hex):
+  //
+  // +----+-------------------------------------------------+
+  // |    | 00 01 02 03 04 05 06 07 08 09 0a 0b 0c 0d 0e 0f |
+  // +----+-------------------------------------------------+
+  // | 00 | ff 43 41 3f 3d 3b 3c 58 64 44 42 40 3e 0f 29 59 |
+  // | 10 |	65 38 2a 70 1d 10 02 5a 66 71 2c 1f 1e 11 03 5b |
+  // | 20 |	67 2e 2d 20 12 05 04 5c 68 39 2f 21 14 13 06 5d |
+  // | 30 |	69 31 30 23 22 15 07 5e 6a 72 32 24 16 08 09 5f |
+  // | 40 |	6b 33 25 17 18 0b 0a 60 6c 34 35 26 27 19 0c 61 |
+  // | 50 |	6d 73 28 74 1a 0d 62 6e 3a 36 1c 1b 75 2b 63 76 |
+  // | 60 |	55 56 77 78 79 7a 0e 7b 7c 4f 7d 4b 47 7e 7f 6f |
+  // | 70 |	52 53 50 4c 4d 48 01 45 57 4e 51 4a 37 49 46 54 |
+  // | 80 |	80 81 82 41 54 85 86 87 88 89 8a 8b 8c 8d 8e 8f |
+  // | 90 |	90 91 92 93 94 95 96 97 98 99 9a 9b 9c 9d 9e 9f |
+  // | a0 |	a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 aa ab ac ad ae af |
+  // | b0 |	b0 b1 b2 b3 b4 b5 b6 b7 b8 b9 ba bb bc bd be bf |
+  // | c0 |	c0 c1 c2 c3 c4 c5 c6 c7 c8 c9 ca cb cc cd ce cf |
+  // | d0 |	d0 d1 d2 d3 d4 d5 d6 d7 d8 d9 da db dc dd de df |
+  // | e0 |	e0 e1 e2 e3 e4 e5 e6 e7 e8 e9 ea eb ec ed ee ef |
+  // | f0 |	-  f1 f2 f3	f4 f5 f6 f7 f8 f9 fa fb fc fd fe ff |
+  // +----+-------------------------------------------------+
+  
   if (state.kbd_controller.scancodes_translate) 
   {
     // Translate before send
@@ -628,7 +717,8 @@ void CAliM1543C::kbd_gen_scancode(u32 key)
   else 
   {
     // Send raw data
-    for (i=0; i<strlen((const char *)scancode); i++) {
+    for (i=0; i<strlen((const char *)scancode); i++) 
+    {
 #if defined(DEBUG_KBD)
       printf("gen_scancode(): writing raw %02x",scancode[i]);
 #endif
@@ -1820,9 +1910,57 @@ void CAliM1543C::kbd_60_write(u8 value)
         if (state.kbd_controller.status.inpb)
           printf("write to port 60h, not ready for write   \n");
 #endif
-        switch (state.kbd_controller.last_comm) {
+        switch (state.kbd_controller.last_comm) 
+        {
           case 0x60: // write command byte
-            {
+          {
+            //The keyboard controller is provided with some RAM, for example
+            // 32 bytes, that can be accessed by the CPU. The most important
+            // part of this RAM is byte 0, the Controller Command Byte (CCB).
+            // It can be read/written by writing 0x20/0x60 to port 0x64 and
+            // then reading/writing a data byte from/to port 0x60.
+            //
+            // This byte has the following layout.
+            //
+            // +---+-------+----+----+---+------+-----+-----+
+            // | 0 | XLATE | ME | KE | 0 | SYSF | MIE | KIE |
+            // +---+-------+----+----+---+------+-----+-----+
+            //
+            // Bit 6: Translate
+            //    0: No translation.
+            //    1: Translate keyboard scancodes, using the translation table
+            //       given above. MCA type 2 controllers cannot set this bit
+            //       to 1. In this case scan code conversion is set using
+            //       keyboard command 0xf0 to port 0x60. 
+            //
+            // Bit 5: Mouse enable
+            //    0: Enable mouse.
+            //    1: Disable mouse by driving the clock line low.
+            //
+            // Bit 4: Keyboard enable
+            //    0: Enable keyboard.
+            //    1: Disable keyboard by driving the clock line low. 
+            //
+            // Bit 2: System flag
+            //    This bit is shown in bit 2 of the status register. A 
+            //    "cold reboot" is one with this bit set to zero. A 
+            //    "warm reboot" is one with this bit set to one (BAT
+            //    already completed). This will influence the tests and
+            //    initializations done by the POST. 
+            //
+            // Bit 1: Mouse interrupt enable
+            //    0: Do not use mouse interrupts.
+            //    1: Send interrupt request IRQ12 when the mouse output
+            //       buffer is full. 
+            //
+            // Bit 0: Keyboard interrupt enable
+            //    0: Do not use keyboard interrupts.
+            //    1: Send interrupt request IRQ1 when the keyboard output
+            //       buffer is full.
+            //
+            //    When no interrupts are used, the CPU has to poll bits 0 
+            //    (and 5) of the status register. 
+
             bool scan_convert, disable_keyboard,
                     disable_aux;
 
@@ -1845,8 +1983,8 @@ void CAliM1543C::kbd_60_write(u8 value)
             if (!scan_convert)
               BX_INFO(("keyboard: scan convert turned off"));
 #endif
-	    // (mch) NT needs this
-	    state.kbd_controller.scancodes_translate = scan_convert;
+	          // (mch) NT needs this
+	          state.kbd_controller.scancodes_translate = scan_convert;
             }
             break;
           case 0xd1: // write output port
@@ -2267,7 +2405,10 @@ void CAliM1543C::kbd_ctrl_to_kbd(u8 value)
       // Send ACK (SF patch #1159626)
       kbd_enQ(0xFA);
       // Send current scancodes set to port 0x60
-      kbd_enQ(1 + (state.kbd_controller.current_scancodes_set)); 
+      if (state.kbd_controller.scancodes_translate)
+        kbd_enQ(translation8042[1 + state.kbd_controller.current_scancodes_set]);
+      else
+        kbd_enQ(1 + state.kbd_controller.current_scancodes_set); 
     }
     return;
   }

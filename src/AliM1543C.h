@@ -27,7 +27,10 @@
  * \file 
  * Contains the definitions for the ISA part of the emulated Ali M1543C chipset.
  *
- * $Id: AliM1543C.h,v 1.26 2008/02/02 16:43:01 iamcamiel Exp $
+ * $Id: AliM1543C.h,v 1.27 2008/02/07 21:32:35 iamcamiel Exp $
+ *
+ * X-1.27       Camiel Vanderhoeven                             07-FEB-2008
+ *      Comments.
  *
  * X-1.26       Brian Wheeler                                   02-FEB-2008
  *      Completed LPT support so it works with FreeBSD as a guest OS.
@@ -133,8 +136,8 @@
  * ISA, DMA, Interrupt, Timer, TOY Clock.
  *
  * Documentation consulted:
- *  - Ali M1543C B1 South Bridge Version 1.20
- *    (http://mds.gotdns.com/sensors/docs/ali/1543dScb1-120.pdf)
+ *  - Ali M1543C B1 South Bridge Version 1.20 (http://mds.gotdns.com/sensors/docs/ali/1543dScb1-120.pdf)
+ *  - Keyboard Scancodes, by Andries Brouwer (http://www.win.tue.nl/~aeb/linux/kbd/scancodes.html)
  *  .
  **/
 
