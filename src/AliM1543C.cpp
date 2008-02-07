@@ -27,7 +27,10 @@
  * \file 
  * Contains the code for the emulated Ali M1543C chipset devices.
  *
- * $Id: AliM1543C.cpp,v 1.54 2008/02/07 21:35:47 iamcamiel Exp $
+ * $Id: AliM1543C.cpp,v 1.55 2008/02/07 22:02:40 iamcamiel Exp $
+ *
+ * X-1.56       Camiel Vanderhoeven                             07-FEB-2008
+ *      Add more keyboard debugging.
  *
  * X-1.54       Camiel Vanderhoeven                             07-FEB-2008
  *      Don't define DEBUG_KBD by default.
@@ -428,7 +431,7 @@ CAliM1543C::CAliM1543C(CConfigurator * cfg, CSystem * c, int pcibus, int pcidev)
   }
   lpt_reset();
 
-  printf("%s: $Id: AliM1543C.cpp,v 1.54 2008/02/07 21:35:47 iamcamiel Exp $\n",devid_string);
+  printf("%s: $Id: AliM1543C.cpp,v 1.55 2008/02/07 22:02:40 iamcamiel Exp $\n",devid_string);
 }
 
 /**
@@ -1899,7 +1902,10 @@ u8 CAliM1543C::kbd_64_read()
 
 void CAliM1543C::kbd_60_write(u8 value)
 {
-// input buffer
+#if defined(DEBUG_KBD)
+  printf("kbd: port 60 write: %02x.   \n",value);
+#endif
+      // input buffer
       // if expecting data byte from command last sent to port 64h
       if (state.kbd_controller.expecting_port60h) {
         state.kbd_controller.expecting_port60h = 0;
@@ -2038,6 +2044,9 @@ void CAliM1543C::kbd_60_write(u8 value)
 
 void CAliM1543C::kbd_64_write(u8 value)
 {
+#if defined(DEBUG_KBD)
+  printf("kbd: port 64 write: %02x.   \n",value);
+#endif
   static int kbd_initialized=0;
   u8 command_byte;
 
