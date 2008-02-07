@@ -27,7 +27,10 @@
 #
 # Makefile for GNU Linux. (And possibly many UNIX'es).
 #
-# $Id: Makefile,v 1.20 2008/02/02 16:43:01 iamcamiel Exp $
+# $Id: Makefile,v 1.21 2008/02/07 20:33:28 iamcamiel Exp $
+#
+# X-1.21		Brian Wheeler      				07-FEB-2008
+#	Add DEBUG_BACKTRACE flag.
 #
 # X-1.20		Brian Wheeler      				02-FEB-2008
 #	Add DEBUG_LPT flag.
@@ -124,8 +127,9 @@ CTUNINGFLAGS = -O3 -mtune=generic
 #   -DDEBUG_KBD		    Turn on keyboard debugging
 #   -DDEBUG_PIC		    Turn on Programmable Interrupt Controller debugging
 #   -DDEBUG_LPT         Turn on debugging for LPT Port
+#   -DDEBUG_BACKTRACE   Turn on backtrace dump on SIGSEGV
 #
-CDEBUGFLAGS = -g -DHIDE_COUNTER 
+CDEBUGFLAGS = -g -DHIDE_COUNTER -DDEBUG_BACKTRACE
 
 #
 # ES40 Options
@@ -134,6 +138,8 @@ CDEBUGFLAGS = -g -DHIDE_COUNTER
 # -DHAVE_X11		Use X11 for GUI
 # -DHAVE_PCAP		Use Networking via PCAP
 # -DHAVE_NEW_IDE	Use the 'new' IDE Driver
+# -DHAVE_NEW_FP     Use the new floating-point code (with traps,
+#                   ut unfortunately, also with bugs)
 #
 OPTIONS = -DHAVE_SDL -DHAVE_X11 -DHAVE_PCAP -DHAVE_NEW_IDE
 

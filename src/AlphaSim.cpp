@@ -27,7 +27,11 @@
  * \file
  * Defines the entry point for the application.
  *
- * $Id: AlphaSim.cpp,v 1.39 2008/02/05 10:15:57 iamcamiel Exp $
+ * $Id: AlphaSim.cpp,v 1.40 2008/02/07 20:33:26 iamcamiel Exp $
+ *
+ * X-1.40       Brian Wheeler                                   07-FEB-2008
+ *      On GNU systems, display a backtrace when a segmentation fault
+ *      occurs, and DEBUG_BACKTRACE has been defined.
  *
  * X-1.39       Brian Wheeler                                   05-FEB-2008
  *      Display a message when system initialization has failed.
@@ -180,6 +184,41 @@ char *path[]={
   0
 };
 
+#ifdef DEBUG_BACKTRACE
+#ifdef __GNUG__
+#include <execinfo.h>
+#include <signal.h>
+#define HAS_BACKTRACE
+
+#define BTCOUNT 100
+void *btbuffer[BTCOUNT];
+
+void segv_handler(int signum) {
+  int nptrs = backtrace(btbuffer, BTCOUNT);
+  char **strings;
+
+  printf("%%SYS-F-SEGFAULT: The Alpha Simulator has Segfaulted.\n");
+  printf("-SYS-F-SEGFAULT: Backtrace follows.\n");
+
+  printf("backtrace() returned %d addresses.\n",nptrs);
+  strings = backtrace_symbols(btbuffer,nptrs);
+  if(strings==NULL) {
+    perror("backtrace_symbols");
+    exit(1);
+  }
+
+  for(int i = 0; i < nptrs; i++) {
+    printf("%3d %s\n",nptrs-i, strings[i]);
+  }
+  free(strings);
+  exit(1);
+}
+
+#else
+#warning "Your compiler isn't configured to support backtraces."
+#endif // __GNUG__
+#endif
+
 /**
  * Entry point for the application.
  *
@@ -213,6 +252,10 @@ int main(int argc, char* argv[])
 
   char *filename = 0;
   FILE *f;
+
+#ifdef HAS_BACKTRACE
+  signal(SIGSEGV, &segv_handler);
+#endif
 
   try 
   {

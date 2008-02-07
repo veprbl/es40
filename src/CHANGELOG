@@ -3,6 +3,9 @@
 
 \section c018 version 0.17 -> 0.17+
 
+ - On GNU systems, display a backtrace when a segmentation fault
+   occurs, and DEBUG_BACKTRACE has been defined. (07-feb-2008, Brian
+   Wheeler)
  - Fixed registration of ROM expansion address. (06-feb-2008, Camiel
    Vanderhoeven)
  - Check for FPEN in old floating point code. (06-feb-2008, Camiel
