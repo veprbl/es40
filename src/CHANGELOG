@@ -3,6 +3,8 @@
 
 \section c018 version 0.17 -> 0.17+
 
+ - Set default keyboard translation to scanset 3 (PS/2). 
+   (08-feb-2008, Camiel Vanderhoeven)
  - On GNU systems, display a backtrace when a segmentation fault
    occurs, and DEBUG_BACKTRACE has been defined. (07-feb-2008, Brian
    Wheeler)
