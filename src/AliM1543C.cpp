@@ -27,12 +27,15 @@
  * \file 
  * Contains the code for the emulated Ali M1543C chipset devices.
  *
- * $Id: AliM1543C.cpp,v 1.56 2008/02/08 07:55:14 iamcamiel Exp $
+ * $Id: AliM1543C.cpp,v 1.57 2008/02/08 13:11:46 iamcamiel Exp $
  *
  * X-1.57       Camiel Vanderhoeven                             08-FEB-2008
+ *      Add more keyboard debugging.
+ *
+ * X-1.56       Camiel Vanderhoeven                             08-FEB-2008
  *      Set default keyboard translation to scanset 3 (PS/2).
  *
- * X-1.56       Camiel Vanderhoeven                             07-FEB-2008
+ * X-1.55       Camiel Vanderhoeven                             07-FEB-2008
  *      Add more keyboard debugging.
  *
  * X-1.54       Camiel Vanderhoeven                             07-FEB-2008
@@ -434,7 +437,7 @@ CAliM1543C::CAliM1543C(CConfigurator * cfg, CSystem * c, int pcibus, int pcidev)
   }
   lpt_reset();
 
-  printf("%s: $Id: AliM1543C.cpp,v 1.56 2008/02/08 07:55:14 iamcamiel Exp $\n",devid_string);
+  printf("%s: $Id: AliM1543C.cpp,v 1.57 2008/02/08 13:11:46 iamcamiel Exp $\n",devid_string);
 }
 
 /**
@@ -1836,6 +1839,7 @@ u8 CAliM1543C::kbd_60_read()
 
       //DEV_pic_lower_irq(12);
       state.kbd_controller.timer_pending = 1;
+      kbd_clock();
 #if defined(DEBUG_KBD)
       BX_DEBUG(("[mouse] read from 0x60 returns 0x%02x", val));
 #endif
@@ -1867,6 +1871,7 @@ u8 CAliM1543C::kbd_60_read()
 
 //      DEV_pic_lower_irq(1);
       state.kbd_controller.timer_pending = 1;
+      kbd_clock();
 #if defined(DEBUG_KBD)
       BX_DEBUG(("READ(60) = %02x", (unsigned) val));
 #endif
@@ -1883,6 +1888,49 @@ u8 CAliM1543C::kbd_60_read()
 
 /**
  * Read a byte from keyboard port 64
+ *
+ * The keyboard controller status register
+ *
+ * The keyboard controller has an 8-bit status register. It can be inspected by the CPU by reading port 0x64.
+ * (Typically, it has the value 0x14: keyboard not locked, self-test completed.)
+ *
+ * \code
+ * +------+-----+------+------+-----+------+------+------+
+ * | PARE |	TIM | AUXB | KEYL | C/D | SYSF | INPB | OUTB |
+ * +------+-----+------+------+-----+------+------+------+
+ * \endcode
+ *
+ * Bit 7: Parity error
+ *    0: OK.
+ *    1: Parity error with last byte. 
+ *
+ * Bit 6: Timeout
+ *    0: OK. 
+ *    1: General timeout.
+ *
+ * Bit 5: Auxiliary output buffer full
+ *    Bit 0 tells whether a read from port 0x60 will be valid. If it is valid, this bit 5 tells what data will be read from port 0x60. 
+ *    0: Keyboard data. 
+ *    1: Mouse data.
+ *
+ * Bit 4: Keyboard lock
+ *    0: Locked.
+ *    1: Not locked. 
+ *
+ * Bit 3: Command/Data
+ *    0: Last write to input buffer was data (written via port 0x60).
+ *    1: Last write to input buffer was a command (written via port 0x64). (This bit is also referred to as Address Line A2.) 
+ *
+ * Bit 2: System flag
+ *    Set to 0 after power on reset. Set to 1 after successful completion of the keyboard controller self-test (Basic Assurance Test, BAT). Can also be set by command (see below). 
+ *
+ * Bit 1: Input buffer status
+ *    0: Input buffer empty, can be written.
+ *    1: Input buffer full, don't write yet. 
+ *
+ * Bit 0: Output buffer status
+ *    0: Output buffer empty, don't read yet.
+ *    1: Output buffer full, can be read. (Bit 5 tells whether the available data is from keyboard or mouse.) This bit is cleared when port 0x60 is read. 
  **/
 
 u8 CAliM1543C::kbd_64_read()
@@ -1898,6 +1946,9 @@ u8 CAliM1543C::kbd_64_read()
           (state.kbd_controller.status.inpb << 1)  |
           (state.kbd_controller.status.outb << 0);
     state.kbd_controller.status.tim = 0;
+#if defined(DEBUG_KBD)
+      BX_DEBUG(("read from 0x64 returns 0x%02x", val));
+#endif
     return val;
 }
 
@@ -1910,137 +1961,135 @@ void CAliM1543C::kbd_60_write(u8 value)
 #if defined(DEBUG_KBD)
   printf("kbd: port 60 write: %02x.   \n",value);
 #endif
-      // input buffer
-      // if expecting data byte from command last sent to port 64h
-      if (state.kbd_controller.expecting_port60h) {
-        state.kbd_controller.expecting_port60h = 0;
-        // data byte written last to 0x60
-        state.kbd_controller.status.c_d = 0;
+
+  // data byte written last to 0x60
+  state.kbd_controller.status.c_d = 0;
+
+  // if expecting data byte from command last sent to port 64h
+  if (state.kbd_controller.expecting_port60h) 
+  {
+    state.kbd_controller.expecting_port60h = 0;
 #if defined(DEBUG_KBD)
-        if (state.kbd_controller.status.inpb)
-          printf("write to port 60h, not ready for write   \n");
+    if (state.kbd_controller.status.inpb)
+      printf("write to port 60h, not ready for write   \n");
 #endif
-        switch (state.kbd_controller.last_comm) 
-        {
-          case 0x60: // write command byte
-          {
-            //The keyboard controller is provided with some RAM, for example
-            // 32 bytes, that can be accessed by the CPU. The most important
-            // part of this RAM is byte 0, the Controller Command Byte (CCB).
-            // It can be read/written by writing 0x20/0x60 to port 0x64 and
-            // then reading/writing a data byte from/to port 0x60.
-            //
-            // This byte has the following layout.
-            //
-            // +---+-------+----+----+---+------+-----+-----+
-            // | 0 | XLATE | ME | KE | 0 | SYSF | MIE | KIE |
-            // +---+-------+----+----+---+------+-----+-----+
-            //
-            // Bit 6: Translate
-            //    0: No translation.
-            //    1: Translate keyboard scancodes, using the translation table
-            //       given above. MCA type 2 controllers cannot set this bit
-            //       to 1. In this case scan code conversion is set using
-            //       keyboard command 0xf0 to port 0x60. 
-            //
-            // Bit 5: Mouse enable
-            //    0: Enable mouse.
-            //    1: Disable mouse by driving the clock line low.
-            //
-            // Bit 4: Keyboard enable
-            //    0: Enable keyboard.
-            //    1: Disable keyboard by driving the clock line low. 
-            //
-            // Bit 2: System flag
-            //    This bit is shown in bit 2 of the status register. A 
-            //    "cold reboot" is one with this bit set to zero. A 
-            //    "warm reboot" is one with this bit set to one (BAT
-            //    already completed). This will influence the tests and
-            //    initializations done by the POST. 
-            //
-            // Bit 1: Mouse interrupt enable
-            //    0: Do not use mouse interrupts.
-            //    1: Send interrupt request IRQ12 when the mouse output
-            //       buffer is full. 
-            //
-            // Bit 0: Keyboard interrupt enable
-            //    0: Do not use keyboard interrupts.
-            //    1: Send interrupt request IRQ1 when the keyboard output
-            //       buffer is full.
-            //
-            //    When no interrupts are used, the CPU has to poll bits 0 
-            //    (and 5) of the status register. 
+    switch (state.kbd_controller.last_comm) 
+    {
+    case 0x60: // write command byte
+      {
+        //The keyboard controller is provided with some RAM, for example
+        // 32 bytes, that can be accessed by the CPU. The most important
+        // part of this RAM is byte 0, the Controller Command Byte (CCB).
+        // It can be read/written by writing 0x20/0x60 to port 0x64 and
+        // then reading/writing a data byte from/to port 0x60.
+        //
+        // This byte has the following layout.
+        //
+        // +---+-------+----+----+---+------+-----+-----+
+        // | 0 | XLATE | ME | KE | 0 | SYSF | MIE | KIE |
+        // +---+-------+----+----+---+------+-----+-----+
+        //
+        // Bit 6: Translate
+        //    0: No translation.
+        //    1: Translate keyboard scancodes, using the translation table
+        //       given above. MCA type 2 controllers cannot set this bit
+        //       to 1. In this case scan code conversion is set using
+        //       keyboard command 0xf0 to port 0x60. 
+        //
+        // Bit 5: Mouse enable
+        //    0: Enable mouse.
+        //    1: Disable mouse by driving the clock line low.
+        //
+        // Bit 4: Keyboard enable
+        //    0: Enable keyboard.
+        //    1: Disable keyboard by driving the clock line low. 
+        //
+        // Bit 2: System flag
+        //    This bit is shown in bit 2 of the status register. A 
+        //    "cold reboot" is one with this bit set to zero. A 
+        //    "warm reboot" is one with this bit set to one (BAT
+        //    already completed). This will influence the tests and
+        //    initializations done by the POST. 
+        //
+        // Bit 1: Mouse interrupt enable
+        //    0: Do not use mouse interrupts.
+        //    1: Send interrupt request IRQ12 when the mouse output
+        //       buffer is full. 
+        //
+        // Bit 0: Keyboard interrupt enable
+        //    0: Do not use keyboard interrupts.
+        //    1: Send interrupt request IRQ1 when the keyboard output
+        //       buffer is full.
+        //
+        //    When no interrupts are used, the CPU has to poll bits 0 
+        //    (and 5) of the status register. 
 
-            bool scan_convert, disable_keyboard,
-                    disable_aux;
+        bool scan_convert, disable_keyboard,
+                disable_aux;
 
-            scan_convert = (value >> 6) & 0x01;
-            disable_aux      = (value >> 5) & 0x01;
-            disable_keyboard = (value >> 4) & 0x01;
-            state.kbd_controller.status.sysf = (value >> 2) & 0x01;
-            state.kbd_controller.allow_irq1  = (value >> 0) & 0x01;
-            state.kbd_controller.allow_irq12 = (value >> 1) & 0x01;
-            set_kbd_clock_enable(!disable_keyboard);
-            set_aux_clock_enable(!disable_aux);
-            if (state.kbd_controller.allow_irq12 && state.kbd_controller.status.auxb)
-              state.kbd_controller.irq12_requested = 1;
-            else if (state.kbd_controller.allow_irq1  && state.kbd_controller.status.outb)
-              state.kbd_controller.irq1_requested = 1;
+        scan_convert = (value >> 6) & 0x01;
+        disable_aux      = (value >> 5) & 0x01;
+        disable_keyboard = (value >> 4) & 0x01;
+        state.kbd_controller.status.sysf = (value >> 2) & 0x01;
+        state.kbd_controller.allow_irq1  = (value >> 0) & 0x01;
+        state.kbd_controller.allow_irq12 = (value >> 1) & 0x01;
+        set_kbd_clock_enable(!disable_keyboard);
+        set_aux_clock_enable(!disable_aux);
+        if (state.kbd_controller.allow_irq12 && state.kbd_controller.status.auxb)
+          state.kbd_controller.irq12_requested = 1;
+        else if (state.kbd_controller.allow_irq1  && state.kbd_controller.status.outb)
+          state.kbd_controller.irq1_requested = 1;
 
 #if defined(DEBUG_KBD)
-            BX_DEBUG(( " allow_irq12 set to %u",
-              (unsigned) state.kbd_controller.allow_irq12));
-            if (!scan_convert)
-              BX_INFO(("keyboard: scan convert turned off"));
+        BX_DEBUG(( " allow_irq12 set to %u", (unsigned) state.kbd_controller.allow_irq12));
+        if (!scan_convert)
+          BX_INFO(("keyboard: scan convert turned off"));
 #endif
-	          // (mch) NT needs this
-	          state.kbd_controller.scancodes_translate = scan_convert;
-            }
-            break;
-          case 0xd1: // write output port
-#if defined(DEBUG_KBD)
-            BX_DEBUG(("write output port with value %02xh", (unsigned) value));
-	    BX_DEBUG(("write output port : %sable A20",(value & 0x02)?"en":"dis"));
-//            BX_SET_ENABLE_A20((value & 0x02) != 0);
-            if (!(value & 0x01))
-              BX_INFO(("write output port : processor reset requested!"));
-//              bx_pc_system.Reset( BX_RESET_SOFTWARE);
-#endif
-            break;
-          case 0xd4: // Write to mouse
-            // I don't think this enables the AUX clock
-            //set_aux_clock_enable(1); // enable aux clock line
-            kbd_ctrl_to_mouse(value);
-            // ??? should I reset to previous value of aux enable?
-            break;
-
-          case 0xd3: // write mouse output buffer
-            // Queue in mouse output buffer
-            kbd_controller_enQ(value, 1);
-            break;
-
-	  case 0xd2:
-	    // Queue in keyboard output buffer
-	    kbd_controller_enQ(value, 0);
-	    break;
-
-          default:
-            printf("=== unsupported write to port 60h(lastcomm=%02x): %02x   \n",
-              (unsigned) state.kbd_controller.last_comm, (unsigned) value);
-
-          }
-      } else {
-        // data byte written last to 0x60
-        state.kbd_controller.status.c_d = 0;
-        state.kbd_controller.expecting_port60h = 0;
-        /* pass byte to keyboard */
-        /* ??? should conditionally pass to mouse device here ??? */
-        if (state.kbd_controller.kbd_clock_enabled==0) {
-          set_kbd_clock_enable(1);
-        }
-        kbd_ctrl_to_kbd(value);
+        // (mch) NT needs this
+        state.kbd_controller.scancodes_translate = scan_convert;
       }
-      kbd_clock();
+      break;
+
+    case 0xd1: // write output port
+#if defined(DEBUG_KBD)
+      BX_DEBUG(("write output port with value %02xh", (unsigned) value));
+#endif
+      break;
+
+    case 0xd4: // Write to mouse
+      // I don't think this enables the AUX clock
+      //set_aux_clock_enable(1); // enable aux clock line
+      kbd_ctrl_to_mouse(value);
+      // ??? should I reset to previous value of aux enable?
+      break;
+
+    case 0xd3: // write mouse output buffer
+      // Queue in mouse output buffer
+      kbd_controller_enQ(value, 1);
+      break;
+
+    case 0xd2:
+      // Queue in keyboard output buffer
+      kbd_controller_enQ(value, 0);
+      break;
+
+    default:
+      printf("=== unsupported write to port 60h(lastcomm=%02x): %02x   \n",
+        (unsigned) state.kbd_controller.last_comm, (unsigned) value);
+    }
+  } 
+  else 
+  {
+    // data byte written last to 0x60
+    state.kbd_controller.status.c_d = 0;
+    state.kbd_controller.expecting_port60h = 0;
+    /* pass byte to keyboard */
+    /* ??? should conditionally pass to mouse device here ??? */
+    if (state.kbd_controller.kbd_clock_enabled==0) 
+      set_kbd_clock_enable(1);
+    kbd_ctrl_to_kbd(value);
+  }
+  kbd_clock();
 }
 
 /**
@@ -2055,211 +2104,220 @@ void CAliM1543C::kbd_64_write(u8 value)
   static int kbd_initialized=0;
   u8 command_byte;
 
-// control register
-      // command byte written last to 0x64
-      state.kbd_controller.status.c_d = 1;
-      state.kbd_controller.last_comm = value;
-      // most commands NOT expecting port60 write next
-      state.kbd_controller.expecting_port60h = 0;
+  // command byte written last to 0x64
+  state.kbd_controller.status.c_d = 1;
+  state.kbd_controller.last_comm = value;
+  // most commands NOT expecting port60 write next
+  state.kbd_controller.expecting_port60h = 0;
 
-      switch (value) {
-        case 0x20: // get keyboard command byte
+  switch (value) 
+  {
+  case 0x20: // get keyboard command byte
 #if defined(DEBUG_KBD)
-          BX_DEBUG(("get keyboard command byte"));
+    BX_DEBUG(("get keyboard command byte"));
 #endif
-          // controller output buffer must be empty
-          if (state.kbd_controller.status.outb) {
+    // controller output buffer must be empty
+    if (state.kbd_controller.status.outb) 
+    {
 #if defined(DEBUG_KBD)
-            BX_ERROR(("kbd: OUTB set and command 0x%02x encountered", value));
+      BX_ERROR(("kbd: OUTB set and command 0x%02x encountered", value));
 #endif
-            break;
-          }
-          command_byte =
-            (state.kbd_controller.scancodes_translate << 6) |
-            ((!state.kbd_controller.aux_clock_enabled) << 5) |
-            ((!state.kbd_controller.kbd_clock_enabled) << 4) |
-            (0 << 3) |
-            (state.kbd_controller.status.sysf << 2) |
-            (state.kbd_controller.allow_irq12 << 1) |
-            (state.kbd_controller.allow_irq1  << 0);
-          kbd_controller_enQ(command_byte, 0);
-          break;
-        case 0x60: // write command byte
-#if defined(DEBUG_KBD)
-          BX_DEBUG(("write command byte"));
-#endif
-          // following byte written to port 60h is command byte
-          state.kbd_controller.expecting_port60h = 1;
-          break;
+      break;
+    }
+    command_byte =
+      (state.kbd_controller.scancodes_translate << 6) |
+      ((!state.kbd_controller.aux_clock_enabled) << 5) |
+      ((!state.kbd_controller.kbd_clock_enabled) << 4) |
+      (0 << 3) |
+      (state.kbd_controller.status.sysf << 2) |
+      (state.kbd_controller.allow_irq12 << 1) |
+      (state.kbd_controller.allow_irq1  << 0);
+    kbd_controller_enQ(command_byte, 0);
+    break;
 
-        case 0xa0:
+  case 0x60: // write command byte
 #if defined(DEBUG_KBD)
-          BX_DEBUG(("keyboard BIOS name not supported"));
+    printf("kbd_ctrl: command 60: write command byte.   \n");
 #endif
-          break;
+    // following byte written to port 60h is command byte
+    state.kbd_controller.expecting_port60h = 1;
+    break;
 
-        case 0xa1:
+  case 0xa0:
 #if defined(DEBUG_KBD)
-          BX_DEBUG(("keyboard BIOS version not supported"));
+    printf("kbd_ctrl: command a0: BIOS name (not supported).   \n");
 #endif
-          break;
+    break;
 
-        case 0xa7: // disable the aux device
-          set_aux_clock_enable(0);
+  case 0xa1:
 #if defined(DEBUG_KBD)
-          BX_DEBUG(("aux device disabled"));
+    printf("kbd_ctrl: command a0: BIOS version (not supported).   \n");
 #endif
-          break;
-        case 0xa8: // enable the aux device
-          set_aux_clock_enable(1);
+    break;
+
+  case 0xa7: // disable the aux device
+    set_aux_clock_enable(0);
 #if defined(DEBUG_KBD)
-          BX_DEBUG(("aux device enabled"));
+    printf("kbd_ctrl: command a7: aux i/f disable.   \n");
 #endif
-          break;
-        case 0xa9: // Test Mouse Port
-          // controller output buffer must be empty
-          if (state.kbd_controller.status.outb) {
-            printf("kbd: OUTB set and command 0x%02x encountered", value);
-            break;
-          }
-          kbd_controller_enQ(0x00, 0); // no errors detected
-          break;
-        case 0xaa: // motherboard controller self test
+    break;
+
+  case 0xa8: // enable the aux device
+    set_aux_clock_enable(1);
 #if defined(DEBUG_KBD)
-          BX_DEBUG(("Self Test"));
+    printf("kbd_ctrl: command a7: aux i/f enable.   \n");
 #endif
-	  if (kbd_initialized == 0) {
-	    state.kbd_controller_Qsize = 0;
-	    state.kbd_controller.status.outb = 0;
-	    kbd_initialized++;
-	  }
-          // controller output buffer must be empty
-          if (state.kbd_controller.status.outb) {
-            printf("kbd: OUTB set and command 0x%02x encountered", value);
-            //break;
-	        // drain the queue?
-	        state.kbd_internal_buffer.head = 0;
-	        state.kbd_internal_buffer.num_elements = 0;
-	        state.kbd_controller.status.outb = 0;
-          }
-	  // (mch) Why is this commented out??? Enabling
-          state.kbd_controller.status.sysf = 1; // self test complete
-          kbd_controller_enQ(0x55, 0); // controller OK
-          break;
-        case 0xab: // Interface Test
-          // controller output buffer must be empty
-          if (state.kbd_controller.status.outb) {
-            printf("kbd: OUTB set and command 0x%02x encountered", value);
-            break;
-          }
-          kbd_controller_enQ(0x00, 0);
-          break;
-        case 0xad: // disable keyboard
-          set_kbd_clock_enable(0);
+    break;
+  case 0xa9: // Test Mouse Port
+    // controller output buffer must be empty
 #if defined(DEBUG_KBD)
-          BX_DEBUG(("keyboard disabled"));
+    printf("kbd_ctrl: command a9: aux i/f test.   \n");
 #endif
-          break;
-        case 0xae: // enable keyboard
-          set_kbd_clock_enable(1);
+    if (state.kbd_controller.status.outb) {
+      printf("kbd: OUTB set and command 0x%02x encountered", value);
+      break;
+    }
+    kbd_controller_enQ(0x00, 0); // no errors detected
+    break;
+
+  case 0xaa: // motherboard controller self test
 #if defined(DEBUG_KBD)
-          BX_DEBUG(("keyboard enabled"));
+    printf("kbd_ctrl: command aa: self test.   \n");
 #endif
-          break;
-        case 0xaf: // get controller version
+    if (kbd_initialized == 0) 
+    {
+      state.kbd_controller_Qsize = 0;
+      state.kbd_controller.status.outb = 0;
+      kbd_initialized = 1;
+    }
+    // controller output buffer must be empty
+    if (state.kbd_controller.status.outb) 
+    {
+      printf("kbd: OUTB set and command 0x%02x encountered", value);
+      //break;
+      // drain the queue?
+      state.kbd_internal_buffer.head = 0;
+      state.kbd_internal_buffer.num_elements = 0;
+      state.kbd_controller.status.outb = 0;
+    }
+    state.kbd_controller.status.sysf = 1; // self test complete
+    kbd_controller_enQ(0x55, 0); // controller OK
+    break;
+
+  case 0xab: // Interface Test
 #if defined(DEBUG_KBD)
-          BX_INFO(("'get controller version' not supported yet"));
+    printf("kbd_ctrl: command ab: kbd i/f test.   \n");
 #endif
-          break;
-        case 0xc0: // read input port
-          // controller output buffer must be empty
-          if (state.kbd_controller.status.outb) {
-            BX_PANIC(("kbd: OUTB set and command 0x%02x encountered", value));
-            break;
-          }
-          // keyboard not inhibited
-          kbd_controller_enQ(0x80, 0);
-          break;
-        case 0xd0: // read output port: next byte read from port 60h
+    // controller output buffer must be empty
+    if (state.kbd_controller.status.outb) 
+    {
+      printf("kbd: OUTB set and command 0x%02x encountered", value);
+      break;
+    }
+    kbd_controller_enQ(0x00, 0);
+    break;
+
+  case 0xad: // disable keyboard
+    set_kbd_clock_enable(0);
 #if defined(DEBUG_KBD)
-          BX_DEBUG(("io write to port 64h, command d0h (partial)"));
+    printf("kbd_ctrl: command ad: kbd i/f disable.   \n");
 #endif
-          // controller output buffer must be empty
-          if (state.kbd_controller.status.outb) {
-            BX_PANIC(("kbd: OUTB set and command 0x%02x encountered", value));
-            break;
-          }
-          kbd_controller_enQ(
-              (state.kbd_controller.irq12_requested << 5) |
-              (state.kbd_controller.irq1_requested << 4) |
+    break;
+
+  case 0xae: // enable keyboard
+    set_kbd_clock_enable(1);
+#if defined(DEBUG_KBD)
+    printf("kbd_ctrl: command ae: kbd i/f enable.   \n");
+#endif
+    break;
+
+  case 0xaf: // get controller version
+#if defined(DEBUG_KBD)
+    printf("kbd_ctrl: command af: controller version (not supported).   \n");
+#endif
+    break;
+
+  case 0xc0: // read input port
+#if defined(DEBUG_KBD)
+    printf("kbd_ctrl: command c0: read input port.   \n");
+#endif
+    // controller output buffer must be empty
+    if (state.kbd_controller.status.outb) 
+    {
+      BX_PANIC(("kbd: OUTB set and command 0x%02x encountered", value));
+      break;
+    }
+    // keyboard not inhibited
+    kbd_controller_enQ(0x80, 0);
+    break;
+
+  case 0xd0: // read output port: next byte read from port 60h
+#if defined(DEBUG_KBD)
+    printf("kbd_ctrl: command d0: read output port. (partial)   \n");
+#endif
+    // controller output buffer must be empty
+    if (state.kbd_controller.status.outb) 
+    {
+      BX_PANIC(("kbd: OUTB set and command 0x%02x encountered", value));
+      break;
+    }
+    kbd_controller_enQ(
+        (state.kbd_controller.irq12_requested << 5) |
+        (state.kbd_controller.irq1_requested << 4) |
 //              (BX_GET_ENABLE_A20() << 1) |
-              0x01, 0);
-          break;
+        0x01, 0);
+    break;
 
-        case 0xd1: // write output port: next byte written to port 60h
+  case 0xd1: // write output port: next byte written to port 60h
 #if defined(DEBUG_KBD)
-          BX_DEBUG(("write output port"));
+    printf("kbd_ctrl: command d1: write output port.   \n");
 #endif
-          // following byte to port 60h written to output port
-          state.kbd_controller.expecting_port60h = 1;
-          break;
+    // following byte to port 60h written to output port
+    state.kbd_controller.expecting_port60h = 1;
+    break;
 
-        case 0xd3: // write mouse output buffer
-	  //FIXME: Why was this a panic?
+  case 0xd3: // write mouse output buffer
 #if defined(DEBUG_KBD)
-          BX_DEBUG(("io write 0x64: command = 0xD3(write mouse outb)"));
+    printf("kbd_ctrl: command d3: write aux output buffer.   \n");
 #endif
-	  // following byte to port 60h written to output port as mouse write.
-          state.kbd_controller.expecting_port60h = 1;
-          break;
+    // following byte to port 60h written to output port as mouse write.
+    state.kbd_controller.expecting_port60h = 1;
+    break;
 
-        case 0xd4: // write to mouse
+  case 0xd4: // write to mouse
 #if defined(DEBUG_KBD)
-          BX_DEBUG(("io write 0x64: command = 0xD4 (write to mouse)"));
+    printf("kbd_ctrl: command d4: write to aux.   \n");
 #endif
-          // following byte written to port 60h
-          state.kbd_controller.expecting_port60h = 1;
-          break;
+    // following byte written to port 60h
+    state.kbd_controller.expecting_port60h = 1;
+    break;
 
-        case 0xd2: // write keyboard output buffer
+  case 0xd2: // write keyboard output buffer
 #if defined(DEBUG_KBD)
-      BX_DEBUG(("io write 0x64: write keyboard output buffer"));
+    printf("kbd_ctrl: command d2: write kbd output buffer.   \n");
 #endif
-	  state.kbd_controller.expecting_port60h = 1;
-	  break;
-        case 0xdd: // Disable A20 Address Line
-//	  BX_SET_ENABLE_A20(0);
-	  break;
-        case 0xdf: // Enable A20 Address Line
-//	  BX_SET_ENABLE_A20(1);
-	  break;
-        case 0xc1: // Continuous Input Port Poll, Low
-        case 0xc2: // Continuous Input Port Poll, High
-        case 0xe0: // Read Test Inputs
-          BX_PANIC(("io write 0x64: command = %02xh", (unsigned) value));
-          break;
+    state.kbd_controller.expecting_port60h = 1;
+    break;
 
-        case 0xfe: // System (cpu?) Reset, transition to real mode
-#if defined(DEBUG_KBD)
-          BX_INFO(("io write 0x64: command 0xfe: reset cpu"));
-#endif
-//          bx_pc_system.Reset(BX_RESET_SOFTWARE);
-          break;
+  case 0xc1: // Continuous Input Port Poll, Low
+  case 0xc2: // Continuous Input Port Poll, High
+  case 0xe0: // Read Test Inputs
+    BX_PANIC(("io write 0x64: command = %02xh", (unsigned) value));
+    break;
 
-        default:
-          if (value==0xff || (value>=0xf0 && value<=0xfd)) {
-            /* useless pulse output bit commands ??? */
+  default:
+    if (value==0xff || (value>=0xf0 && value<=0xfd)) 
+    {
+      /* useless pulse output bit commands ??? */
 #if defined(DEBUG_KBD)
-            BX_DEBUG(("io write to port 64h, useless command %02x",
-                (unsigned) value));
+      BX_DEBUG(("io write to port 64h, useless command %02x", (unsigned) value));
 #endif
-            return;
-          }
-          BX_ERROR(("unsupported io write to keyboard port 64, value = %x",
-            (unsigned) value));
-          break;
-      }
-      kbd_clock();
+      return;
+    }
+    BX_ERROR(("unsupported io write to keyboard port 64, value = %x", (unsigned) value));
+    break;
+  }
+  kbd_clock();
 }
 
 /**
@@ -2276,7 +2334,8 @@ void CAliM1543C::kbd_controller_enQ(u8 data, unsigned source)
 
   // see if we need to Q this byte from the controller
   // remember this includes mouse bytes.
-  if (state.kbd_controller.status.outb) {
+  if (state.kbd_controller.status.outb) 
+  {
     if (state.kbd_controller_Qsize >= BX_KBD_CONTROLLER_QSIZE)
       FAILURE("controller_enq(): controller_Q full!");
     state.kbd_controller_Q[state.kbd_controller_Qsize++] = data;
@@ -2285,14 +2344,17 @@ void CAliM1543C::kbd_controller_enQ(u8 data, unsigned source)
   }
 
   // the Q is empty
-  if (source == 0) { // keyboard
+  if (source == 0) 
+  { // keyboard
     state.kbd_controller.kbd_output_buffer = data;
     state.kbd_controller.status.outb = 1;
     state.kbd_controller.status.auxb = 0;
     state.kbd_controller.status.inpb = 0;
     if (state.kbd_controller.allow_irq1)
       state.kbd_controller.irq1_requested = 1;
-  } else { // mouse
+  } 
+  else 
+  { // mouse
     state.kbd_controller.aux_output_buffer = data;
     state.kbd_controller.status.outb = 1;
     state.kbd_controller.status.auxb = 1;
@@ -2369,7 +2431,8 @@ void CAliM1543C::kbd_ctrl_to_kbd(u8 value)
     return;
   }
 
-  if (state.kbd_internal_buffer.expecting_typematic) {
+  if (state.kbd_internal_buffer.expecting_typematic) 
+  {
     state.kbd_internal_buffer.expecting_typematic = 0;
     state.kbd_internal_buffer.delay = (value >> 5) & 0x03;
 #if defined(DEBUG_KBD)
@@ -2400,21 +2463,28 @@ void CAliM1543C::kbd_ctrl_to_kbd(u8 value)
     return;
   }
 
-  if (state.kbd_controller.expecting_scancodes_set) {
+  if (state.kbd_controller.expecting_scancodes_set) 
+  {
     state.kbd_controller.expecting_scancodes_set = 0;
-    if( value != 0 ) {
-      if( value<4 ) {
+    if( value != 0 ) 
+    {
+      if( value<4 ) 
+      {
         state.kbd_controller.current_scancodes_set = (value-1);
 #if defined(DEBUG_KBD)
         BX_INFO(("Switched to scancode set %d",
           (unsigned) state.kbd_controller.current_scancodes_set + 1));
 #endif
         kbd_enQ(0xFA);
-      } else {
+      } 
+      else 
+      {
         BX_ERROR(("Received scancodes set out of range: %d", value ));
         kbd_enQ(0xFF); // send ERROR
       }
-    } else {
+    } 
+    else 
+    {
       // Send ACK (SF patch #1159626)
       kbd_enQ(0xFA);
       // Send current scancodes set to port 0x60
@@ -2426,37 +2496,50 @@ void CAliM1543C::kbd_ctrl_to_kbd(u8 value)
     return;
   }
 
-  switch (value) {
-    case 0x00: // ??? ignore and let OS timeout with no response
-      kbd_enQ(0xFA); // send ACK %%%
-      break;
-
-    case 0x05: // ???
-      // (mch) trying to get this to work...
-      state.kbd_controller.status.sysf = 1;
-      kbd_enQ_imm(0xfe);
-      break;
+  switch (value) 
+  {
+//    case 0x00: // ??? ignore and let OS timeout with no response
+//#if defined(DEBUG_KBD)
+//      printf("kbd: command 00: ignored.   \n");
+//#endif
+//      kbd_enQ(0xFA); // send ACK %%%
+//      break;
+//
+//    case 0x05: // ???
+//#if defined(DEBUG_KBD)
+//      printf("kbd: command 05:  unknown.   \n");
+//#endif
+//      // (mch) trying to get this to work...
+//      state.kbd_controller.status.sysf = 1;
+//      kbd_enQ_imm(0xfe);
+//      break;
 
     case 0xed: // LED Write
       state.kbd_internal_buffer.expecting_led_write = 1;
+#if defined(DEBUG_KBD)
+      printf("kbd: Expecting led write info.   \n");
+#endif
       kbd_enQ_imm(0xFA); // send ACK %%%
       break;
 
     case 0xee: // echo
+#if defined(DEBUG_KBD)
+      printf("kbd: command ee: echo.   \n");
+#endif
       kbd_enQ(0xEE); // return same byte (EEh) as echo diagnostic
       break;
 
     case 0xf0: // Select alternate scan code set
       state.kbd_controller.expecting_scancodes_set = 1;
 #if defined(DEBUG_KBD)
-      BX_DEBUG(("Expecting scancode set info..."));
+      printf("kbd: Expecting scancode set info.   \n");
 #endif
       kbd_enQ(0xFA); // send ACK
       break;
 
     case 0xf2:  // identify keyboard
 #if defined(DEBUG_KBD)
-      BX_INFO(("identify keyboard command received"));
+      printf("kbd: command f2: identify keyboard.   \n");
 #endif
 
       //  Keyboard IDs
@@ -2476,13 +2559,16 @@ void CAliM1543C::kbd_ctrl_to_kbd(u8 value)
     case 0xf3:  // typematic info
       state.kbd_internal_buffer.expecting_typematic = 1;
 #if defined(DEBUG_KBD)
-      BX_INFO(("setting typematic info"));
+      printf("kbd: Expecting typematic info.   \n");
 #endif
       kbd_enQ(0xFA); // send ACK
       break;
 
     case 0xf4:  // enable keyboard
       state.kbd_internal_buffer.scanning_enabled = 1;
+#if defined(DEBUG_KBD)
+      printf("kbd: command f4: enable keyboard.   \n");
+#endif
       kbd_enQ(0xFA); // send ACK
       break;
 
@@ -2491,7 +2577,7 @@ void CAliM1543C::kbd_ctrl_to_kbd(u8 value)
       kbd_enQ(0xFA); // send ACK
       state.kbd_internal_buffer.scanning_enabled = 0;
 #if defined(DEBUG_KBD)
-      BX_INFO(("reset-disable command received"));
+      printf("kbd: command f5: reset and disable keyboard.   \n");
 #endif
       break;
 
@@ -2500,22 +2586,25 @@ void CAliM1543C::kbd_ctrl_to_kbd(u8 value)
       kbd_enQ(0xFA); // send ACK
       state.kbd_internal_buffer.scanning_enabled = 1;
 #if defined(DEBUG_KBD)
-      BX_INFO(("reset-enable command received"));
+      printf("kbd: command f6: reset and enable keyboard.   \n");
 #endif
       break;
 
     case 0xfc:  // PS/2 Set Key Type to Make/Break
       state.kbd_internal_buffer.expecting_make_break = 1;
+#if defined(DEBUG_KBD)
+      printf("kbd: Expecting make/break info.   \n");
+#endif
       kbd_enQ(0xFA); /* send ACK */
       break;
 
     case 0xfe:  // resend. aiiee.
-      BX_PANIC(("got 0xFE (resend)"));
+      printf("kbd: resend command received.   \n");
       break;
 
     case 0xff:  // reset: internal keyboard reset and afterwards the BAT
 #if defined(DEBUG_KBD)
-      BX_DEBUG(("reset command received"));
+      printf("kbd: command ff: reset keyboard w/BAT.   \n");
 #endif
       kbd_resetinternals(1);
       kbd_enQ(0xFA); // send ACK
@@ -2523,9 +2612,9 @@ void CAliM1543C::kbd_ctrl_to_kbd(u8 value)
       kbd_enQ(0xAA); // BAT test passed
       break;
 
-    case 0xd3:
-      kbd_enQ(0xfa);
-      break;
+    //case 0xd3:
+    //  kbd_enQ(0xfa);
+    //  break;
 
     case 0xf7:  // PS/2 Set All Keys To Typematic
     case 0xf8:  // PS/2 Set All Keys to Make/Break
@@ -2534,7 +2623,7 @@ void CAliM1543C::kbd_ctrl_to_kbd(u8 value)
     case 0xfb:  // PS/2 Set Key Type to Typematic
     case 0xfd:  // PS/2 Set Key Type to Make
     default:
-      BX_ERROR(("kbd_ctrl_to_kbd(): got value of 0x%02x", value));
+      printf("kbd: command %02x: not recognized!   \n", value);
       kbd_enQ(0xFE); /* send NACK */
       break;
   }
