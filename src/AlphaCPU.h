@@ -28,7 +28,10 @@
  * \file
  * Contains the definitions for the emulated DecChip 21264CB EV68 Alpha processor.
  *
- * $Id: AlphaCPU.h,v 1.49 2008/02/01 09:41:13 iamcamiel Exp $
+ * $Id: AlphaCPU.h,v 1.50 2008/02/08 20:08:13 iamcamiel Exp $
+ *
+ * X-1.50       Camiel Vanderhoeven                             08-FEB-2008
+ *      Show originating device name on memory errors.
  *
  * X-1.49       Camiel Vanderhoeven                             01-FEB-2008
  *      Avoid unnecessary shift-operations to calculate constant values.
@@ -644,7 +647,7 @@ inline int CAlphaCPU::get_icache(u64 address, u32 * data)
     }
   }
 
-  *data = (u32)cSystem->ReadMem(state.pc_phys, 32);
+  *data = (u32)cSystem->ReadMem(state.pc_phys, 32, this);
   return 0;
 }
 
@@ -850,9 +853,9 @@ inline u64 CAlphaCPU::get_prbr(void)
   bool b;
 
   if (state.r[21+32] && (   (u64)(state.r[21+32]+0xaf) < (u64)((X64(1)<<cSystem->get_memory_bits()))))
-    v_prbr = cSystem->ReadMem(state.r[21+32] + 0xa8,64);
+    v_prbr = cSystem->ReadMem(state.r[21+32] + 0xa8, 64, this);
   else
-    v_prbr = cSystem->ReadMem(0x70a8 + (0x200 * get_cpuid()),64);
+    v_prbr = cSystem->ReadMem(0x70a8 + (0x200 * get_cpuid()), 64, this);
 
   if (virt2phys(v_prbr, &p_prbr, ACCESS_READ | FAKE | NO_CHECK, &b,0))
     p_prbr = v_prbr;
@@ -873,9 +876,9 @@ inline u64 CAlphaCPU::get_hwpcb(void)
   bool b;
 
   if (state.r[21+32] && (   (u64)(state.r[21+32]+0x17) < (u64)((X64(1)<<cSystem->get_memory_bits()))))
-    v_pcb = cSystem->ReadMem(state.r[21+32] + 0x10,64);
+    v_pcb = cSystem->ReadMem(state.r[21+32] + 0x10,64,this);
   else
-    v_pcb = cSystem->ReadMem(0x7010 + (0x200 * get_cpuid()),64);
+    v_pcb = cSystem->ReadMem(0x7010 + (0x200 * get_cpuid()),64,this);
 
   if (virt2phys(v_pcb, &p_pcb, ACCESS_READ | NO_CHECK | FAKE, &b,0))
     p_pcb = v_pcb;

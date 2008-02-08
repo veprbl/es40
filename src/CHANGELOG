@@ -3,6 +3,8 @@
 
 \section c018 version 0.17 -> 0.17+
 
+ - Show originating device name on memory errors. (08-feb-2008, 
+   Camiel Vanderhoeven)
  - Set default keyboard translation to scanset 3 (PS/2). 
    (08-feb-2008, Camiel Vanderhoeven)
  - On GNU systems, display a backtrace when a segmentation fault

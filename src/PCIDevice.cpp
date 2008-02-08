@@ -27,7 +27,10 @@
  * \file
  * Contains the code for the PCI device class.
  *
- * $Id: PCIDevice.cpp,v 1.12 2008/02/06 16:23:18 iamcamiel Exp $
+ * $Id: PCIDevice.cpp,v 1.13 2008/02/08 20:08:13 iamcamiel Exp $
+ *
+ * X-1.13       Camiel Vanderhoeven                             08-FEB-2008
+ *      Show originating device name on memory errors.
  *
  * X-1.12       Camiel Vanderhoeven                             06-FEB-2008
  *      Fixed registration of ROM expansion address.
@@ -524,13 +527,13 @@ void CPCIDevice::do_pci_read(u32 address, void *dest, size_t element_size, size_
     switch (element_size)
     {
       case 1:
-        *(u8*)dest = (u8) cSystem->ReadMem(phys_addr,8);
+        *(u8*)dest = (u8) cSystem->ReadMem(phys_addr,8,this);
         break;
       case 2:
-        *(u16*)dest = (u16) cSystem->ReadMem(phys_addr,16);
+        *(u16*)dest = (u16) cSystem->ReadMem(phys_addr,16,this);
         break;
       case 4:
-        *(u32*)dest = (u32) cSystem->ReadMem(phys_addr,32);
+        *(u32*)dest = (u32) cSystem->ReadMem(phys_addr,32,this);
         break;
       default:
         FAILURE("Strange element size");
@@ -564,21 +567,21 @@ void CPCIDevice::do_pci_read(u32 address, void *dest, size_t element_size, size_
   case 1:
     for (el=0; el<element_count;el++)
     {
-      *(u8*)dst = (u8) cSystem->ReadMem(phys_addr,8);
+      *(u8*)dst = (u8) cSystem->ReadMem(phys_addr,8,this);
       dst++;
       phys_addr++;
     }
     break;
   case 2:
     {
-      *(u16*)dst = endian_16((u16) cSystem->ReadMem(phys_addr,16));
+      *(u16*)dst = endian_16((u16) cSystem->ReadMem(phys_addr,16,this));
       dst+=2;
       phys_addr+=2;
     }
     break;
   case 4:
     {
-      *(u32*)dst = endian_32((u32) cSystem->ReadMem(phys_addr,32));
+      *(u32*)dst = endian_32((u32) cSystem->ReadMem(phys_addr,32,this));
       dst+=4;;
       phys_addr+=4;
     }
@@ -612,13 +615,13 @@ void CPCIDevice::do_pci_write(u32 address, void *source, size_t element_size, si
     switch (element_size)
     {
       case 1:
-        cSystem->WriteMem(phys_addr, 8, *(u8*)source);
+        cSystem->WriteMem(phys_addr, 8, *(u8*)source,this);
         break;
       case 2:
-        cSystem->WriteMem(phys_addr, 16, *(u16*)source);
+        cSystem->WriteMem(phys_addr, 16, *(u16*)source,this);
         break;
       case 4:
-        cSystem->WriteMem(phys_addr, 32, *(u32*)source);
+        cSystem->WriteMem(phys_addr, 32, *(u32*)source,this);
         break;
       default:
         FAILURE("Strange element size");
@@ -652,21 +655,21 @@ void CPCIDevice::do_pci_write(u32 address, void *source, size_t element_size, si
   case 1:
     for (el=0; el<element_count;el++)
     {
-      cSystem->WriteMem(phys_addr, 8, *(u8*)src);
+      cSystem->WriteMem(phys_addr, 8, *(u8*)src,this);
       src++;
       phys_addr++;
     }
     break;
   case 2:
     {
-      cSystem->WriteMem(phys_addr, 16, endian_16(*(u16*)src));
+      cSystem->WriteMem(phys_addr, 16, endian_16(*(u16*)src),this);
       src+=2;
       phys_addr+=2;
     }
     break;
   case 4:
     {
-      cSystem->WriteMem(phys_addr, 32, endian_32(*(u32*)src));
+      cSystem->WriteMem(phys_addr, 32, endian_32(*(u32*)src),this);
       src+=4;;
       phys_addr+=4;
     }

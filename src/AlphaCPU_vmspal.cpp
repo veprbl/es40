@@ -29,7 +29,10 @@
  * DecChip 21264CB EV68 Alpha processor. Based on disassembly of original VMS
  * PALcode, HRM, and OpenVMS AXP Internals and Data Structures.
  *
- * $Id: AlphaCPU_vmspal.cpp,v 1.11 2008/02/01 09:41:13 iamcamiel Exp $
+ * $Id: AlphaCPU_vmspal.cpp,v 1.12 2008/02/08 20:08:13 iamcamiel Exp $
+ *
+ * X-1.12       Camiel Vanderhoeven                             08-FEB-2008
+ *      Show originating device name on memory errors.
  *
  * X-1.11       Camiel Vanderhoeven                             01-FEB-2008
  *      Avoid unnecessary shift-operations to calculate constant values.
@@ -124,31 +127,31 @@
 #define r30 state.r[30]
 #define r31 state.r[31]
 
-#define hw_stq(a,b) cSystem->WriteMem(a&~X64(7),64,b)
-#define hw_stl(a,b) cSystem->WriteMem(a&~X64(3),32,b)
+#define hw_stq(a,b) cSystem->WriteMem(a&~X64(7),64,b,this)
+#define hw_stl(a,b) cSystem->WriteMem(a&~X64(3),32,b,this)
 #define stq(a,b)                                              \
       if (virt2phys(a,&phys_address,ACCESS_WRITE,NULL,0)) \
         return -1;                                             \
-      cSystem->WriteMem(phys_address, 64, b);
+      cSystem->WriteMem(phys_address, 64, b,this);
 #define ldq(a,b)                                              \
       if (virt2phys(a,&phys_address,ACCESS_READ,NULL,0))  \
         return -1;                                             \
-      b = cSystem->ReadMem(phys_address, 64);
+      b = cSystem->ReadMem(phys_address, 64,this);
 #define stl(a,b)                                              \
       if (virt2phys(a,&phys_address,ACCESS_WRITE,NULL,0)) \
         return -1;                                             \
-      cSystem->WriteMem(phys_address, 32, b);
+      cSystem->WriteMem(phys_address, 32, b,this);
 #define ldl(a,b)                                              \
       if (virt2phys(a,&phys_address,ACCESS_READ,NULL,0))  \
         return -1;                                             \
-      b = sext_u64_32(cSystem->ReadMem(phys_address, 32));
+      b = sext_u64_32(cSystem->ReadMem(phys_address, 32,this));
 #define ldb(a,b)                                              \
       if (virt2phys(a,&phys_address,ACCESS_READ,NULL,0))  \
         return -1;                                             \
-      b = (char)(cSystem->ReadMem(phys_address, 8));
-#define hw_ldq(a,b) b = cSystem->ReadMem(a&~X64(7),64)
-#define hw_ldl(a,b) b = sext_u64_32(cSystem->ReadMem(a&~X64(3),32));
-#define hw_ldbu(a,b) b = cSystem->ReadMem(a,8)
+      b = (char)(cSystem->ReadMem(phys_address, 8,this));
+#define hw_ldq(a,b) b = cSystem->ReadMem(a&~X64(7),64,this)
+#define hw_ldl(a,b) b = sext_u64_32(cSystem->ReadMem(a&~X64(3),32,this));
+#define hw_ldbu(a,b) b = cSystem->ReadMem(a,8,this)
 
 /**
  * Mask for interrupt enabling at IPL's.
@@ -1304,7 +1307,7 @@ int CAlphaCPU::vmspal_ent_dtbm_single(int flags)
   p4 &=~X64(7);
   if (virt2phys(p4,&pte_phys,ACCESS_READ | NO_CHECK | VPTE | (flags & (PROBE | PROBEW)), NULL, 0))
     return -1;
-  p4 = cSystem->ReadMem(pte_phys,64);
+  p4 = cSystem->ReadMem(pte_phys,64,this);
 
   if (!test_bit_64(p4,0))
   {
@@ -1404,7 +1407,7 @@ int CAlphaCPU::vmspal_ent_itbm(int flags)
   p4 &=~X64(7);
   if (virt2phys(p4,&pte_phys,ACCESS_READ | NO_CHECK | VPTE, NULL, 0))
     return -1;
-  p4 = cSystem->ReadMem(pte_phys,64);
+  p4 = cSystem->ReadMem(pte_phys,64,this);
 
   p6 = 0xfff;
   p5 = p4 & p6;

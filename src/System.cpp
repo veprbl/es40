@@ -27,7 +27,10 @@
  * \file 
  * Contains the code for the emulated Typhoon Chipset devices.
  *
- * $Id: System.cpp,v 1.61 2008/02/01 09:41:13 iamcamiel Exp $
+ * $Id: System.cpp,v 1.62 2008/02/08 20:08:13 iamcamiel Exp $
+ *
+ * X-1.61       Camiel Vanderhoeven                             08-FEB-2008
+ *      Show originating device name on memory errors.
  *
  * X-1.60       Camiel Vanderhoeven                             01-FEB-2008
  *      Avoid unnecessary shift-operations to calculate constant values.
@@ -321,7 +324,7 @@ CSystem::CSystem(CConfigurator * cfg)
 
   CHECK_ALLOCATION(memory = calloc(1<<iNumMemoryBits,1));
 
-  printf("%s(%s): $Id: System.cpp,v 1.61 2008/02/01 09:41:13 iamcamiel Exp $\n",cfg->get_myName(),cfg->get_myValue());
+  printf("%s(%s): $Id: System.cpp,v 1.62 2008/02/08 20:08:13 iamcamiel Exp $\n",cfg->get_myName(),cfg->get_myValue());
 }
 
 /**
@@ -662,7 +665,7 @@ u64 lastport;
  * \endcode
  **/
 
-void CSystem::WriteMem(u64 address, int dsize, u64 data)
+void CSystem::WriteMem(u64 address, int dsize, u64 data,CSystemComponent * source)
 {
   u64 a;
   int i;
@@ -720,6 +723,9 @@ void CSystem::WriteMem(u64 address, int dsize, u64 data)
       if (a>=X64(801fc000000) && a<X64(801fe000000))
       {
         // Unused PCI I/O space
+//      if (source)
+//        printf("Write to unknown IO port %"LL"x on PCI 0 from %s   \n",a & X64(1ffffff),source->devid_string);
+//      else
 //        printf("Write to unknown IO port %"LL"x on PCI 0   \n",a & X64(1ffffff));
         return;
       }
@@ -727,33 +733,43 @@ void CSystem::WriteMem(u64 address, int dsize, u64 data)
       if (a>=X64(803fc000000) && a<X64(803fe000000))
       {
         // Unused PCI I/O space
-        printf("Write to unknown IO port %"LL"x on PCI 1   \n",a & X64(1ffffff));
+        if (source)
+          printf("Write to unknown IO port %"LL"x on PCI 1 from %s   \n",a & X64(1ffffff),source->devid_string);
+        else
+          printf("Write to unknown IO port %"LL"x on PCI 1   \n",a & X64(1ffffff));
         return;
       }
 
       if (a>=X64(80000000000) && a<X64(80100000000))
       {
         // Unused PCI memory space
-        printf("Write to unknown memory %"LL"x on PCI 0   \n",a & X64(ffffffff));
+        if (source)
+          printf("Write to unknown memory %"LL"x on PCI 0 from %s   \n",a & X64(ffffffff),source->devid_string);
+        else
+          printf("Write to unknown memory %"LL"x on PCI 0   \n",a & X64(ffffffff));
         return;
       }
 
       if (a>=X64(80200000000) && a<X64(80300000000))
       {
         // Unused PCI memory space
-        printf("Write to unknown memory %"LL"x on PCI 1   \n",a & X64(ffffffff));
+        if (source)
+          printf("Write to unknown memory %"LL"x on PCI 1 from %s   \n",a & X64(ffffffff),source->devid_string);
+        else
+          printf("Write to unknown memory %"LL"x on PCI 1   \n",a & X64(ffffffff));
         return;
       }
 
 #ifdef DEBUG_UNKMEM
-	printf("%%MEM-I-WRUNKNWN: Attempt to write %d bytes (%016" LL "x) from unknown address %011" LL "x\n",dsize/8,data,a);
+    if (source)
+      printf("Write to unknown memory %"LL"x from %s   \n",a,source->devid_string);
+    else
+  	  printf("Write to unknown memory %"LL"x   \n",a);
 #endif
 	  return;
     }
 
-
   p = (u8*)memory + a;
-
 
   switch(dsize)
     {
@@ -854,7 +870,7 @@ void CSystem::WriteMem(u64 address, int dsize, u64 data)
  * \endcode
  **/
 
-u64 CSystem::ReadMem(u64 address, int dsize)
+u64 CSystem::ReadMem(u64 address, int dsize, CSystemComponent * source)
 {
   u64 a;
   int i;
@@ -912,33 +928,48 @@ u64 CSystem::ReadMem(u64 address, int dsize)
       if (a>=X64(801fc000000) && a<X64(801fe000000))
       {
         // Unused PCI I/O space
-   //     printf("Read from unknown IO port %"LL"x on PCI 0   \n",a & X64(1ffffff));
+        //if (source)
+        //  printf("Read from unknown IO port %"LL"x on PCI 0 from %s   \n",a & X64(1ffffff),source->devid_string);
+        //else
+        //  printf("Read from unknown IO port %"LL"x on PCI 0   \n",a & X64(1ffffff));
         return 0;
       }
 
       if (a>=X64(803fc000000) && a<X64(803fe000000))
       {
         // Unused PCI I/O space
-        printf("Read from unknown IO port %"LL"x on PCI 1   \n",a & X64(1ffffff));
+        if (source)
+          printf("Read from unknown IO port %"LL"x on PCI 1 from %s   \n",a & X64(1ffffff),source->devid_string);
+        else
+          printf("Read from unknown IO port %"LL"x on PCI 1   \n",a & X64(1ffffff));
         return 0;
       }
 
       if (a>=X64(80000000000) && a<X64(80100000000))
       {
         // Unused PCI memory space
-        printf("Read from unknown memory %"LL"x on PCI 0   \n",a & X64(ffffffff));
+        if (source)
+          printf("Read from unknown memory %"LL"x on PCI 0 from %s   \n",a & X64(ffffffff),source->devid_string);
+        else
+          printf("Read from unknown memory %"LL"x on PCI 0   \n",a & X64(ffffffff));
         return 0;
       }
 
       if (a>=X64(80200000000) && a<X64(80300000000))
       {
         // Unused PCI memory space
-        printf("Read from unknown memory %"LL"x on PCI 1   \n",a & X64(ffffffff));
+        if (source)
+          printf("Read from unknown memory %"LL"x on PCI 1 from %s   \n",a & X64(ffffffff),source->devid_string);
+        else
+          printf("Read from unknown memory %"LL"x on PCI 1   \n",a & X64(ffffffff));
         return 0;
       }
 
 #ifdef DEBUG_UNKMEM
-	printf("%%MEM-I-RDUNKNWN: Attempt to read %d bytes from unknown address %011" LL "x\n",dsize/8,a);
+    if (source)
+      printf("Read from unknown memory %"LL"x from %s   \n",a,source->devid_string);
+    else
+  	  printf("Read from unknown memory %"LL"x   \n",a);
 #endif
 	return 0x00;
 
@@ -1698,13 +1729,13 @@ int CSystem::LoadROM()
 #endif
 
 #if !defined(SRM_NO_SPEEDUPS)
-  WriteMem(X64(14248),32,0xe7e00000);       // e7e00000 = BEQ r31, +0
-  WriteMem(X64(14288),32,0xe7e00000);       
-  WriteMem(X64(142c8),32,0xe7e00000);       
-  WriteMem(X64(68320),32,0xe7e00000);       
-  WriteMem(X64(8bb78),32,0xe7e00000);       // memory test (aa)
-  WriteMem(X64(8bc0c),32,0xe7e00000);       // memory test (bb)
-  WriteMem(X64(8bc94),32,0xe7e00000);       // memory test (00)
+  WriteMem(X64(14248),32,0xe7e00000,0);       // e7e00000 = BEQ r31, +0
+  WriteMem(X64(14288),32,0xe7e00000,0);       
+  WriteMem(X64(142c8),32,0xe7e00000,0);       
+  WriteMem(X64(68320),32,0xe7e00000,0);       
+  WriteMem(X64(8bb78),32,0xe7e00000,0);       // memory test (aa)
+  WriteMem(X64(8bc0c),32,0xe7e00000,0);       // memory test (bb)
+  WriteMem(X64(8bc94),32,0xe7e00000,0);       // memory test (00)
 #endif
 
   printf("%%SYS-I-ROMLOADED: ROM Image loaded successfully!\n");
@@ -2098,7 +2129,7 @@ u64 CSystem::PCI_Phys_scatter_gather(u32 address, u64 wsm, u64 tba)
   pte_a = ((   address & (wsm | PCI_PTE_ADD_MASK) ) >> PCI_PTE_ADD_SHIFT) // ad part of pte address
         | (  tba & PCI_PTE_TBA_MASK & ~(wsm>>PCI_PTE_ADD_SHIFT));         // tba part of pte address
 
-  pte = ReadMem(pte_a,64);
+  pte = ReadMem(pte_a,64,0);
   if (pte & 1)
   {
     a = ((pte<<PCI_PTE_SHIFT) & PCI_PTE_MASK)

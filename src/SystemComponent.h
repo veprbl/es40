@@ -27,7 +27,10 @@
  * \file 
  * Contains definitions for the base class for devices that connect to the chipset.
  *
- * $Id: SystemComponent.h,v 1.13 2008/01/19 17:13:35 iamcamiel Exp $
+ * $Id: SystemComponent.h,v 1.14 2008/02/08 20:08:13 iamcamiel Exp $
+ *
+ * X-1.14       Camiel Vanderhoeven                             08-FEB-2008
+ *      Show originating device name on memory errors.
  *
  * X-1.13       Camiel Vanderhoeven                             19-JAN-2008
  *      Run CPU in a separate thread if CPU_THREADS is defined.
@@ -99,8 +102,8 @@ class CSystemComponent
   virtual void StopThreads() {};
   virtual bool ActiveThreads() { return false; };
 
- protected: 
   char * devid_string;
+ protected: 
   class CSystem * cSystem;
   class CConfigurator * myCfg;
 };

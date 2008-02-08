@@ -27,7 +27,10 @@
  * \file 
  * Contains some macro definitions and some inline functions for the Alpha CPU.
  *
- * $Id: cpu_defs.h,v 1.9 2008/02/05 15:55:11 iamcamiel Exp $
+ * $Id: cpu_defs.h,v 1.10 2008/02/08 20:08:13 iamcamiel Exp $
+ *
+ * X-1.10       Camiel Vanderhoeven                             08-FEB-2008
+ *      Show originating device name on memory errors.
  *
  * X-1.9        Camiel Vanderhoeven                             05-FEB-2008
  *      Bug description added.
@@ -426,8 +429,8 @@ return zsig;
                     | ((flags&ACCESS_WRITE)?1:0);         \
       printf("data_phys %" LL "x, %d, %d -> trap!\n",addr,flags,align); \
       printf("exc_sum = %" LL "x, fault_va = %" LL "x, mm_stat = %" LL "x.\n",state.exc_sum, state.fault_va, state.mm_stat);  \
-      printf("datfx_qword = %016" LL "x.\n",cSystem->ReadMem(cSystem->ReadMem(state.r[32+21]+0x10,64)+0x38,64));  \
-      if (cSystem->ReadMem(state.r[32+21]+0x170,64)==0) printf("ignored; no OS!\n"); else                        \
+      printf("datfx_qword = %016" LL "x.\n",cSystem->ReadMem(cSystem->ReadMem(state.r[32+21]+0x10,64,this)+0x38,64));  \
+      if (cSystem->ReadMem(state.r[32+21]+0x170,64,this)==0) printf("ignored; no OS!\n"); else                        \
       GO_PAL(UNALIGN);                                    \
     }                                                     \
   }                                                       \
@@ -452,7 +455,7 @@ return zsig;
  **/
 
 #define READ_PHYS(size)				\
-  cSystem->ReadMem(phys_address, size)
+  cSystem->ReadMem(phys_address, size,this)
 
 /**
  * Normal variant of write action
@@ -462,7 +465,7 @@ return zsig;
  **/
 
 #define WRITE_PHYS(data,size)			\
-  cSystem->WriteMem(phys_address, size, data)
+  cSystem->WriteMem(phys_address, size, data,this)
 
 /**
  * NO-TRAP (NT) variants of read action.
@@ -472,7 +475,7 @@ return zsig;
  **/
 
 #define READ_PHYS_NT(size)			\
-  cSystem->ReadMem(ALIGN_PHYS((size)/8), size)
+  cSystem->ReadMem(ALIGN_PHYS((size)/8), size,this)
 
 /**
  * NO-TRAP (NT) variants of write action.
@@ -482,7 +485,7 @@ return zsig;
  **/
 
 #define WRITE_PHYS_NT(data,size) 				\
-    cSystem->WriteMem(ALIGN_PHYS((size)/8), size, data)
+    cSystem->WriteMem(ALIGN_PHYS((size)/8), size, data,this)
 
 #define REG_1 RREG(I_GETRA(ins))
 #define REG_2 RREG(I_GETRB(ins))
