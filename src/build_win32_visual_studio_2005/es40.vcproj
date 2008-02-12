@@ -853,7 +853,7 @@
 				Optimization="2"
 				InlineFunctionExpansion="1"
 				AdditionalIncludeDirectories="c:\program files\winpcap\include,c:\program files\sdl\include"
-				PreprocessorDefinitions="WIN32;NDEBUG;_CONSOLE;HAVE_PCAP;HAVE_SDL;HAVE_NEW_IDE"
+				PreprocessorDefinitions="WIN32;NDEBUG;_CONSOLE;HAVE_PCAP;HAVE_SDL;HAVE_NEW_IDE;DEBUG_KBD;HIDE_COUNTER"
 				StringPooling="true"
 				RuntimeLibrary="0"
 				EnableFunctionLevelLinking="true"
@@ -4325,6 +4325,10 @@
 				>
 			</File>
 			<File
+				RelativePath="..\Keyboard.cpp"
+				>
+			</File>
+			<File
 				RelativePath="..\gui\keymap.cpp"
 				>
 				<FileConfiguration
@@ -6617,6 +6621,10 @@
 			</File>
 			<File
 				RelativePath="..\gui\gui.h"
+				>
+			</File>
+			<File
+				RelativePath="..\Keyboard.h"
 				>
 			</File>
 			<File

@@ -37,7 +37,10 @@
  * \file
  * Win32 GUI implementation. Allows use of gfx without SDL on WIndows
  *
- * $Id: gui_win32.cpp,v 1.4 2008/01/26 12:36:02 iamcamiel Exp $
+ * $Id: gui_win32.cpp,v 1.5 2008/02/12 11:07:09 iamcamiel Exp $
+ *
+ * X-1.4        Camiel Vanderhoeven                             12-FEB-2008
+ *      Moved keyboard code into it's own class (CKeyboard)
  *
  * X-1.3        Camiel Vanderhoeven                             22-JAN-2008
  *      Commented out mousewheel-code, doesn't work with older win32
@@ -60,7 +63,7 @@
 #include "keymap.h"
 #include "../Configurator.h"
 #include "../VGA.h"
-#include "../AliM1543C.h"
+#include "../Keyboard.h"
 
 #include <process.h>
 
@@ -1206,7 +1209,7 @@ void bx_win32_gui_c::handle_events(void) {
       key_event = win32_to_bx_key[(key & 0x100) ? 1 : 0][key & 0xff];
       if (key & BX_KEY_RELEASED) key_event |= BX_KEY_RELEASED;
       //DEV_kbd_gen_scancode(key_event);
-	  theAli->kbd_gen_scancode( key_event );
+	  theKeyboard->gen_scancode( key_event );
     }
   }
   LeaveCriticalSection(&stInfo.keyCS);

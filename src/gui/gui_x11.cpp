@@ -34,7 +34,10 @@
  * \file
  * X-Windows GUI implementation. Allows use of gfx without SDL on Linux.
  *
- * $Id: gui_x11.cpp,v 1.1 2008/01/20 16:14:23 iamcamiel Exp $
+ * $Id: gui_x11.cpp,v 1.2 2008/02/12 11:07:09 iamcamiel Exp $
+ *
+ * X-1.2        Camiel Vanderhoeven                             12-FEB-2008
+ *      Moved keyboard code into it's own class (CKeyboard)
  *
  * X-1.1        Camiel Vanderhoeven                             20-JAN-2008
  *      Initial version for ES40 emulator.
@@ -52,7 +55,7 @@
 #include "keymap.h"
 #include "../Configurator.h"
 #include "../VGA.h"
-#include "../AliM1543C.h"
+#include "../Keyboard.h"
 
 extern "C" {
 #include <X11/Xlib.h>
@@ -1010,7 +1013,7 @@ xkeypress(KeySym keysym, int press_release)
   if (press_release)
     key_event |= BX_KEY_RELEASED;
 
-  theAli->kbd_gen_scancode(key_event);
+  theKeyboard->gen_scancode(key_event);
 }
 
 

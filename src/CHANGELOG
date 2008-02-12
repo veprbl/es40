@@ -3,6 +3,8 @@
 
 \section c018 version 0.17 -> 0.17+
 
+ - Moved keyboard code into it's own class (CKeyboard). 
+   (12-feb-2008, Camiel Vanderhoeven)
  - Show originating device name on memory errors. (08-feb-2008, 
    Camiel Vanderhoeven)
  - Set default keyboard translation to scanset 3 (PS/2). 
