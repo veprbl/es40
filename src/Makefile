@@ -27,7 +27,10 @@
 #
 # Makefile for GNU Linux. (And possibly many UNIX'es).
 #
-# $Id: Makefile,v 1.21 2008/02/07 20:33:28 iamcamiel Exp $
+# $Id: Makefile,v 1.22 2008/02/12 11:08:39 iamcamiel Exp $
+#
+# X-1.22        Camiel Vanderhoeven             12-FEB-2008
+#   Moved keyboard code into it's own class (CKeyboard)
 #
 # X-1.21		Brian Wheeler      				07-FEB-2008
 #	Add DEBUG_BACKTRACE flag.
@@ -193,6 +196,7 @@ OBJS = AliM1543C.o \
        es40_debug.o \
        Flash.o \
        FloppyController.o \
+       Keyboard.o \
        lockstep.o \
        NewIde.o \
        PCIDevice.o \
