@@ -27,7 +27,7 @@
  * \file 
  * Contains the definitions for the emulated Serial Port devices.
  *
- * $Id: Serial.h,v 1.14 2008/02/06 10:57:35 iamcamiel Exp $
+ * $Id: Serial.h,v 1.15 2008/02/12 11:02:48 iamcamiel Exp $
  *
  * X-1.14       Camiel Vanderhoeven                             06-JAN-2008
  *      Proper interrupt handling. 
@@ -92,12 +92,12 @@ class CSerial : public CSystemComponent
 {
  public:
   void write(char * s);
-  void WriteMem(int index, u64 address, int dsize, u64 data);
-  u64 ReadMem(int index, u64 address, int dsize);
+  virtual void WriteMem(int index, u64 address, int dsize, u64 data);
+  virtual u64 ReadMem(int index, u64 address, int dsize);
   CSerial(CConfigurator * cfg, CSystem * c, u16 number);
   virtual ~CSerial();
   void receive(const char* data);
-  int DoClock();
+  virtual int DoClock();
   virtual int SaveState(FILE * f);
   virtual int RestoreState(FILE * f);
   void eval_interrupts();
