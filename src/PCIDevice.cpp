@@ -27,7 +27,10 @@
  * \file
  * Contains the code for the PCI device class.
  *
- * $Id: PCIDevice.cpp,v 1.13 2008/02/08 20:08:13 iamcamiel Exp $
+ * $Id: PCIDevice.cpp,v 1.14 2008/02/13 16:33:30 iamcamiel Exp $
+ *
+ * X-1.14       Camiel Vanderhoeven                             13-FEB-2008
+ *      Added more DEBUG_PCI messages.
  *
  * X-1.13       Camiel Vanderhoeven                             08-FEB-2008
  *      Show originating device name on memory errors.
@@ -172,6 +175,11 @@ void CPCIDevice::config_write(int func, u32 address, int dsize, u32 data)
   y = (u8*)pci_state.config_mask[func];
   y+= address;
 
+#if defined(DEBUG_PCI)
+  if (address == 0x3c && (data & 0xff) != 0xff)
+    printf("%s.%d PCI Interrupt set to %02x.\n", devid_string, func, data & 0xff);
+#endif
+
   switch (dsize)
     {
     case 8:
@@ -231,7 +239,9 @@ void CPCIDevice::register_bar(int func, int bar, u32 data, u32 mask)
                                t= X64(00000801fc000000)
                                + (X64(0000000200000000) * myPCIBus)
                                + (data & ~0x3),length);
-//    printf("%s(%s).%d PCI BAR %d set to IO  % " LL "x, len %x.\n",myCfg->get_myName(), myCfg->get_myValue(), func,bar,t,length);
+#if defined(DEBUG_PCI)
+    printf("%s(%s).%d PCI BAR %d set to IO  % " LL "x, len %x.\n",myCfg->get_myName(), myCfg->get_myValue(), func,bar,t,length);
+#endif
   }
   else if ((data & 1) || bar != 6)
   {
@@ -242,12 +252,16 @@ void CPCIDevice::register_bar(int func, int bar, u32 data, u32 mask)
                                t= X64(0000080000000000)
                                + (X64(0000000200000000) * myPCIBus)
                                + (data & ~0xf),length);
-//    printf("%s(%s).%d PCI BAR %d set to MEM % " LL "x, len %x.\n",myCfg->get_myName(), myCfg->get_myValue(), func,bar,t,length);
+#if defined(DEBUG_PCI)
+    printf("%s(%s).%d PCI BAR %d set to MEM % " LL "x, len %x.\n",myCfg->get_myName(), myCfg->get_myValue(), func,bar,t,length);
+#endif
   }
   else
   {
     // disabled...
-//    printf("%s(%s).%d PCI BAR %d should be disabled...\n",myCfg->get_myName(), myCfg->get_myValue(), func,bar);
+#if defined(DEBUG_PCI)
+    printf("%s(%s).%d PCI BAR %d should be disabled...\n",myCfg->get_myName(), myCfg->get_myValue(), func,bar);
+#endif
   }
 }
 
