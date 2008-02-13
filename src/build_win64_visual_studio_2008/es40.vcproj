@@ -357,13 +357,13 @@
 			/>
 			<Tool
 				Name="VCCLCompilerTool"
-				Optimization="2"
+				Optimization="0"
 				InlineFunctionExpansion="2"
 				EnableIntrinsicFunctions="false"
 				FavorSizeOrSpeed="1"
 				WholeProgramOptimization="false"
 				AdditionalIncludeDirectories="c:\program files\winpcap\include;c:\program files\sdl\include"
-				PreprocessorDefinitions="WIN32;NDEBUG;_CONSOLE;IDB;HAVE_PCAP;HAVE_SDL"
+				PreprocessorDefinitions="WIN32;NDEBUG;_CONSOLE;IDB;HAVE_PCAP;HAVE_SDL;HAVE_NEW_IDE"
 				StringPooling="false"
 				MinimalRebuild="false"
 				BasicRuntimeChecks="0"
@@ -572,7 +572,7 @@
 				FavorSizeOrSpeed="1"
 				WholeProgramOptimization="true"
 				AdditionalIncludeDirectories="c:\program files\winpcap\include;c:\program files\sdl\include"
-				PreprocessorDefinitions="WIN32;NDEBUG;_CONSOLE;HAVE_SDL;HAVE_PCAP;HAVE_NEW_IDE;MIPS_ESTIMATE"
+				PreprocessorDefinitions="WIN32;NDEBUG;_CONSOLE;HAVE_SDL;HAVE_PCAP;HAVE_NEW_IDE;MIPS_ESTIMATE;DEBUG_KBD__;HIDE_COUNTER"
 				StringPooling="false"
 				MinimalRebuild="false"
 				ExceptionHandling="1"
@@ -581,6 +581,7 @@
 				EnableFunctionLevelLinking="false"
 				UsePrecompiledHeader="0"
 				PrecompiledHeaderFile=".\Release/es40.pch"
+				AssemblerOutput="2"
 				AssemblerListingLocation=".\Release/"
 				ObjectFile=".\Release/"
 				ProgramDataBaseFileName=".\Release/"
@@ -3863,6 +3864,10 @@
 				>
 			</File>
 			<File
+				RelativePath="..\Keyboard.cpp"
+				>
+			</File>
+			<File
 				RelativePath="..\gui\keymap.cpp"
 				>
 			</File>
@@ -4076,6 +4081,10 @@
 				>
 			</File>
 			<File
+				RelativePath="..\Keyboard.h"
+				>
+			</File>
+			<File
 				RelativePath="..\gui\keymap.h"
 				>
 			</File>
@@ -4152,11 +4161,11 @@
 				>
 			</File>
 			<File
-				RelativePath="..\VGA.h"
+				RelativePath="..\gui\vga.h"
 				>
 			</File>
 			<File
-				RelativePath="..\gui\vga.h"
+				RelativePath="..\VGA.h"
 				>
 			</File>
 		</Filter>
@@ -4164,6 +4173,14 @@
 			Name="Resource Files"
 			Filter="ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe"
 			>
+			<File
+				RelativePath="..\CHANGELOG"
+				>
+			</File>
+			<File
+				RelativePath="..\Makefile"
+				>
+			</File>
 		</Filter>
 	</Files>
 	<Globals>
