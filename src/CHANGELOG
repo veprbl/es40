@@ -3,9 +3,11 @@
 
 \section c018 version 0.17 -> 0.17+
 
- - Added Symbios 53C810 SCSI controller (16-feb-2008, Camiel
+ - The owner of the SCSI bus is allowed to re-arbitrate for it. 
+   (16-feb-2008, Camiel Vanderhoeven)
+ - Added Symbios 53C810 SCSI controller. (16-feb-2008, Camiel
    Vanderhoeven)
- - Moved keyboard code into it's own class (CKeyboard). 
+ - Moved keyboard code into it's own class. (CKeyboard). 
    (12-feb-2008, Camiel Vanderhoeven)
  - Show originating device name on memory errors. (08-feb-2008, 
    Camiel Vanderhoeven)
