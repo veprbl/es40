@@ -4,7 +4,8 @@
 \section c018 version 0.17 -> 0.17+
 
  - Added READ_LONG scsi command, and support for MODE_SENSE
-   changeable parameter pages. (16-feb-2008, Camiel Vanderhoeven)
+   changeable parameter pages. (last bit needed to get SCSI
+   working on OpenVMS) (16-feb-2008, Camiel Vanderhoeven)
  - The owner of the SCSI bus is allowed to re-arbitrate for it. 
    (16-feb-2008, Camiel Vanderhoeven)
  - Added Symbios 53C810 SCSI controller. (16-feb-2008, Camiel
