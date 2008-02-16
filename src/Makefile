@@ -27,7 +27,7 @@
 #
 # Makefile for GNU Linux. (And possibly many UNIX'es).
 #
-# $Id: Makefile,v 1.23 2008/02/16 13:00:15 iamcamiel Exp $
+# $Id: Makefile,v 1.24 2008/02/16 17:05:07 iamcamiel Exp $
 #
 # X-1.22        Camiel Vanderhoeven             16-FEB-2008
 #      Added Symbios 53C810 controller.
@@ -196,6 +196,7 @@ OBJS = AliM1543C.o \
        es40_debug.o \
        Flash.o \
        FloppyController.o \
+       Keyboard.o \
        lockstep.o \
        NewIde.o \
        PCIDevice.o \
@@ -205,6 +206,7 @@ OBJS = AliM1543C.o \
        SCSIDevice.o \
        Serial.o \
        StdAfx.o \
+       Sym53C810.o \
        Sym53C895.o \
        SystemComponent.o \
        System.o \
