@@ -27,7 +27,10 @@
  * \file
  * Contains the definitions for the configuration file interpreter.
  *
- * $Id: Configurator.h,v 1.8 2008/01/20 16:17:59 iamcamiel Exp $
+ * $Id: Configurator.h,v 1.9 2008/02/16 13:00:15 iamcamiel Exp $
+ *
+ * X-1.9        Camiel Vanderhoeven                             16-FEB-2008
+ *      Added Symbios 53C810 controller.
  *
  * X-1.8        Camiel Vanderhoeven                             20-JAN-2008
  *      Added X11 GUI.
@@ -74,6 +77,7 @@ typedef enum {c_none,
               c_cirrus,
               c_dec21143,
               c_sym53c895,
+              c_sym53c810,
               // disk devices
               c_file,
               c_device,
