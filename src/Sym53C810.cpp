@@ -27,7 +27,10 @@
  * \file
  * Contains the code for the emulated Symbios SCSI controller.
  *
- * $Id: Sym53C810.cpp,v 1.2 2008/02/16 13:17:48 iamcamiel Exp $
+ * $Id: Sym53C810.cpp,v 1.3 2008/02/16 17:01:06 iamcamiel Exp $
+ *
+ * X-1.2        Camiel Vanderhoeven                             16-FEB-2008
+ *      Unique names for PCI config arrays.
  *
  * X-1.1        Camiel Vanderhoeven                             16-FEB-2008
  *      Created as a spinoff from 53C895 controller, as we couldn't get
@@ -278,7 +281,7 @@
 #define PT state.per_target[GET_DEST()]
 #define PTD get_disk(0,GET_DEST())
 
-u32 sym_cfg_data[64] = {
+u32 osym_cfg_data[64] = {
 /*00*/  0x00011000, // CFID: vendor + device
 /*04*/  0x02000001, // CFCS: command + status
 /*08*/  0x01000001, // CFRV: class + revision
@@ -300,7 +303,7 @@ u32 sym_cfg_data[64] = {
         0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
 };
 
-u32 sym_cfg_mask[64] = {
+u32 osym_cfg_mask[64] = {
 /*00*/  0x00000000, // CFID: vendor + device
 /*04*/  0x00000157, // CFCS: command + status
 /*08*/  0x00000000, // CFRV: class + revision
@@ -329,7 +332,7 @@ u32 sym_cfg_mask[64] = {
 CSym53C810::CSym53C810(CConfigurator * cfg, CSystem * c, int pcibus, int pcidev) 
   : CDiskController(cfg,c,pcibus,pcidev,1,7)
 {
-  add_function(0,sym_cfg_data, sym_cfg_mask);
+  add_function(0, osym_cfg_data, osym_cfg_mask);
 
   ResetPCI();
 
@@ -341,7 +344,7 @@ CSym53C810::CSym53C810(CConfigurator * cfg, CSystem * c, int pcibus, int pcidev)
   CSCSIBus * a = new CSCSIBus(cfg, c);
   scsi_register(0, a, 7); // scsi id 7 by default
 
-  printf("%s: $Id: Sym53C810.cpp,v 1.2 2008/02/16 13:17:48 iamcamiel Exp $\n",devid_string);
+  printf("%s: $Id: Sym53C810.cpp,v 1.3 2008/02/16 17:01:06 iamcamiel Exp $\n",devid_string);
 }
 
 CSym53C810::~CSym53C810()
