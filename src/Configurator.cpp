@@ -27,7 +27,10 @@
  * \file
  * Contains the code for the configuration file interpreter.
  *
- * $Id: Configurator.cpp,v 1.14 2008/02/16 13:00:15 iamcamiel Exp $
+ * $Id: Configurator.cpp,v 1.15 2008/02/16 16:50:59 iamcamiel Exp $
+ *
+ * X-1.15       Camiel Vanderhoeven                             16-FEB-2008
+ *      Forgot something on last change.
  *
  * X-1.14       Camiel Vanderhoeven                             16-FEB-2008
  *      Added Symbios 53C810 controller.
@@ -518,6 +521,7 @@ classinfo classes[] =
   {"cirrus",  c_cirrus,                 IS_PCI |                    ON_GUI  },
   {"dec21143",c_dec21143,               IS_PCI |                    IS_NIC  },
   {"sym53c895", c_sym53c895,            IS_PCI |           HAS_DISK         },
+  {"sym53c810", c_sym53c810,            IS_PCI |           HAS_DISK         },
   {"file",    c_file,                                      IS_DISK          },
   {"device",  c_device,                                    IS_DISK          },
   {"ramdisk", c_ramdisk,                                   IS_DISK          },
