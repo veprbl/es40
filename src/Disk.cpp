@@ -27,7 +27,7 @@
  * \file
  * Contains code for the disk base class.
  *
- * $Id: Disk.cpp,v 1.18 2008/02/16 13:05:01 iamcamiel Exp $
+ * $Id: Disk.cpp,v 1.19 2008/02/16 13:17:48 iamcamiel Exp $
  *
  * X-1.17       Camiel Vanderhoeven                             16-FEB-2008
  *      Added READ_LONG scsi command, and support for MODE_SENSE changeable
@@ -82,8 +82,6 @@
  * X-1.1        Camiel Vanderhoeven                             12-DEC-2007
  *      Initial version in CVS.
  **/
-
-#define DEBUG_SCSI
 
 #include "StdAfx.h" 
 #include "Disk.h"

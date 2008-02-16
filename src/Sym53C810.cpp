@@ -27,14 +27,12 @@
  * \file
  * Contains the code for the emulated Symbios SCSI controller.
  *
- * $Id: Sym53C810.cpp,v 1.1 2008/02/16 13:00:15 iamcamiel Exp $
+ * $Id: Sym53C810.cpp,v 1.2 2008/02/16 13:17:48 iamcamiel Exp $
  *
  * X-1.1        Camiel Vanderhoeven                             16-FEB-2008
  *      Created as a spinoff from 53C895 controller, as we couldn't get
  *      that chip to work properly with the OpenVMS driver.
  **/
-
-#define DEBUG_SYM
 
 #if defined(DEBUG_SYM)
 #define DEBUG_SYM_REGS
@@ -343,7 +341,7 @@ CSym53C810::CSym53C810(CConfigurator * cfg, CSystem * c, int pcibus, int pcidev)
   CSCSIBus * a = new CSCSIBus(cfg, c);
   scsi_register(0, a, 7); // scsi id 7 by default
 
-  printf("%s: $Id: Sym53C810.cpp,v 1.1 2008/02/16 13:00:15 iamcamiel Exp $\n",devid_string);
+  printf("%s: $Id: Sym53C810.cpp,v 1.2 2008/02/16 13:17:48 iamcamiel Exp $\n",devid_string);
 }
 
 CSym53C810::~CSym53C810()
