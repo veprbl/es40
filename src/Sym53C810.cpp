@@ -27,7 +27,10 @@
  * \file
  * Contains the code for the emulated Symbios SCSI controller.
  *
- * $Id: Sym53C810.cpp,v 1.3 2008/02/16 17:01:06 iamcamiel Exp $
+ * $Id: Sym53C810.cpp,v 1.4 2008/02/17 15:46:36 iamcamiel Exp $
+ *
+ * X-1.3        Camiel Vanderhoeven                             17-FEB-2008
+ *      Debugging info.
  *
  * X-1.2        Camiel Vanderhoeven                             16-FEB-2008
  *      Unique names for PCI config arrays.
@@ -344,7 +347,7 @@ CSym53C810::CSym53C810(CConfigurator * cfg, CSystem * c, int pcibus, int pcidev)
   CSCSIBus * a = new CSCSIBus(cfg, c);
   scsi_register(0, a, 7); // scsi id 7 by default
 
-  printf("%s: $Id: Sym53C810.cpp,v 1.3 2008/02/16 17:01:06 iamcamiel Exp $\n",devid_string);
+  printf("%s: $Id: Sym53C810.cpp,v 1.4 2008/02/17 15:46:36 iamcamiel Exp $\n",devid_string);
 }
 
 CSym53C810::~CSym53C810()
@@ -1060,12 +1063,6 @@ int CSym53C810::execute()
 //    printf("SYM: INS @ %x, %x   \n",R32(DSP), R32(DSP)+4);
 #endif
 
-    //if (R32(DSP)<0x2000000)
-    //{
-    //  printf(">");
-    //  getchar();
-    //}
-
     do_pci_read(R32(DSP), &R32(DBC), 4, 1);
     do_pci_read(R32(DSP)+4, &R32(DSPS), 4, 1); 
 
@@ -1147,7 +1144,7 @@ int CSym53C810::execute()
             count = GET_DBC();
           }
 #if defined(DEBUG_SYM_SCRIPTS)
-          printf("SYM: %08x: MOVE Start/count %x, %x\n",R32(DSP)-8,start,count);
+          printf("SYM: %08x: MOVE Start/count/phase %x, %x, %d\n",R32(DSP)-8,start,count,scsi_phase);
 #endif
           R32(DNAD) = start;
           SET_DBC(count); // page 5-32
@@ -1159,7 +1156,7 @@ int CSym53C810::execute()
           }
           if ((size_t)count > scsi_expected_xfer(0))
           {
-            printf("SYM: attempt to xfer more bytes than expected.\n");
+            printf("SYM: xfer %d bytes, max %d expected, in phase %d.\n",count,scsi_expected_xfer(0),scsi_phase);
             count = (u32)scsi_expected_xfer(0);
           }
           u8 * scsi_data_ptr = (u8*) scsi_xfer_ptr(0, count);
