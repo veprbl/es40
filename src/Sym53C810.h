@@ -27,7 +27,10 @@
  * \file
  * Contains the definitions for the emulated Symbios SCSI controller.
  *
- * $Id: Sym53C810.h,v 1.1 2008/02/16 13:00:15 iamcamiel Exp $
+ * $Id: Sym53C810.h,v 1.2 2008/02/17 15:44:22 iamcamiel Exp $
+ *
+ * X-1.2        Camiel Vanderhoeven                             17-FEB-2008
+ *      Comments.
  *
  * X-1.1        Camiel Vanderhoeven                             16-FEB-2008
  *      Created as a spinoff from 53C895 controller, as we couldn't get
@@ -49,6 +52,7 @@
  *  - SCSI 2 (http://www.t10.org/ftp/t10/drafts/s2/s2-r10l.pdf)
  *  - SCSI 3 Multimedia Commands (MMC) (http://www.t10.org/ftp/t10/drafts/mmc/mmc-r10a.pdf)
  *  - SYM53C810A PCI-SCSI I/O Processor (http://ftp.netbsd.org/pub/NetBSD/arch/bebox/doc/810a.pdf)
+ *  - Symbios SCSI SCRIPTS Processors Programming Guide (http://la.causeuse.org/hauke/macbsd/symbios_53cXXX_doc/lsilogic-53cXXX-scripts.pdf)
  *  .
  **/
 

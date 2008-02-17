@@ -27,7 +27,10 @@
  * \file
  * Contains the definitions for the emulated Symbios SCSI controller.
  *
- * $Id: Sym53C895.h,v 1.11 2008/01/12 12:42:09 iamcamiel Exp $
+ * $Id: Sym53C895.h,v 1.12 2008/02/17 15:44:22 iamcamiel Exp $
+ *
+ * X-1.12       Camiel Vanderhoeven                             17-FEB-2008
+ *      Comments.
  *
  * X-1.11       Camiel Vanderhoeven                             12-JAN-2008
  *      Use disk's SCSI engine.
@@ -72,12 +75,13 @@
 /**
  * \brief Symbios Sym53C895 SCSI disk controller.					 
  *
- * \bug Exception below ASTDEL during OpenVMS boot when booting from SCSI.
+ * \bug PROCGONE bugcheck during OpenVMS boot, probably because proper option ROM is missing.
  *
  * Documentation consulted:
  *  - SCSI 2 (http://www.t10.org/ftp/t10/drafts/s2/s2-r10l.pdf)
  *  - SCSI 3 Multimedia Commands (MMC) (http://www.t10.org/ftp/t10/drafts/mmc/mmc-r10a.pdf)
  *  - SYM53C895 PCI-Ultra2 SCSI I/O Processor (http://www.datasheet4u.com/html/S/Y/M/SYM53C895_LSILogic.pdf.html)
+ *  - Symbios SCSI SCRIPTS Processors Programming Guide (http://la.causeuse.org/hauke/macbsd/symbios_53cXXX_doc/lsilogic-53cXXX-scripts.pdf)
  *  .
  **/
 
