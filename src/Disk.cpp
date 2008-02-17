@@ -27,12 +27,15 @@
  * \file
  * Contains code for the disk base class.
  *
- * $Id: Disk.cpp,v 1.20 2008/02/17 08:53:48 iamcamiel Exp $
+ * $Id: Disk.cpp,v 1.21 2008/02/17 15:42:39 iamcamiel Exp $
  *
  * X-1.20       Camiel Vanderhoeven                             17-FEB-2008
+ *      Set up sense data when error occurs.
+ *
+ * X-1.19       Camiel Vanderhoeven                             17-FEB-2008
  *      Added REQUEST_SENSE scsi command.
  *
- * X-1.19       Camiel Vanderhoeven                             16-FEB-2008
+ * X-1.18       Camiel Vanderhoeven                             16-FEB-2008
  *      Added READ_LONG scsi command, and support for MODE_SENSE changeable
  *      parameter pages.
  *
@@ -533,6 +536,56 @@ void CDisk::scsi_xfer_done_me(int bus)
 #define SCSIMP_CACHING			      0x08
 #define SCSIMP_CDROM_CAP              0x2A
 
+#define SCSI_OK                       0
+#define SCSI_ILL_CMD                  -1 /* illegal command */
+#define SCSI_LBA_RANGE                -2 /* LBA out of range */
+
+void CDisk::do_scsi_error(int errcode)
+{
+  state.scsi.stat.available = 1;
+  state.scsi.stat.data[0] = 0;
+  state.scsi.stat.read = 0;
+  state.scsi.msgi.available = 1;
+  state.scsi.msgi.data[0] = 0;
+  state.scsi.msgi.read = 0;
+
+  if (errcode == SCSI_OK)
+    return;
+
+  state.scsi.stat.data[0] = 0x02; // check sense
+
+  state.scsi.sense.data[0] = 0xf0;  // error code
+  state.scsi.sense.data[1] = 0x00;  // segment number
+  state.scsi.sense.data[3] = 0x00;  // info
+  state.scsi.sense.data[4] = 0x00;
+  state.scsi.sense.data[5] = 0x00;
+  state.scsi.sense.data[6] = 0x00;
+  state.scsi.sense.data[7] = 10;    // additional sense length
+  state.scsi.sense.data[8] = 0x00;  // command specific
+  state.scsi.sense.data[9] = 0x00;
+  state.scsi.sense.data[10] = 0x00;
+  state.scsi.sense.data[11] = 0x00;
+  state.scsi.sense.data[14] = 0x00; // FRU code
+  state.scsi.sense.data[15] = 0x00; // sense key specific
+  state.scsi.sense.data[16] = 0x00;
+  state.scsi.sense.data[17] = 0x00;
+  state.scsi.sense.available = 18; 
+
+  switch(errcode)
+  {
+  case SCSI_ILL_CMD:
+    state.scsi.sense.data[2] = 0x05; // illegal request
+    state.scsi.sense.data[12] = 0x20; // invalid command
+    state.scsi.sense.data[13] = 0x00;
+    break;
+  case SCSI_LBA_RANGE:
+    state.scsi.sense.data[2] = 0x05; // illegal request
+    state.scsi.sense.data[12] = 0x21; // LBA out of range
+    state.scsi.sense.data[13] = 0x00;
+    break;
+  }
+}
+
 /**
  * \brief Handle a SCSI command.
  *
@@ -585,19 +638,14 @@ int CDisk::do_scsi_command()
       printf("%s: Don't know how to handle TEST UNIT READY with cmd[1]=0x%02x.\n", devid_string, state.scsi.cmd.data[1]);
       FAILURE("SCSI Command Failed");
 	}
-    
-    state.scsi.stat.available = 1;
-    state.scsi.stat.data[0] = 0;
-    state.scsi.stat.read = 0;
-    state.scsi.msgi.available = 1;
-    state.scsi.msgi.data[0] = 0;
-    state.scsi.msgi.read = 0;
+    do_scsi_error(SCSI_OK);
     break;
 
   case SCSICMD_REQUEST_SENSE:
 #if defined(DEBUG_SCSI)
     printf("%s: REQUEST SENSE.\n",devid_string);
 #endif
+    retlen = state.scsi.cmd.data[4];
 //    FAILURE("Sense requested");
     if (!state.scsi.sense.available)
     {
@@ -622,17 +670,16 @@ int CDisk::do_scsi_command()
       state.scsi.sense.data[15] = 0x00; // sense key specific
       state.scsi.sense.data[16] = 0x00;
       state.scsi.sense.data[17] = 0x00;
+      state.scsi.sense.available = 18; 
     }
-    state.scsi.sense.available = false;
+
     state.scsi.dati.read = 0;
-    state.scsi.dati.available = state.scsi.sense.data[7]+8;
-    memcpy(state.scsi.dati.data,state.scsi.sense.data,state.scsi.dati.available);
-    state.scsi.stat.available = 1;
-    state.scsi.stat.data[0] = 0;
-    state.scsi.stat.read = 0;
-    state.scsi.msgi.available = 1;
-    state.scsi.msgi.data[0] = 0;
-    state.scsi.msgi.read = 0;
+    state.scsi.dati.available = retlen;
+    memcpy(state.scsi.dati.data,state.scsi.sense.data,state.scsi.sense.available);
+    for (unsigned int x2 = state.scsi.sense.available; x2 < retlen; x2++)
+      state.scsi.dati.data[x2] = 0;
+
+    do_scsi_error(SCSI_OK);
     break;
 
   case SCSICMD_INQUIRY:
@@ -700,12 +747,7 @@ int CDisk::do_scsi_command()
       state.scsi.dati.read = 0;
       state.scsi.dati.available = retlen;
 
-      state.scsi.stat.available = 1;
-      state.scsi.stat.data[0] = 0;
-      state.scsi.stat.read = 0;
-      state.scsi.msgi.available = 1;
-      state.scsi.msgi.data[0] = 0;
-      state.scsi.msgi.read = 0;
+      do_scsi_error(SCSI_OK);
     }
     break;
 
@@ -752,10 +794,6 @@ int CDisk::do_scsi_command()
 
       state.scsi.dati.available = retlen;	//  Restore size.  
 
-      if (changeable)
-        for (int x1 = q; x1 < retlen; x1++)
-          state.scsi.dati.data[x1] = 0;
-
 	  pagecode = state.scsi.cmd.data[2] & 0x3f;
 
 	  //printf("[ MODE SENSE pagecode=%i ]\n", pagecode);
@@ -769,14 +807,12 @@ int CDisk::do_scsi_command()
 	  state.scsi.dati.data[q++] = (u8)(get_block_size() >>  8) & 255;
 	  state.scsi.dati.data[q++] = (u8)(get_block_size() >>  0) & 255;
 
-      state.scsi.stat.available = 1;
-      state.scsi.stat.data[0] = 0;
-      state.scsi.stat.read = 0;
-      state.scsi.msgi.available = 1;
-      state.scsi.msgi.data[0] = 0;
-      state.scsi.msgi.read = 0;
+      for (unsigned int x1 = q; x1 < retlen; x1++)
+        state.scsi.dati.data[x1] = 0;
 
-	  //  descriptors, 8 bytes (each)  
+      do_scsi_error(SCSI_OK);
+
+      //  descriptors, 8 bytes (each)  
 
 	  //  page, n bytes (each)  
 	  switch (pagecode) {
@@ -787,18 +823,14 @@ int CDisk::do_scsi_command()
 
       case SCSIMP_READ_WRITE_ERRREC:		//  read-write error recovery page  
 	    state.scsi.dati.data[q + 0] = pagecode;
-        if (!changeable)
-        {
-	      state.scsi.dati.data[q + 1] = 10;
-        }
-	    break;
+        state.scsi.dati.data[q + 1] = 10;
+  	    break;
 
       case SCSIMP_FORMAT_PARAMS:		//  format device page  
 	    state.scsi.dati.data[q + 0] = pagecode;
+        state.scsi.dati.data[q + 1] = 22;
         if (!changeable)
         {
-	      state.scsi.dati.data[q + 1] = 22;
-
 	      //  10,11 = sectors per track  
 	      state.scsi.dati.data[q + 10] = 0;
           state.scsi.dati.data[q + 11] = (u8)get_sectors();
@@ -811,9 +843,9 @@ int CDisk::do_scsi_command()
   	
       case SCSIMP_RIGID_GEOMETRY:		//  rigid disk geometry page  
 	    state.scsi.dati.data[q + 0] = pagecode;
+        state.scsi.dati.data[q + 1] = 22;
         if (!changeable)
         {
-	      state.scsi.dati.data[q + 1] = 22;
           state.scsi.dati.data[q + 2] = (u8)(get_cylinders() >> 16) & 255;
 	      state.scsi.dati.data[q + 3] = (u8)(get_cylinders() >> 8) & 255;
           state.scsi.dati.data[q + 4] = (u8)get_cylinders() & 255;
@@ -833,9 +865,9 @@ int CDisk::do_scsi_command()
         }
 
 	    state.scsi.dati.data[q + 0] = pagecode;
+        state.scsi.dati.data[q + 1] = 0x1e; // length
         if (!changeable)
         {
-	      state.scsi.dati.data[q + 1] = 0x1e;
 
 	      //  2,3 = transfer rate  
 	      state.scsi.dati.data[q + 2] = ((5000) >> 8) & 255;
@@ -858,10 +890,10 @@ int CDisk::do_scsi_command()
 	    break;
 
 	  case SCSIMP_CACHING: // Caching page
+        state.scsi.dati.data[q+0] = pagecode; // page code
+        state.scsi.dati.data[q+1] = 0x12;     // page length
         if (!changeable)
         {
-          state.scsi.dati.data[q+0] = pagecode;
-          state.scsi.dati.data[q+1] = 0x12;
               
           // 2 = IC,ABPF,CAP,DISC,SIZE,WCE,MF,RCD
           //     |  |    |   |    |    |   |  +- read cache disable (0=no)
@@ -903,9 +935,9 @@ int CDisk::do_scsi_command()
   	  
       case SCSIMP_CDROM_CAP: // CD-ROM capabilities
         state.scsi.dati.data[q + 0] = pagecode;
+        state.scsi.dati.data[q + 1] = 0x14; // length
         if (!changeable)
         {
-          state.scsi.dati.data[q + 1] = 0x14; // length
           state.scsi.dati.data[q + 2] = 0x03; // read CD-R/CD-RW
           state.scsi.dati.data[q + 3] = 0x00; // no write
           state.scsi.dati.data[q + 4] = 0x00; // dvd/audio capabilities
@@ -951,12 +983,7 @@ int CDisk::do_scsi_command()
 #endif
     }
     
-    state.scsi.stat.available = 1;
-    state.scsi.stat.data[0] = 0;
-    state.scsi.stat.read = 0;
-    state.scsi.msgi.available = 1;
-    state.scsi.msgi.data[0] = 0;
-    state.scsi.msgi.read = 0;
+    do_scsi_error(SCSI_OK);
     break;
 
   case SCSICMD_MODE_SELECT:
@@ -999,12 +1026,7 @@ int CDisk::do_scsi_command()
 
     // ignore it...
 
-    state.scsi.stat.available = 1;
-    state.scsi.stat.data[0] = 0;
-    state.scsi.stat.read = 0;
-    state.scsi.msgi.available = 1;
-    state.scsi.msgi.data[0] = 0;
-    state.scsi.msgi.read = 0;
+    do_scsi_error(SCSI_OK);
 	break;
 
   case SCSIBLOCKCMD_READ_CAPACITY:
@@ -1030,12 +1052,7 @@ int CDisk::do_scsi_command()
 
     state.scsi.dati.available = 8;
 
-    state.scsi.stat.available = 1;
-    state.scsi.stat.data[0] = 0;
-    state.scsi.stat.read = 0;
-    state.scsi.msgi.available = 1;
-    state.scsi.msgi.data[0] = 0;
-    state.scsi.msgi.read = 0;
+    do_scsi_error(SCSI_OK);
 	break;
 
   case SCSICMD_READ:
@@ -1099,19 +1116,14 @@ int CDisk::do_scsi_command()
              + state.scsi.cmd.data[8];
     }
 
-    state.scsi.stat.available = 1;
-    state.scsi.stat.data[0] = 0;
-    state.scsi.stat.read = 0;
-    state.scsi.msgi.available = 1;
-    state.scsi.msgi.data[0] = 0;
-    state.scsi.msgi.read = 0;
-
     // Within bounds? 
     if ((ofs+retlen) > get_lba_size())
     {
-      state.scsi.stat.data[0] = 0x02; // check condition
+      do_scsi_error(SCSI_LBA_RANGE);
       break;
     }
+
+    do_scsi_error(SCSI_OK);
 
 	//  Return data:  
     seek_block(ofs);
@@ -1142,30 +1154,33 @@ int CDisk::do_scsi_command()
     state.scsi.msgi.data[0] = 0;
     state.scsi.msgi.read = 0;
 
+    if (retlen != 514)
+    {
+      do_scsi_error(SCSI_ILL_CMD);
+      break;
+    }
     // Within bounds? 
     if ((ofs+1) > get_lba_size())
     {
-      state.scsi.stat.data[0] = 0x02; // check condition
+      do_scsi_error(SCSI_LBA_RANGE);
       break;
     }
 
 	//  Return data:  
     seek_block(ofs);
     read_blocks(state.scsi.dati.data, 1);
-    for (int x1 = get_block_size(); x1<retlen; x1++)
+    for (unsigned int x1 = get_block_size(); x1<retlen; x1++)
       state.scsi.dati.data[x1] = 0; // set ECC bytes to 0.
 
     state.scsi.dati.available = retlen;
-
-#if defined(DEBUG_SCSI)
-    printf("%s: READ LONG  ofs=%d size=%d\n", devid_string, ofs, retlen);
-#endif
-    //getchar();
+    do_scsi_error(SCSI_OK);
 	break;
 
   case SCSICMD_WRITE:
   case SCSICMD_WRITE_10:
-    //printf("%s: WRITE.\n",devid_string);
+#if defined(DEBUG_SCSI)
+    printf("%s: WRITE.\n",devid_string);
+#endif
     if (state.scsi.cmd.data[0] == SCSICMD_WRITE)
     {
 	  //  bits 4..0 of cmd[1], and cmd[2] and cmd[3]
@@ -1191,17 +1206,10 @@ int CDisk::do_scsi_command()
       retlen = (state.scsi.cmd.data[7] << 8) + state.scsi.cmd.data[8];
 	}
 
-    state.scsi.stat.available = 1;
-    state.scsi.stat.data[0] = 0;
-    state.scsi.stat.read = 0;
-    state.scsi.msgi.available = 1;
-    state.scsi.msgi.data[0] = 0;
-    state.scsi.msgi.read = 0;
-
     // Within bounds? 
     if (((ofs+retlen)) > get_lba_size())
     {
-      state.scsi.stat.data[0] = 0x02; // check condition
+      do_scsi_error(SCSI_LBA_RANGE);
       break;
     }
 
@@ -1217,24 +1225,21 @@ int CDisk::do_scsi_command()
 #if defined(DEBUG_SCSI)
     printf("%s: WRITE  ofs=%d size=%d\n", devid_string, ofs, retlen);
 #endif
-    //getchar();
+    do_scsi_error(SCSI_OK);
 	break;
 
   case SCSICMD_SYNCHRONIZE_CACHE:
-    //printf("%s: SYNCHRONIZE CACHE.\n",devid_string);
-    
-    state.scsi.stat.available = 1;
-    state.scsi.stat.data[0] = 0;
-    state.scsi.stat.read = 0;
-    state.scsi.msgi.available = 1;
-    state.scsi.msgi.data[0] = 0;
-    state.scsi.msgi.read = 0;
+#if defined(DEBUG_SCSI)
+    printf("%s: SYNCHRONIZE CACHE.\n",devid_string);
+#endif
+    do_scsi_error(SCSI_OK);
     break;
 
   case SCSICDROM_READ_TOC:
     {
-      //printf("%s: CDROM READ TOC.\n", devid_string);
-
+#if defined(DEBUG_SCSI)
+      printf("%s: CDROM READ TOC.\n", devid_string);
+#endif
       if (state.scsi.cmd.data[1]&0x02)
       {
         printf("%s: I don't understand READ TOC/PMA/ATIP with MSF bit set.\n",devid_string);
@@ -1295,12 +1300,7 @@ int CDisk::do_scsi_command()
       state.scsi.dati.data[0] = (u8)(q>>8);
       state.scsi.dati.data[1] = (u8)q;
       
-      state.scsi.stat.available = 1;
-      state.scsi.stat.data[0] = 0;
-      state.scsi.stat.read = 0;
-      state.scsi.msgi.available = 1;
-      state.scsi.msgi.data[0] = 0;
-      state.scsi.msgi.read = 0;
+      do_scsi_error(SCSI_OK);
     }
     break;
 
@@ -1347,14 +1347,7 @@ int CDisk::do_scsi_command()
       state.scsi.dati.data[33] = 0;
       state.scsi.dati.data[34] = 0;
 
-      state.scsi.dati.available = 33;
-      state.scsi.stat.available = 1;
-      state.scsi.stat.data[0] = 0;
-      state.scsi.stat.read = 0;
-      state.scsi.msgi.available = 1;
-      state.scsi.msgi.data[0] = 0;
-      state.scsi.msgi.read = 0;      
-
+      do_scsi_error(SCSI_OK);
       break;
     case 1:
     case 2:
@@ -1436,13 +1429,7 @@ int CDisk::do_scsi_command()
 	    state.scsi.dati.data[35]=0x00; // reserved
     	
 	    state.scsi.dati.available = 0x24;
-	    state.scsi.stat.available = 1;
-	    state.scsi.stat.data[0] = 0;
-	    state.scsi.stat.read = 0;
-	    state.scsi.msgi.available = 1;
-	    state.scsi.msgi.data[0] = 0;
-	    state.scsi.msgi.read = 0;     
-     
+        do_scsi_error(SCSI_OK);
 	    break;
 
       case 0: // logical block address

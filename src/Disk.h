@@ -27,7 +27,10 @@
  * \file
  * Contains definitions for the disk base class.
  *
- * $Id: Disk.h,v 1.12 2008/02/17 08:53:48 iamcamiel Exp $
+ * $Id: Disk.h,v 1.13 2008/02/17 15:42:39 iamcamiel Exp $
+ *
+ * X-1.13       Camiel Vanderhoeven                             17-FEB-2008
+ *      Set up sense data when error occurs.
  *
  * X-1.12       Camiel Vanderhoeven                             17-FEB-2008
  *      Added REQUEST_SENSE scsi command.
@@ -95,6 +98,7 @@ public:
 
   int do_scsi_command();
   int do_scsi_message();
+  void do_scsi_error(int errcode);
 
   virtual bool seek_byte(off_t_large byte) = 0;
   virtual size_t read_bytes(void * dest, size_t bytes) = 0;
@@ -200,7 +204,7 @@ protected:
       /// State for request sense
       struct SDisk_sense {
         u8 data[256];
-        bool available;
+        unsigned int available;
       } sense;
 
       bool locked;                  /**< Media is locked (for CD-ROM type devices). **/
