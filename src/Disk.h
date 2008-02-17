@@ -27,7 +27,10 @@
  * \file
  * Contains definitions for the disk base class.
  *
- * $Id: Disk.h,v 1.11 2008/01/13 17:36:56 iamcamiel Exp $
+ * $Id: Disk.h,v 1.12 2008/02/17 08:53:48 iamcamiel Exp $
+ *
+ * X-1.12       Camiel Vanderhoeven                             17-FEB-2008
+ *      Added REQUEST_SENSE scsi command.
  *
  * X-1.11       Camiel Vanderhoeven                             13-JAN-2008
  *      Determine best-fitting C/H/S lay-out.
@@ -159,7 +162,7 @@ protected:
         unsigned int read;        /**< Number of bytes read so far. **/
       } msgi;
 
-      // State for Message Out Phase (controller -> disk)
+      /// State for Message Out Phase (controller -> disk)
       struct SDisk_msgo {
         u8 data[256];             /**< Data buffer. **/
         unsigned int written;     /**< Number of bytes in buffer. **/
@@ -167,32 +170,38 @@ protected:
 
       bool lun_selected;          /**< A LUN has been selected. CDisk doesn't support LUNs. **/
 
-      // state for Command phase (controller -> disk)
+      /// state for Command phase (controller -> disk)
       struct SDisk_cmd {
         u8 data[256];             /**< Data buffer. **/
         unsigned int written;     /**< Number of bytes in buffer. **/
       } cmd;
 
-      // State for Data In phase (disk -> controller)
+      /// State for Data In phase (disk -> controller)
       struct SDisk_dati {
         u8 data[64*1024];         /**< Data buffer. **/
         unsigned int available;   /**< Number of bytes available to read. **/
         unsigned int read;        /**< Number of bytes read so far. **/
       } dati;
 
-      // State for Data Out phase (controller -> disk)
+      /// State for Data Out phase (controller -> disk)
       struct SDisk_dato {
         u8 data[64*1024];         /**< Data buffer. **/
         unsigned int expected;    /**< Number of bytes the initiator is expected to write. **/
         unsigned int written;     /**< Number of bytes written sofar. **/
       } dato;
 
-      // State for Status phase (disk -> controller)
+      /// State for Status phase (disk -> controller)
       struct SDisk_stat {
         u8 data[256];             /**< Data buffer. **/
         unsigned int available;   /**< Number of bytes available to read. **/
         unsigned int read;        /**< Number of bytes read so far. **/
       } stat;
+
+      /// State for request sense
+      struct SDisk_sense {
+        u8 data[256];
+        bool available;
+      } sense;
 
       bool locked;                  /**< Media is locked (for CD-ROM type devices). **/
 

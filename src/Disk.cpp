@@ -27,9 +27,12 @@
  * \file
  * Contains code for the disk base class.
  *
- * $Id: Disk.cpp,v 1.19 2008/02/16 13:17:48 iamcamiel Exp $
+ * $Id: Disk.cpp,v 1.20 2008/02/17 08:53:48 iamcamiel Exp $
  *
- * X-1.17       Camiel Vanderhoeven                             16-FEB-2008
+ * X-1.20       Camiel Vanderhoeven                             17-FEB-2008
+ *      Added REQUEST_SENSE scsi command.
+ *
+ * X-1.19       Camiel Vanderhoeven                             16-FEB-2008
  *      Added READ_LONG scsi command, and support for MODE_SENSE changeable
  *      parameter pages.
  *
@@ -117,6 +120,7 @@ CDisk::CDisk(CConfigurator * cfg, CSystem * sys, CDiskController * ctrl, int ide
   is_cdrom = myCfg->get_bool_value("cdrom");
 
   state.block_size = is_cdrom?2048:512;
+  state.scsi.sense.available = false;
 
   myCtrl->register_disk(this,myBus,myDev);
 }
@@ -573,7 +577,9 @@ int CDisk::do_scsi_command()
   switch(state.scsi.cmd.data[0])
   {
   case SCSICMD_TEST_UNIT_READY:
-    //printf("%s: TEST UNIT READY.\n",devid_string);
+#if defined(DEBUG_SCSI)
+    printf("%s: TEST UNIT READY.\n",devid_string);
+#endif
 	if (state.scsi.cmd.data[1] != 0x00) 
     {
       printf("%s: Don't know how to handle TEST UNIT READY with cmd[1]=0x%02x.\n", devid_string, state.scsi.cmd.data[1]);
@@ -588,9 +594,52 @@ int CDisk::do_scsi_command()
     state.scsi.msgi.read = 0;
     break;
 
+  case SCSICMD_REQUEST_SENSE:
+#if defined(DEBUG_SCSI)
+    printf("%s: REQUEST SENSE.\n",devid_string);
+#endif
+//    FAILURE("Sense requested");
+    if (!state.scsi.sense.available)
+    {
+#if defined(DEBUG_SCSI)
+      printf("%s: NO SENSE.\n",devid_string);
+#endif
+      state.scsi.sense.data[0] = 0xf0;  // error code
+      state.scsi.sense.data[1] = 0x00;  // segment number
+      state.scsi.sense.data[2] = 0x00;  // sense key: no sense
+      state.scsi.sense.data[3] = 0x00;  // info
+      state.scsi.sense.data[4] = 0x00;
+      state.scsi.sense.data[5] = 0x00;
+      state.scsi.sense.data[6] = 0x00;
+      state.scsi.sense.data[7] = 10;    // additional sense length
+      state.scsi.sense.data[8] = 0x00;  // command specific
+      state.scsi.sense.data[9] = 0x00;
+      state.scsi.sense.data[10] = 0x00;
+      state.scsi.sense.data[11] = 0x00;
+      state.scsi.sense.data[12] = 0x00; // additional sense code: no additional sense
+      state.scsi.sense.data[13] = 0x00; // additional qualifier
+      state.scsi.sense.data[14] = 0x00; // FRU code
+      state.scsi.sense.data[15] = 0x00; // sense key specific
+      state.scsi.sense.data[16] = 0x00;
+      state.scsi.sense.data[17] = 0x00;
+    }
+    state.scsi.sense.available = false;
+    state.scsi.dati.read = 0;
+    state.scsi.dati.available = state.scsi.sense.data[7]+8;
+    memcpy(state.scsi.dati.data,state.scsi.sense.data,state.scsi.dati.available);
+    state.scsi.stat.available = 1;
+    state.scsi.stat.data[0] = 0;
+    state.scsi.stat.read = 0;
+    state.scsi.msgi.available = 1;
+    state.scsi.msgi.data[0] = 0;
+    state.scsi.msgi.read = 0;
+    break;
+
   case SCSICMD_INQUIRY:
     {
-      //printf("%s: INQUIRY.\n",devid_string);
+#if defined(DEBUG_SCSI)
+      printf("%s: INQUIRY.\n",devid_string);
+#endif
 	  if ((state.scsi.cmd.data[1] & 0x1e) != 0x00) 
       {
         printf("%s: Don't know how to handle INQUIRY with cmd[1]=0x%02x.\n", devid_string, state.scsi.cmd.data[1]);
@@ -662,9 +711,10 @@ int CDisk::do_scsi_command()
 
   case SCSICMD_MODE_SENSE:
   case SCSICMD_MODE_SENSE_10:	
+#if defined(DEBUG_SCSI)
+    printf("%s: MODE SENSE.\n",devid_string);
+#endif
     {
-      //printf("%s: MODE SENSE.\n",devid_string);
-
       int num_blk_desc = 1;
 
       if (state.scsi.cmd.data[0] == SCSICMD_MODE_SENSE)
@@ -730,17 +780,20 @@ int CDisk::do_scsi_command()
 
 	  //  page, n bytes (each)  
 	  switch (pagecode) {
-	  case SCSIMP_VENDOR: // vendor specific
+
+      case SCSIMP_VENDOR: // vendor specific
 	    //  TODO: Nothing here?  
 	    break;
-	  case SCSIMP_READ_WRITE_ERRREC:		//  read-write error recovery page  
+
+      case SCSIMP_READ_WRITE_ERRREC:		//  read-write error recovery page  
 	    state.scsi.dati.data[q + 0] = pagecode;
         if (!changeable)
         {
 	      state.scsi.dati.data[q + 1] = 10;
         }
 	    break;
-	  case SCSIMP_FORMAT_PARAMS:		//  format device page  
+
+      case SCSIMP_FORMAT_PARAMS:		//  format device page  
 	    state.scsi.dati.data[q + 0] = pagecode;
         if (!changeable)
         {
@@ -886,12 +939,16 @@ int CDisk::do_scsi_command()
     if (state.scsi.cmd.data[4] & 1)
     {
       state.scsi.locked = true;
-    //  printf("%s: PREVENT MEDIA REMOVAL.\n",devid_string);
+#if defined(DEBUG_SCSI)
+      printf("%s: PREVENT MEDIA REMOVAL.\n",devid_string);
+#endif
     }
     else
     {
       state.scsi.locked = false;
-    //  printf("%s: ALLOW MEDIA REMOVAL.\n",devid_string);
+#if defined(DEBUG_SCSI)
+      printf("%s: ALLOW MEDIA REMOVAL.\n",devid_string);
+#endif
     }
     
     state.scsi.stat.available = 1;
@@ -908,7 +965,9 @@ int CDisk::do_scsi_command()
     if (state.scsi.dato.written < state.scsi.dato.expected)
       return 2;
 
-    //printf("%s: MODE SELECT.\n",devid_string);
+#if defined(DEBUG_SCSI)
+    printf("%s: MODE SELECT.\n",devid_string);
+#endif
 
     if (   state.scsi.cmd.written == 6 
         && state.scsi.dato.written == 12 
@@ -923,7 +982,9 @@ int CDisk::do_scsi_command()
         && state.scsi.dato.data[8] == 0x00) // reserved
     {
       set_block_size( (state.scsi.dato.data[9]<<16) | (state.scsi.dato.data[10]<<8) | state.scsi.dato.data[11] );
-      //printf("%s: Block size set to %d.\n",devid_string,get_block_size());
+#if defined(DEBUG_SCSI)
+      printf("%s: Block size set to %d.\n",devid_string,get_block_size());
+#endif
     }
     else
     {
@@ -947,7 +1008,9 @@ int CDisk::do_scsi_command()
 	break;
 
   case SCSIBLOCKCMD_READ_CAPACITY:
-    //printf("%s: READ CAPACITY.\n",devid_string);
+#if defined(DEBUG_SCSI)
+    printf("%s: READ CAPACITY.\n",devid_string);
+#endif
 	if (state.scsi.cmd.data[8] & 1) 
     {
       printf("%s: Don't know how to handle READ CAPACITY with PMI bit set.\n",devid_string);
@@ -1242,6 +1305,9 @@ int CDisk::do_scsi_command()
     break;
 
   case SCSICDROM_READ_DISCINFO:
+#if defined(DEBUG_SCSI)
+    printf("%s: READ DISC INFO.\n",devid_string);
+#endif
     switch(state.scsi.cmd.data[2] & 0x7) 
     {
     case 0:
@@ -1300,6 +1366,9 @@ int CDisk::do_scsi_command()
     break;
 
   case SCSICDROM_READ_TRACKINFO:
+#if defined(DEBUG_SCSI)
+    printf("%s: READ TRACK INFO.\n",devid_string);
+#endif
     if(state.scsi.cmd.data[1] & 0x04) {
       printf("%s: Don't know how to deal with the 'open' bit yet.\n", devid_string);
       FAILURE("SCSI Command Failed");
