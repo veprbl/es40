@@ -27,7 +27,10 @@
  * \file
  * Contains code for the disk base class.
  *
- * $Id: Disk.cpp,v 1.22 2008/02/18 10:51:37 iamcamiel Exp $
+ * $Id: Disk.cpp,v 1.23 2008/02/18 12:58:33 iamcamiel Exp $
+ *
+ * X-1.23       Camiel Vanderhoeven                             18-FEB-2008
+ *      Removed support for CD-R/RW specific SCSI commands.
  *
  * X-1.22       Camiel Vanderhoeven                             18-FEB-2008
  *      READ CAPACITY returns the number of the last LBA (n-1); not the
@@ -521,9 +524,19 @@ void CDisk::scsi_xfer_done_me(int bus)
 //  SCSI CD-ROM commands:  
 #define	SCSICDROM_READ_SUBCHANNEL	  0x42
 #define	SCSICDROM_READ_TOC		      0x43
-#define	SCSICDROM_READ_DISCINFO		  0x51
-#define	SCSICDROM_READ_TRACKINFO	  0x52
 
+// SCSI CD-R/RW commands:
+#define SCSICDRRW_FORMAT              0x04
+#define	SCSICDRRW_READ_DISC_INFO	  0x51
+#define	SCSICDRRW_READ_TRACK_INFO	  0x52
+#define SCSICDRRW_RESERVE_TRACK       0x53
+#define SCSICDRRW_SEND_OPC_INFO       0x54
+#define SCSICDRRW_REPAIR_TRACK        0x58
+#define SCSICDRRW_READ_MASTER_CUE     0x59
+#define SCSICDRRW_CLOSE_TRACK         0x5b
+#define SCSICDRRW_READ_BUFFER_CAP     0x5c
+#define SCSICDRRW_SEND_CUE_SHEET      0x5d
+#define SCSICDRRW_BLANK               0xa1
 
 //  SCSI tape commands:  
 #define	SCSICMD_REWIND			      0x01
@@ -648,11 +661,7 @@ int CDisk::do_scsi_command()
 #if defined(DEBUG_SCSI)
     printf("%s: TEST UNIT READY.\n",devid_string);
 #endif
-	if (state.scsi.cmd.data[1] != 0x00) 
-    {
-      printf("%s: Don't know how to handle TEST UNIT READY with cmd[1]=0x%02x.\n", devid_string, state.scsi.cmd.data[1]);
-      FAILURE("SCSI Command Failed");
-	}
+    // unit is always ready...
     do_scsi_error(SCSI_OK);
     break;
 
@@ -1359,152 +1368,25 @@ int CDisk::do_scsi_command()
     }
     break;
 
-  case SCSICDROM_READ_DISCINFO:
+  case SCSICDRRW_FORMAT:
+  case SCSICDRRW_READ_DISC_INFO:
+  case SCSICDRRW_READ_TRACK_INFO:
+  case SCSICDRRW_RESERVE_TRACK:
+  case SCSICDRRW_SEND_OPC_INFO:
+  case SCSICDRRW_REPAIR_TRACK:
+  case SCSICDRRW_READ_MASTER_CUE:
+  case SCSICDRRW_CLOSE_TRACK:
+  case SCSICDRRW_READ_BUFFER_CAP:
+  case SCSICDRRW_SEND_CUE_SHEET:
+  case SCSICDRRW_BLANK:
+    // These are CD-R/RW specific commands; we pretend to be a simple
+    // CD-ROM player, so no support for these commands.
 #if defined(DEBUG_SCSI)
-    printf("%s: READ DISC INFO.\n",devid_string);
+    printf("%s: CD-R/RW specific.\n",devid_string);
 #endif
-    switch(state.scsi.cmd.data[2] & 0x7) 
-    {
-    case 0:
-      state.scsi.dati.data[0] = 0; // msb of block length.
-      state.scsi.dati.data[1] = 32; // lsb of block length.
-      state.scsi.dati.data[2] = 0x0e; // type 0, ro, complete session, finalized
-      state.scsi.dati.data[3] = 1; // first track #
-      state.scsi.dati.data[4] = 1; // # of sessions (lsb)
-      state.scsi.dati.data[5] = 1; // first track # in last session (lsb)
-      state.scsi.dati.data[6] = 1; // last track # in last session (lsb)
-      state.scsi.dati.data[7] = 0; // flags
-      state.scsi.dati.data[8] = 0; // disk type (cd) (0x20 = cdrom-xa)
-      state.scsi.dati.data[9] = 0; // number of sessions (msb)
-      state.scsi.dati.data[10] = 0; // first track # in last session (msb)
-      state.scsi.dati.data[11] = 0; // last track # in last session (msb)
-      state.scsi.dati.data[12] = 0x00; // Disk ID
-      state.scsi.dati.data[13] = 0x00;
-      state.scsi.dati.data[14] = 0x00;
-      state.scsi.dati.data[15] = 0x00;
-      state.scsi.dati.data[16] = 0xff; // lead-in start time of last session
-      state.scsi.dati.data[17] = 0xff;
-      state.scsi.dati.data[18] = 0xff;
-      state.scsi.dati.data[19] = 0xff;
-      state.scsi.dati.data[20] = 0xff; // last possible start time for start of lead out
-      state.scsi.dati.data[21] = 0xff;
-      state.scsi.dati.data[22] = 0xff;
-      state.scsi.dati.data[23] = 0xff;
-      state.scsi.dati.data[24] = 0; // Disk Barcode
-      state.scsi.dati.data[25] = 0;
-      state.scsi.dati.data[26] = 0;
-      state.scsi.dati.data[27] = 0;
-      state.scsi.dati.data[28] = 0;
-      state.scsi.dati.data[29] = 0;
-      state.scsi.dati.data[30] = 0;
-      state.scsi.dati.data[31] = 0;
-      state.scsi.dati.data[32] = 0; // disk application code
-      state.scsi.dati.data[33] = 0;
-      state.scsi.dati.data[34] = 0;
-
-#if defined(DEBUG_SCSI)
-	printf("%s: Returning data: ",devid_string);
-	for (unsigned int x1 = 0; x1 <35; x1++) printf("%02x ",state.scsi.dati.data[x1]);
-	printf("\n");
-#endif
-      do_scsi_error(SCSI_OK);
-      break;
-    case 1:
-    case 2:
-    default:
-      printf("%s: Unimplemented data-type in READ_DISKINFO: %d.\n", devid_string, state.scsi.cmd.data[2] & 0x7);
-      FAILURE("SCSI Command Failed");
-      break;
-    }
+    do_scsi_error(SCSI_ILL_CMD);
     break;
 
-  case SCSICDROM_READ_TRACKINFO:
-#if defined(DEBUG_SCSI)
-    printf("%s: READ TRACK INFO.\n",devid_string);
-#endif
-    if(state.scsi.cmd.data[1] & 0x04) {
-      printf("%s: Don't know how to deal with the 'open' bit yet.\n", devid_string);
-      FAILURE("SCSI Command Failed");
-    } else {
-      u8 type = state.scsi.cmd.data[1] & 0x03;
-      u32 item = state.scsi.cmd.data[3] << 24 |
-	             state.scsi.cmd.data[4] << 16 |
-	             state.scsi.cmd.data[5] << 8 |
-	             state.scsi.cmd.data[6];
-      switch(type) {
-      case 1: // track
-        /*
-          netbsd4 sends:
-          52 01 00 00 00 01 00 00 24 00 00 00
-          type = track, item = 1, 
-          output from a real CD:
-          0000 00 22 01 01 00 04 0f 00 00 00 00 00 ff ff ff ff ."..............
-          0010 00 00 00 00 00 00 00 00 00 01 f4 98 00 00 00 00 ................
-          0020 00 00 00 00 00 00 00 00 61 00 00 00 00 00 00 00 ........a.......
-
-	      and another
-	      0000 00 22 01 01 00 04 01 00 00 00 00 00 00 00 00 00 ."..............
-	      0010 00 00 00 00 00 00 00 00 00 04 21 6c 00 00 00 00 ..........!l....
-	      0020 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 ................
-
-	      0000 00 22 01 01 00 04 02 00 00 00 00 00 00 00 00 00 ."..............
-	      0010 00 00 00 00 00 00 00 00 00 00 b0 98 00 00 00 00 ................
-	      0020 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 ................
-        */
-	    state.scsi.dati.data[0]=0x00;
-	    state.scsi.dati.data[1]=0x22; // length = 34
-	    state.scsi.dati.data[2]=item & 0xff; // track #
-	    state.scsi.dati.data[3]=0x01; // session 1
-	    state.scsi.dati.data[4]=0x00; // reserved
-	    state.scsi.dati.data[5]=0x04; // track mode
-	    state.scsi.dati.data[6]=0x01; // data mode
-	    state.scsi.dati.data[7]=0x00; // reserved
-	    state.scsi.dati.data[8]=0x00; // track start address.
-	    state.scsi.dati.data[9]=0x00; 
-	    state.scsi.dati.data[10]=0x00;
-	    state.scsi.dati.data[11]=0x00;
-	    state.scsi.dati.data[12]=0xff; // next writable.
-	    state.scsi.dati.data[13]=0xff;
-	    state.scsi.dati.data[14]=0xff;
-	    state.scsi.dati.data[15]=0xff;
-	    state.scsi.dati.data[16]=0x00; // free blocks
-	    state.scsi.dati.data[17]=0x00;
-	    state.scsi.dati.data[18]=0x00;
-	    state.scsi.dati.data[19]=0x00;
-	    state.scsi.dati.data[20]=0x00; // fixed packet / blocking size
-	    state.scsi.dati.data[21]=0x00;
-	    state.scsi.dati.data[22]=0x00;
-	    state.scsi.dati.data[23]=0x00;
-	    state.scsi.dati.data[24]=(get_block_size() >> 24) & 0xff; // msb=track size
-	    state.scsi.dati.data[25]=(get_block_size() >> 16) & 0xff;
-	    state.scsi.dati.data[26]=(get_block_size() >> 8) & 0xff;
-	    state.scsi.dati.data[27]=get_block_size() & 0xff;
-	    state.scsi.dati.data[28]=0x00; // last recorded address
-	    state.scsi.dati.data[29]=0x00;
-	    state.scsi.dati.data[30]=0x00;
-	    state.scsi.dati.data[31]=0x00;
-	    state.scsi.dati.data[32]=0x00; // track msb
-	    state.scsi.dati.data[33]=0x00; // session msb
-	    state.scsi.dati.data[34]=0x00; // reserved
-	    state.scsi.dati.data[35]=0x00; // reserved
-    	
-	    state.scsi.dati.available = 0x24;
-#if defined(DEBUG_SCSI)
-	printf("%s: Returning data: ",devid_string);
-	for (unsigned int x1 = 0; x1 <q+36; x1++) printf("%02x ",state.scsi.dati.data[x1]);
-	printf("\n");
-#endif
-        do_scsi_error(SCSI_OK);
-	    break;
-
-      case 0: // logical block address
-      case 2: // border number
-      default:
-        printf("%s: Unimplemented address/number type: %d\n",devid_string,type);
-        FAILURE("SCSI Command Failed");
-      }
-    }
-    break;
 
   default:
     printf("%s: Unknown SCSI command 0x%02x.\n",devid_string,state.scsi.cmd.data[0]);
