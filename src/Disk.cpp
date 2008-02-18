@@ -27,7 +27,10 @@
  * \file
  * Contains code for the disk base class.
  *
- * $Id: Disk.cpp,v 1.23 2008/02/18 12:58:33 iamcamiel Exp $
+ * $Id: Disk.cpp,v 1.24 2008/02/18 14:52:10 iamcamiel Exp $
+ *
+ * X-1.24       Brian Wheeler                                   18-FEB-2008
+ *      Added vital product data page 0 (Required for Tru64).
  *
  * X-1.23       Camiel Vanderhoeven                             18-FEB-2008
  *      Removed support for CD-R/RW specific SCSI commands.
@@ -732,18 +735,28 @@ int CDisk::do_scsi_command()
       if (state.scsi.cmd.data[1] & 0x01)
       {
         // Vital Product Data
-        if (state.scsi.cmd.data[2] == 0x80)
+        switch(state.scsi.cmd.data[2])
         {
+        case 0x00:
+          // Page 0 is basically a list of page codes supported, so if
+          // any others are added, make sure to insert them in the proper
+          // place and increase the page length.
+          state.scsi.dati.data[1] = 0x00; // page code 0
+          state.scsi.dati.data[2] = 0x00; // reserved
+          state.scsi.dati.data[3] = 0x02; // page length
+          state.scsi.dati.data[4] = 0x00; // page 0 is supported.
+          state.scsi.dati.data[5] = 0x80; // page 0x80 is supported.
+          break;
+        case 0x80:
           char serial_number[20];
           sprintf(serial_number,"SRL%04x",scsi_initiator_id[0]*0x0101);
           // unit serial number page
           state.scsi.dati.data[1] = 0x80; // page code: 0x80
           state.scsi.dati.data[2] = 0x00; // reserved
           state.scsi.dati.data[3] = (u8)strlen(serial_number);
-          memcpy(&state.scsi.dati.data[4],serial_number,strlen(serial_number));
-        }
-        else
-        {
+           memcpy(&state.scsi.dati.data[4],serial_number,strlen(serial_number));
+          break;
+        default:
           printf("Don't know format for vital product data page %02x!!\n",state.scsi.cmd.data[2]);
           FAILURE("SCSI Command Failed");
           state.scsi.dati.data[1] = state.scsi.cmd.data[2]; // page code

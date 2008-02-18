@@ -2,6 +2,9 @@
 \page changelog Changelog
 
 \section c018 version 0.17 -> 0.17+
+
+ - Added vital product data page 0 (Required for Tru64).
+   (18-feb-2008, Brian Wheeler)
  - The READ CAPACITY scsi command now properly returns the number of
    the last LBA (n-1); not the number of LBA's (n). INITIALIZE now
    works properly on a scsi disk. (18-feb-2008, Camiel Vanderhoeven)
