@@ -27,7 +27,11 @@
  * \file
  * Contains code for the disk base class.
  *
- * $Id: Disk.cpp,v 1.21 2008/02/17 15:42:39 iamcamiel Exp $
+ * $Id: Disk.cpp,v 1.22 2008/02/18 10:51:37 iamcamiel Exp $
+ *
+ * X-1.22       Camiel Vanderhoeven                             18-FEB-2008
+ *      READ CAPACITY returns the number of the last LBA (n-1); not the
+ *      number of LBA's (n).
  *
  * X-1.20       Camiel Vanderhoeven                             17-FEB-2008
  *      Set up sense data when error occurs.
@@ -550,7 +554,12 @@ void CDisk::do_scsi_error(int errcode)
   state.scsi.msgi.read = 0;
 
   if (errcode == SCSI_OK)
+  {
+#if defined(DEBUG_SCSI)
+    printf("%s: Command returns OK status.\n",devid_string);
+#endif
     return;
+  }
 
   state.scsi.stat.data[0] = 0x02; // check sense
 
@@ -577,11 +586,17 @@ void CDisk::do_scsi_error(int errcode)
     state.scsi.sense.data[2] = 0x05; // illegal request
     state.scsi.sense.data[12] = 0x20; // invalid command
     state.scsi.sense.data[13] = 0x00;
+#if defined(DEBUG_SCSI)
+	printf("%s: Command returns check sense status (sense: ILLEGAL COMMAND).\n",devid_string);
+#endif
     break;
   case SCSI_LBA_RANGE:
     state.scsi.sense.data[2] = 0x05; // illegal request
     state.scsi.sense.data[12] = 0x21; // LBA out of range
     state.scsi.sense.data[13] = 0x00;
+#if defined(DEBUG_SCSI)
+	printf("%s: Command returns check sense status (sense: LBA OUT OF RANGE).\n",devid_string);
+#endif
     break;
   }
 }
@@ -673,6 +688,13 @@ int CDisk::do_scsi_command()
       state.scsi.sense.available = 18; 
     }
 
+#if defined(DEBUG_SCSI)
+	printf("%s: Returning data: ",devid_string);
+	for (unsigned int x1 = 0; x1 <state.scsi.sense.available; x1++) printf("%02x ",state.scsi.sense.data[x1]);
+	printf("\n");
+#endif
+
+
     state.scsi.dati.read = 0;
     state.scsi.dati.available = retlen;
     memcpy(state.scsi.dati.data,state.scsi.sense.data,state.scsi.sense.available);
@@ -747,6 +769,11 @@ int CDisk::do_scsi_command()
       state.scsi.dati.read = 0;
       state.scsi.dati.available = retlen;
 
+#if defined(DEBUG_SCSI)
+	printf("%s: Returning data: ",devid_string);
+	for (unsigned int x1 = 0; x1 <36; x1++) printf("%02x ",state.scsi.dati.data[x1]);
+	printf("\n");
+#endif
       do_scsi_error(SCSI_OK);
     }
     break;
@@ -964,6 +991,11 @@ int CDisk::do_scsi_command()
         printf("%s: MODE_SENSE for page %i is not yet implemented!\n", devid_string, pagecode);
         FAILURE("SCSI Command Failed");
 	  }
+#if defined(DEBUG_SCSI)
+	printf("%s: Returning data: ",devid_string);
+	for (unsigned int x1 = 0; x1 <q+30; x1++) printf("%02x ",state.scsi.dati.data[x1]);
+	printf("\n");
+#endif
     }
 	break;
 
@@ -994,6 +1026,9 @@ int CDisk::do_scsi_command()
 
 #if defined(DEBUG_SCSI)
     printf("%s: MODE SELECT.\n",devid_string);
+    printf("Data: ");
+    for(unsigned int x=0; x<state.scsi.dato.written; x++) printf("%02x ",state.scsi.dato.data[x]);
+	printf("\n");
 #endif
 
     if (   state.scsi.cmd.written == 6 
@@ -1040,10 +1075,12 @@ int CDisk::do_scsi_command()
       break;
 	}
 
-    state.scsi.dati.data[0] = (u8)((get_lba_size()) >> 24) & 255;
-	state.scsi.dati.data[1] = (u8)((get_lba_size()) >> 16) & 255;
-	state.scsi.dati.data[2] = (u8)((get_lba_size()) >>  8) & 255;
-	state.scsi.dati.data[3] = (u8)((get_lba_size()) >>  0) & 255;
+    // READ CAPACITY returns the number of the last LBA (n-1);
+    // not the number of LBA's (n)
+    state.scsi.dati.data[0] = (u8)((get_lba_size()-1) >> 24) & 255;
+	state.scsi.dati.data[1] = (u8)((get_lba_size()-1) >> 16) & 255;
+	state.scsi.dati.data[2] = (u8)((get_lba_size()-1) >>  8) & 255;
+	state.scsi.dati.data[3] = (u8)((get_lba_size()-1) >>  0) & 255;
 
 	state.scsi.dati.data[4] = (u8)(get_block_size() >> 24) & 255;
 	state.scsi.dati.data[5] = (u8)(get_block_size() >> 16) & 255;
@@ -1052,6 +1089,11 @@ int CDisk::do_scsi_command()
 
     state.scsi.dati.available = 8;
 
+#if defined(DEBUG_SCSI)
+	printf("%s: Returning data: ",devid_string);
+	for (unsigned int x1 = 0; x1 <8; x1++) printf("%02x ",state.scsi.dati.data[x1]);
+	printf("\n");
+#endif
     do_scsi_error(SCSI_OK);
 	break;
 
@@ -1140,12 +1182,19 @@ int CDisk::do_scsi_command()
 #if defined(DEBUG_SCSI)
     printf("%s: READ_LONG.\n", devid_string);
 #endif
+	// The read long command is used to read one block of disk data, including
+	// ECC data. OpenVMS uses read long / write long to do host-based shadowing.
+	// During driver initialization, OpenVMS will check each disk to see if it
+	// supports host-based shadowing, by trying to find the right size for read
+	// long commands. The emulated scsi disk sets the size for read long / write
+	// long commands to 514 bytes (the first value OpenVMS tries).
+
     //  cmd[2..5] hold the logical block address.
     //  cmd[7..8] holds the number of bytes to transfer
 	   
-	  ofs    = (state.scsi.cmd.data[2] << 24) + (state.scsi.cmd.data[3] << 16)
-             + (state.scsi.cmd.data[4] <<  8) +  state.scsi.cmd.data[5];
-      retlen = (state.scsi.cmd.data[7] <<  8) +  state.scsi.cmd.data[8];
+	ofs    = (state.scsi.cmd.data[2] << 24) + (state.scsi.cmd.data[3] << 16)
+           + (state.scsi.cmd.data[4] <<  8) +  state.scsi.cmd.data[5];
+    retlen = (state.scsi.cmd.data[7] <<  8) +  state.scsi.cmd.data[8];
 
     state.scsi.stat.available = 1;
     state.scsi.stat.data[0] = 0;
@@ -1154,6 +1203,7 @@ int CDisk::do_scsi_command()
     state.scsi.msgi.data[0] = 0;
     state.scsi.msgi.read = 0;
 
+	// If the requested size is not 514 bytes, don't accept it.
     if (retlen != 514)
     {
       do_scsi_error(SCSI_ILL_CMD);
@@ -1300,6 +1350,11 @@ int CDisk::do_scsi_command()
       state.scsi.dati.data[0] = (u8)(q>>8);
       state.scsi.dati.data[1] = (u8)q;
       
+#if defined(DEBUG_SCSI)
+	printf("%s: Returning data: ",devid_string);
+	for (unsigned int x1 = 0; x1 <q; x1++) printf("%02x ",state.scsi.dati.data[x1]);
+	printf("\n");
+#endif
       do_scsi_error(SCSI_OK);
     }
     break;
@@ -1347,6 +1402,11 @@ int CDisk::do_scsi_command()
       state.scsi.dati.data[33] = 0;
       state.scsi.dati.data[34] = 0;
 
+#if defined(DEBUG_SCSI)
+	printf("%s: Returning data: ",devid_string);
+	for (unsigned int x1 = 0; x1 <35; x1++) printf("%02x ",state.scsi.dati.data[x1]);
+	printf("\n");
+#endif
       do_scsi_error(SCSI_OK);
       break;
     case 1:
@@ -1429,6 +1489,11 @@ int CDisk::do_scsi_command()
 	    state.scsi.dati.data[35]=0x00; // reserved
     	
 	    state.scsi.dati.available = 0x24;
+#if defined(DEBUG_SCSI)
+	printf("%s: Returning data: ",devid_string);
+	for (unsigned int x1 = 0; x1 <q+36; x1++) printf("%02x ",state.scsi.dati.data[x1]);
+	printf("\n");
+#endif
         do_scsi_error(SCSI_OK);
 	    break;
 
