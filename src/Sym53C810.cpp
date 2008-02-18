@@ -27,7 +27,10 @@
  * \file
  * Contains the code for the emulated Symbios SCSI controller.
  *
- * $Id: Sym53C810.cpp,v 1.4 2008/02/17 15:46:36 iamcamiel Exp $
+ * $Id: Sym53C810.cpp,v 1.5 2008/02/18 13:44:48 iamcamiel Exp $
+ *
+ * X-1.4        Camiel Vanderhoeven                             18-FEB-2008
+ *      Debugging info on xfer size made conditional.
  *
  * X-1.3        Camiel Vanderhoeven                             17-FEB-2008
  *      Debugging info.
@@ -347,7 +350,7 @@ CSym53C810::CSym53C810(CConfigurator * cfg, CSystem * c, int pcibus, int pcidev)
   CSCSIBus * a = new CSCSIBus(cfg, c);
   scsi_register(0, a, 7); // scsi id 7 by default
 
-  printf("%s: $Id: Sym53C810.cpp,v 1.4 2008/02/17 15:46:36 iamcamiel Exp $\n",devid_string);
+  printf("%s: $Id: Sym53C810.cpp,v 1.5 2008/02/18 13:44:48 iamcamiel Exp $\n",devid_string);
 }
 
 CSym53C810::~CSym53C810()
@@ -1156,7 +1159,9 @@ int CSym53C810::execute()
           }
           if ((size_t)count > scsi_expected_xfer(0))
           {
+#if defined(DEBUG_SYM_SCRIPTS)
             printf("SYM: xfer %d bytes, max %d expected, in phase %d.\n",count,scsi_expected_xfer(0),scsi_phase);
+#endif
             count = (u32)scsi_expected_xfer(0);
           }
           u8 * scsi_data_ptr = (u8*) scsi_xfer_ptr(0, count);
