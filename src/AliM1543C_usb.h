@@ -27,7 +27,10 @@
  * \file
  * Contains the definitions for the emulated Ali M1543C USB chipset part.
  *
- * $Id: AliM1543C_usb.h,v 1.4 2008/01/08 16:38:09 iamcamiel Exp $
+ * $Id: AliM1543C_usb.h,v 1.5 2008/02/18 15:51:30 iamcamiel Exp $
+ *
+ * X-1.5        Brian wheeler                                   18-FEB-2008
+ *      Implemented HCI register space. 
  *
  * X-1.4        Camiel Vanderhoeven                             08-JAN-2008
  *      Comments.
@@ -67,14 +70,17 @@ class CAliM1543C_usb : public CPCIDevice
 
   CAliM1543C_usb(CConfigurator * cfg, class CSystem * c, int pcibus, int pcidev);
   virtual ~CAliM1543C_usb();
+  virtual void WriteMem_Bar(int func,int bar, u32 address, int dsize, u32 data);
+  virtual u32 ReadMem_Bar(int func,int bar, u32 address, int dsize);
 
  private:
 
-  u64 usb_config_read(u64 address, int dsize);
-  void usb_config_write(u64 address, int dsize, u64 data);
+  u64 usb_hci_read(u64 address, int dsize);
+  void usb_hci_write(u64 address, int dsize, u64 data);
 
   /// The state structure contains all elements that need to be saved to the statefile.
   struct SUSB_state {
+    u32 usb_data[0x110/4];
   } state;
 
 };

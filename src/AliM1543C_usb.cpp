@@ -1,5 +1,5 @@
 /* ES40 emulator.
- * Copyright (C) 2007 by the ES40 Emulator Project
+ * Copyright (C) 2007-2008 by the ES40 Emulator Project
  *
  * WWW    : http://sourceforge.net/projects/es40
  * E-mail : camiel@camicom.com
@@ -26,6 +26,9 @@
 /**
  * \file
  * Contains the code for the emulated Ali M1543C IDE chipset part.
+ *
+ * X-1.4        Brian wheeler                                   18-FEB-2008
+ *      Implemented HCI register space. 
  *
  * X-1.3        Camiel Vanderhoeven                             30-DEC-2007
  *      Print file id on initialization.
@@ -97,11 +100,121 @@ CAliM1543C_usb::CAliM1543C_usb(CConfigurator * cfg, CSystem * c, int pcibus, int
 
   ResetPCI();
 
-  printf("%s: $Id: AliM1543C_usb.cpp,v 1.3 2007/12/30 15:10:22 iamcamiel Exp $\n",devid_string);
+  state.usb_data[0x34/4] = 0x2edf;
+  state.usb_data[0x48/4] = 0x01000003;
+
+  printf("%s: $Id: AliM1543C_usb.cpp,v 1.4 2008/02/18 15:51:30 iamcamiel Exp $\n",devid_string);
 }
 
 CAliM1543C_usb::~CAliM1543C_usb()
 {
+}
+
+u32 CAliM1543C_usb::ReadMem_Bar(int func,int bar, u32 address, int dsize) {
+  u32 data = 0;
+  switch(bar) {
+  case 0:
+    data = usb_hci_read(address,dsize);
+    break;
+  default:
+    printf("%%USB-W-READBAR: Bad BAR %d selected.\n",bar);
+  }
+  return data;
+}
+
+
+void CAliM1543C_usb::WriteMem_Bar(int func,int bar, u32 address, int dsize, u32 data) {
+  switch(bar) {
+  case 0:
+    usb_hci_write(address,dsize,data);
+    break;
+  default:
+    printf("%%USB-W-WRITEBAR: Bad BAR %d selected.\n",bar);
+  }
+  return;
+}
+
+u64 CAliM1543C_usb::usb_hci_read(u64 address, int dsize) {
+  u64 data = 0;
+  if(dsize != 32)
+    printf("%%USB-W-HCIREAD: Non dword read, returning 32 bits anyway.\n");
+  switch(address) {
+  case 0: // HcRevision
+    data = 0x00000110;
+    break;
+  case 4: // HcControl
+  case 8: // HcCommandStatus
+  case 0x0c: // HcInterruptStatus
+  case 0x10: // HcInterrupt Enable
+  case 0x14: // HcInterruptDisable
+  case 0x18: // HcHCCA (datasheet says 0x17, but that's wrong)
+  case 0x1c: // HcPeriodCurrentED
+  case 0x20: // HcControlHeadED
+  case 0x24: // HcControlCurrentED
+  case 0x28: // HcBulkHeadED
+  case 0x2c: // HcBulkCurrentED
+  case 0x30: // HcDoneHead
+  case 0x34: // HcFmInterval
+  case 0x38: // HcFrameRemaining
+  case 0x3c: // HcFmNumber
+  case 0x40: // HcPeriodicStart
+  case 0x44: // HcLSThreshold
+  case 0x48: // HcRhDescriptorA
+  case 0x4c: // HcRhDescriptorB
+  case 0x50: // HcRhStatus
+  case 0x54: // HcRhPortStatus1
+  case 0x58: // HcRhPortStatus1
+  case 0x5c: // HcRhPortStatus1
+  case 0x100: // HceControlRegister
+  case 0x104: // HceInputRegister
+  case 0x108: // HceOutputRegister
+  case 0x10c: // HceStatusRegister
+    data=state.usb_data[address/4];
+    break;
+
+  default:
+    printf("%%USB-W-HCIREAD: Reading from unknown address %x.  Ignoring.\n",address);
+  }
+  return data;
+}
+
+
+void CAliM1543C_usb::usb_hci_write(u64 address, int dsize, u64 data) {
+  if(dsize != 32)
+    printf("%%USB-W-HCIWRITE: Non dword write, writing 32 bits anyway.\n");
+  switch(address) {
+  case 4: // HcControl
+  case 8: // HcCommandStatus
+  case 0x0c: // HcInterruptStatus
+  case 0x10: // HcInterrupt Enable
+  case 0x14: // HcInterruptDisable
+  case 0x18: // HcHCCA (datasheet says 0x17, but that's wrong)
+  case 0x1c: // HcPeriodCurrentED
+  case 0x20: // HcControlHeadED
+  case 0x24: // HcControlCurrentED
+  case 0x28: // HcBulkHeadED
+  case 0x2c: // HcBulkCurrentED
+  case 0x30: // HcDoneHead
+  case 0x34: // HcFmInterval
+  case 0x38: // HcFrameRemaining
+  case 0x3c: // HcFmNumber
+  case 0x40: // HcPeriodicStart
+  case 0x44: // HcLSThreshold
+  case 0x48: // HcRhDescriptorA
+  case 0x4c: // HcRhDescriptorB
+  case 0x50: // HcRhStatus
+  case 0x54: // HcRhPortStatus1
+  case 0x58: // HcRhPortStatus1
+  case 0x5c: // HcRhPortStatus1
+  case 0x100: // HceControlRegister
+  case 0x104: // HceInputRegister
+  case 0x108: // HceOutputRegister
+  case 0x10c: // HceStatusRegister
+    state.usb_data[address/4]=data;
+    break;
+  default:
+    printf("%%USB-W-HCIWRITE: Writing to unknown address %x.  Ignoring.\n",address);
+  }
 }
 
 static u32 usb_magic1 = 0x9000432B;

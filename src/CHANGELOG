@@ -3,6 +3,7 @@
 
 \section c018 version 0.17 -> 0.17+
 
+ - HCI register space for UISB added. (18-feb-2008, Brian Wheeler)
  - Added vital product data page 0 (Required for Tru64).
    (18-feb-2008, Brian Wheeler)
  - The READ CAPACITY scsi command now properly returns the number of
