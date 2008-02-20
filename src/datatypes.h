@@ -27,7 +27,10 @@
  * \file
  * Contains the datatype definitions for use with Microsoft Visual C++ and Linux.
  *
- * $Id: datatypes.h,v 1.16 2008/02/01 09:41:13 iamcamiel Exp $
+ * $Id: datatypes.h,v 1.17 2008/02/20 19:16:19 iamcamiel Exp $
+ *
+ * X-1.17       Alex                                            20-FEB-2008
+ *      GNU compiler support on Windows.
  *
  * X-1.16       Camiel Vanderhoeven                             01-FEB-2008
  *      Avoid unnecessary shift-operations to calculate constant values.
@@ -85,16 +88,16 @@
 #if !defined(INCLUDED_DATATYPES_H)
 #define INCLUDED_DATATYPES_H
 
-#if defined(_WIN32)
+#if defined(_WIN32) && !defined(__GNUWIN32__)
 
-typedef unsigned __int8     u8;
-typedef unsigned __int16    u16;
-typedef unsigned __int32     u32;
+typedef unsigned __int8   u8;
+typedef unsigned __int16  u16;
+typedef unsigned __int32  u32;
 typedef unsigned __int64  u64;
 
-typedef signed __int8       s8;
-typedef signed __int16      s16;
-typedef signed __int32       s32;
+typedef signed __int8     s8;
+typedef signed __int16    s16;
+typedef signed __int32    s32;
 typedef signed __int64    s64;
 
 #define X64(a) 0x##a##ui64
@@ -108,32 +111,32 @@ typedef signed __int64    s64;
 #include <stdint.h>
 #endif
 
-typedef uint8_t u8;
-typedef uint16_t u16;
-typedef uint32_t u32;
-typedef uint64_t u64;
+typedef uint8_t			  u8;
+typedef uint16_t		  u16;
+typedef uint32_t		  u32;
+typedef uint64_t		  u64;
 
-typedef int8_t s8;
-typedef int16_t s16;
-typedef int32_t s32;
-typedef int64_t s64;
+typedef int8_t			  s8;
+typedef int16_t			  s16;
+typedef int32_t			  s32;
+typedef int64_t			  s64;
 
 #define X64(a) 0x##a##ll
 #define LL "ll"
 
 #endif // defined(_WIN32)
 
-typedef u8 u_int8_t;
+typedef u8  u_int8_t;
 typedef u16 u_int16_t;
 typedef u32 u_int32_t;
 typedef u64 u_int64_t;
 
-typedef u8 uint8_t;
+typedef u8  uint8_t;
 typedef u16 uint16_t;
 typedef u32 uint32_t;
 typedef u64 uint64_t;
 
-typedef s8 int8_t;
+typedef s8  int8_t;
 typedef s16 int16_t;
 typedef s32 int32_t;
 typedef s64 int64_t;
@@ -146,7 +149,6 @@ typedef s64 int64_t;
 #define HAVE_INT32_T 1
 #define HAVE_U_INT64_T 1
 #define HAVE_INT64_T 1
-
 
 #define X32(a) 0x##a
 #define X16(a) 0x##a

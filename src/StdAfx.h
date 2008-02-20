@@ -30,7 +30,10 @@
  * or project specific include files that are used frequently, but
  * are changed infrequently.
  *
- * $Id: StdAfx.h,v 1.25 2008/01/19 17:13:35 iamcamiel Exp $
+ * $Id: StdAfx.h,v 1.26 2008/02/20 19:16:19 iamcamiel Exp $
+ *
+ * X-1.17       Alex                                            20-FEB-2008
+ *      GNU compiler support on Windows.
  *
  * X-1.25       Camiel Vanderhoeven                             19-JAN-2008
  *      Run CPU in a separate thread if CPU_THREADS is defined.
@@ -124,7 +127,20 @@
 
 #include "datatypes.h"
 
-#if defined(_WIN32)
+#if defined(__GNUWIN32__)
+
+#include <glib/gtimer.h>
+
+inline void sleep_ms(int ms)
+{
+   g_usleep(ms*1000);
+}
+
+#elif defined(_WIN32)
+
+#ifndef _WIN32_WINNT
+#   define _WIN32_WINNT 0x400
+#endif
 
 #define WIN32_LEAN_AND_MEAN		// Exclude rarely-used stuff from Windows headers
 #define _CRT_SECURE_NO_DEPRECATE 1
@@ -168,7 +184,7 @@ inline void sleep_ms(int ms)
 #include <time.h>
 #include <ctype.h>
 
-#if (defined(_MSC_VER) && (_MSC_VER < 1400)) || !defined(_WIN32)
+#if (defined(_MSC_VER) && (_MSC_VER < 1400)) || !defined(_WIN32) || defined(__GNUWIN32__)
 inline void gmtime_s(struct tm * t1, time_t * t2)
 {
   struct tm * t3;
