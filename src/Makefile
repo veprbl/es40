@@ -27,10 +27,14 @@
 #
 # Makefile for GNU Linux. (And possibly many UNIX'es).
 #
-# $Id: Makefile,v 1.24 2008/02/16 17:05:07 iamcamiel Exp $
+# $Id: Makefile,v 1.25 2008/02/20 20:23:06 iamcamiel Exp $
+#
+# X-1.25		Brian Wheeler      				20-FEB-2008
+#	This quick patch makes sure that the ld command gets
+#   -g if -g was defined in the CDEBUGFLAGS.
 #
 # X-1.22        Camiel Vanderhoeven             16-FEB-2008
-#      Added Symbios 53C810 controller.
+#   Added Symbios 53C810 controller.
 #
 # X-1.21		Brian Wheeler      				07-FEB-2008
 #	Add DEBUG_BACKTRACE flag.
@@ -164,6 +168,10 @@ ifneq ($(findstring "-DHAVE_PCAP",$(OPTIONS)),"")
 LDOPTIONFLAGS += -lpcap
 endif
 
++ifneq ($(findstring "-g",$(CDEBUGFLAGS)),"")
++LDOPTIONFLAGS += -g
++endif
++
 
 CFLAGS =  -I. -I..  \
 	$(CDEBUGFLAGS) $(CTUNINGFLAGS) $(OPTIONS) $(COPTIONFLAGS)
