@@ -27,7 +27,10 @@
  * \file
  * Contains the code for the emulated Cirrus CL GD-5434 Video Card device.
  *
- * $Id: Cirrus.cpp,v 1.12 2008/02/20 19:53:31 iamcamiel Exp $
+ * $Id: Cirrus.cpp,v 1.13 2008/02/20 22:29:25 iamcamiel Exp $
+ *
+ * X-1.13       David Leonard                                   20-FEB-2008
+ *      Shut down refresh thread when emulator exits.
  *
  * X-1.12       David Leonard                                   20-FEB-2008
  *      Avoid 'Xlib: unexpected async reply' errors on Linux/Unix/BSD's by
@@ -111,6 +114,7 @@ static const u8 ccdat[16][4] = {
      state.vga_tile_updated[(xtile)][(ytile)]                    \
      : 0)
 
+static volatile bool refresh_stopped = false;
 #if defined(_WIN32)
 static HANDLE screen_refresh_handle_cirrus;
 static DWORD WINAPI refresh_proc_cirrus(LPVOID lpParam)
@@ -122,12 +126,23 @@ static DWORD WINAPI refresh_proc_cirrus(LPVOID lpParam)
   CCirrus *c = (CCirrus *) lpParam;
   while(1) {
     bx_gui->lock();
+    if (refresh_stopped) {
+      bx_gui->unlock();
+      break;
+    }
     c->update();
     bx_gui->flush();
     bx_gui->unlock();
     sleep_ms(100); // 10 fps
   }
   return 0;
+}
+
+static void refresh_stop()
+{
+    bx_gui->lock();
+    refresh_stopped = 1;
+    bx_gui->unlock();
 }
 
 static unsigned int rom_max;
@@ -393,11 +408,12 @@ CCirrus::CCirrus(CConfigurator * cfg, CSystem * c, int pcibus, int pcidev): CVGA
     pthread_create(&screen_refresh_handle_cirrus,NULL,refresh_proc_cirrus,this);
 #endif
 
-  printf("%s: $Id: Cirrus.cpp,v 1.12 2008/02/20 19:53:31 iamcamiel Exp $\n",devid_string);
+  printf("%s: $Id: Cirrus.cpp,v 1.13 2008/02/20 22:29:25 iamcamiel Exp $\n",devid_string);
 }
 
 CCirrus::~CCirrus()
 {
+  refresh_stop();
   printf("%%VGA-I-SHUTDOWN: vga console has shut down.\n");
 }
 

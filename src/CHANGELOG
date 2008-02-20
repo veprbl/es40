@@ -3,6 +3,8 @@
 
 \section c018 version 0.17 -> 0.17+
 
+ - Shut down display refresh thread when emulator exits.
+   (20-feb-2008, David Leonard)
  - Return SYSTEM RESOURCE FAILURE sense if dato/dati buffer size
    is exceeded in SCSI operations. (20-feb-2008, David Leonard)
  - Support MSF in READ TOC scsi command. (20-feb-2008, Brian
