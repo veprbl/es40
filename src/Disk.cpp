@@ -27,7 +27,11 @@
  * \file
  * Contains code for the disk base class.
  *
- * $Id: Disk.cpp,v 1.25 2008/02/20 20:17:31 iamcamiel Exp $
+ * $Id: Disk.cpp,v 1.26 2008/02/20 22:19:07 iamcamiel Exp $
+ *
+ * X-1.26       David Leonard                                   20-FEB-2008
+ *      Return SYSTEM RESOURCE FAILURE sense if dato/dati buffer size is
+ *      exceeded.
  *
  * X-1.25       Brian Wheeler                                   20-FEB-2008
  *      Support MSF in READ TOC scsi command.
@@ -562,6 +566,7 @@ void CDisk::scsi_xfer_done_me(int bus)
 #define SCSI_OK                       0
 #define SCSI_ILL_CMD                  -1 /* illegal command */
 #define SCSI_LBA_RANGE                -2 /* LBA out of range */
+#define SCSI_TOO_BIG                  -3 /* Too big for buffer */
 
 void CDisk::do_scsi_error(int errcode)
 {
@@ -617,6 +622,13 @@ void CDisk::do_scsi_error(int errcode)
 	printf("%s: Command returns check sense status (sense: LBA OUT OF RANGE).\n",devid_string);
 #endif
     break;
+  case SCSI_TOO_BIG:
+    state.scsi.sense.data[2] = 0x05; // illegal request
+    state.scsi.sense.data[12] = 0x55; // system resource failure
+    state.scsi.sense.data[13] = 0x00;
+#if defined(DEBUG_SCSI)
+    printf("%s: Command returns check sense status (sense: SYSTEM RESOURCE FAILURE).\n",devid_string);
+#endif
   }
 }
 
@@ -879,6 +891,12 @@ int CDisk::do_scsi_command()
       bool changeable = ((state.scsi.cmd.data[2] & 0xc0) ==0x40);
 
 	  //  Return data:  
+
+      if (retlen > DATI_BUFSZ) {
+         printf("%s: read too big (%d)\n", devid_string, retlen);
+         do_scsi_error(SCSI_TOO_BIG);
+         break;
+      }
 
       state.scsi.dati.available = retlen;	//  Restore size.  
 
@@ -1184,7 +1202,7 @@ int CDisk::do_scsi_command()
 	  if (retlen == 0)
 		retlen = 256;
 	} 
-    else if (state.scsi.cmd.data[0] = SCSICMD_READ_10)
+    else if (state.scsi.cmd.data[0] == SCSICMD_READ_10)
     {
       //  cmd[2..5] hold the logical block address.
 	  //  cmd[7..8] holds the number of logical
@@ -1193,7 +1211,7 @@ int CDisk::do_scsi_command()
              + (state.scsi.cmd.data[4] <<  8) +  state.scsi.cmd.data[5];
       retlen = (state.scsi.cmd.data[7] <<  8) +  state.scsi.cmd.data[8];
 	}
-    else if (state.scsi.cmd.data[0] = SCSICMD_READ_10)
+    else if (state.scsi.cmd.data[0] == SCSICMD_READ_12)
     {
       //  cmd[2..5] hold the logical block address.
 	  //  cmd[6..9] holds the number of logical
@@ -1203,7 +1221,7 @@ int CDisk::do_scsi_command()
       retlen = (state.scsi.cmd.data[6] << 24) + (state.scsi.cmd.data[7] << 16)
              + (state.scsi.cmd.data[8] <<  8) +  state.scsi.cmd.data[9];
     }
-    else if (state.scsi.cmd.data[0] = SCSICMD_READ_CD)
+    else if (state.scsi.cmd.data[0] == SCSICMD_READ_CD)
     {
       if (state.scsi.cmd.data[9] != 0x10)
       {
@@ -1226,7 +1244,12 @@ int CDisk::do_scsi_command()
       break;
     }
 
-    do_scsi_error(SCSI_OK);
+    // Would exceed buffer?
+    if (retlen > DATI_BUFSZ) {
+       printf("%s: read too big (%d)\n", devid_string, retlen);
+       do_scsi_error(SCSI_TOO_BIG);
+       break;
+    }
 
 	//  Return data:  
     seek_block(ofs);
@@ -1236,7 +1259,7 @@ int CDisk::do_scsi_command()
 #if defined(DEBUG_SCSI)
     printf("%s: READ  ofs=%d size=%d\n", devid_string, ofs, retlen);
 #endif
-    //getchar();
+    do_scsi_error(SCSI_OK);
 	break;
 
   case SCSICMD_READ_LONG:
@@ -1277,7 +1300,14 @@ int CDisk::do_scsi_command()
       break;
     }
 
-	//  Return data:  
+    // Would exceed buffer?
+    if (retlen > DATI_BUFSZ) {
+       printf("%s: read too big (%d)\n", devid_string, retlen);
+       do_scsi_error(SCSI_TOO_BIG);
+       break;
+    }
+
+    //  Return data:  
     seek_block(ofs);
     read_blocks(state.scsi.dati.data, 1);
     for (unsigned int x1 = get_block_size(); x1<retlen; x1++)
@@ -1322,6 +1352,13 @@ int CDisk::do_scsi_command()
     {
       do_scsi_error(SCSI_LBA_RANGE);
       break;
+    }
+
+    // Would exceed buffer?
+    if (retlen*get_block_size() > DATO_BUFSZ) {
+       printf("%s: write too big (%d)\n", devid_string, retlen*get_block_size());
+       do_scsi_error(SCSI_TOO_BIG);
+       break;
     }
 
     state.scsi.dato.expected = retlen * get_block_size();

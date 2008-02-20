@@ -27,7 +27,11 @@
  * \file
  * Contains definitions for the disk base class.
  *
- * $Id: Disk.h,v 1.13 2008/02/17 15:42:39 iamcamiel Exp $
+ * $Id: Disk.h,v 1.14 2008/02/20 22:19:07 iamcamiel Exp $
+ *
+ * X-1.14       David Leonard                                   20-FEB-2008
+ *      Return SYSTEM RESOURCE FAILURE sense if dato/dati buffer size is
+ *      exceeded.
  *
  * X-1.13       Camiel Vanderhoeven                             17-FEB-2008
  *      Set up sense data when error occurs.
@@ -76,6 +80,9 @@
 #include "DiskController.h"
 #include "SCSIDevice.h"
 #include "SCSIBus.h"
+
+#define DATO_BUFSZ     256*1024
+#define DATI_BUFSZ     256*1024
 
 /**
  * \brief Abstract base class for disks (connects to a CDiskController)
@@ -182,14 +189,14 @@ protected:
 
       /// State for Data In phase (disk -> controller)
       struct SDisk_dati {
-        u8 data[64*1024];         /**< Data buffer. **/
+        u8 data[DATI_BUFSZ];         /**< Data buffer. **/
         unsigned int available;   /**< Number of bytes available to read. **/
         unsigned int read;        /**< Number of bytes read so far. **/
       } dati;
 
       /// State for Data Out phase (controller -> disk)
       struct SDisk_dato {
-        u8 data[64*1024];         /**< Data buffer. **/
+        u8 data[DATO_BUFSZ];         /**< Data buffer. **/
         unsigned int expected;    /**< Number of bytes the initiator is expected to write. **/
         unsigned int written;     /**< Number of bytes written sofar. **/
       } dato;
