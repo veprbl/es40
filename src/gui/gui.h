@@ -34,7 +34,11 @@
  * Contains the definitions for the bx_gui_c base class used for interfacing with
  * SDL and other device interfaces.
  *
- * $Id: gui.h,v 1.5 2008/01/20 16:15:07 iamcamiel Exp $
+ * $Id: gui.h,v 1.6 2008/02/20 22:24:36 iamcamiel Exp $
+ *
+ * X-1.6        David Leonard                                   20-FEB-2008
+ *      Avoid 'Xlib: unexpected async reply' errors on Linux/Unix/BSD's by
+ *      adding some thread interlocking.
  *
  * X-1.5        Camiel Vanderhoeven                             20-JAN-2008
  *      Avoid compiler warnings.
@@ -122,6 +126,9 @@ public:
   void cleanup(void);
   static void mouse_enabled_changed(bool val);
   static void init_signal_handlers();
+
+  void lock();
+  void unlock();
 
 protected:
   static s32 make_text_snapshot (char **snapshot, u32 *length);

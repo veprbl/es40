@@ -34,7 +34,11 @@
  * Contains code for the bx_gui_c base class used for interfacing with
  * SDL and other device interfaces.
  *
- * $Id: gui.cpp,v 1.4 2008/01/02 09:35:57 iamcamiel Exp $
+ * $Id: gui.cpp,v 1.5 2008/02/20 22:24:36 iamcamiel Exp $
+ *
+ * X-1.4        David Leonard                                   20-FEB-2008
+ *      Avoid 'Xlib: unexpected async reply' errors on Linux/Unix/BSD's by
+ *      adding some thread interlocking.
  *
  * X-1.3        Camiel Vanderhoeven                             02-JAN-2008
  *      Comments.
@@ -305,3 +309,22 @@ void bx_gui_c::graphics_tile_update_in_place(unsigned x0, unsigned y0,
     }
   }
 }
+
+
+#if defined(_WIN32) || defined(__VMS)
+void bx_gui_c::lock() {}
+void bx_gui_c::unlock() {}
+#else
+#include <pthread.h>
+static pthread_mutex_t bx_gui_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+void bx_gui_c::lock()
+{
+    pthread_mutex_lock(&bx_gui_mutex);
+}
+
+void bx_gui_c::unlock()
+{
+    pthread_mutex_unlock(&bx_gui_mutex);
+}
+#endif
