@@ -27,7 +27,7 @@
 #
 # Makefile for GNU Linux. (And possibly many UNIX'es).
 #
-# $Id: Makefile,v 1.25 2008/02/20 20:23:06 iamcamiel Exp $
+# $Id: Makefile,v 1.26 2008/02/20 21:02:50 iamcamiel Exp $
 #
 # X-1.25		Brian Wheeler      				20-FEB-2008
 #	This quick patch makes sure that the ld command gets
@@ -168,10 +168,9 @@ ifneq ($(findstring "-DHAVE_PCAP",$(OPTIONS)),"")
 LDOPTIONFLAGS += -lpcap
 endif
 
-+ifneq ($(findstring "-g",$(CDEBUGFLAGS)),"")
-+LDOPTIONFLAGS += -g
-+endif
-+
+ifneq ($(findstring "-g",$(CDEBUGFLAGS)),"")
+LDOPTIONFLAGS += -g
+endif
 
 CFLAGS =  -I. -I..  \
 	$(CDEBUGFLAGS) $(CTUNINGFLAGS) $(OPTIONS) $(COPTIONFLAGS)
