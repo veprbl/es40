@@ -27,7 +27,10 @@
  * \file
  * Contains code for the disk base class.
  *
- * $Id: Disk.cpp,v 1.24 2008/02/18 14:52:10 iamcamiel Exp $
+ * $Id: Disk.cpp,v 1.25 2008/02/20 20:17:31 iamcamiel Exp $
+ *
+ * X-1.25       Brian Wheeler                                   20-FEB-2008
+ *      Support MSF in READ TOC scsi command.
  *
  * X-1.24       Brian Wheeler                                   18-FEB-2008
  *      Added vital product data page 0 (Required for Tru64).
@@ -615,6 +618,42 @@ void CDisk::do_scsi_error(int errcode)
 #endif
     break;
   }
+}
+
+/**
+ * Basic algorithm taken from libcdio for converting lba to msf
+ **/
+
+static u32 lba2msf(off_t_large lba) 
+{
+#define PREGAP_SECTORS 150
+#define CD_FRAMES_PER_SEC 75
+#define CD_MAX_LSN 450150
+
+#define bin2bcd(x) ((x / 10) << 4) | (x % 10)
+
+  int m,s,f;
+
+  lba -= PREGAP_SECTORS;
+  if(lba >= -PREGAP_SECTORS) {
+    m = (lba + PREGAP_SECTORS) / (CD_FRAMES_PER_SEC * 60);
+    lba -= m * (CD_FRAMES_PER_SEC * 60);
+    s = (lba + PREGAP_SECTORS) / CD_FRAMES_PER_SEC;
+    lba -= s * CD_FRAMES_PER_SEC;
+    f = lba + PREGAP_SECTORS;
+  } else {
+    m = (lba + CD_MAX_LSN) / (CD_FRAMES_PER_SEC * 60);
+    lba -= m * (CD_FRAMES_PER_SEC * 60);
+    s = (lba + CD_MAX_LSN) / CD_FRAMES_PER_SEC;
+    lba -= s * CD_FRAMES_PER_SEC;
+    f = lba + CD_MAX_LSN;
+  }
+
+  if(m > 99) m=99;
+
+  //printf("m=%d, s=%d, f=%d == m=%x, s=%x, f=%x\n", m,s,f,bin2bcd(m),bin2bcd(s),bin2bcd(f));
+
+  return bin2bcd(m)<<16 | bin2bcd(s)<<8 | bin2bcd(f);
 }
 
 /**
@@ -1312,12 +1351,6 @@ int CDisk::do_scsi_command()
 #if defined(DEBUG_SCSI)
       printf("%s: CDROM READ TOC.\n", devid_string);
 #endif
-      if (state.scsi.cmd.data[1]&0x02)
-      {
-        printf("%s: I don't understand READ TOC/PMA/ATIP with MSF bit set.\n",devid_string);
-        FAILURE("SCSI Command Failed");
-      }
-
       if (state.scsi.cmd.data[2]&0x0f)
       {
         printf("%s: I don't understand READ TOC/PMA/ATIP with format %01x.\n",devid_string,state.scsi.cmd.data[2] & 0x0f);
@@ -1355,20 +1388,42 @@ int CDisk::do_scsi_command()
         state.scsi.dati.data[q++] = 0x14; // adr/control (Q-channel: current position, data track, no copy)
         state.scsi.dati.data[q++] = 1; // track number
         state.scsi.dati.data[q++] = 0; // reserved
-        state.scsi.dati.data[q++] = 0>>24; //lba
-        state.scsi.dati.data[q++] = 0>>16;
-        state.scsi.dati.data[q++] = 0>>8;
-        state.scsi.dati.data[q++] = 0;
-      }
+       if(state.scsi.cmd.data[1]&0x02)
+       {
+         u32 x = lba2msf(0);
+         state.scsi.dati.data[q++]=0;
+         state.scsi.dati.data[q++]=(x & 0xff0000) >> 16;
+         state.scsi.dati.data[q++]=(x & 0xff00) >> 8;
+         state.scsi.dati.data[q++]=x & 0xff;
+       }
+       else
+       {
+         state.scsi.dati.data[q++] = 0>>24; //lba
+         state.scsi.dati.data[q++] = 0>>16;
+         state.scsi.dati.data[q++] = 0>>8;
+         state.scsi.dati.data[q++] = 0;
+       }
+     }
       state.scsi.dati.data[q++] = 0; // reserved
       state.scsi.dati.data[q++] = 0x16; // adr/control (Q-channel: current position, data track, copy)
       state.scsi.dati.data[q++] = 0xAA; // track number
       state.scsi.dati.data[q++] = 0; // reserved
-      state.scsi.dati.data[q++] = (u8)(get_lba_size()>>24); //lba
-      state.scsi.dati.data[q++] = (u8)(get_lba_size()>>16);
-      state.scsi.dati.data[q++] = (u8)(get_lba_size()>>8);
-      state.scsi.dati.data[q++] = (u8)get_lba_size();
-
+      if(state.scsi.cmd.data[1]&0x02)
+      {
+        u32 x = lba2msf(get_lba_size());
+        state.scsi.dati.data[q++]=0;
+        state.scsi.dati.data[q++]=(x & 0xff0000) >> 16;
+        state.scsi.dati.data[q++]=(x & 0xff00) >> 8;
+        state.scsi.dati.data[q++]=x & 0xff;
+      }
+      else
+      {
+        state.scsi.dati.data[q++] = (u8)(get_lba_size()>>24); //lba
+        state.scsi.dati.data[q++] = (u8)(get_lba_size()>>16);
+        state.scsi.dati.data[q++] = (u8)(get_lba_size()>>8);
+        state.scsi.dati.data[q++] = (u8)get_lba_size();
+      }
+  
       state.scsi.dati.data[0] = (u8)(q>>8);
       state.scsi.dati.data[1] = (u8)q;
       

@@ -3,6 +3,8 @@
 
 \section c018 version 0.17 -> 0.17+
 
+ - Support MSF in READ TOC scsi command. (20-feb-2008, Brian
+   Wheeler)
  - Show disk creation progress. (20-feb-2008, David Leonard)
  - Avoid 'Xlib: unexpected async reply' errors on Linux/Unix/BSD's
    by adding some thread interlocking. (20-feb-2008, David Leonard)
