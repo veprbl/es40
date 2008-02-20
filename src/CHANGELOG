@@ -3,6 +3,7 @@
 
 \section c018 version 0.17 -> 0.17+
 
+ - Show disk creation progress. (20-feb-2008, David Leonard)
  - Avoid 'Xlib: unexpected async reply' errors on Linux/Unix/BSD's
    by adding some thread interlocking. (20-feb-2008, David Leonard)
  - GNU compiler support on Windows. (20-feb-2008, Alex)

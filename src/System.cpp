@@ -27,7 +27,10 @@
  * \file 
  * Contains the code for the emulated Typhoon Chipset devices.
  *
- * $Id: System.cpp,v 1.62 2008/02/08 20:08:13 iamcamiel Exp $
+ * $Id: System.cpp,v 1.63 2008/02/20 20:05:46 iamcamiel Exp $
+ *
+ * X-1.62       David Leonard                                   20-FEB-2008
+ *      Flush stdout during decompression progress.
  *
  * X-1.61       Camiel Vanderhoeven                             08-FEB-2008
  *      Show originating device name on memory errors.
@@ -324,7 +327,7 @@ CSystem::CSystem(CConfigurator * cfg)
 
   CHECK_ALLOCATION(memory = calloc(1<<iNumMemoryBits,1));
 
-  printf("%s(%s): $Id: System.cpp,v 1.62 2008/02/08 20:08:13 iamcamiel Exp $\n",cfg->get_myName(),cfg->get_myValue());
+  printf("%s(%s): $Id: System.cpp,v 1.63 2008/02/20 20:05:46 iamcamiel Exp $\n",cfg->get_myName(),cfg->get_myValue());
 }
 
 /**
@@ -1692,6 +1695,7 @@ int CSystem::LoadROM()
         printf("%d%%",j*2);
       else
         printf(".");
+      fflush(stdout);
     }
     printf("100%%\n");
     acCPUs[0]->restore_icache();

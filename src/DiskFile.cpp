@@ -27,7 +27,10 @@
  * \file
  * Contains code to use a file as a disk image.
  *
- * $Id: DiskFile.cpp,v 1.15 2008/01/25 11:56:42 iamcamiel Exp $
+ * $Id: DiskFile.cpp,v 1.16 2008/02/20 20:05:46 iamcamiel Exp $
+ *
+ * X-1.16       David Leonard                                   20-FEB-2008
+ *      Show disk creation progress.
  *
  * X-1.15       Camiel Vanderhoeven                             25-JAN-2008
  *      Create file if it doesn't exist and autocreate_size is specified.
@@ -103,8 +106,18 @@ CDiskFile::CDiskFile(CConfigurator * cfg, CSystem * sys, CDiskController * c, in
     if (!handle)
       FAILURE("File does not exist and could not be created");
     crt_buf = calloc(1024,1024);
-    for (int a = 0; a<sz; a++)
+    printf("%s: writing %d 1kB blocks:   0%%\b\b\b\b", devid_string, sz);
+    int lastpc = 0;
+    for (int a = 0; a<sz; a++) {
       fwrite(crt_buf,1024,1024,handle);
+      int pc = a * 100 / sz;
+      if (pc != lastpc) {
+ 	    printf("%3d\b\b\b", pc);
+	    lastpc = pc;
+      }
+      fflush(stdout);
+    }
+    printf("100%%\n");
     fclose(handle);
     free(crt_buf);
     if (read_only)
