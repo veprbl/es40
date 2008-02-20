@@ -27,7 +27,11 @@
  * \file
  * Contains the code for the emulated Keyboard and mouse devices and controller.
  *
- * $Id: Keyboard.cpp,v 1.1 2008/02/12 11:07:09 iamcamiel Exp $
+ * $Id: Keyboard.cpp,v 1.2 2008/02/20 19:53:31 iamcamiel Exp $
+ *
+ * X-1.2        David Leonard                                   20-FEB-2008
+ *      Avoid 'Xlib: unexpected async reply' errors on Linux/Unix/BSD's by
+ *      adding some thread interlocking.
  *
  * X-1.1        Camiel Vanderhoeven                             12-FEB-2008
  *      Created. Contains code previously found in AliM1543C.cpp
@@ -115,7 +119,7 @@ CKeyboard::CKeyboard(CConfigurator * cfg, CSystem * c) : CSystemComponent(cfg,c)
   state.kbd_controller_Qsource = 0;
 
 
-  printf("kbc: $Id: Keyboard.cpp,v 1.1 2008/02/12 11:07:09 iamcamiel Exp $\n");
+  printf("kbc: $Id: Keyboard.cpp,v 1.2 2008/02/20 19:53:31 iamcamiel Exp $\n");
 }
 
 /**
@@ -1670,7 +1674,11 @@ int CKeyboard::DoClock()
   unsigned retval;
 
   if (bx_gui)
+  {
+    bx_gui->lock();
     bx_gui->handle_events();
+    bx_gui->unlock();
+  }
 
   retval=periodic();
 

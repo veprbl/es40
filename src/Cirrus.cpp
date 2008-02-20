@@ -27,7 +27,11 @@
  * \file
  * Contains the code for the emulated Cirrus CL GD-5434 Video Card device.
  *
- * $Id: Cirrus.cpp,v 1.11 2008/01/03 17:30:26 iamcamiel Exp $
+ * $Id: Cirrus.cpp,v 1.12 2008/02/20 19:53:31 iamcamiel Exp $
+ *
+ * X-1.12       David Leonard                                   20-FEB-2008
+ *      Avoid 'Xlib: unexpected async reply' errors on Linux/Unix/BSD's by
+ *      adding some thread interlocking.
  *
  * X-1.11       Camiel Vanderhoeven                             03-JAN-2008
  *      Attempt to get this working for big-endian host architectures.
@@ -117,10 +121,10 @@ static DWORD WINAPI refresh_proc_cirrus(LPVOID lpParam)
 {
   CCirrus *c = (CCirrus *) lpParam;
   while(1) {
-    //c->screenrefresh();
-//    bx_gui->handle_events();
+    bx_gui->lock();
     c->update();
     bx_gui->flush();
+    bx_gui->unlock();
     sleep_ms(100); // 10 fps
   }
   return 0;
@@ -389,7 +393,7 @@ CCirrus::CCirrus(CConfigurator * cfg, CSystem * c, int pcibus, int pcidev): CVGA
     pthread_create(&screen_refresh_handle_cirrus,NULL,refresh_proc_cirrus,this);
 #endif
 
-  printf("%s: $Id: Cirrus.cpp,v 1.11 2008/01/03 17:30:26 iamcamiel Exp $\n",devid_string);
+  printf("%s: $Id: Cirrus.cpp,v 1.12 2008/02/20 19:53:31 iamcamiel Exp $\n",devid_string);
 }
 
 CCirrus::~CCirrus()
@@ -673,11 +677,14 @@ u32 CCirrus::io_read(u32 address, int dsize)
 
   switch(address) {
     case 0x3c0:
-        data = read_b_3c0();
-        break;
+      data = read_b_3c0();
+      break;
     case 0x3c1:
-        data = read_b_3c1();
-        break;
+      data = read_b_3c1();
+      break;
+    case 0x3c2:
+      data = read_b_3c2();
+      break;
     case 0x3c3:
       data = read_b_3c3();
       break;
@@ -690,69 +697,31 @@ u32 CCirrus::io_read(u32 address, int dsize)
     case 0x3c9:
       data = read_b_3c9();
       break;
-   case 0x3cc:
-        data = read_b_3cc();
-        break;
-   case 0x3cf:
-        data = read_b_3cf();
-        break;
+    case 0x3ca:
+      data = read_b_3ca();
+      break;
+    case 0x3cc:
+      data = read_b_3cc();
+      break;
+    case 0x3cf:
+      data = read_b_3cf();
+      break;
     case 0x3b4:
     case 0x3d4:
-        data = read_b_3d4();
-        break;
+      data = read_b_3d4();
+      break;
     case 0x3b5:
     case 0x3d5:
-        data = read_b_3d5();
-        break;
+      data = read_b_3d5();
+      break;
     case 0x3ba:
     case 0x3da:
-        data = read_b_3da();
-        break;
+      data = read_b_3da();
+      break;
 
-  //case 0x3d5:
-  //  switch(state.crtc_index) {
-  //    /* registers that are just mirrors of the data. */
-  //  case 0x0a: // cursor start line
-  //  case 0x0b: // cursor end line
-  //  case 0x38: // CR38 Register Lock 1
-  //  case 0x39: // CR39 Register Lock 2
-  //  case 0x46: 
-  //  case 0x54: // Extended Memory Control 2 Register
-  //  case 0x56: // External Sync Control 1 Register 
-  //  case 0x57:
-  //    data = state.crtc_data[state.crtc_index];
-  //    break;
-
-  //    /* constant or special registers */
-  //  case 0x2e: //Extended Chip ID
-  //    data = 0x11; // trio 64.
-  //    break;
-  //  case 0x2f: // Revision 
-  //    data = 0x00;
-  //    break;
-  //  case 0x36: // CR36 Reset State Read 1
-  //    // 000 1 10 10
-  //    // ^   ^ ^  ^- PCI
-  //    // |   | +---- Memory page mode select. EDO
-  //    // |   +------ Display memory dedicated
-  //    // +---------- Memory size.  4M
-  //    data = 0x1A;
-  //    break;
-
-  //    /* catchall */
-  //  default:
-  //    printf("%%VGA-I-CRTC: read unknown crtc index: %x\n",state.crtc_index);
-  //  }
-  //  break;
-  //case 0x3da: // input status #1 register
-  //  // this tells if there's a retrace in progress.  Nope!
-  //  data = 0x00;
-  //  // also resets the 3c0 mode.
-  //  state.reg_3c0_mode = 0;
-  //  break;
-  default:
-    printf("%%VGA-W-PORT: Unhandled port %x read\n",address);
-    throw((int)1);
+    default:
+      printf("%%VGA-W-PORT: Unhandled port %x read\n",address);
+      throw((int)1);
   }
 
   //printf("S3 io read: %" LL "x, %d, %" LL "x   \n", address+VGA_BASE, dsize, data);
@@ -843,7 +812,9 @@ void CCirrus::write_b_3c0(u8 value)
 #endif
          if (state.attribute_ctrl.video_enabled == 0)
          {
+           bx_gui->lock();
            bx_gui->clear_screen();
+           bx_gui->unlock();
          }
          else if (!prev_video_enabled) {
 #if defined(DEBUG_VGA)
@@ -895,7 +866,9 @@ void CCirrus::write_b_3c0(u8 value)
              state.attribute_ctrl.mode_ctrl.internal_palette_size =
                (value >> 7) & 0x01;
              if (((value >> 2) & 0x01) != prev_line_graphics) {
+               bx_gui->lock();
                bx_gui->set_text_charmap( & state.memory[0x20000 + state.charmap_address]);
+               bx_gui->unlock();
                state.vga_mem_updated = 1;
              }
              if (((value >> 7) & 0x01) != prev_int_pal_size) {
@@ -985,7 +958,9 @@ void CCirrus::write_b_3c5(u8 value)
            {
              state.sequencer.char_map_select = 0;
              state.charmap_address = 0;
+             bx_gui->lock();
              bx_gui->set_text_charmap(& state.memory[0x20000 + state.charmap_address]);
+             bx_gui->unlock();
              state.vga_mem_updated = 1;
            }
           state.sequencer.reset1 = (value >> 0) & 0x01;
@@ -1011,7 +986,9 @@ void CCirrus::write_b_3c5(u8 value)
            if (charmap2 > 3) charmap2 = (charmap2 & 3) + 4;
            if (state.CRTC.reg[0x09] > 0) {
              state.charmap_address = (charmap1 << 13);
+             bx_gui->lock();
              bx_gui->set_text_charmap(& state.memory[0x20000 + state.charmap_address]);
+             bx_gui->unlock();
              state.vga_mem_updated = 1;
              }
            if (charmap2 != charmap1)
@@ -1074,12 +1051,17 @@ void CCirrus::write_b_3c9(u8 value)
            state.pel.data[state.pel.write_data_register].green = value;
            break;
          case 2:
-           state.pel.data[state.pel.write_data_register].blue = value;
-           if (bx_gui->palette_change(state.pel.write_data_register,
-             state.pel.data[state.pel.write_data_register].red<<2,
-             state.pel.data[state.pel.write_data_register].green<<2,
-             state.pel.data[state.pel.write_data_register].blue<<2))
-             redraw_area(0, 0, old_iWidth, old_iHeight);
+           {
+             state.pel.data[state.pel.write_data_register].blue = value;
+             bx_gui->lock();
+             bool changed = bx_gui->palette_change(state.pel.write_data_register,
+               state.pel.data[state.pel.write_data_register].red<<2,
+               state.pel.data[state.pel.write_data_register].green<<2,
+               state.pel.data[state.pel.write_data_register].blue<<2);
+             bx_gui->unlock();
+             if (changed)
+               redraw_area(0, 0, old_iWidth, old_iHeight);
+           }
            break;
          }
  
@@ -1331,10 +1313,14 @@ u8 CCirrus::read_b_3c1()
          }
 }
 
+u8 CCirrus::read_b_3c2()
+{
+    return 0; // input status register
+}
+
 u8 CCirrus::read_b_3c3()
 {
       return state.vga_enabled;
-
 }
 
 u8 CCirrus::read_b_3c4()
@@ -1405,6 +1391,12 @@ u8 CCirrus::read_b_3c9()
       }
       return retval;
 
+}
+
+u8 CCirrus::read_b_3ca()
+{
+    /* Feature control */
+    return 0;
 }
 
 u8 CCirrus::read_b_3cc()
@@ -1630,6 +1622,7 @@ void CCirrus::update(void)
     pitch = state.line_offset;
     u8 *disp_ptr = &state.memory[state.vbe_virtual_start]; 
 
+    // Assumes the caller has called bx_gui->acquire()
     if (bx_gui->graphics_tile_info(&info)) {
       if (info.is_indexed) {
         switch (state.vbe_bpp) {
@@ -2769,7 +2762,9 @@ void CCirrus::vga_mem_write(u32 addr, u8 value)
     if (state.sequencer.map_mask & 0x04) {
       if ((offset & 0xe000) == state.charmap_address) {
         //printf("Updating character map %04x with %02x...\n  ", (offset & 0x1fff), new_val[2]);
+        bx_gui->lock();
         bx_gui->set_text_charbyte((u16)(offset & 0x1fff), new_val[2]);
+        bx_gui->unlock();
       }
       plane2[offset] = new_val[2];
     }
