@@ -27,7 +27,11 @@
  * \file 
  * Contains the code for the emulated Typhoon Chipset devices.
  *
- * $Id: System.cpp,v 1.63 2008/02/20 20:05:46 iamcamiel Exp $
+ * $Id: System.cpp,v 1.64 2008/02/26 15:43:47 iamcamiel Exp $
+ *
+ * X-1.63       Brian Wheeler                                   26-FEB-2008
+ *      Support reading from Pchip TLBIV and TLBIA registers. (Which are
+ *      supposed to be write-only!)
  *
  * X-1.62       David Leonard                                   20-FEB-2008
  *      Flush stdout during decompression progress.
@@ -327,7 +331,7 @@ CSystem::CSystem(CConfigurator * cfg)
 
   CHECK_ALLOCATION(memory = calloc(1<<iNumMemoryBits,1));
 
-  printf("%s(%s): $Id: System.cpp,v 1.63 2008/02/20 20:05:46 iamcamiel Exp $\n",cfg->get_myName(),cfg->get_myValue());
+  printf("%s(%s): $Id: System.cpp,v 1.64 2008/02/26 15:43:47 iamcamiel Exp $\n",cfg->get_myName(),cfg->get_myValue());
 }
 
 /**
@@ -694,7 +698,33 @@ void CSystem::WriteMem(u64 address, int dsize, u64 data,CSystemComponent * sourc
 	  }
     }
 
-    if (a>=X64(00000801A0000000) && a<=X64(00000801AFFFFFFF))
+    if ((a==X64(00000801FC000CF8)) && (dsize==32))
+    {
+      state.cf8_address[0] = (u32)data & 0x00ffffff;
+      return;
+    }
+    if ((a==X64(00000803FC000CF8)) && (dsize==32))
+    {
+      state.cf8_address[1] = (u32)data & 0x00ffffff;
+      return;
+    }
+    if ((a==X64(00000801FC000CFC)) && (dsize==32))
+    {
+      printf("PCI 0 config space write through CF8/CFC mechanism.   \n");
+      getc(stdin);
+      WriteMem(X64(00000801FE000000) | state.cf8_address[0], dsize, data, source);
+      return;
+    }
+    if ((a==X64(00000803FC000CFC)) && (dsize==32))
+    {
+      printf("PCI 1 config space write through CF8/CFC mechanism.   \n");
+      getc(stdin);
+      WriteMem(X64(00000803FE000000) | state.cf8_address[1], dsize, data, source);
+      return;
+    }
+
+
+    if  (a>=X64(00000801A0000000) && a<=X64(00000801AFFFFFFF))
     {
       cchip_csr_write((u32)a&0xFFFFFFF,data);
       return;
@@ -889,6 +919,19 @@ u64 CSystem::ReadMem(u64 address, int dsize, CSystemComponent * source)
 	      && (a < asMemories[i]->base + asMemories[i]->length) )
 	    return asMemories[i]->component->ReadMem(asMemories[i]->index, a-asMemories[i]->base, dsize);
 	}
+
+    if ((a==X64(00000801FC000CFC)) && (dsize==32))
+    {
+      printf("PCI 0 config space read through CF8/CFC mechanism.   \n");
+      getc(stdin);
+      return ReadMem(X64(00000801FE000000) | state.cf8_address[0], dsize, source);
+    }
+    if ((a==X64(00000803FC000CFC)) && (dsize==32))
+    {
+      printf("PCI 1 config space read through CF8/CFC mechanism.   \n");
+      getc(stdin);
+      return ReadMem(X64(00000803FE000000) | state.cf8_address[1], dsize, source);
+    }
 
     if (a>=X64(00000801A0000000) && a<=X64(00000801AFFFFFFF))
       return cchip_csr_read((u32)a&0xFFFFFFF);
@@ -1386,6 +1429,9 @@ u64 CSystem::pchip_csr_read(int num, u32 a)
     return state.pchip[num].perr;
   case 0x400:
     return state.pchip[num].perrmask;
+  case 0x480: // TLBIV
+  case 0x4c0: // TLBIA
+    return 0;
   case 0x800: // PCI reset
     return 0;
   default:

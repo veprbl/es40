@@ -27,7 +27,10 @@
  * \file
  * Contains the code for the emulated DMA controller.
  *
- * $Id: DMA.cpp,v 1.1 2008/02/26 11:22:15 iamcamiel Exp $
+ * $Id: DMA.cpp,v 1.2 2008/02/26 15:43:47 iamcamiel Exp $
+ *
+ * X-1.2        Brian Wheeler                                   26-FEB-2008
+ *      Debugging statements conditionalized.
  *
  * X-1.1        Camiel Vanderhoeven                             26-FEB-2008
  *      Created. Contains code previously found in AliM1543C.cpp
@@ -60,7 +63,7 @@ CDMA::CDMA(CConfigurator * cfg, CSystem * c) : CSystemComponent(cfg,c)
 
   c->RegisterClock(this, true);
 
-  printf("dma: $Id: DMA.cpp,v 1.1 2008/02/26 11:22:15 iamcamiel Exp $\n");
+  printf("dma: $Id: DMA.cpp,v 1.2 2008/02/26 15:43:47 iamcamiel Exp $\n");
 }
 
 /**
@@ -141,7 +144,9 @@ u64 CDMA::ReadMem(int index, u64 address, int dsize)
     default:
       FAILURE("dma: ReadMem index out of range");
     }
+#if defined(DEBUG_DMA)
     printf("dma: read %d,%02x: %02x.   \n",index,address,data);
+#endif
     return data;
   }
 }
@@ -164,7 +169,9 @@ void CDMA::WriteMem(int index, u64 address, int dsize, u64 data)
   case 8:
     if (index==1)
       address >>= 1;
+#if defined(DEBUG_DMA)
     printf("dma: write %d,%02x: %02x.   \n",index,address,data);
+#endif
     switch (index) {
     case 0:
     case 1:
@@ -198,24 +205,24 @@ void CDMA::WriteMem(int index, u64 address, int dsize, u64 data)
         }
         break;
 
-      //case 0x08: // command register (2)
-      //  /*
-      //  Bit(s)  Description     (Table P0002)
-      //  7      DACK sense active high
-      //  6      DREQ sense active high
-      //  5      =1 extended write selection
-      //    =0 late write selection
-      //  4      rotating priority instead of fixed priority
-      //  3      compressed timing (two clocks instead of four per transfer)
-      //    =1 normal timing (default)
-      //    =0 compressed timing
-      //  2      =1 enable controller
-      //    =0 enable memory-to-memory
-      //  1-0    channel number
-      //   */
-      //  /* we'll actually do the DMA here. */
-
-      //  break;
+      case 0x08: // command register (2)
+        /*
+        Bit(s)  Description     (Table P0002)
+        7      DACK sense active high
+        6      DREQ sense active high
+        5      =1 extended write selection
+          =0 late write selection
+        4      rotating priority instead of fixed priority
+        3      compressed timing (two clocks instead of four per transfer)
+          =1 normal timing (default)
+          =0 compressed timing
+        2      =1 enable controller
+          =0 enable memory-to-memory
+        1-0    channel number
+         */
+        /* we'll actually do the DMA here. */
+  	    state.controller[index].command=data;
+        break;
 
       case 0x09: // write request register (3)
         /*
@@ -248,26 +255,25 @@ void CDMA::WriteMem(int index, u64 address, int dsize, u64 data)
         break;
 
       case 0x0b: // mode register (5)
-        /*
-  Bit(s)  Description     (Table P0005)
-   7-6    transfer mode
-          00 demand mode
-          01 single mode
-          10 block mode
-          11 cascade mode
-   5      direction
-          =0 increment address after each transfer
-          =1 decrement address
-   3-2    operation
-          00 verify operation
-          01 write to memory
-          10 read from memory
-          11 reserved
-   1-0    channel number
-          00 channel 0 select
-          01 channel 1 select
-          10 channel 2 select
-          11 channel 3 select
+        /*  Bit(s)  Description     (Table P0005)
+             7-6    transfer mode
+                    00 demand mode
+                    01 single mode
+                    10 block mode
+                    11 cascade mode
+             5      direction
+                    =0 increment address after each transfer
+                    =1 decrement address
+             3-2    operation
+                    00 verify operation
+                    01 write to memory
+                    10 read from memory
+                    11 reserved
+             1-0    channel number
+                    00 channel 0 select
+                    01 channel 1 select
+                    10 channel 2 select
+                    11 channel 3 select
          */
         state.controller[index].mode=data;
         break;
@@ -280,25 +286,33 @@ void CDMA::WriteMem(int index, u64 address, int dsize, u64 data)
         }
         break;
 
-      //case 0x0d: // dma channel master clear register
-      //  printf("DMA-I-RESET: DMA %d reset.",index);
-      //  break;
+      case 0x0d: // dma channel master clear register
+#if defined(DEBUG_DMA)
+        printf("DMA-I-RESET: DMA %d reset.",index);
+#endif
+	    state.controller[index].status=0;
+	    state.controller[index].command=0;
+	    state.controller[index].writereq=0;
+	    state.controller[index].mode=0;
+	    state.controller[index].mask=0x0f;
+        break;
 
-  //    case 0x0e: // clear mask register
-  //      break;
+      case 0x0e: // clear mask register
+        state.controller[index].mask=0x00;
+        break;
 
-  //    case 0x0f: // write mask register (6)
-  //      /*      
-  //Bit(s)  Description     (Table P0006)
-  // 7-4    reserved
-  // 3      channel 3 mask bit
-  // 2      channel 2 mask bit
-  // 1      channel 1 mask bit
-  // 0      channel 0 mask bit
-  //Note:   each mask bit is automatically set when the corresponding channel
-  //          reaches terminal count or an extenal EOP sigmal is received
-  //      */
-  //      break;
+      case 0x0f: // write mask register (6)
+        /* Bit(s)  Description     (Table P0006)
+           7-4    reserved
+           3      channel 3 mask bit
+           2      channel 2 mask bit
+           1      channel 1 mask bit
+           0      channel 0 mask bit
+           Note:   each mask bit is automatically set when the corresponding channel
+                   reaches terminal count or an extenal EOP sigmal is received
+        */
+    	state.controller[index].mask=data;
+        break;
 
       default:
         FAILURE("dma: don't know what to do.\n");
