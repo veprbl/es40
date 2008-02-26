@@ -27,7 +27,7 @@
 #
 # Makefile for GNU Linux. (And possibly many UNIX'es).
 #
-# $Id: Makefile,v 1.28 2008/02/26 12:17:47 iamcamiel Exp $
+# $Id: Makefile,v 1.29 2008/02/26 15:39:28 iamcamiel Exp $
 #
 # X-1.28       Brian Wheeler                    26-FEB-2008
 #      adds the -rdynamic LD flag if DEBUG_BACKTRACE is
@@ -144,6 +144,7 @@ CTUNINGFLAGS = -O3 -mtune=generic
 #   -DDEBUG_LPT         Turn on debugging for LPT Port
 #   -DDEBUG_USB         Turn on debugging for USB controller
 #   -DDEBUG_SYM         Turn on debugging for Sym53C810 controller
+#   -DDEBUG_DMA         Turn on debugging for DMA controller
 #   -DDEBUG_BACKTRACE   Turn on backtrace dump on SIGSEGV
 #
 CDEBUGFLAGS = -g -DHIDE_COUNTER -DDEBUG_BACKTRACE
@@ -213,6 +214,7 @@ OBJS = AliM1543C.o \
        DiskDevice.o \
        DiskFile.o \
        DiskRam.o \
+       DMA.o \
        DPR.o \
        es40_debug.o \
        Flash.o \
