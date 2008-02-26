@@ -27,7 +27,10 @@
  * \file 
  * Contains the definitions for the emulated Typhoon Chipset devices.
  *
- * $Id: System.h,v 1.26 2008/02/08 20:08:13 iamcamiel Exp $
+ * $Id: System.h,v 1.27 2008/02/26 16:00:31 iamcamiel Exp $
+ *
+ * X-1.27       Camiel Vanderhoeven                             26-FEB-2008
+ *      Added CF8/CFC method for getting at PCI config space.
  *
  * X-1.26       Camiel Vanderhoeven                             08-FEB-2008
  *      Show originating device name on memory errors.
@@ -411,6 +414,8 @@ private:
       u64 wsm[4];
       u64 tba[4];
     } pchip [2];
+
+  u32 cf8_address[2];
 
   } state;
   void * memory;
