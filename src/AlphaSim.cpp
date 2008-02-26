@@ -27,7 +27,11 @@
  * \file
  * Defines the entry point for the application.
  *
- * $Id: AlphaSim.cpp,v 1.40 2008/02/07 20:33:26 iamcamiel Exp $
+ * $Id: AlphaSim.cpp,v 1.41 2008/02/26 12:17:47 iamcamiel Exp $
+ *
+ * X-1.41       Brian Wheeler                                   26-FEB-2008
+ *   a) Catch SIGUSR1 to trigger the backtracer if es40 seems to have hung.
+ *   b) Use _exit() to really really quit when a SIGSEGV is caught.
  *
  * X-1.40       Brian Wheeler                                   07-FEB-2008
  *      On GNU systems, display a backtrace when a segmentation fault
@@ -211,7 +215,7 @@ void segv_handler(int signum) {
     printf("%3d %s\n",nptrs-i, strings[i]);
   }
   free(strings);
-  exit(1);
+  if(signum==SIGSEGV) _exit(1);
 }
 
 #else
@@ -255,6 +259,7 @@ int main(int argc, char* argv[])
 
 #ifdef HAS_BACKTRACE
   signal(SIGSEGV, &segv_handler);
+  signal(SIGUSR1, &segv_handler);
 #endif
 
   try 

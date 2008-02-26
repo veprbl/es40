@@ -27,7 +27,12 @@
 #
 # Makefile for GNU Linux. (And possibly many UNIX'es).
 #
-# $Id: Makefile,v 1.27 2008/02/26 11:21:33 iamcamiel Exp $
+# $Id: Makefile,v 1.28 2008/02/26 12:17:47 iamcamiel Exp $
+#
+# X-1.28       Brian Wheeler                    26-FEB-2008
+#      adds the -rdynamic LD flag if DEBUG_BACKTRACE is
+#      specified.  This allows all non-static function names
+#      to appear in the backtrace.
 #
 # X-1.27       Camiel Vanderhoeven              26-FEB-2008
 #      Moved DMA code into it's own class (CDMA)
@@ -137,6 +142,8 @@ CTUNINGFLAGS = -O3 -mtune=generic
 #   -DDEBUG_KBD		    Turn on keyboard debugging
 #   -DDEBUG_PIC		    Turn on Programmable Interrupt Controller debugging
 #   -DDEBUG_LPT         Turn on debugging for LPT Port
+#   -DDEBUG_USB         Turn on debugging for USB controller
+#   -DDEBUG_SYM         Turn on debugging for Sym53C810 controller
 #   -DDEBUG_BACKTRACE   Turn on backtrace dump on SIGSEGV
 #
 CDEBUGFLAGS = -g -DHIDE_COUNTER -DDEBUG_BACKTRACE
@@ -173,6 +180,10 @@ endif
 
 ifneq ($(findstring "-g",$(CDEBUGFLAGS)),"")
 LDOPTIONFLAGS += -g
+endif
+
+ifneq ($(findstring "-DDEBUG_BACKTRACE",$(CDEBUGFLAGS)),"")
+LDOPTIONFLAGS += -rdynamic
 endif
 
 CFLAGS =  -I. -I..  \
