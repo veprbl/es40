@@ -4,39 +4,37 @@
  * WWW    : http://sourceforge.net/projects/es40
  * E-mail : camiel@camicom.com
  * 
- *  This file is based upon GXemul.
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License
+ * as published by the Free Software Foundation; either version 2
+ * of the License, or (at your option) any later version.
+ * 
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ * 
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ * 
+ * Although this is not required, the author would appreciate being notified of, 
+ * and receiving any modifications you may make to the source code that might serve
+ * the general public.
  *
- *  Copyright (C) 2004-2007  Anders Gavare.  All rights reserved.
- *
- *  Redistribution and use in source and binary forms, with or without
- *  modification, are permitted provided that the following conditions are met:
- *
- *  1. Redistributions of source code must retain the above copyright
- *     notice, this list of conditions and the following disclaimer.
- *  2. Redistributions in binary form must reproduce the above copyright  
- *     notice, this list of conditions and the following disclaimer in the 
- *     documentation and/or other materials provided with the distribution.
- *  3. The name of the author may not be used to endorse or promote products
- *     derived from this software without specific prior written permission.
- *
- *  THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
- *  ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- *  IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- *  ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE   
- *  FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
- *  DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
- *  OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
- *  HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
- *  LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
- *  OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
- *  SUCH DAMAGE.
+ * Parts of this file based upon GXemul, which is Copyright (C) 2004-2007  
+ * Anders Gavare.  All rights reserved.
  */
 
 /**
  * \file 
  * Contains the definitions for the emulated DEC 21143 NIC device.
  *
- * $Id: DEC21143.h,v 1.12 2008/01/24 12:40:27 iamcamiel Exp $
+ * $Id: DEC21143.h,v 1.13 2008/02/26 15:54:57 iamcamiel Exp $
+ *
+ * X-1.13       David Hittner                                   26-FEB-2008
+ *      Major rewrite. Real internal loopback support, ring queue for
+ *      incoming packets, and various other improvements.
  *
  * X-1.12       Camiel Vanderhoeven                             24-JAN-2008
  *      Use new CPCIDevice::do_pci_read and CPCIDevice::do_pci_write.
@@ -75,8 +73,6 @@
  *
  * X-1.1        Camiel Vanderhoeven                             14-NOV-2007
  *      Initial version for ES40 emulator.
- *
- * \author Camiel Vanderhoeven (camiel@camicom.com / http://www.camicom.com)
  **/
 
 #if !defined(INCLUDED_DEC21143_H_)
@@ -85,7 +81,11 @@
 #include "PCIDevice.h"
 #include "DEC21143_mii.h"
 #include "DEC21143_tulipreg.h"
+#if defined(WIN32)
+#define HAVE_REMOTE
+#endif
 #include <pcap.h>
+#include "Ethernet.h"
 
 /**
  * \brief Emulated DEC 21143 NIC device.
@@ -129,10 +129,14 @@ class CDEC21143 : public CPCIDevice
 
   int dec21143_rx();
   int dec21143_tx();
+  void set_tx_state(int tx_state);
+  void set_rx_state(int rx_state);
 
+  CPacketQueue*	rx_queue;
   pcap_t *fp;
   struct bpf_program fcode;
   bool shutting_down;
+  bool calc_crc;
 
   /// The state structure contains all elements that need to be saved to the statefile.
   struct SNIC_state {
@@ -141,6 +145,7 @@ class CDEC21143 : public CPCIDevice
 
 	u8		mac[6];             /**< ethernet address */
     u8      setup_filter[192];  /**< filter for perfect filtering */
+	int		descr_skip;			// Descriptor Skip Length [DSL] (in bytes)
 
 	/// SROM emulation
     struct SNIC_srom {
@@ -179,6 +184,7 @@ class CDEC21143 : public CPCIDevice
 	  unsigned char	*cur_buf;
 	  int		cur_buf_len;
 	  int		cur_offset;
+	  eth_packet current;
       } rx;
   } state;
 };

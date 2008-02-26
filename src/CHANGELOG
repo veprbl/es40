@@ -3,6 +3,9 @@
 
 \section c018 version 0.17 -> 0.17+
 
+ - Major rewrite of NIC code. Real internal loopback support, ring
+   queue for incoming packets, and various other improvements.
+   (26-feb-2008, David Hittner)
  - Improvements to backtrace functionality on GNU systems
    (26-feb-2008, Brian Wheeler)
  - Better config file syntax checking and error reporting.

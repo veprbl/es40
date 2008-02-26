@@ -27,7 +27,7 @@
 #
 # Makefile for GNU Linux. (And possibly many UNIX'es).
 #
-# $Id: Makefile,v 1.29 2008/02/26 15:39:28 iamcamiel Exp $
+# $Id: Makefile,v 1.30 2008/02/26 15:54:57 iamcamiel Exp $
 #
 # X-1.28       Brian Wheeler                    26-FEB-2008
 #      adds the -rdynamic LD flag if DEBUG_BACKTRACE is
@@ -217,6 +217,7 @@ OBJS = AliM1543C.o \
        DMA.o \
        DPR.o \
        es40_debug.o \
+       Ethernet.o \
        Flash.o \
        FloppyController.o \
        Keyboard.o \

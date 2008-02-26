@@ -4,39 +4,37 @@
  * WWW    : http://sourceforge.net/projects/es40
  * E-mail : camiel@camicom.com
  * 
- *  This file is based upon GXemul.
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License
+ * as published by the Free Software Foundation; either version 2
+ * of the License, or (at your option) any later version.
+ * 
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ * 
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ * 
+ * Although this is not required, the author would appreciate being notified of, 
+ * and receiving any modifications you may make to the source code that might serve
+ * the general public.
  *
- *  Copyright (C) 2004-2007  Anders Gavare.  All rights reserved.
- *
- *  Redistribution and use in source and binary forms, with or without
- *  modification, are permitted provided that the following conditions are met:
- *
- *  1. Redistributions of source code must retain the above copyright
- *     notice, this list of conditions and the following disclaimer.
- *  2. Redistributions in binary form must reproduce the above copyright  
- *     notice, this list of conditions and the following disclaimer in the 
- *     documentation and/or other materials provided with the distribution.
- *  3. The name of the author may not be used to endorse or promote products
- *     derived from this software without specific prior written permission.
- *
- *  THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
- *  ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- *  IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- *  ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE   
- *  FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
- *  DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
- *  OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
- *  HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
- *  LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
- *  OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
- *  SUCH DAMAGE.
+ * Parts of this file based upon GXemul, which is Copyright (C) 2004-2007  
+ * Anders Gavare.  All rights reserved.
  */
 
 /**
  * \file 
  * Contains the code for the emulated DEC 21143 NIC device.
  *
- * $Id: DEC21143.cpp,v 1.27 2008/01/24 12:40:26 iamcamiel Exp $
+ * $Id: DEC21143.cpp,v 1.28 2008/02/26 15:54:57 iamcamiel Exp $
+ *
+ * X-1.28       David Hittner                                   26-FEB-2008
+ *      Major rewrite. Real internal loopback support, ring queue for
+ *      incoming packets, and various other improvements.
  *
  * X-1.27       Camiel Vanderhoeven                             24-JAN-2008
  *      Use new CPCIDevice::do_pci_read and CPCIDevice::do_pci_write.
@@ -123,8 +121,6 @@
  *
  * X-1.1        Camiel Vanderhoeven                             14-NOV-2007
  *      Initial version for ES40 emulator.
- *
- * \author Camiel Vanderhoeven (camiel@camicom.com / http://www.camicom.com)
  **/
 
 #include "StdAfx.h"
@@ -156,7 +152,7 @@ static void * recv_proc(void * lpParam)
 u32 dec21143_cfg_data[64] = {
 /*00*/  0x00191011, // CFID: vendor + device
 /*04*/  0x02800000, // CFCS: command + status
-/*08*/  0x02000041, // CFRV: class + revision
+/*08*/  0x02000030, // CFRV: class + revision	//dth:was 41
 /*0c*/  0x00000000, // CFLT: latency timer + cache line size
 /*10*/  0x00000001, // BAR0: CBIO
 /*14*/  0x00000000, // BAR1: CBMA
@@ -203,7 +199,8 @@ int CDEC21143::nic_num = 0;
  * Constructor.
  **/
 
-CDEC21143::CDEC21143(CConfigurator * confg, CSystem * c, int pcibus, int pcidev): CPCIDevice(confg,c,pcibus,pcidev)
+CDEC21143::CDEC21143(CConfigurator * confg, CSystem * c, int pcibus, int pcidev)
+: CPCIDevice(confg, c, pcibus, pcidev)
 {
   pcap_if_t *alldevs, *d;
   u_int inum, i=0;
@@ -213,16 +210,7 @@ CDEC21143::CDEC21143(CConfigurator * confg, CSystem * c, int pcibus, int pcidev)
   add_function(0,dec21143_cfg_data,dec21143_cfg_mask);
 
   cfg = myCfg->get_text_value("adapter");
-  if (cfg)
-  {
-    if ( (fp= pcap_open_live(cfg,
-                             65536 /*snaplen: capture entire packets*/,
-                             1 /*promiscuous*/,
-                             1 /*read timeout: 1ms.*/,
-                             errbuf)) == NULL) // connect to pcap...
-      FAILURE("Error opening adapter\n");
-  }
-  else
+  if (!cfg)
   {
     printf("\n%%NIC-Q-CHNIC: Choose a network adapter to connect to:\n");
     if (pcap_findalldevs(&alldevs, errbuf) == -1)
@@ -259,15 +247,36 @@ CDEC21143::CDEC21143(CConfigurator * confg, CSystem * c, int pcibus, int pcidev)
         
     /* Jump to the selected adapter */
     for (d=alldevs, i=0; i< inum-1 ;d=d->next, i++);
-        
-    /* Open the device */
-    if ( (fp= pcap_open_live(d->name,
+  
+	cfg = d->name;
+  }
+
+  #if defined (WIN32)
+  // Opening with pcap_open on Windows allows specification of PCAP_OPENFLAG_NOCAPTURE_LOCAL,
+  // which stops the pcap device from seeing it's own transmitted packets.
+  //
+  // This is important because:
+  //	1. Real ethernet cards don't reflect packets except while in loopback mode(s).
+  //	2. Reflecting all packets increases inbound packet processing and host load.
+  //	3. DECNET Phase IV will think a reflected packet is from another node
+  //		that has the same DECNET Phase IV address (AA-xx-xx-xx-xx-xx),
+  //		and will panic on startup and abort.
+  //	4. Libpcap doesn't reflect packets, and we want winpcap/libpcap processing to be identical.
+  // Loopback packets are handled via direct entry in the receive queue.
+  if ( (fp= pcap_open(cfg,
                              65536 /*snaplen: capture entire packets*/,
-                             1 /*flags*/,
+                             PCAP_OPENFLAG_PROMISCUOUS | PCAP_OPENFLAG_NOCAPTURE_LOCAL /*promiscuous*/,
+                             1  /*read timeout: 1ms.*/,
+							 0	/* auth structure */,
+                             errbuf)) == NULL) // connect to pcap...
+#else
+  if ( (fp= pcap_open_live(cfg,
+                             65536 /*snaplen: capture entire packets*/,
+                             1 /*promiscuous*/,
                              1 /*read timeout: 1ms.*/,
                              errbuf)) == NULL) // connect to pcap...
-      FAILURE("Error opening adapter");
-  }
+#endif
+    FAILURE("Error opening adapter\n");
 
   // set default mac = Digital ethernet prefix: 08-00-2B + hexified "ES40" + nic number
   state.mac[0] = 0x08;
@@ -325,12 +334,16 @@ CDEC21143::CDEC21143(CConfigurator * confg, CSystem * c, int pcibus, int pcidev)
 	  printf("\n%%NIC-I-MACDEFAULT: MAC defaulted to %s\n", mac);
   }
 
+  rx_queue = new CPacketQueue("rx_queue", myCfg->get_int_value("queue", 100));
+  calc_crc = myCfg->get_bool_value("crc", false);
+
   c->RegisterClock(this, true);
 
   state.rx.cur_buf = NULL;
-  state.tx.cur_buf = NULL;
+  state.tx.cur_buf = (unsigned char*) malloc(1514);
   state.irq_was_asserted = false;
   state.tx.idling = 0;
+
 
   ResetPCI();
 
@@ -342,7 +355,7 @@ CDEC21143::CDEC21143(CConfigurator * confg, CSystem * c, int pcibus, int pcidev)
   pthread_create(&receive_process_handle, NULL, recv_proc, this);
 #endif
 
-  printf("%s: $Id: DEC21143.cpp,v 1.27 2008/01/24 12:40:26 iamcamiel Exp $\n",devid_string);
+  printf("%s: $Id: DEC21143.cpp,v 1.28 2008/02/26 15:54:57 iamcamiel Exp $\n",devid_string);
 }
 
 /**
@@ -355,6 +368,7 @@ CDEC21143::~CDEC21143()
   shutting_down = true;
   sleep_ms(500);
   pcap_close(fp);
+  delete rx_queue;
 }
 
 u32 CDEC21143::ReadMem_Bar(int func, int bar, u32 address, int dsize)
@@ -365,7 +379,7 @@ u32 CDEC21143::ReadMem_Bar(int func, int bar, u32 address, int dsize)
   case 1: // CBMA
     return nic_read(address, dsize);
   }
-
+  printf("21143: ReadMem_Bar: unsupported bar %d\n", bar);
   return 0;
 }
 
@@ -378,6 +392,7 @@ void CDEC21143::WriteMem_Bar(int func, int bar, u32 address, int dsize, u32 data
     nic_write(address, dsize, (u32)endian_bits(data, dsize));
     return;
   }
+  printf("21143: WriteMem_Bar: unsupported bar %d\n", bar);
 }
 
 int CDEC21143::DoClock()
@@ -407,10 +422,25 @@ int CDEC21143::DoClock()
 
 void CDEC21143::receive_process()
 {
-  while (!shutting_down)
-  {
-    if (state.reg[CSR_OPMODE / 8] & OPMODE_SR)
-      while(dec21143_rx());
+  struct pcap_pkthdr* packet_header;
+  const u_char* packet_data = NULL;
+
+  while (!shutting_down) {
+	// if receive process active
+	if (state.reg[CSR_OPMODE / 8] & OPMODE_SR) {
+	  // get packets from host nic if not in internal loopback mode
+	  if (!(state.reg[CSR_OPMODE/8] & OPMODE_OM_INTLOOP)) {
+		while (pcap_next_ex(fp, &packet_header, &packet_data) > 0) {
+		  bool resl = rx_queue->add_tail(packet_data, packet_header->caplen, calc_crc, true);
+		  state.reg[CSR_SIASTAT/8] |= SIASTAT_TRA;	//set 10bT activity
+		}
+	  }
+	  // process a receive descriptor until we run out of
+	  // descriptors or packets to process
+	  while(dec21143_rx());
+	}
+
+	// go to sleep for a bit
     sleep_ms(10);
   }
 }
@@ -430,7 +460,9 @@ u32 CDEC21143::nic_read(u32 address, int dsize)
 	  data = state.reg[regnr];
 	} else
 		fatal("[ dec21143: WARNING! unaligned access (0x%x) ]\n", (int)address);
-
+#if defined(DEBUG_NIC)
+	printf("21143: nic_read - CSR(%d), value: %08x\n", regnr, data);
+#endif
   return data;
 }
 
@@ -444,6 +476,10 @@ void CDEC21143::nic_write(u32 address, int dsize, u32 data)
 
     int regnr = (int)(address >> 3);
 
+#if defined(DEBUG_NIC)
+	printf("21143: nic_write - CSR(%d), value: %08x\n", regnr, data);
+#endif
+	//printf("21143: rx_queue->name= %s\n", rx_queue->name);
 	if ((address & 7) == 0 && regnr < 32) {
 		oldreg = state.reg[regnr];
 		switch (regnr) {
@@ -465,6 +501,8 @@ void CDEC21143::nic_write(u32 address, int dsize, u32 data)
 			ResetNIC();
 		    data &= ~BUSMODE_SWR;
 		}
+		// calculate descriptor skip length in bytes
+		state.descr_skip = ((data & BUSMODE_DSL) >> 2) * 4;
 		break;
 
 	case CSR_TXPOLL:	/*  csr1  */
@@ -507,25 +545,46 @@ void CDEC21143::nic_write(u32 address, int dsize, u32 data)
 			data &= ~0x02000000;
 		}
 		if (data & OPMODE_ST) {
-			data &= ~OPMODE_ST;
+			//data &= ~OPMODE_ST;
 		} else {
 			/*  Turned off TX? Then idle:  */
-			state.reg[CSR_STATUS/8] |= STATUS_TPS;
+		//	state.reg[CSR_STATUS/8] |= STATUS_TPS;
 		}
 		if (data & OPMODE_SR) {
-			data &= ~OPMODE_SR;
+			//data &= ~OPMODE_SR;
 		} else {
 			/*  Turned off RX? Then go to stopped state:  */
-			state.reg[CSR_STATUS/8] &= ~STATUS_RS;
+			//state.reg[CSR_STATUS/8] &= ~STATUS_RS;
 		}
+
+		// Did Start/Stop Transmission change state ?
+		if ((data ^ oldreg) & OPMODE_ST) {
+			if (data & OPMODE_ST) {	// ST went high
+				set_tx_state(STATUS_TS_SUSPENDED);
+			} else {				// ST went low
+				set_tx_state(STATUS_TS_STOPPED);
+			}
+		}
+		// Did Start/Stop Receive change state ?
+		if ((data ^ oldreg) & OPMODE_SR) {
+			if (data & OPMODE_SR) {	// SR went high
+				set_rx_state(STATUS_RS_WAIT);
+			} else {				// SR went low
+				set_tx_state(STATUS_RS_STOPPED);
+			}
+		}
+
+
 		data &= ~(OPMODE_HBD | OPMODE_SCR | OPMODE_PCS | OPMODE_PS | OPMODE_SF | OPMODE_TTM | OPMODE_FD | OPMODE_TR | OPMODE_OM);
 //		if (data & OPMODE_PNIC_IT) {
 //			data &= ~OPMODE_PNIC_IT;
 //		    state.tx.idling = state.tx.idling_threshold;
 //		}
-		if (data != 0) {
-			fatal("[ dec21143: UNIMPLEMENTED OPMODE bits: 0x%08x ]\n", (int)data);
-		}
+//		if (data != 0) {
+//			fatal("[ dec21143: UNIMPLEMENTED OPMODE bits: 0x%08x ]\n", (int)data);
+//		}
+
+
 		DoClock();
 		break;
 
@@ -575,6 +634,16 @@ void CDEC21143::nic_write(u32 address, int dsize, u32 data)
 	default:
 		fatal("[ dec21143: write to unimplemented 0x%02x: 0x%02x ]\n", (int)address, (int)data);
 	}
+}
+
+void CDEC21143::set_tx_state(int tx_state) {
+	state.reg[CSR_STATUS/8] &= ~STATUS_TS;
+	state.reg[CSR_STATUS/8] |= (tx_state & STATUS_TS);
+}
+
+void CDEC21143::set_rx_state(int rx_state) {
+	state.reg[CSR_STATUS/8] &= ~STATUS_RS;
+	state.reg[CSR_STATUS/8] |= (rx_state & STATUS_RS);
 }
 
 /**
@@ -823,6 +892,25 @@ void CDEC21143::srom_access(uint32_t oldreg, uint32_t idata)
 	}
 }
 
+/*
+bool CDEC21143:acquire_rx_descriptor(u32 status_true, u32 status_false) {
+	// get current receive descriptor
+    do_pci_read(state.rx.cur_addr, descr, 4, 4);
+
+	if (rdes0 & TDSTAT_OWN) {	// 21143 owns descriptor
+		state.reg[CSR_STATUS/8] &= ~STATUS_RU;	// clear buffers unavailable
+		if (state.reg[CSR_OPMODE/8] & OPMODE_SR) {	// if receive start
+			state.reg[CSR_STATUS/8] = (state.reg[CSR_STATUS/8] & ~STATUS_RS) | STATUS_RS_WAIT;
+		} else {
+		}
+		return true;		// indicate nothing was processed
+	} else {
+		state.reg[CSR_STATUS/8] = (state.reg[CSR_STATUS/8] & ~(STATUS_RS | STATUS_RU)) | STATUS_R
+		return true;
+	}
+}
+*/
+
 /**
  *  Receive a packet. (If there is no current packet, then check for newly
  *  arrived ones. If the current packet couldn't be fully transfered the
@@ -831,47 +919,56 @@ void CDEC21143::srom_access(uint32_t oldreg, uint32_t idata)
 
 int CDEC21143::dec21143_rx()
 {
+	static u32 descr[4];
+	static u32& rdes0 = descr[0];
+	static u32& rdes1 = descr[1];
+	static u32& rdes2 = descr[2];
+	static u32& rdes3 = descr[3];
+
 	u32 addr = state.rx.cur_addr, bufaddr;
-	unsigned char descr[16];
-	u32 rdes0, rdes1, rdes2, rdes3;
+	//unsigned char descr[16];
+	//u32 rdes0, rdes1, rdes2, rdes3;
 	int bufsize, buf1_size, buf2_size, writeback_len = 4, to_xfer;
-    struct pcap_pkthdr * packet_header;
-    const u_char * packet_data = NULL;
+    //struct pcap_pkthdr * packet_header;
+    //const u_char * packet_data = NULL;
 
-	/*  No current packet? Then check for new ones.  */
-	if (state.rx.cur_buf == NULL) {
+	/*  Is current packet finished? Then check for new ones.  */
+	if (state.rx.current.used >= state.rx.current.len) {
   	  /*  Nothing available? Then abort.  */
-      if (!pcap_next_ex( fp, &packet_header, &packet_data))
-	 	return 0;
+      if (rx_queue->count() == 0)
+	 	return 0;	// indicate nothing was processed
 
-//        printf("pcap recv: %d bytes (%d captured) for %02x:%02x:%02x:%02x:%02x:%02x  \n",packet_header->len, packet_header->caplen,packet_data[0],packet_data[1],packet_data[2],packet_data[3],packet_data[4],packet_data[5]);
+//      printf("pcap recv: %d bytes (%d captured) for %02x:%02x:%02x:%02x:%02x:%02x  \n",packet_header->len, packet_header->caplen,packet_data[0],packet_data[1],packet_data[2],packet_data[3],packet_data[4],packet_data[5]);
 
-	    state.rx.cur_buf_len = packet_header->caplen;
+	    // get next packet from receive queue
+	    rx_queue->get_head(state.rx.current);
 
 		/*  Append a 4 byte CRC:  */
-		state.rx.cur_buf_len += 4;
-		CHECK_REALLOCATION(state.rx.cur_buf, realloc(state.rx.cur_buf, state.rx.cur_buf_len), unsigned char);
+		//state.rx.cur_buf_len += 4;
+		//CHECK_REALLOCATION(state.rx.cur_buf, realloc(state.rx.cur_buf, state.rx.cur_buf_len), unsigned char);
 
 	    /*  Get the next packet into our buffer:  */
-	    memcpy(state.rx.cur_buf, packet_data, state.rx.cur_buf_len);
+	    //memcpy(state.rx.cur_buf, packet_data, state.rx.cur_buf_len);
 
 		/*  Well... the CRC is just zeros, for now.  */
-		memset(state.rx.cur_buf + state.rx.cur_buf_len - 4, 0, 4);
+		//memset(state.rx.cur_buf + state.rx.cur_buf_len - 4, 0, 4);
 
-		state.rx.cur_offset = 0;
+		//state.rx.cur_offset = 0;
 	}
 
-    do_pci_read(addr,descr,1,16);
+	// read current descriptor
+    do_pci_read(state.rx.cur_addr, descr, 4, 4);
 
-	rdes0 = descr[0] + (descr[1]<<8) + (descr[2]<<16) + (descr[3]<<24);
-	rdes1 = descr[4] + (descr[5]<<8) + (descr[6]<<16) + (descr[7]<<24);
-	rdes2 = descr[8] + (descr[9]<<8) + (descr[10]<<16) + (descr[11]<<24);
-	rdes3 = descr[12] + (descr[13]<<8) + (descr[14]<<16) + (descr[15]<<24);
+	//rdes0 = descr[0] + (descr[1]<<8) + (descr[2]<<16) + (descr[3]<<24);
+	//rdes1 = descr[4] + (descr[5]<<8) + (descr[6]<<16) + (descr[7]<<24);
+	//rdes2 = descr[8] + (descr[9]<<8) + (descr[10]<<16) + (descr[11]<<24);
+	//rdes3 = descr[12] + (descr[13]<<8) + (descr[14]<<16) + (descr[15]<<24);
 
 	/*  Only use descriptors owned by the 21143:  */
 	if (!(rdes0 & TDSTAT_OWN)) {
-		state.reg[CSR_STATUS/8] |= STATUS_RU;
-		return 0;
+		// set recive buffers unavailable and receive state to suspended
+		state.reg[CSR_STATUS/8] = (state.reg[CSR_STATUS/8] & ~STATUS_RS) | STATUS_RU | STATUS_RS_SUSPENDED;
+		return 0;		// indicate nothing was processed
 	}
 
     buf1_size = rdes1 & TDCTL_SIZE1;
@@ -879,16 +976,8 @@ int CDEC21143::dec21143_rx()
 	bufaddr = buf1_size? rdes2 : rdes3;
 	bufsize = buf1_size? buf1_size : buf2_size;
 
-	state.reg[CSR_STATUS/8] &= ~STATUS_RS;
+	//state.reg[CSR_STATUS/8] &= ~STATUS_RS; // dth: wrong, this is receive state stopped
 
-	if (rdes1 & TDCTL_ER)
-		state.rx.cur_addr = state.reg[CSR_RXLIST / 8];
-	else {
-		if (rdes1 & TDCTL_CH)
-			state.rx.cur_addr = rdes3;
-		else
-			state.rx.cur_addr += 16;
-	}
 
   //  fatal("{ dec21143_rx: base = 0x%08x }\n", (int)addr);
 
@@ -896,57 +985,71 @@ int CDEC21143::dec21143_rx()
 //	debug("{ RX (%llx): 0x%08x 0x%08x 0x%x 0x%x: buf %i bytes at 0x%x }\n",
 //	    (long long)addr, rdes0, rdes1, rdes2, rdes3, bufsize, (int)bufaddr);
 
-	/*  Turn off all status bits, and give up ownership:  */
+	// Turn off all status bits, and give up ownership
 	rdes0 = 0x00000000;
 
-	to_xfer = state.rx.cur_buf_len - state.rx.cur_offset;
-	if (to_xfer > bufsize)
-		to_xfer = bufsize;
-
-	/*  DMA bytes from the packet into emulated physical memory:  */
-    do_pci_write(bufaddr, state.rx.cur_buf + state.rx.cur_offset, 1, to_xfer);
-
-	/*  Was this the first buffer in a frame? Then mark it as such.  */
-	if (state.rx.cur_offset == 0)
+	//  Is this the first buffer of the frame?
+	if (state.rx.current.used == 0)
 		rdes0 |= TDSTAT_Rx_FS;
 
-	state.rx.cur_offset += to_xfer;
+	// use buffer 1, if length is non-zero
+	if (buf1_size > 0) {
+	  to_xfer = state.rx.current.len - state.rx.current.used;
+	  if (to_xfer > buf1_size)
+		to_xfer = buf1_size;
 
-	/*  Frame completed?  */
-	if (state.rx.cur_offset >= state.rx.cur_buf_len) {
+	  // DMA bytes from the packet into buffer 1
+	  do_pci_write(rdes2, &state.rx.current.frame[state.rx.current.used], 1, to_xfer);
+
+	  // update used
+	  state.rx.current.used += to_xfer;
+	}
+
+	// use buffer 2, if length is non-zero and not a chain buffer
+	if ((buf2_size > 0) && (!(rdes1 & TDCTL_CH))) {
+	  to_xfer = state.rx.current.len - state.rx.current.used;
+	  if (to_xfer > buf2_size)
+		to_xfer = buf2_size;
+
+	  // DMA bytes from the packet into buffer 2
+	  do_pci_write(rdes3, state.rx.current.frame + state.rx.current.used, 1, to_xfer);
+
+	  // update used
+	  state.rx.current.used += to_xfer;
+	}
+
+	//  Frame completed?
+	if (state.rx.current.used >= state.rx.current.len) {
 //        debug("frame complete.\n");
 		rdes0 |= TDSTAT_Rx_LS;
 
 		/*  Set the frame length:  */
-		rdes0 |= (state.rx.cur_buf_len << 16) & TDSTAT_Rx_FL;
+		rdes0 |= (state.rx.current.len << 16) & TDSTAT_Rx_FL;
 
 		/*  Frame too long? (1518 is max ethernet frame length)  */
-		if (state.rx.cur_buf_len > 1518)
+		if (state.rx.current.len > 1518)
 			rdes0 |= TDSTAT_Rx_TL;
 
-		/*  Cause a receiver interrupt:  */
-		state.reg[CSR_STATUS/8] |= STATUS_RI;
-
-		free(state.rx.cur_buf);
-		state.rx.cur_buf = NULL;
-		state.rx.cur_buf_len = 0;
+		// set receive interrupt and receive state to waiting-for-packet
+		state.reg[CSR_STATUS/8] = (state.reg[CSR_STATUS/8] & ~STATUS_RS) | STATUS_RI | STATUS_RS_WAIT;
+		
 	}
 
-	/*  Descriptor writeback:  */
-	descr[ 0] = (u8) rdes0;       descr[ 1] = (u8) (rdes0 >> 8);
-	descr[ 2] = (u8) (rdes0 >> 16); descr[ 3] = (u8) (rdes0 >> 24);
-	if (writeback_len > 1) {
-		descr[ 4] = (u8) rdes1;       descr[ 5] = (u8) (rdes1 >> 8);
-		descr[ 6] = (u8) (rdes1 >> 16); descr[ 7] = (u8) (rdes1 >> 24);
-		descr[ 8] = (u8) rdes2;       descr[ 9] = (u8) (rdes2 >> 8);
-		descr[10] = (u8) (rdes2 >> 16); descr[11] = (u8) (rdes2 >> 24);
-		descr[12] = (u8) rdes3;       descr[13] = (u8) (rdes3 >> 8);
-		descr[14] = (u8) (rdes3 >> 16); descr[15] = (u8) (rdes3 >> 24);
+	// Writeback rdes0, others are read-only
+	state.reg[CSR_STATUS/8] = (state.reg[CSR_STATUS/8] & ~STATUS_RS) | STATUS_RS_CLOSE;
+	do_pci_write(state.rx.cur_addr, descr, 4, 1);
+
+	// move to next descriptor
+	if (rdes1 & TDCTL_ER)				// end-of-ring, return to base
+		state.rx.cur_addr = state.reg[CSR_RXLIST / 8];
+	else {
+		if (rdes1 & TDCTL_CH)			// explicit chain, use chain address
+			state.rx.cur_addr = rdes3;
+		else							// implicit chain
+			state.rx.cur_addr += sizeof(descr) + state.descr_skip;
 	}
 
-    do_pci_write(addr, descr, 1, 16);
-
-	return 1;
+	return 1;	// indicate processing has occurred
 }
 
 /**
@@ -989,15 +1092,15 @@ int CDEC21143::dec21143_tx()
 	bufaddr = buf1_size? tdes2 : tdes3;
 	bufsize = buf1_size? buf1_size : buf2_size;
 
-	state.reg[CSR_STATUS/8] &= ~STATUS_TS;
+	//state.reg[CSR_STATUS/8] &= ~STATUS_TS;
 
-	if (tdes1 & TDCTL_ER)
+	if (tdes1 & TDCTL_ER)						// end-of-ring, return to base
 		state.tx.cur_addr = state.reg[CSR_TXLIST / 8];
 	else {
-		if (tdes1 & TDCTL_CH)
+		if (tdes1 & TDCTL_CH)					// explicit chain, use chain address
 			state.tx.cur_addr = tdes3;
-		else
-			state.tx.cur_addr += 4 * sizeof(uint32_t);
+		else									// implicit chain
+			state.tx.cur_addr += (4 * sizeof(uint32_t)) + state.descr_skip;
 	}
 
 	/*
@@ -1034,7 +1137,7 @@ int CDEC21143::dec21143_tx()
 			/*  First segment. Let's allocate a new buffer:  */
 			/*  fatal("new frame }\n");  */
 
-			CHECK_ALLOCATION(state.tx.cur_buf = (unsigned char *)malloc(bufsize));
+			//CHECK_ALLOCATION(state.tx.cur_buf = (unsigned char *)malloc(bufsize));
 			state.tx.cur_buf_len = 0;
 		} else {
 			/*  Not first segment. Increase the length of the current buffer:  */
@@ -1043,7 +1146,7 @@ int CDEC21143::dec21143_tx()
 			if (state.tx.cur_buf == NULL)
 				fatal("[ dec21143: WARNING! tx: middle segment, but no first segment?! ]\n");
 
-			CHECK_REALLOCATION(state.tx.cur_buf, realloc(state.tx.cur_buf, state.tx.cur_buf_len + bufsize), unsigned char);
+			//CHECK_REALLOCATION(state.tx.cur_buf, realloc(state.tx.cur_buf, state.tx.cur_buf_len + bufsize), unsigned char);
 		}
 
 		/*  "DMA" data from emulated physical memory into the buf:  */
@@ -1054,13 +1157,33 @@ int CDEC21143::dec21143_tx()
 		/*  Last segment? Then actually transmit it:  */
 		if (tdes1 & TDCTL_Tx_LS) {
 			/*  fatal("{ TX: data frame complete. }\n");  */
-            if (pcap_sendpacket(fp, state.tx.cur_buf, state.tx.cur_buf_len))
-              fatal("Error sending the packet: %s\n",pcap_geterr);
 
-//            printf("pcap send: %d bytes   \n",state.tx.cur_buf_len);
 
-			free(state.tx.cur_buf);
-			state.tx.cur_buf = NULL;
+			// if not in internal loopback mode, transmit packet to wire
+			if (!(state.reg[CSR_OPMODE / 8] & OPMODE_OM_INTLOOP)) {
+			  // printf("pcap send: %d bytes   \n", state.tx.cur_buf_len);
+	          if (pcap_sendpacket(fp, state.tx.cur_buf, state.tx.cur_buf_len))
+		        fatal("Error sending the packet: %s\n",pcap_geterr);
+			}
+
+			// if in internal or external loopback mode, add packet to read queue
+			if (state.reg[CSR_OPMODE / 8] & OPMODE_OM) {
+				bool crc = !(tdes1 & TDCTL_Tx_AC);
+				//printf("21143: %s packet, AC: %d\n", (state.reg[CSR_OPMODE / 8] & OPMODE_OM_INTLOOP) ? "IL" : "EL", !crc);
+				//printf("21143: TX enabled: %d, RX enabled: %d\n", state.reg[CSR_OPMODE /8] & OPMODE_ST, state.reg[CSR_OPMODE /8] & OPMODE_SR);
+				//printf("21143: tx(), len=%d, addr=%08x, mode=%s\n", state.tx.cur_buf_len, (int) state.tx.cur_buf, (state.reg[CSR_OPMODE / 8] & OPMODE_OM_INTLOOP) ? "IL" : "EL");
+				//printf("21143: tx(), data=|");
+				//unsigned char* aptr = state.tx.cur_buf;
+				//for(int i=0; i<state.tx.cur_buf_len; i++) {
+				//	printf("%02x-",*aptr++);
+				//}
+				//printf("|\n");
+				bool resl = rx_queue->add_tail(state.tx.cur_buf, state.tx.cur_buf_len, calc_crc, crc);
+			}
+
+
+			//free(state.tx.cur_buf);
+			//state.tx.cur_buf = NULL;
 			state.tx.cur_buf_len = 0;
 
 			/*  Interrupt, if Tx_IC is set:  */
@@ -1155,13 +1278,18 @@ void CDEC21143::SetupFilter()
     printf("Unique MAC[%d] = %s. \n",i,mac_txt[unique[i]]);
   */
   filter[0] = '\0';
-  strcat(filter,"ether broadcast");
-  for (i=0;i<numUnique;i++)
+  //strcat(filter,"ether broadcast");
+  //There must be at least one unique item; at least the mac of the card
+  strcat(filter,"ether dst ");
+  strcat(filter,mac_txt[unique[0]]);
+  for (i=1;i<numUnique;i++)
   {
     strcat(filter," or ether dst ");
     strcat(filter,mac_txt[unique[i]]);
   }
-  //printf("FILTER = %s.   \n",filter);
+#if defined(DEBUG_NIC)
+  printf("FILTER = %s.   \n",filter);
+#endif
 
   if (pcap_compile(fp,&fcode,filter,1,0xffffffff)<0)
     FAILURE("Unable to compile the packet filter. Check the syntax.");
@@ -1186,9 +1314,9 @@ void CDEC21143::ResetNIC()
 
 	if (state.rx.cur_buf != NULL)
 		free(state.rx.cur_buf);
-	if (state.tx.cur_buf != NULL)
-		free(state.tx.cur_buf);
-	state.rx.cur_buf = state.tx.cur_buf = NULL;
+	//if (state.tx.cur_buf != NULL)
+		//free(state.tx.cur_buf);
+	state.rx.cur_buf = /*state.tx.cur_buf = */ NULL;
 
 	memset(state.reg, 0, sizeof(uint32_t) * 32);
 	memset(state.srom.data, 0, sizeof(state.srom.data));
