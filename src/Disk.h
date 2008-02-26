@@ -27,7 +27,10 @@
  * \file
  * Contains definitions for the disk base class.
  *
- * $Id: Disk.h,v 1.14 2008/02/20 22:19:07 iamcamiel Exp $
+ * $Id: Disk.h,v 1.15 2008/02/26 11:59:55 iamcamiel Exp $
+ *
+ * X-1.15       Camiel Vanderhoeven                             26-FEB-2008
+ *      Remove private devid_string.
  *
  * X-1.14       David Leonard                                   20-FEB-2008
  *      Return SYSTEM RESOURCE FAILURE sense if dato/dati buffer size is
@@ -146,7 +149,6 @@ protected:
   char * serial_number;
   char * model_number;
   char * revision_number;
-  char * devid_string;
 
   bool read_only;
   bool is_cdrom;
