@@ -27,7 +27,10 @@
  * \file
  * Contains the code for the configuration file interpreter.
  *
- * $Id: Configurator.cpp,v 1.16 2008/02/26 11:21:32 iamcamiel Exp $
+ * $Id: Configurator.cpp,v 1.17 2008/02/26 11:55:20 iamcamiel Exp $
+ *
+ * X-1.17       Brian Wheeler                                   26-FEB-2007
+ *      Better syntax checking and error reporting.
  *
  * X-1.16       Camiel Vanderhoeven                             26-FEB-2008
  *      Moved DMA code into it's own class (CDMA)
@@ -128,28 +131,178 @@
 
 CConfigurator::CConfigurator(class CConfigurator * parent, char * name, char * value, char * text, size_t textlen)
 {
-  enum { STATE_NONE, 
-    STATE_NAME, STATE_NAME_DONE, STATE_IS, 
-    STATE_VALUE, STATE_VALUE_DONE, 
-    STATE_CHILD } state = STATE_NONE;
+  if(parent == 0) {
+    /* Phase 1:  Basic Syntax Check & Strip [first pass only]
+     * - Make sure quotes and comments are closed.
+     * - Make sure braces are balanced
+     * - remove everything except configuration data.
+     */
+
+    char *dst = (char *)malloc(textlen+1);
+    char *p = dst;
+    char *q = text;
+
+    int cbrace=0;
+    enum { STATE_NONE, STATE_C_COMMENT, STATE_CC_COMMENT, 
+	   STATE_STRING } state=STATE_NONE;
+    int state_start = 0;
+    int line = 1;
+    int col = 1;
+    for(int i = 0; i < textlen; i++, q++, col++) 
+    {
+      if(*q == 0x0a) 
+      {
+	line++;
+	col=1;
+      }
+      switch(state) 
+      {
+      case STATE_NONE:
+	switch(*q) {
+	case '"':
+	  state=STATE_STRING;
+	  state_start = line;
+	  *p++=*q;
+	  break;
+	case '/':
+	  if(i == textlen - 1) 
+	  { 
+	    printf("%%SYS-E-PARSE: file ends in mid-token.  Line %d, Col %d\n",
+		   line,col);
+	    exit(1); 
+	  }
+	  
+	  if(*(q+1) == '/') 
+	  {
+	    state=STATE_CC_COMMENT;	
+	    state_start = line;  
+	  } else if(*(q+1) == '*') {
+	    state=STATE_C_COMMENT;	  
+	    state_start = line;
+	  }
+	  break;
+	case '{':
+	  cbrace++;
+	  *p++=*q;
+	  break;
+	case '}':
+	  if(cbrace==0) 
+	  {
+	    printf("%%SYS-E-PARSE: too many closed braces.  Line %d, Col %d\n",
+		   line,col);
+	    exit(1); 
+	  }
+	  cbrace--;
+	  *p++=*q;
+	  break;
+	default:
+	  if(!isspace(*q)) 
+	  {
+	    if(isalnum(*q) || *q=='_' || *q=='.' || *q=='=' || *q==';') 
+	    {
+	      *p++=*q;
+	    } else {
+	      printf("%%SYS-E-PARSE: Illegal character '%c'.  Line %d, Col %d\n",
+		     *q,line,col);
+	      exit(1); 
+	    }
+	  }
+	}
+	break;
+      case STATE_CC_COMMENT: // c++ comment
+	if(*q == 0x0d || *q == 0x0a) 
+	{
+	  state=STATE_NONE;
+	  state_start = line;
+	}
+	break;
+      case STATE_C_COMMENT: // c comment
+	if(*q == '*') 
+	{
+	  if(i == textlen - 1) 
+	  { 
+	    printf("%%SYS-E-PARSE: file ends in mid-comment.  Line %d, Col %d\n",
+		   line,col);
+	    exit(1); 
+	  }
+	  if(*(q+1) == '/') 
+	  { 
+	    state=STATE_NONE;
+	    state_start = line;
+	  }
+	}
+	break;
+      case STATE_STRING: // string
+	if(*q == '"') 
+	{
+	  if(i == textlen - 1) 
+	  { 
+	    printf("%%SYS-E-PARSE: file ends in mid-string.  Line %d, Col %d\n",
+		   line,col);
+	    exit(1); 
+	  }
+	  if(*(q+1) != '"') 
+	  {
+	    state_start = line;
+	    state=STATE_NONE;
+	  }
+      else
+      {
+        *p++ = *q;
+        i++;
+        q++;
+      }
+	} else if(*q == 0x0a || *q == 0x0d) 
+	{
+	  printf("%%SYS-E-PARSE: multi-line strings are forbidden.  Line %d, Col %d\n",
+		 line,col);
+	  exit(1); 
+	}
+	*p++=*q;
+	break;
+      }
+    }
+    *p++=0;
+    
+    if(state != 0 && state != 1) 
+    {
+      printf("%%SYS-E-PARSE: unclosed %s.  Started on line %d.\n",state==STATE_C_COMMENT?"comment":"string",state_start);
+    }
+    
+    if(cbrace != 0) 
+    {
+      printf("%%SYS-E-PARSE: unclosed brace in file.\n");   
+    }
+
+    textlen=strlen(dst);
+    memcpy(text,dst,textlen+1);
+    free(dst);
+  }
+    
+  /* Phase 2: Parse the file [every time]
+   * The data is in a very compressed form at this point.  We also
+   * know some important things about the data:
+   * - There is no whitespace (except in strings)
+   * - the braces are all closed
+   * - comments have been removed.
+   * - strings are valid.
+   */
+  enum { STATE_NONE, STATE_NAME, STATE_IS, STATE_VALUE, 
+	 STATE_CHILD } state = STATE_NONE;
 
   char * cur_name;
   char * cur_value;
 
-  size_t curtext;
-  int cmt_depth;
-  int child_depth;
+  int child_depth = 0;
 
-  size_t name_start;
-  size_t name_len;
+  size_t name_start = 0;
+  size_t name_len = 0;
 
-  size_t value_start;
-  size_t value_len;
+  size_t value_start = 0;
+  size_t value_len = 0;
 
-  size_t child_start;
-  size_t child_len;
-
-  int txt_depth;
+  size_t child_start = 0;
+  size_t child_len = 0;
 
   pParent = parent;
   iNumChildren = 0;
@@ -157,63 +310,8 @@ CConfigurator::CConfigurator(class CConfigurator * parent, char * name, char * v
   myName = name;
   myValue = value;
 
-  for (curtext = 0; curtext < textlen; curtext++)
+  for (size_t curtext = 0; curtext < textlen; curtext++)
   {
-    //
-    // comment
-    //
-    if (text[curtext] == '/')
-    {
-      curtext++;
-      // may be a comment...
-      if (text[curtext] == '*')
-      {
-        cmt_depth = 1;
-        // search end of comment...
-        while (cmt_depth)
-        {
-          curtext++;
-          if (text[curtext] == '/')
-            if (text[++curtext] =='*')
-              cmt_depth++;
-            else
-              curtext--;
-          if (text[curtext] == '*')
-            if (text[++curtext] =='/')
-              cmt_depth--;
-            else
-              curtext--;
-          
-        }
-        continue;
-      }
-      else if (text[curtext] =='/')
-      {
-        curtext++;
-        // line comment
-        while (text[curtext]!=0x0d && text[curtext]!= 0x0a)
-          curtext++;
-        continue;
-      }
-    }
-
-    if (text[curtext] == '\"' && (state == STATE_VALUE || state == STATE_CHILD))
-    {
-      txt_depth = 1;
-      while (txt_depth)
-      {
-        curtext++;
-        if (text[curtext] == '"')
-        {
-          if (text[curtext+1] =='"')
-            curtext++;
-          else
-            txt_depth = 0;
-        }
-      }
-      continue;
-    }
-
     switch(state)
     {
     case STATE_NONE:
@@ -229,19 +327,6 @@ CConfigurator::CConfigurator(class CConfigurator * parent, char * name, char * v
         state = STATE_IS;
         name_len = curtext - name_start;
       }
-      else if (isblank(text[curtext]))
-      {
-        state = STATE_NAME_DONE;
-        name_len = curtext - name_start;
-      }
-      else if (!isalnum((unsigned char)text[curtext]) && text[curtext]!='.' && text[curtext] != '_')
-        printf("STATE_NAME: Illegal character: \'%c\'!! (%02x @ %d)\n", text[curtext],text[curtext],curtext);
-      break;
-    case STATE_NAME_DONE:
-      if (text[curtext] == '=')
-        state = STATE_IS;
-      else if (!isblank(text[curtext]))
-        printf("STATE_NAME_DONE: Illegal character: \'%c\'!! (%02x @ %d)\n", text[curtext],text[curtext],curtext);
       break;
     case STATE_IS:
       if (isalnum((unsigned char)text[curtext]) || text[curtext]=='.' || text[curtext] == '_')
@@ -268,6 +353,7 @@ CConfigurator::CConfigurator(class CConfigurator * parent, char * name, char * v
         memcpy(cur_value,&text[value_start],value_len);
         cur_value[value_len] = '\0';
 
+        printf("Calling strip_string for  <%s>. \n",cur_value);
         strip_string(cur_value);
         add_value(cur_name, cur_value);
 
@@ -280,37 +366,6 @@ CConfigurator::CConfigurator(class CConfigurator * parent, char * name, char * v
         child_start = curtext+1;
         child_depth = 1;
       }
-      else if (isspace((unsigned char)text[curtext]))
-      {
-        state = STATE_VALUE_DONE;
-        value_len = curtext - value_start;
-      }
-      else if (!isalnum((unsigned char)text[curtext]) && text[curtext]!='.' && text[curtext] != '_')
-        printf("STATE_VALUE: Illegal character: \'%c\'!! (%02x @ %d)\n", text[curtext],text[curtext],curtext);
-      break;
-    case STATE_VALUE_DONE:
-      if (text[curtext] == ';')
-      {
-        cur_name = (char*)malloc(name_len+1);
-        memcpy(cur_name,&text[name_start],name_len);
-        cur_name[name_len] = '\0';
-        cur_value = (char*)malloc(value_len+1);
-        memcpy(cur_value,&text[value_start],value_len);
-        cur_value[value_len] = '\0';
-
-        strip_string(cur_value);
-        add_value(cur_name,cur_value);
-
-        state = STATE_NONE;
-      }
-      else if (text[curtext] == '{')
-      {
-        state = STATE_CHILD;
-        child_start = curtext+1;
-        child_depth = 1;
-      }
-      else if (!isspace((unsigned char)text[curtext]))
-        printf("STATE_VALUE_DONE: Illegal character: \'%c\'!! (%02x @ %d)\n", text[curtext],text[curtext],curtext);
       break;
     case STATE_CHILD:
       if (text[curtext] == '{')
@@ -772,6 +827,8 @@ void CConfigurator::initialize()
 #endif
     break;
 
+  case c_none:
+    break;
   }
 
   for (i=0;i<iNumChildren;i++)

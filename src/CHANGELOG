@@ -3,6 +3,8 @@
 
 \section c018 version 0.17 -> 0.17+
 
+ - Better config file syntax checking and error reporting.
+   (26-feb-2008, Brian Wheeler)
  - Moved DMA code into it's own class (CDMA). (26-feb-2008, Camiel
    Vanderhoeven)
  - Shut down display refresh thread when emulator exits.
