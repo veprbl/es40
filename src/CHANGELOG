@@ -3,6 +3,8 @@
 
 \section c018 version 0.17 -> 0.17+
 
+ - Moved DMA code into it's own class (CDMA). (26-feb-2008, Camiel
+   Vanderhoeven)
  - Shut down display refresh thread when emulator exits.
    (20-feb-2008, David Leonard)
  - Return SYSTEM RESOURCE FAILURE sense if dato/dati buffer size

@@ -27,7 +27,10 @@
  * \file 
  * Contains the code for the emulated Ali M1543C chipset devices.
  *
- * $Id: AliM1543C.cpp,v 1.58 2008/02/12 11:07:09 iamcamiel Exp $
+ * $Id: AliM1543C.cpp,v 1.59 2008/02/26 11:21:31 iamcamiel Exp $
+ *
+ * X-1.59       Camiel Vanderhoeven                             26-FEB-2008
+ *      Moved DMA code into it's own class (CDMA)
  *
  * X-1.58       Camiel Vanderhoeven                             12-FEB-2008
  *      Moved keyboard code into it's own class (CKeyboard)
@@ -360,15 +363,6 @@ CAliM1543C::CAliM1543C(CConfigurator * cfg, CSystem * c, int pcibus, int pcidev)
       state.pic_asserted[i] = 0;
     }
 
-  // DMA Setup
-  add_legacy_io(12,0x00,16); // dma 0-3
-  add_legacy_io(13,0xc0,32); // dma 4-7
-  add_legacy_io(33,0x80,16); // dma 0-7 (memory base low page register)
-  add_legacy_io(34,0x480,16); // dma 0-7 (memory base high page register)
-  for(i=0;i<4;i++) {
-    state.dma_channel[i].lobyte=true;
-  }
-
   // Initialize parallel port
   add_legacy_io(27,0x3bc,4);
   filename=myCfg->get_text_value("lpt.outfile");
@@ -379,7 +373,7 @@ CAliM1543C::CAliM1543C(CConfigurator * cfg, CSystem * c, int pcibus, int pcidev)
   }
   lpt_reset();
 
-  printf("%s: $Id: AliM1543C.cpp,v 1.58 2008/02/12 11:07:09 iamcamiel Exp $\n",devid_string);
+  printf("%s: $Id: AliM1543C.cpp,v 1.59 2008/02/26 11:21:31 iamcamiel Exp $\n",devid_string);
 }
 
 /**
@@ -401,13 +395,9 @@ CAliM1543C::~CAliM1543C()
  *  - 6. I/O ports 40h-43h (programmable interrupt timer)
  *  - 7. I/O ports 20h-21h (primary programmable interrupt controller)
  *  - 8. I/O ports a0h-a1h (secondary (cascaded) programmable interrupt controller)
- *  - 12. I/O ports 00h-0fh (primary DMA controller)
- *  - 13. I/O ports c0h-dfh (secondary DMA controller)
  *  - 20. PCI IACK address (interrupt vector)
  *  - 27. I/O ports 3bch-3bfh (parallel port)
  *  - 30. I/O ports 4d0h-4d1h (edge/level register of programmable interrupt controller)
- *  - 33. I/O ports 80h-8fh (DMA controller memory base low page register)
- *  - 34. I/O ports 480h-48fh (DMA controller memory base high page register)
  *  .
  **/
 
@@ -416,7 +406,7 @@ u32 CAliM1543C::ReadMem_Legacy(int index, u32 address, int dsize)
   if (dsize!=8 && index !=20) // when interrupt vector is read, dsize doesn't matter.
   {
     printf("%s: DSize %d seen reading from legacy memory range # %d at address %02x\n", devid_string, dsize, index, address);
-    FAILURE("Unsupported dsize");
+//    FAILURE("Unsupported dsize");
   }
   int channel = 0;
   switch(index)
@@ -435,15 +425,6 @@ u32 CAliM1543C::ReadMem_Legacy(int index, u32 address, int dsize)
       return pic_read_vector();
     case 30:
       return pic_read_edge_level(address);
-    case 13:
-      channel = 1;
-      address >>= 1;
-    case 12:
-      return dma_read(channel, address);
-    case 33:
-      return dma_read(3,address);
-    case 34:
-      return dma_read(4,address);
     case 27:
       return lpt_read(address);
     }
@@ -475,7 +456,7 @@ void CAliM1543C::WriteMem_Legacy(int index, u32 address, int dsize, u32 data)
   if (dsize!=8)
   {
     printf("%s: DSize %d seen writing to legacy memory range # %d at address %02x\n", devid_string, dsize, index, address);
-    FAILURE("Unsupported dsize");
+//    FAILURE("Unsupported dsize");
   }
   int channel = 0;
   switch(index)
@@ -496,18 +477,6 @@ void CAliM1543C::WriteMem_Legacy(int index, u32 address, int dsize, u32 data)
       return;
     case 30:
       pic_write_edge_level(address, (u8) data);
-      return;
-    case 13:
-      channel = 1;
-      address >>= 1;
-    case 12:
-      dma_write(channel, address, (u8) data);
-      return;
-    case 33:
-      dma_write(3,address,(u8) data);
-      return;
-    case 34:
-      dma_write(4,address,(u8)data);
       return;
     case 27:
       lpt_write(address,(u8)data);
@@ -1111,217 +1080,6 @@ void CAliM1543C::pic_deassert(int index, int intno)
 
   if (index==0 && state.pic_asserted[0]==0)
     cSystem->interrupt(55,false);
-}
-
-/**
- * Read a byte from the dma controller.
- * Always returns 0.
- **/
-
-u8 CAliM1543C::dma_read(int index, u32 address)
-{
-  u8 data;
-  printf("DMA Read: %d,%x \n",index,address);
-  data = 0;
-
-  return data;
-}
-
-/**
- * Write a byte to the dma controller.
- * Not functional.
- **/
-
-void CAliM1543C::dma_write(int index, u32 address, u8 data)
-{
-  printf("DMA Write: %x,%x,%x \n",index,address,data);
-  int num;
-
-  switch(index) {
-  case 0: // 0x00 -> 0x0f
-  case 1: // 0xc0 -> 0xdf
-    switch(address) {
-    case 0x00: // base address
-    case 0x02: 
-    case 0x04:
-    case 0x06:
-      num = (address/2)+(index*4);
-      if(state.dma_channel[num].lobyte) {
-      state.dma_channel[num].base = data;
-      state.dma_channel[num].lobyte=false;
-      } else {
-      state.dma_channel[num].base |= (data << 8);
-      state.dma_channel[num].current=state.dma_channel[num].base;
-      state.dma_channel[num].lobyte=true;
-      }
-      break;
-      
-    case 0x01: // word count
-    case 0x03:
-    case 0x05:
-    case 0x07:
-      num = ((address-1)/2)+(index*4);
-      if(state.dma_channel[num].lobyte) {
-      state.dma_channel[num].count = data;
-      state.dma_channel[num].lobyte=false;
-      } else {
-      state.dma_channel[num].count |= (data << 8);
-      state.dma_channel[num].lobyte=true;
-      }
-      break;
-
-    case 0x08: // command register (2)
-      /*
-      Bit(s)  Description     (Table P0002)
-      7      DACK sense active high
-      6      DREQ sense active high
-      5      =1 extended write selection
-        =0 late write selection
-      4      rotating priority instead of fixed priority
-      3      compressed timing (two clocks instead of four per transfer)
-        =1 normal timing (default)
-        =0 compressed timing
-      2      =1 enable controller
-        =0 enable memory-to-memory
-      1-0    channel number
-       */
-      /* we'll actually do the DMA here. */
-
-      break;
-    case 0x09: // write request register (3)
-      /*
-      Bit(s)  Description     (Table P0003)
-      7-3    reserved (0)
-      2      =0 clear request bit
-        =1 set request bit
-      1-0    channel number
-        00 channel 0 select
-        01 channel 1 select
-        10 channel 2 select
-        11 channel 3 select
-       */
-      state.dma_controller[index].writereq=data;
-      break;
-    case 0x0a: // mask register (4)
-      /*
-      Bit(s)  Description     (Table P0004)
-      7-3    reserved (0)
-      2      =0 clear mask bit
-        =1 set mask bit
-      1-0    channel number
-        00 channel 0 select
-        01 channel 1 select
-        10 channel 2 select
-        11 channel 3 select
-       */
-      state.dma_controller[index].mask=data;
-      break;
-    case 0x0b: // mode register (5)
-      /*
-Bit(s)  Description     (Table P0005)
- 7-6    transfer mode
-        00 demand mode
-        01 single mode
-        10 block mode
-        11 cascade mode
- 5      direction
-        =0 increment address after each transfer
-        =1 decrement address
- 3-2    operation
-        00 verify operation
-        01 write to memory
-        10 read from memory
-        11 reserved
- 1-0    channel number
-        00 channel 0 select
-        01 channel 1 select
-        10 channel 2 select
-        11 channel 3 select
-       */
-      state.dma_controller[index].mode=data;
-      break;
-    case 0x0c: // clear byte pointer flip-flop register
-      break;
-    case 0x0d: // dma channel master clear register
-      printf("DMA-I-RESET: DMA %d reset.",index);
-      break;
-    case 0x0e: // clear mask register
-      break;
-    case 0x0f: // write mask register (6)
-      /*      
-Bit(s)  Description     (Table P0006)
- 7-4    reserved
- 3      channel 3 mask bit
- 2      channel 2 mask bit
- 1      channel 1 mask bit
- 0      channel 0 mask bit
-Note:   each mask bit is automatically set when the corresponding channel
-          reaches terminal count or an extenal EOP sigmal is received
-      */
-      break;
-    }
-    break;
-  case 2:
-    // dma base low page register
-    switch(address) {
-    case 1:
-      num=2;
-      break;
-    case 2:
-      num=3;
-      break;
-    case 3:
-      num=1;
-      break;
-    case 7:
-      num=0;
-      break;
-    case 9:
-      num=6;
-      break;
-    case 0xa:
-      num=7;
-      break;
-    case 0xb:
-      num=5;
-      break;
-    default:
-      printf("DMA Unknown low page register: %x\n",address);
-      return;
-    }
-    state.dma_channel[num].pagebase = (state.dma_channel[num].pagebase & 0xff00) | data;
-    break;
-  case 3:
-    // dma base high page register
-    switch(address) {
-    case 1:
-      num=2;
-      break;
-    case 2:
-      num=3;
-      break;
-    case 3:
-      num=1;
-      break;
-    case 7:
-      num=0;
-      break;
-    case 9:
-      num=6;
-      break;
-    case 0xa:
-      num=7;
-      break;
-    case 0xb:
-      num=5;
-      break;
-    default:
-      printf("DMA Unknown high page register: %x\n",address);
-      return;
-    }
-    state.dma_channel[num].pagebase = (state.dma_channel[num].pagebase & 0xff) | (data<<8);
-    break;
-  }
 }
 
 /**

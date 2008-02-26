@@ -27,7 +27,10 @@
  * \file 
  * Contains the definitions for the ISA part of the emulated Ali M1543C chipset.
  *
- * $Id: AliM1543C.h,v 1.28 2008/02/12 11:07:09 iamcamiel Exp $
+ * $Id: AliM1543C.h,v 1.29 2008/02/26 11:21:31 iamcamiel Exp $
+ *
+ * X-1.29       Camiel Vanderhoeven                             26-FEB-2008
+ *      Moved DMA code into it's own class (CDMA)
  *
  * X-1.28       Camiel Vanderhoeven                             12-FEB-2008
  *      Moved keyboard code into it's own class (CKeyboard)
@@ -174,10 +177,6 @@ class CAliM1543C : public CPCIDevice
   u8 pic_read_edge_level(int index);
   void pic_write_edge_level(int index, u8 data);
 
-  // DMA controller
-  u8 dma_read(int channel, u32 address);
-  void dma_write(int channel, u32 address, u8 data);
-
   // LPT controller
   u8 lpt_read(u32 address);
   void lpt_write(u32 address, u8 data);
@@ -206,24 +205,6 @@ class CAliM1543C : public CPCIDevice
     u8 pic_mask[2];
     u8 pic_asserted[2];
     u8 pic_edge_level[2];
-
-    /// DMA channel state
-    struct SAli_dmachan {
-      bool lobyte;
-      u16 current;
-      u16 base;
-      u16 pagebase;
-      u16 count;
-    } dma_channel[8];
-
-    /// DMA controller state
-    struct SAli_dmactrl {
-      u8 status;
-      u8 command;
-      u8 writereq;
-      u8 mask;
-      u8 mode;
-    } dma_controller[2];
 
     u8 lpt_data;
     u8 lpt_control;

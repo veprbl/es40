@@ -27,7 +27,10 @@
  * \file
  * Contains the code for the configuration file interpreter.
  *
- * $Id: Configurator.cpp,v 1.15 2008/02/16 16:50:59 iamcamiel Exp $
+ * $Id: Configurator.cpp,v 1.16 2008/02/26 11:21:32 iamcamiel Exp $
+ *
+ * X-1.16       Camiel Vanderhoeven                             26-FEB-2008
+ *      Moved DMA code into it's own class (CDMA)
  *
  * X-1.15       Camiel Vanderhoeven                             16-FEB-2008
  *      Forgot something on last change.
@@ -86,6 +89,7 @@
 #include "DPR.h"
 #include "AliM1543C.h"
 #include "Keyboard.h"
+#include "DMA.h"
 #if defined(HAVE_NEW_IDE)
 #include "NewIde.h"
 #else
@@ -98,6 +102,9 @@
 #include "Port80.h"
 #include "S3Trio64.h"
 #include "Cirrus.h"
+#if defined(HAVE_RADEON)
+#include "Radeon.h"
+#endif
 #include "gui/plugin.h"
 #if defined(HAVE_PCAP)
 #include "DEC21143.h"
@@ -519,6 +526,7 @@ classinfo classes[] =
   {"serial",  c_serial,        ON_CS                                        },
   {"s3",      c_s3,                     IS_PCI |                    ON_GUI  },
   {"cirrus",  c_cirrus,                 IS_PCI |                    ON_GUI  },
+  {"radeon",  c_radeon,                 IS_PCI |                    ON_GUI  },
   {"dec21143",c_dec21143,               IS_PCI |                    IS_NIC  },
   {"sym53c895", c_sym53c895,            IS_PCI |           HAS_DISK         },
   {"sym53c810", c_sym53c810,            IS_PCI |           HAS_DISK         },
@@ -673,6 +681,7 @@ void CConfigurator::initialize()
     myDevice = new CAliM1543C(this,(CSystem *)pParent->get_device(),pcibus,pcidev);
     new CPort80(this,(CSystem *)pParent->get_device());
     new CKeyboard(this,(CSystem *)pParent->get_device());
+    new CDMA(this,(CSystem *)pParent->get_device());
     break;
 
   case c_ali_ide:
@@ -693,6 +702,14 @@ void CConfigurator::initialize()
 
   case c_cirrus:
     myDevice = new CCirrus(this,(CSystem *)pParent->get_device(),pcibus,pcidev);
+    break;
+
+  case c_radeon:
+#if defined(HAVE_RADEON)
+    myDevice = new CRadeon(this,(CSystem *)pParent->get_device(),pcibus,pcidev);
+#else
+    FAILURE("ES40 was not compiled with Radeon support");
+#endif
     break;
 
 #if defined(HAVE_PCAP)

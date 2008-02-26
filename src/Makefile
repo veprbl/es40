@@ -27,7 +27,10 @@
 #
 # Makefile for GNU Linux. (And possibly many UNIX'es).
 #
-# $Id: Makefile,v 1.26 2008/02/20 21:02:50 iamcamiel Exp $
+# $Id: Makefile,v 1.27 2008/02/26 11:21:33 iamcamiel Exp $
+#
+# X-1.27       Camiel Vanderhoeven              26-FEB-2008
+#      Moved DMA code into it's own class (CDMA)
 #
 # X-1.25		Brian Wheeler      				20-FEB-2008
 #	This quick patch makes sure that the ld command gets
