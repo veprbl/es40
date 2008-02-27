@@ -27,7 +27,10 @@
  * \file
  * Contains code to use a raw device as a disk image.
  *
- * $Id: DiskDevice.cpp,v 1.5 2008/01/13 17:36:56 iamcamiel Exp $
+ * $Id: DiskDevice.cpp,v 1.6 2008/02/27 12:04:22 iamcamiel Exp $
+ *
+ * X-1.6        Brian Wheeler                                   27-FEB-2008
+ *      Avoid compiler warnings.
  *
  * X-1.5        Camiel Vanderhoeven                             13-JAN-2008
  *      Use determine_layout in stead of calc_cylinders.

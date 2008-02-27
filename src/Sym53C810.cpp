@@ -27,7 +27,10 @@
  * \file
  * Contains the code for the emulated Symbios SCSI controller.
  *
- * $Id: Sym53C810.cpp,v 1.5 2008/02/18 13:44:48 iamcamiel Exp $
+ * $Id: Sym53C810.cpp,v 1.6 2008/02/27 12:04:28 iamcamiel Exp $
+ *
+ * X-1.5        Brian Wheeler                                   27-FEB-2008
+ *      Avoid compiler warnings.
  *
  * X-1.4        Camiel Vanderhoeven                             18-FEB-2008
  *      Debugging info on xfer size made conditional.
@@ -350,7 +353,7 @@ CSym53C810::CSym53C810(CConfigurator * cfg, CSystem * c, int pcibus, int pcidev)
   CSCSIBus * a = new CSCSIBus(cfg, c);
   scsi_register(0, a, 7); // scsi id 7 by default
 
-  printf("%s: $Id: Sym53C810.cpp,v 1.5 2008/02/18 13:44:48 iamcamiel Exp $\n",devid_string);
+  printf("%s: $Id: Sym53C810.cpp,v 1.6 2008/02/27 12:04:28 iamcamiel Exp $\n",devid_string);
 }
 
 CSym53C810::~CSym53C810()
@@ -401,7 +404,7 @@ int CSym53C810::SaveState(FILE *f)
   fwrite(&ss,sizeof(long),1,f);
   fwrite(&state,sizeof(state),1,f);
   fwrite(&sym_magic2,sizeof(u32),1,f);
-  printf("%s: %d bytes saved.\n",devid_string,ss);
+  printf("%s: %d bytes saved.\n",devid_string,(int)ss);
   return 0;
 }
 
@@ -463,7 +466,7 @@ int CSym53C810::RestoreState(FILE *f)
     return -1;
   }
 
-  printf("%s: %d bytes restored.\n",devid_string,ss);
+  printf("%s: %d bytes restored.\n",devid_string,(int)ss);
   return 0;
 }
 
@@ -597,10 +600,14 @@ void CSym53C810::WriteMem_Bar(int func,int bar, u32 address, int dsize, u32 data
         case R_SSTAT1:  // 0E
         case R_SSTAT2:  // 0F
         case R_CTEST2:  // 1A
-          //printf("SYM: Write to read-only memory at %02x. FreeBSD driver cache test.\n" ,address);
+          //printf("SYM: Write to read-only register at %02x. FreeBSD driver cache test.\n", address);
           break;
+  	    case 0x4b:      // ??? Linux wants this
+          //printf("SYM: Write to non-existing register at %02x. Linux generic driver.\n", address);
+          break;
+
         default:
-          printf("SYM: Write 8 bits to unknown memory at %02x with %08x.\n",address,data);
+          printf("SYM: Write to unknown register at %02x with %08x.\n",address,data);
 	      throw((int)1);
         }
         break;
@@ -738,8 +745,18 @@ u32 CSym53C810::ReadMem_Bar(int func,int bar, u32 address, int dsize)
           data = read_b_sist(address-R_SIST0);
           break;
 
+    	case 0x17:      // ??? Linux wants this.
+  	    case 0x4b:      // ??? Linux wants this
+  	    case 0x52:      // ??? Linux wants this.
+    	case 0x59:      // ??? Linux wants this.
+          //printf("SYM: Read from non-existing register at %02x. Linux generic driver.\n", address);
+          data = 0;
+          break;
+
         default:
-          printf("SYM: Attempt to read %d bits from memory at %02x\n", dsize, address);
+          printf("SYM: Attempt to read from unknown register at %02x\n", dsize, address);
+	  
+
 	      throw((int)1);
         }
 #if defined(DEBUG_SYM_REGS)

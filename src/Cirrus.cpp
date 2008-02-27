@@ -27,7 +27,10 @@
  * \file
  * Contains the code for the emulated Cirrus CL GD-5434 Video Card device.
  *
- * $Id: Cirrus.cpp,v 1.13 2008/02/20 22:29:25 iamcamiel Exp $
+ * $Id: Cirrus.cpp,v 1.14 2008/02/27 12:04:21 iamcamiel Exp $
+ *
+ * X-1.14       Brian Wheeler                                   27-FEB-2008
+ *      Avoid compiler warnings.
  *
  * X-1.13       David Leonard                                   20-FEB-2008
  *      Shut down refresh thread when emulator exits.
@@ -408,7 +411,7 @@ CCirrus::CCirrus(CConfigurator * cfg, CSystem * c, int pcibus, int pcidev): CVGA
     pthread_create(&screen_refresh_handle_cirrus,NULL,refresh_proc_cirrus,this);
 #endif
 
-  printf("%s: $Id: Cirrus.cpp,v 1.13 2008/02/20 22:29:25 iamcamiel Exp $\n",devid_string);
+  printf("%s: $Id: Cirrus.cpp,v 1.14 2008/02/27 12:04:21 iamcamiel Exp $\n",devid_string);
 }
 
 CCirrus::~CCirrus()
@@ -524,7 +527,7 @@ int CCirrus::SaveState(FILE *f)
   fwrite(&ss,sizeof(long),1,f);
   fwrite(&state,sizeof(state),1,f);
   fwrite(&cirrus_magic2,sizeof(u32),1,f);
-  printf("%s: %d bytes saved.\n",devid_string,ss);
+  printf("%s: %d bytes saved.\n",devid_string,(int)ss);
   return 0;
 }
 
@@ -586,7 +589,7 @@ int CCirrus::RestoreState(FILE *f)
     return -1;
   }
 
-  printf("%s: %d bytes restored.\n",devid_string,ss);
+  printf("%s: %d bytes restored.\n",devid_string,(int)ss);
   return 0;
 }
 

@@ -27,7 +27,10 @@
  * \file
  * Contains definitions for the SCSI bus class.
  *
- * $Id: SCSIBus.cpp,v 1.2 2008/02/16 13:02:58 iamcamiel Exp $
+ * $Id: SCSIBus.cpp,v 1.3 2008/02/27 12:04:26 iamcamiel Exp $
+ *
+ * X-1.3        Brian Wheeler                                   27-FEB-2008
+ *      Avoid compiler warnings.
  *
  * X-1.2        Camiel Vanderhoeven                             16-FEB-2008
  *      Owner of the SCSI bus is allowed to re-arbitrate for it.
@@ -181,7 +184,7 @@ int CSCSIBus::SaveState(FILE *f)
   fwrite(&ss,sizeof(long),1,f);
   fwrite(&state,sizeof(state),1,f);
   fwrite(&scsi_magic2,sizeof(u32),1,f);
-  printf("%s: %d bytes saved.\n",devid_string,ss);
+  printf("%s: %d bytes saved.\n",devid_string,(int)ss);
   return 0;
 }
 
@@ -239,6 +242,6 @@ int CSCSIBus::RestoreState(FILE *f)
     return -1;
   }
 
-  printf("%s: %d bytes restored.\n",devid_string,ss);
+  printf("%s: %d bytes restored.\n",devid_string,(int)ss);
   return 0;
 }

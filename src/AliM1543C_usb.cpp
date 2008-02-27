@@ -27,6 +27,9 @@
  * \file
  * Contains the code for the emulated Ali M1543C IDE chipset part.
  *
+ * X-1.5        Brian Wheeler                                   27-FEB-2008
+ *      Avoid compiler warnings.
+ *
  * X-1.4        Brian wheeler                                   18-FEB-2008
  *      Implemented HCI register space. 
  *
@@ -103,7 +106,7 @@ CAliM1543C_usb::CAliM1543C_usb(CConfigurator * cfg, CSystem * c, int pcibus, int
   state.usb_data[0x34/4] = 0x2edf;
   state.usb_data[0x48/4] = 0x01000003;
 
-  printf("%s: $Id: AliM1543C_usb.cpp,v 1.4 2008/02/18 15:51:30 iamcamiel Exp $\n",devid_string);
+  printf("%s: $Id: AliM1543C_usb.cpp,v 1.5 2008/02/27 12:04:20 iamcamiel Exp $\n",devid_string);
 }
 
 CAliM1543C_usb::~CAliM1543C_usb()
@@ -173,7 +176,7 @@ u64 CAliM1543C_usb::usb_hci_read(u64 address, int dsize) {
     break;
 
   default:
-    printf("%%USB-W-HCIREAD: Reading from unknown address %x.  Ignoring.\n",address);
+    printf("%%USB-W-HCIREAD: Reading from unknown address %x.  Ignoring.\n",(int)address);
   }
   return data;
 }
@@ -213,7 +216,7 @@ void CAliM1543C_usb::usb_hci_write(u64 address, int dsize, u64 data) {
     state.usb_data[address/4]=data;
     break;
   default:
-    printf("%%USB-W-HCIWRITE: Writing to unknown address %x.  Ignoring.\n",address);
+    printf("%%USB-W-HCIWRITE: Writing to unknown address %x.  Ignoring.\n",(int)address);
   }
 }
 
@@ -236,7 +239,7 @@ int CAliM1543C_usb::SaveState(FILE *f)
   fwrite(&ss,sizeof(long),1,f);
   fwrite(&state,sizeof(state),1,f);
   fwrite(&usb_magic2,sizeof(u32),1,f);
-  printf("%s: %d bytes saved.\n",devid_string,ss);
+  printf("%s: %d bytes saved.\n",devid_string,(int)ss);
   return 0;
 }
 
@@ -298,6 +301,6 @@ int CAliM1543C_usb::RestoreState(FILE *f)
     return -1;
   }
 
-  printf("%s: %d bytes restored.\n",devid_string,ss);
+  printf("%s: %d bytes restored.\n",devid_string,(int)ss);
   return 0;
 }

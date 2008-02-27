@@ -27,7 +27,10 @@
  * \file
  * Contains code for the disk base class.
  *
- * $Id: Disk.cpp,v 1.26 2008/02/20 22:19:07 iamcamiel Exp $
+ * $Id: Disk.cpp,v 1.27 2008/02/27 12:04:22 iamcamiel Exp $
+ *
+ * X-1.27       Brian Wheeler                                   27-FEB-2008
+ *      Avoid compiler warnings.
  *
  * X-1.26       David Leonard                                   20-FEB-2008
  *      Return SYSTEM RESOURCE FAILURE sense if dato/dati buffer size is
@@ -208,7 +211,7 @@ int CDisk::SaveState(FILE *f)
   fwrite(&ss,sizeof(long),1,f);
   fwrite(&state,sizeof(state),1,f);
   fwrite(&disk_magic2,sizeof(u32),1,f);
-  printf("%s: %d bytes saved.\n",devid_string,ss);
+  printf("%s: %d bytes saved.\n",devid_string,(int)ss);
   return 0;
 }
 
@@ -269,7 +272,7 @@ int CDisk::RestoreState(FILE *f)
   //calc_cylinders(); // state.block_size may have changed.
   determine_layout();
 
-  printf("%s: %d bytes restored.\n",devid_string,ss);
+  printf("%s: %d bytes restored.\n",devid_string,(int)ss);
   return 0;
 }
 
@@ -682,10 +685,10 @@ static u32 lba2msf(off_t_large lba)
  **/
 int CDisk::do_scsi_command()
 {
-  unsigned int retlen;
+  unsigned int retlen = 0;
   int q;
   int pagecode;
-  u32 ofs;
+  u32 ofs = 0;
 
 #if defined(DEBUG_SCSI)
   printf("%s: %d-byte command ",devid_string,state.scsi.cmd.written);
@@ -1356,7 +1359,7 @@ int CDisk::do_scsi_command()
 
     // Would exceed buffer?
     if (retlen*get_block_size() > DATO_BUFSZ) {
-       printf("%s: write too big (%d)\n", devid_string, retlen*get_block_size());
+      printf("%s: write too big (%d)\n", devid_string, (int)(retlen*get_block_size()));
        do_scsi_error(SCSI_TOO_BIG);
        break;
     }
@@ -1652,8 +1655,8 @@ void CDisk::determine_layout()
   int disk_primes[54];
   int compare_primes[54];
 
-  long heads_sectors;
-  long c_heads;
+  long heads_sectors = 0;
+  long c_heads = 0;
   bool b;
   int prime;
 

@@ -27,7 +27,10 @@
  * \file
  * Contains the code for the emulated Serial Port devices.
  *
- * $Id: Serial.cpp,v 1.36 2008/02/06 10:57:35 iamcamiel Exp $
+ * $Id: Serial.cpp,v 1.37 2008/02/27 12:04:27 iamcamiel Exp $
+ *
+ * X-1.37       Brian Wheeler                                   27-FEB-2008
+ *      Avoid compiler warnings.
  *
  * X-1.36       Camiel Vanderhoeven                             06-JAN-2008
  *      Proper interrupt handling. 
@@ -328,7 +331,7 @@ CSerial::CSerial(CConfigurator * cfg, CSystem * c, u16 number) : CSystemComponen
 
   state.irq_active = false;
 
-  printf("%s: $Id: Serial.cpp,v 1.36 2008/02/06 10:57:35 iamcamiel Exp $\n",devid_string);
+  printf("%s: $Id: Serial.cpp,v 1.37 2008/02/27 12:04:27 iamcamiel Exp $\n",devid_string);
 }
 
 /**
@@ -643,7 +646,7 @@ int CSerial::SaveState(FILE *f)
   fwrite(&ss,sizeof(long),1,f);
   fwrite(&state,sizeof(state),1,f);
   fwrite(&srl_magic2,sizeof(u32),1,f);
-  printf("%s: %d bytes saved.\n",devid_string,ss);
+  printf("%s: %d bytes saved.\n",devid_string,(int)ss);
   return 0;
 }
 
@@ -701,6 +704,6 @@ int CSerial::RestoreState(FILE *f)
     return -1;
   }
 
-  printf("%s: %d bytes restored.\n",devid_string,ss);
+  printf("%s: %d bytes restored.\n",devid_string,(int)ss);
   return 0;
 }

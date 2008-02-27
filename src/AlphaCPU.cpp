@@ -27,7 +27,10 @@
  * \file 
  * Contains the code for the emulated DecChip 21264CB EV68 Alpha processor.
  *
- * $Id: AlphaCPU.cpp,v 1.67 2008/02/08 20:08:13 iamcamiel Exp $
+ * $Id: AlphaCPU.cpp,v 1.68 2008/02/27 12:04:20 iamcamiel Exp $
+ *
+ * X-1.68       Brian Wheeler                                   27-FEB-2008
+ *      Avoid compiler warnings.
  *
  * X-1.67       Camiel Vanderhoeven                             08-FEB-2008
  *      Show originating device name on memory errors.
@@ -341,7 +344,7 @@ CAlphaCPU::CAlphaCPU(CConfigurator * cfg, CSystem * system) : CSystemComponent (
   bListing = false;
 #endif
   
-  printf("%s: $Id: AlphaCPU.cpp,v 1.67 2008/02/08 20:08:13 iamcamiel Exp $\n",devid_string);
+  printf("%s: $Id: AlphaCPU.cpp,v 1.68 2008/02/27 12:04:20 iamcamiel Exp $\n",devid_string);
 }
 
 /**
@@ -996,7 +999,7 @@ int CAlphaCPU::SaveState(FILE *f)
   fwrite(&ss,sizeof(long),1,f);
   fwrite(&state,sizeof(state),1,f);
   fwrite(&cpu_magic2,sizeof(u32),1,f);
-  printf("%s: %d bytes saved.\n",devid_string,ss);
+  printf("%s: %d bytes saved.\n",devid_string,(int)ss);
   return 0;
 }
 
@@ -1053,7 +1056,7 @@ int CAlphaCPU::RestoreState(FILE *f)
     return -1;
   }
 
-  printf("%s: %d bytes restored.\n",devid_string,ss);
+  printf("%s: %d bytes restored.\n",devid_string,(int)ss);
   return 0;
 }
 

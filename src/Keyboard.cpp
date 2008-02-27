@@ -27,7 +27,10 @@
  * \file
  * Contains the code for the emulated Keyboard and mouse devices and controller.
  *
- * $Id: Keyboard.cpp,v 1.2 2008/02/20 19:53:31 iamcamiel Exp $
+ * $Id: Keyboard.cpp,v 1.3 2008/02/27 12:04:24 iamcamiel Exp $
+ *
+ * X-1.3        Brian Wheeler                                   27-FEB-2008
+ *      Avoid compiler warnings.
  *
  * X-1.2        David Leonard                                   20-FEB-2008
  *      Avoid 'Xlib: unexpected async reply' errors on Linux/Unix/BSD's by
@@ -119,7 +122,7 @@ CKeyboard::CKeyboard(CConfigurator * cfg, CSystem * c) : CSystemComponent(cfg,c)
   state.kbd_controller_Qsource = 0;
 
 
-  printf("kbc: $Id: Keyboard.cpp,v 1.2 2008/02/20 19:53:31 iamcamiel Exp $\n");
+  printf("kbc: $Id: Keyboard.cpp,v 1.3 2008/02/27 12:04:24 iamcamiel Exp $\n");
 }
 
 /**
@@ -1704,7 +1707,7 @@ int CKeyboard::SaveState(FILE *f)
   fwrite(&ss,sizeof(long),1,f);
   fwrite(&state,sizeof(state),1,f);
   fwrite(&kb_magic2,sizeof(u32),1,f);
-  printf("kbc: %d bytes saved.\n",ss);
+  printf("kbc: %d bytes saved.\n",(int)ss);
   return 0;
 }
 
@@ -1762,7 +1765,7 @@ int CKeyboard::RestoreState(FILE *f)
     return -1;
   }
 
-  printf("kbc: %d bytes restored.\n",ss);
+  printf("kbc: %d bytes restored.\n",(int)ss);
   return 0;
 }
 

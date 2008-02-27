@@ -27,7 +27,10 @@
  * \file
  * Contains the code for the emulated Ali M1543C IDE chipset part.
  *
- * $Id: NewIde.cpp,v 1.13 2008/01/29 10:19:43 iamcamiel Exp $
+ * $Id: NewIde.cpp,v 1.14 2008/02/27 12:04:24 iamcamiel Exp $
+ *
+ * X-1.14       Brian Wheeler                                   27-FEB-2008
+ *      Avoid compiler warnings.
  *
  * X-1.13       Brian Wheeler                                   29-JAN-2008
  *      Avoid firing interrupts that occurred while interrupts were
@@ -268,7 +271,7 @@ int CNewIde::SaveState(FILE *f)
   fwrite(&ss,sizeof(long),1,f);
   fwrite(&state,sizeof(state),1,f);
   fwrite(&ide_magic2,sizeof(u32),1,f);
-  printf("%s: %d bytes saved.\n",devid_string,ss);
+  printf("%s: %d bytes saved.\n",devid_string,(int)ss);
   return 0;
 }
 
@@ -330,7 +333,7 @@ int CNewIde::RestoreState(FILE *f)
       return -1;
     }
 
-  printf("%s: %d bytes restored.\n",devid_string,ss);
+  printf("%s: %d bytes restored.\n",devid_string,(int)ss);
   return 0;
 }
 
@@ -435,7 +438,7 @@ void CNewIde::WriteMem_Bar(int func, int bar, u32 address, int dsize, u32 data) 
  */
 
 u32 CNewIde::ide_command_read(int index, u32 address, int dsize) {
-  u32 data;
+  u32 data = 0;
 
   if(!get_disk(index,0) &&
      !get_disk(index,1)) {

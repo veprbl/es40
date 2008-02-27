@@ -27,7 +27,10 @@
  * \file
  * Contains the code for the configuration file interpreter.
  *
- * $Id: Configurator.cpp,v 1.17 2008/02/26 11:55:20 iamcamiel Exp $
+ * $Id: Configurator.cpp,v 1.18 2008/02/27 12:04:22 iamcamiel Exp $
+ *
+ * X-1.18       Brian Wheeler                                   27-FEB-2008
+ *      Avoid compiler warnings.
  *
  * X-1.17       Brian Wheeler                                   26-FEB-2007
  *      Better syntax checking and error reporting.

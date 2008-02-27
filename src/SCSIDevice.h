@@ -27,7 +27,10 @@
  * \file
  * Contains definitions for the SCSI device base class.
  *
- * $Id: SCSIDevice.h,v 1.1 2008/01/12 12:46:43 iamcamiel Exp $
+ * $Id: SCSIDevice.h,v 1.2 2008/02/27 12:04:26 iamcamiel Exp $
+ *
+ * X-1.2        Brian Wheeler                                   27-FEB-2008
+ *      Avoid compiler warnings.
  *
  * X-1.1        Camiel Vanderhoeven                             12-JAN-2008
  *      Initial version in CVS.
@@ -46,7 +49,7 @@ class CSCSIDevice
 {
 public:
   CSCSIDevice(void);
-  ~CSCSIDevice(void);
+  virtual ~CSCSIDevice(void);
 
   void scsi_register(int busno, class CSCSIBus * with, int target);
 
