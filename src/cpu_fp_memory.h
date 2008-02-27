@@ -29,6 +29,9 @@
  * Contains code macros for the processor floating-point load/store instructions.
  * Based on ARM chapter 4.8.
  *
+ * X-1.13       Brian Wheeler                                   27-FEB-2008
+ *      Avoid compiler warnings.
+ *
  * X-1.12       Camiel Vanderhoeven                             06-FEB-2008
  *      Check for FPEN in old floating point code. 
  *

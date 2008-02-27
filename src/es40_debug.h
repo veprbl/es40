@@ -30,6 +30,9 @@
  * \file
  * Contains macro's and prototypes for debugging.
  *
+ * X-1.6        Brian Wheeler                                   27-FEB-2008
+ *      Avoid compiler warnings.
+ *
  * X-1.5        Brian wheeler                                   26-FEB-2008
  *      Pause before throwing an exception.
  *

@@ -27,6 +27,9 @@
  * \file
  * Contains the code for the VGA base class.
  *
+ * X-1.3        Brian Wheeler                                   27-FEB-2008
+ *      Avoid compiler warnings.
+ *
  * X-1.2        Camiel Vanderhoeven                             28-DEC-2007
  *      Throw exceptions rather than just exiting when errors occur.
  *

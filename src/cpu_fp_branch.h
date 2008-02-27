@@ -28,7 +28,10 @@
  * Contains code macros for the processor floating-point branch instructions.
  * Based on ARM chapter 4.9.
  *
- * $Id: cpu_fp_branch.h,v 1.10 2008/02/06 10:59:52 iamcamiel Exp $
+ * $Id: cpu_fp_branch.h,v 1.11 2008/02/27 12:04:32 iamcamiel Exp $
+ *
+ * X-1.11       Brian Wheeler                                   27-FEB-2008
+ *      Avoid compiler warnings.
  *
  * X-1.10       Camiel Vanderhoeven                             06-FEB-2008
  *      Check for FPEN in old floating point code. 

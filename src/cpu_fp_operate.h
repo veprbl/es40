@@ -28,7 +28,10 @@
  * Contains code macros for the processor floating-point operate instructions.
  * Based on ARM chapter 4.10.
  *
- * $Id: cpu_fp_operate.h,v 1.18 2008/02/06 10:59:52 iamcamiel Exp $
+ * $Id: cpu_fp_operate.h,v 1.19 2008/02/27 12:04:33 iamcamiel Exp $
+ *
+ * X-1.19       Brian Wheeler                                   27-FEB-2008
+ *      Avoid compiler warnings.
  *
  * X-1.18       Camiel Vanderhoeven                             06-FEB-2008
  *      Check for FPEN in old floating point code. 
