@@ -27,7 +27,15 @@
  * \file
  * Contains the code for the emulated Ali M1543C IDE chipset part.
  *
- * $Id: NewIde.cpp,v 1.14 2008/02/27 12:04:24 iamcamiel Exp $
+ * $Id: NewIde.cpp,v 1.15 2008/02/27 12:15:45 iamcamiel Exp $
+ *
+ * X-1.15       Brian Wheeler                                   27-FEB-2008
+ *     This patch fixes the vms boot problems from ide cdrom and it also
+ *     allowed me to install tru64 -- albeit with timeouts:
+ *   a) Clears the busmaster active bit when the bit 1 is written to the
+ *      busmaster status register.
+ *   b) Attempts to refire the interrupt if the controller seems to have
+ *      missed it -- before the OS declares a timeout.
  *
  * X-1.14       Brian Wheeler                                   27-FEB-2008
  *      Avoid compiler warnings.
@@ -520,6 +528,10 @@ u32 CNewIde::ide_command_read(int index, u32 address, int dsize) {
     // get the status and clear the interrupt.
     data = get_status(index);
     theAli->pic_deassert(1,6+index); 
+    CONTROLLER(index).interrupt_fired=0;
+#ifdef DEBUG_IDE_INTERRUPT
+    printf("%%IDE-I-INTERRUPT: Interrupt Acknowledged.\n");
+#endif
     break;
   }
 #ifdef DEBUG_IDE_REG_COMMAND
@@ -758,7 +770,8 @@ u32 CNewIde::ide_busmaster_read(int index, u32 address, int dsize)
 void CNewIde::ide_busmaster_write(int index, u32 address, u32 data, int dsize)
 {
 #ifdef DEBUG_IDE_BUSMASTER
-  printf("%%IDE-I-WRITBUSM: write port %d on IDE bus master %d: 0x%02x, %d bytes\n",  (u32)(address),index, data, dsize/8);
+  if(!(dsize==8 && (address >= 4 && address <=7))) 
+    printf("%%IDE-I-WRITBUSM: write port %d on IDE bus master %d: 0x%02x, %d bytes\n",  (u32)(address),index, data, dsize/8);
 #endif
 
   u32 prd_address;
@@ -803,17 +816,19 @@ void CNewIde::ide_busmaster_write(int index, u32 address, u32 data, int dsize)
     // bit 1 = error (write 1 to reset)
     // bit 0 = busmaster active.
     CONTROLLER(index).busmaster[2] = data & 0x67;
-#ifdef DEBUG_IDE_BUSMASTER
-    printf("-IDE-I-BUSM: Bus master status write, init data: %x\n",CONTROLLER(index).busmaster[2]);
-#endif
+    //#ifdef DEBUG_IDE_BUSMASTER
+    //printf("-IDE-I-BUSM: Bus master status write, init data: %x\n",CONTROLLER(index).busmaster[2]);
+    //#endif
     if(data & 0x04) // interrupt 
       CONTROLLER(index).busmaster[2] &= ~0x04;
     if(data & 0x02) // error
       CONTROLLER(index).busmaster[2] &= ~0x02;
+    if(data & 0x01) // busy
+      CONTROLLER(index).busmaster[2] &= ~0x01;
 
-#ifdef DEBUG_IDE_BUSMASTER
-    printf("-IDE-I-BUSM: Bus master status write, final data: %x\n",CONTROLLER(index).busmaster[2]);
-#endif
+    //#ifdef DEBUG_IDE_BUSMASTER
+    //printf("-IDE-I-BUSM: Bus master status write, final data: %x\n",CONTROLLER(index).busmaster[2]);
+    //#endif
     break;
   case 4: // descriptor table pointer register(s)
   case 5:
@@ -823,12 +838,15 @@ void CNewIde::ide_busmaster_write(int index, u32 address, u32 data, int dsize)
   case 7:
     CONTROLLER(index).busmaster[address]=data;
     prd_address = endian_32(*(u32 *)(&CONTROLLER(index).busmaster[4]));
-    do_pci_read(prd_address, &base, 4, 1);
-    do_pci_read(prd_address+4, &control, 4, 1);
 #ifdef DEBUG_IDE_BUSMASTER
     printf("%IDE-I-PRD: Virtual address: %" LL "x  \n", endian_32(*(u32 *)(&CONTROLLER(index).busmaster[4])));
     printf("-IDE-I-PRD: Physical address: %" LL "x  \n", prd_address);
-    printf("-IDE-I-PRD: base: %x, control: %x  \n",base, control);
+    do {
+      do_pci_read(prd_address, &base, 4, 1);
+      do_pci_read(prd_address+4, &control, 4, 1);
+      printf("-IDE-I-PRD: base: %x, control: %x  \n",base, control);
+      prd_address+=8;
+    } while(base & 0x80 == 0);
 #endif
     break;
   default:
@@ -1838,23 +1856,49 @@ int CNewIde::DoClock()
       }
     } 
 
-    if (CONTROLLER(index).interrupt_pending) 
+    if(!CONTROLLER(index).disable_irq) 
     {
-      if(!CONTROLLER(index).disable_irq) 
+      if (CONTROLLER(index).interrupt_pending) 
       {
+
 #ifdef DEBUG_IDE_INTERRUPT
   	    printf("%%IDE-I-INTERRUPT: Interrupt raised on controller %d.\n",index);
 #endif
 	    CONTROLLER(index).busmaster[2] |= 0x04;
 	    theAli->pic_interrupt(1, 6+index);
 	    CONTROLLER(index).interrupt_pending=false;
+	    CONTROLLER(index).interrupt_fired=SEL_COMMAND(index).command_cycle;
       } 
       else 
       {
-	    // if interrupts are disabled, make sure that we don't
-        // accidentally fire one later when they are enabled.
-	    CONTROLLER(index).interrupt_pending=false;
+	// check to see if its been a long time(tm) since we fired
+	// the interrupt, and if it has been, we re-fire it.
+	if(CONTROLLER(index).interrupt_fired != 0) 
+	{
+
+	  if((SEL_COMMAND(index).command_cycle - CONTROLLER(index).interrupt_fired) > 10)
+	  {
+	    CONTROLLER(index).interrupt_pending=1;
+	    theAli->pic_deassert(1,6+index); 
+#ifdef DEBUG_IDE_INTERRUPT
+	    printf("%%IDE-I-INTERRUPT: scheduling re-firing of interrupt on controller %d.\n",index);
+	    PAUSE("Yeee haa!");
+#endif
+	  }
+	  else
+	  {
+#ifdef DEBUG_IDE_INTERRUPT
+	    printf("%%IDE-I-INTERRUPT: waiting for int acknowledge on %d. (%d, %d)\n",index,SEL_COMMAND(index).command_cycle,CONTROLLER(index).interrupt_fired);
+#endif
+	  }
+	}
       }
+    }
+    else 
+    {
+      // if interrupts are disabled, make sure that we don't
+      // accidentally fire one later when they are enabled.
+      CONTROLLER(index).interrupt_pending=false;
     }
     
     SEL_COMMAND(index).command_cycle++;

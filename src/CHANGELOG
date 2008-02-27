@@ -2,7 +2,11 @@
 \page changelog Changelog
 
 \section c018 version 0.17 -> 0.17+
-
+ - Fix vms boot problems from ide cdrom and make Tru64 installation
+   possible by: a) Clearing the busmaster active bit when the bit 1
+   is written to the busmaster status register; and b) Attempting 
+   to refire the interrupt if the driver seems to have missed it.
+   (27-feb-2008, Brian Wheeler)
  - Major rewrite of NIC code. Real internal loopback support, ring
    queue for incoming packets, and various other improvements.
    (26-feb-2008, David Hittner)

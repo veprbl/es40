@@ -27,7 +27,11 @@
  * \file
  * Contains the definitions for the emulated Ali M1543C IDE chipset part.
  *
- * $Id: NewIde.h,v 1.3 2008/01/12 12:44:40 iamcamiel Exp $
+ * $Id: NewIde.h,v 1.4 2008/02/27 12:15:45 iamcamiel Exp $
+ *
+ * X-1.4        Brian Wheeler                                   27-FEB-2008
+ *      Attempts to refire the interrupt if the controller seems to have
+ *      missed it -- before the OS declares a timeout.
  *
  * X-1.3        Camiel Vanderhoeven                             12-JAN-2008
  *      Use disk's SCSI engine for ATAPI devices.
@@ -150,6 +154,7 @@ class CNewIde : public CDiskController, public CSCSIDevice
       // internal state
       bool reset_in_progress;
       bool interrupt_pending;
+      int interrupt_fired;
       int selected;
 
       // dma stuff
