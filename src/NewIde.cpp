@@ -27,9 +27,12 @@
  * \file
  * Contains the code for the emulated Ali M1543C IDE chipset part.
  *
- * $Id: NewIde.cpp,v 1.16 2008/02/27 12:34:19 iamcamiel Exp $
+ * $Id: NewIde.cpp,v 1.17 2008/02/27 14:20:58 iamcamiel Exp $
  *
- * X-1.15       Brian Wheeler                                   27-FEB-2008
+ * X-1.17       Brian Wheeler                                   27-FEB-2008
+ *     Re-fire interrupts less often.
+ *
+ * X-1.16       Brian Wheeler                                   27-FEB-2008
  *     Improvement to last fix.
  *
  * X-1.15       Brian Wheeler                                   27-FEB-2008
@@ -1881,7 +1884,7 @@ int CNewIde::DoClock()
 	    if(CONTROLLER(index).interrupt_fired != 0) 
 	    {
 
-	      if((SEL_COMMAND(index).command_cycle - CONTROLLER(index).interrupt_fired) > 10)
+	      if((SEL_COMMAND(index).command_cycle - CONTROLLER(index).interrupt_fired) > 200)
 	      {
 	        CONTROLLER(index).interrupt_pending=1;
 	        theAli->pic_deassert(1,6+index); 
