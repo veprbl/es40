@@ -30,7 +30,10 @@
  * \file 
  * Contains the code for the emulated DEC 21143 NIC device.
  *
- * $Id: DEC21143.cpp,v 1.28 2008/02/26 15:54:57 iamcamiel Exp $
+ * $Id: DEC21143.cpp,v 1.29 2008/02/29 10:12:36 iamcamiel Exp $
+ *
+ * X-1.29       Brian Wheeler                                   29-FEB-2008
+ *      Compute SROM checksum. Tru64 needs this.
  *
  * X-1.28       David Hittner                                   26-FEB-2008
  *      Major rewrite. Real internal loopback support, ring queue for
@@ -129,6 +132,11 @@
 
 #include "DEC21143.h"
 #include "System.h"
+
+#if defined(DEBUG_NIC)
+#define DEBUG_NIC_FILTER
+#define DEBUG_NIC_SROM
+#endif
 
 /*  Internal states during MII data stream decode:  */
 #define	MII_STATE_RESET				    0
@@ -355,7 +363,7 @@ CDEC21143::CDEC21143(CConfigurator * confg, CSystem * c, int pcibus, int pcidev)
   pthread_create(&receive_process_handle, NULL, recv_proc, this);
 #endif
 
-  printf("%s: $Id: DEC21143.cpp,v 1.28 2008/02/26 15:54:57 iamcamiel Exp $\n",devid_string);
+  printf("%s: $Id: DEC21143.cpp,v 1.29 2008/02/29 10:12:36 iamcamiel Exp $\n",devid_string);
 }
 
 /**
@@ -867,6 +875,9 @@ void CDEC21143::srom_access(uint32_t oldreg, uint32_t idata)
 //				if (state.srom.curbit == 6 + 3)
 //					debug("[ dec21143: ROM read from offset 0x%03x: 0x%04x ]\n", state.srom.addr, romword);
 				obit = romword & (0x8000 >> (state.srom.curbit - 6 - 3))? 1 : 0;
+#if defined(DEBUG_NIC_SROM)
+				printf("%%NIC-I-SROMREAD: Read %04x from %04x\n",romword,state.srom.addr);
+#endif
 			}
 			break;
 		default:
@@ -1223,7 +1234,9 @@ void CDEC21143::SetupFilter()
   int numUnique;
   int unique[16];
   bool u;
-  //printf("Building a filter...\n");
+#if defined(DEBUG_NIC_FILTER)
+  printf("Building a filter...\n");
+#endif
   for (i=0;i<16;i++)
   {
     mac[i][0] = state.setup_filter[i*12];
@@ -1233,10 +1246,12 @@ void CDEC21143::SetupFilter()
     mac[i][4] = state.setup_filter[i*12+8];
     mac[i][5] = state.setup_filter[i*12+9];
     sprintf(mac_txt[i],"%02x:%02x:%02x:%02x:%02x:%02x",mac[i][0],mac[i][1],mac[i][2],mac[i][3],mac[i][4],mac[i][5]);
-  //  printf("MAC[%d] = %s. \n",i,mac_txt[i]);
+#if defined(DEBUG_NIC_FILTER)
+    printf("MAC[%d] = %s. \n",i,mac_txt[i]);
+#endif
   }
 
-  /*
+#if defined(DEBUG_NIC_FILTER)
   printf("Filter mode: ");
   if (state.reg[CSR_OPMODE/8] & OPMODE_PR)
     printf("promiscuous.\n");
@@ -1254,7 +1269,7 @@ void CDEC21143::SetupFilter()
       printf("perfect ");
     printf("filtering.\n");
   }
-  */
+#endif
   numUnique = 0;
   for (i=0;i<16;i++)
   {
@@ -1273,10 +1288,10 @@ void CDEC21143::SetupFilter()
       numUnique++;
     }
   }
-  /*
+#if defined(DEBUG_NIC_FILTER)
   for (i=0;i<numUnique;i++)
     printf("Unique MAC[%d] = %s. \n",i,mac_txt[unique[i]]);
-  */
+#endif
   filter[0] = '\0';
   //strcat(filter,"ether broadcast");
   //There must be at least one unique item; at least the mac of the card
@@ -1287,7 +1302,7 @@ void CDEC21143::SetupFilter()
     strcat(filter," or ether dst ");
     strcat(filter,mac_txt[unique[i]]);
   }
-#if defined(DEBUG_NIC)
+#if defined(DEBUG_NIC_FILTER)
   printf("FILTER = %s.   \n",filter);
 #endif
 
@@ -1296,11 +1311,12 @@ void CDEC21143::SetupFilter()
 
   if (pcap_setfilter(fp, &fcode)<0)
     FAILURE("Error setting the filter.");
-
-//  getchar();
 }
 
-
+/**
+ * Reset the network interface internals to their condition immediately
+ * after power-up, including the PCI configuration.
+ **/
 void CDEC21143::ResetPCI()
 {
   CPCIDevice::ResetPCI();
@@ -1308,69 +1324,114 @@ void CDEC21143::ResetPCI()
   ResetNIC();
 }
 
+/**
+ * Reset the network interface internals to their condition immediately
+ * after power-up. This does not affect the PCI configuration.
+ *
+ * Code for computing the SROM checksum is taken from [T64].
+ **/
 void CDEC21143::ResetNIC()
 {
   int leaf;
 
-	if (state.rx.cur_buf != NULL)
-		free(state.rx.cur_buf);
-	//if (state.tx.cur_buf != NULL)
-		//free(state.tx.cur_buf);
-	state.rx.cur_buf = /*state.tx.cur_buf = */ NULL;
+  if (state.rx.cur_buf != NULL)
+	free(state.rx.cur_buf);
+//  if (state.tx.cur_buf != NULL)
+//	  free(state.tx.cur_buf);
+  state.rx.cur_buf = /*state.tx.cur_buf = */ NULL;
 
-	memset(state.reg, 0, sizeof(uint32_t) * 32);
-	memset(state.srom.data, 0, sizeof(state.srom.data));
-	memset(state.mii.phy_reg, 0, sizeof(state.mii.phy_reg));
+  memset(state.reg, 0, sizeof(uint32_t) * 32);
+  memset(state.srom.data, 0, sizeof(state.srom.data));
+  memset(state.mii.phy_reg, 0, sizeof(state.mii.phy_reg));
 
-	/*  Register values at reset, according to the manual:  */
-	state.reg[CSR_BUSMODE / 8] = 0xfe000000;	/*  csr0   */
-	state.reg[CSR_MIIROM  / 8] = 0xfff483ff;	/*  csr9   */
-	state.reg[CSR_SIACONN / 8] = 0xffff0000;	/*  csr13  */
-	state.reg[CSR_SIATXRX / 8] = 0xffffffff;	/*  csr14  */
-	state.reg[CSR_SIAGEN  / 8] = 0x8ff00000;	/*  csr15  */
+  /*  Register values at reset, according to the manual:  */
+  state.reg[CSR_BUSMODE / 8] = 0xfe000000;	/*  csr0   */
+  state.reg[CSR_MIIROM  / 8] = 0xfff483ff;	/*  csr9   */
+  state.reg[CSR_SIACONN / 8] = 0xffff0000;	/*  csr13  */
+  state.reg[CSR_SIATXRX / 8] = 0xffffffff;	/*  csr14  */
+  state.reg[CSR_SIAGEN  / 8] = 0x8ff00000;	/*  csr15  */
 
-	state.tx.idling_threshold = 10;
-	state.rx.cur_addr = state.tx.cur_addr = 0;
+  state.tx.idling_threshold = 10;
+  state.rx.cur_addr = state.tx.cur_addr = 0;
 
-	/*  Version (= 1) and Chip count (= 1):  */
-	state.srom.data[TULIP_ROM_SROM_FORMAT_VERION] = 1;
-	state.srom.data[TULIP_ROM_CHIP_COUNT] = 1;
+  /*  Version (= 1) and Chip count (= 1):  */
+  state.srom.data[TULIP_ROM_SROM_FORMAT_VERION] = 1;
+  state.srom.data[TULIP_ROM_CHIP_COUNT] = 1;
 
-	/*  Set the MAC address:  */
-	memcpy(state.srom.data + TULIP_ROM_IEEE_NETWORK_ADDRESS, state.mac, 6);
+  /*  Set the MAC address:  */
+  memcpy(state.srom.data + TULIP_ROM_IEEE_NETWORK_ADDRESS, state.mac, 6);
 
-	leaf = 30;
-	state.srom.data[TULIP_ROM_CHIPn_DEVICE_NUMBER(0)] = 0;
-	state.srom.data[TULIP_ROM_CHIPn_INFO_LEAF_OFFSET(0)] = leaf & 255;
-	state.srom.data[TULIP_ROM_CHIPn_INFO_LEAF_OFFSET(0)+1] = leaf >> 8;
+  leaf = 30;
+  state.srom.data[TULIP_ROM_CHIPn_DEVICE_NUMBER(0)] = 0;
+  state.srom.data[TULIP_ROM_CHIPn_INFO_LEAF_OFFSET(0)] = leaf & 255;
+  state.srom.data[TULIP_ROM_CHIPn_INFO_LEAF_OFFSET(0)+1] = leaf >> 8;
 
-	state.srom.data[leaf+TULIP_ROM_IL_SELECT_CONN_TYPE] = 0; /*  Not used?  */
-	state.srom.data[leaf+TULIP_ROM_IL_MEDIA_COUNT] = 2;
-	leaf += TULIP_ROM_IL_MEDIAn_BLOCK_BASE;
+  state.srom.data[leaf+TULIP_ROM_IL_SELECT_CONN_TYPE] = 0; /*  Not used?  */
+  state.srom.data[leaf+TULIP_ROM_IL_MEDIA_COUNT] = 2;
+  leaf += TULIP_ROM_IL_MEDIAn_BLOCK_BASE;
 
-	state.srom.data[leaf] = 7;	/*  descriptor length  */
-	state.srom.data[leaf+1] = TULIP_ROM_MB_21142_SIA;
-	state.srom.data[leaf+2] = TULIP_ROM_MB_MEDIA_100TX;
-	/*  here comes 4 bytes of GPIO control/data settings  */
-	leaf += state.srom.data[leaf];
+  state.srom.data[leaf] = 7;	/*  descriptor length  */
+  state.srom.data[leaf+1] = TULIP_ROM_MB_21142_SIA;
+  state.srom.data[leaf+2] = TULIP_ROM_MB_MEDIA_100TX;
+  /*  here comes 4 bytes of GPIO control/data settings  */
+  leaf += state.srom.data[leaf];
 
-	state.srom.data[leaf] = 15;	/*  descriptor length  */
-	state.srom.data[leaf+1] = TULIP_ROM_MB_21142_MII;
-	state.srom.data[leaf+2] = 0;	/*  PHY nr  */
-	state.srom.data[leaf+3] = 0;	/*  len of select sequence  */
-	state.srom.data[leaf+4] = 0;	/*  len of reset sequence  */
-	/*  5,6, 7,8, 9,10, 11,12, 13,14 = unused by GXemul  */
-	leaf += state.srom.data[leaf];
+  state.srom.data[leaf] = 15;	/*  descriptor length  */
+  state.srom.data[leaf+1] = TULIP_ROM_MB_21142_MII;
+  state.srom.data[leaf+2] = 0;	/*  PHY nr  */
+  state.srom.data[leaf+3] = 0;	/*  len of select sequence  */
+  state.srom.data[leaf+4] = 0;	/*  len of reset sequence  */
+  /*  5,6, 7,8, 9,10, 11,12, 13,14 = unused by GXemul  */
+  leaf += state.srom.data[leaf];
 
-	/*  MII PHY initial state:  */
-	state.mii.state = MII_STATE_RESET;
+  /*  MII PHY initial state:  */
+  state.mii.state = MII_STATE_RESET;
 
-	/*  PHY #0:  */
-	state.mii.phy_reg[MII_BMSR] = BMSR_100TXFDX | BMSR_10TFDX | BMSR_ACOMP | BMSR_ANEG | BMSR_LINK;
+  /*  PHY #0:  */
+  state.mii.phy_reg[MII_BMSR] = BMSR_100TXFDX | BMSR_10TFDX | BMSR_ACOMP | BMSR_ANEG | BMSR_LINK;
 
-    state.tx.suspend = false;
+  state.tx.suspend = false;
 
-//    SetupFilter();
+  // compute the CRC for the SROM data.  This code is from the
+  // tu sample driver from HP in if_tu.c, which was apparently
+  // derived from the 21140 Hardware Specification
+
+  unsigned int POLY = 0x04c11db6;
+  unsigned int FlippedCrc = 0, Crc = 0xffffffff;
+  unsigned char i, CurrentByte, Bit, Msb;
+  unsigned char chksm_1, chksm_2;
+  
+  for (i=0; i<126; i++) {
+	CurrentByte = state.srom.data[i];
+	
+    for (Bit=0; Bit<8; Bit++) {
+      Msb = (Crc >> 31) & 1;
+      Crc <<= 1;
+	  
+      if (Msb ^ (CurrentByte & 1)) {
+        Crc ^= POLY;
+        Crc |= 1;
+      }
+      CurrentByte >>= 1;
+	}
+  }
+      
+  for (i=0; i<32; i++) {
+    FlippedCrc <<= 1;
+    Bit = Crc & 1;
+    Crc >>= 1;
+    FlippedCrc += Bit;
+  }
+  Crc = FlippedCrc ^ 0xffffffff;
+    
+  chksm_1 = Crc & 0xff;
+  chksm_2 = Crc >> 8;
+    
+  state.srom.data[126]=chksm_1;
+  state.srom.data[127]=chksm_2;
+#if defined(DEBUG_NIC_SROM)
+  printf("%%NIC-I-CKSUM: SROM checksum bytes are %02x, %02x\n", state.srom.data[126], state.srom.data[127]);
+#endif
 }
 
 static u32 nic_magic1 = 0xDEC21143;

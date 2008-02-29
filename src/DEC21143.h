@@ -30,7 +30,10 @@
  * \file 
  * Contains the definitions for the emulated DEC 21143 NIC device.
  *
- * $Id: DEC21143.h,v 1.13 2008/02/26 15:54:57 iamcamiel Exp $
+ * $Id: DEC21143.h,v 1.14 2008/02/29 10:12:36 iamcamiel Exp $
+ *
+ * X-1.14       Brian Wheeler                                   29-FEB-2008
+ *      Compute SROM checksum. Tru64 needs this.
  *
  * X-1.13       David Hittner                                   26-FEB-2008
  *      Major rewrite. Real internal loopback support, ring queue for
@@ -91,8 +94,8 @@
  * \brief Emulated DEC 21143 NIC device.
  *
  * Documentation consulted:
- *  - 21143 PCI/Cardbus 10/100Mb/s Ethernet LAN Controller Hardware Reference Manual  [HRM].
- *    (http://download.intel.com/design/network/manuals/27807401.pdf)
+ *  - 21143 PCI/Cardbus 10/100Mb/s Ethernet LAN Controller Hardware Reference Manual  [HRM]. (http://download.intel.com/design/network/manuals/27807401.pdf)
+ *  - Tru64 Device Driver Kit Version 2 (Ethernet sample = tu driver!) [T64]. (http://h30097.www3.hp.com/docs/dev_doc/DOCUMENTATION/HTML/dev_docs_r2.html)
  *  .
  **/
 

@@ -2,6 +2,8 @@
 \page changelog Changelog
 
 \section c018 version 0.17 -> 0.17+
+ - Compute SROM checksum for network interface. Tru64 needs this.
+   (29-feb-2008, Brian Wheeler)
  - Fix vms boot problems from ide cdrom and make Tru64 installation
    possible by: a) Clearing the busmaster active bit when the bit 1
    is written to the busmaster status register; and b) Attempting 
