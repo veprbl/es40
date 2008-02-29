@@ -34,7 +34,10 @@
  * Contains the code for the bx_sdl_gui_c class used for interfacing with
  * SDL.
  *
- * $Id: sdl.cpp,v 1.14 2008/02/12 11:07:09 iamcamiel Exp $
+ * $Id: sdl.cpp,v 1.15 2008/02/29 14:04:56 iamcamiel Exp $
+ *
+ * X-1.15       Camiel Vanderhoeven                             29-FEB-2008
+ *      Comments
  *
  * X-1.14       Camiel Vanderhoeven                             12-FEB-2008
  *      Moved keyboard code into it's own class (CKeyboard)
@@ -221,21 +224,6 @@ void bx_sdl_gui_c::specific_init(
   {
     bx_keymap->loadKeymap(convertStringToSDLKey);
   }
-//  if (SIM->get_param_bool(BXPN_KBD_USEMAPPING)->get()) {
-//    bx_keymap->loadKeymap(convertStringToSDLKey);
-//  }
-
-  // parse sdl specific options
-  //if (argc > 1) {
-  //  for (i = 1; i < argc; i++) {
-  //    if (!strcmp(argv[i], "fullscreen")) {
-  //      sdl_fullscreen_toggle = 1;
-  //      switch_to_fullscreen();
-  //    } else {
-  //      BX_PANIC(("Unknown sdl option '%s'", argv[i]));
-  //    }
-  //  }
-  //}
 
   new_gfx_api = 1;
 }
@@ -284,7 +272,7 @@ void bx_sdl_gui_c::text_update(
     line_compare = tm_info.line_compare;
   }
   disp = sdl_screen->pitch/4;
-  buf_row = (u32 *)sdl_screen->pixels /*+ headerbar_height*disp*/;
+  buf_row = (u32 *)sdl_screen->pixels;
   // first invalidate character at previous and new cursor location
   if ( (prev_cursor_y < text_rows) && (prev_cursor_x < text_cols) ) {
     curs = prev_cursor_y * tm_info.line_offset + prev_cursor_x * 2;
@@ -493,8 +481,7 @@ void bx_sdl_gui_c::graphics_tile_update(
   }
 }
 
-  bx_svga_tileinfo_t *
-bx_sdl_gui_c::graphics_tile_info(bx_svga_tileinfo_t *info)
+bx_svga_tileinfo_t * bx_sdl_gui_c::graphics_tile_info(bx_svga_tileinfo_t *info)
 {
   if (!info) {
     info = (bx_svga_tileinfo_t *)malloc(sizeof(bx_svga_tileinfo_t));
@@ -522,32 +509,22 @@ bx_sdl_gui_c::graphics_tile_info(bx_svga_tileinfo_t *info)
   return info;
 }
 
-  u8 *
-bx_sdl_gui_c::graphics_tile_get(unsigned x0, unsigned y0,
-                            unsigned *w, unsigned *h)
+u8 * bx_sdl_gui_c::graphics_tile_get(unsigned x0, unsigned y0, unsigned *w, unsigned *h)
 {
-  if (x0+tilewidth > res_x) {
+  if (x0+tilewidth > res_x)
     *w = res_x - x0;
-  }
-  else {
+  else
     *w = tilewidth;
-  }
 
-  if (y0+tileheight > res_y) {
+  if (y0+tileheight > res_y)
     *h = res_y - y0;
-  }
-  else {
+  else
     *h = tileheight;
-  }
 
-  return (u8 *)sdl_screen->pixels +
-           sdl_screen->pitch*(/*headerbar_height+*/y0) +
-           sdl_screen->format->BytesPerPixel*x0;
+  return (u8 *)sdl_screen->pixels + sdl_screen->pitch*y0 + sdl_screen->format->BytesPerPixel*x0;
 }
 
-  void
-bx_sdl_gui_c::graphics_tile_update_in_place(unsigned x0, unsigned y0,
-                                        unsigned w, unsigned h)
+void bx_sdl_gui_c::graphics_tile_update_in_place(unsigned x0, unsigned y0, unsigned w, unsigned h)
 {
 }
 
@@ -879,14 +856,17 @@ void bx_sdl_gui_c::handle_events(void)
   }
 }
 
-
-
+/**
+ * Flush any changes to sdl_screen to the actual window.
+ **/
 void bx_sdl_gui_c::flush(void)
 {
-  SDL_UpdateRect( sdl_screen,0,0,res_x,res_y/*+headerbar_height*/ );
+  SDL_UpdateRect( sdl_screen,0,0,res_x,res_y);
 }
 
-
+/**
+ * Clear sdl_screen display, and flush it.
+ **/
 void bx_sdl_gui_c::clear_screen(void)
 {
   int i = res_y, j;
@@ -894,13 +874,12 @@ void bx_sdl_gui_c::clear_screen(void)
   u32 *buf, *buf_row;
   u32 disp;
 
-  if (sdl_screen)
-  {
-    color = SDL_MapRGB( sdl_screen->format, 0,0,0 );
-    disp = sdl_screen->pitch/4;
-    buf = (u32 *)sdl_screen->pixels; // + headerbar_height*disp;
-  }
-  else return;
+  if (!sdl_screen)
+    return;
+
+  color = SDL_MapRGB( sdl_screen->format, 0,0,0 );
+  disp = sdl_screen->pitch/4;
+  buf = (u32 *)sdl_screen->pixels;
 
   do
   {
@@ -910,11 +889,14 @@ void bx_sdl_gui_c::clear_screen(void)
     buf = buf_row + disp;
   } while( --i );
 
-  SDL_UpdateRect(sdl_screen,0,0,res_x,res_y);
+  flush();
 }
 
-
-
+/**
+ * Set palette-entry index to the desired value.
+ *
+ * The palette is used in text-mode and in 8bpp VGA mode.
+ **/
 bool bx_sdl_gui_c::palette_change(
     unsigned index,
     unsigned red,
@@ -945,7 +927,8 @@ void bx_sdl_gui_c::dimension_update(
   }
   else
   {
-    BX_PANIC(("%d bpp graphics mode not supported", bpp));
+    printf("%d bpp graphics mode not supported.   \n", bpp);
+    FAILURE("Graphics error");
   }
   if( fheight > 0 )
   {
@@ -966,7 +949,8 @@ void bx_sdl_gui_c::dimension_update(
   sdl_screen = SDL_SetVideoMode( x, y/*+headerbar_height+statusbar_height*/, 32, SDL_SWSURFACE );
   if( !sdl_screen )
   {
-    BX_PANIC (("Unable to set requested videomode: %ix%i: %s",x,y,SDL_GetError()));
+    printf("Unable to set requested videomode: %ix%i: %s   \n",x,y,SDL_GetError());
+    FAILURE("Graphics error");
   }
   res_x = x;
   res_y = y;
@@ -1019,7 +1003,9 @@ static u32 convertStringToSDLKey (const char *string)
 {
   keyTableEntry *ptr;
   for (ptr = &keytable[0]; ptr->name != NULL; ptr++) {
-    //BX_DEBUG (("comparing string '%s' to SDL key '%s'", string, ptr->name));
+#if defined(DEBUG_SDL_KEY)
+    printf("SDL: comparing string '%s' to SDL key '%s'   \n", string, ptr->name);
+#endif
     if (!strcmp (string, ptr->name))
       return ptr->value;
   }
