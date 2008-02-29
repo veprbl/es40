@@ -27,6 +27,9 @@
  * \file
  * Contains the code for the emulated Dual Port Ram and RMC devices.
  *
+ * X-1.16       Brian Wheeler                                   29-FEB-2008
+ *      Fix psu and temperature status so Tru64 likes it.
+ *
  * X-1.15       Camiel Vanderhoeven                             30-DEC-2007
  *      Print file id on initialization.
  *
@@ -79,6 +82,10 @@
 #include "DPR.h"
 #include "System.h"
 #include "Serial.h"
+#include <time.h>
+
+#define ToBCD(x) (((x)/10 << 4) | ((x)%10))
+
 
 extern CSerial * srl[2];
 
@@ -112,12 +119,20 @@ CDPR::CDPR(CConfigurator * cfg, CSystem * c) : CSystemComponent(cfg,c)
   state.ram[11] = 833%256;	//speed
   state.ram[12] = 833/256;	//speed
   // powerup time BCD:
-  state.ram[16] = 0x08; // uur
-  state.ram[17] = 0x30; // min
-  state.ram[18] = 0x00; // sec
-  state.ram[19] = 0x01; // dag
-  state.ram[20] = 0x02; // maand
-  state.ram[21] = 0x07; // jaar
+  time_t now = time(NULL);
+  struct tm *t = localtime(&now);
+  state.ram[16] = ToBCD(t->tm_hour);
+  state.ram[17] = ToBCD(t->tm_min);
+  state.ram[18] = ToBCD(t->tm_sec);
+  state.ram[19] = ToBCD(t->tm_mday);
+  state.ram[20] = ToBCD(t->tm_mon+1);
+  state.ram[21] = ToBCD(t->tm_year-100); // tm_year is based on 1900
+
+#if defined(DEBUG_DPR)
+  printf("%%DPR-I-BOOTDATE: %02x-%02x-%02x, %02x:%02x:%02x\n",
+	 state.ram[21],state.ram[20],state.ram[19],
+	 state.ram[16],state.ram[17],state.ram[18]);
+#endif
   state.ram[0x16] = 0;	// no error
   state.ram[0x1e] = 0x80; // CPU SROM sync moet 0x80 zijn; anders --> cpu0 startup failure
   state.ram[0x1f] = 8;	// cach size in MB
@@ -146,15 +161,15 @@ CDPR::CDPR(CConfigurator * cfg, CSystem * c) : CSystemComponent(cfg,c)
   state.ram[0x8f] = 0; // MMB3
 
   state.ram[0x90] = 0xff; // psu / vterm present
-  state.ram[0x91] = 0xff; // psu ok bits
+  state.ram[0x91] = 0x00; // psu ok bits
   state.ram[0x92] = 0x07; // ac inputs valid
-  state.ram[0x93] = 0x50; // cpu 0 temp in BCD
-  state.ram[0x94] = 0x50; // cpu 1 temp in BCD
-  state.ram[0x95] = 0x50; // cpu 2 temp in BCD
-  state.ram[0x96] = 0x50; // cpu 3 temp in BCD
-  state.ram[0x97] = 0x36; // pci 0 temp in BCD
-  state.ram[0x98] = 0x36; // pci 1 temp in BCD
-  state.ram[0x99] = 0x36; // pci 2 temp in BCD
+  state.ram[0x93] = 0x25; // cpu 0 temp in C
+  state.ram[0x94] = 0x25; // cpu 1 temp in C
+  state.ram[0x95] = 0x25; // cpu 2 temp in C
+  state.ram[0x96] = 0x25; // cpu 3 temp in C
+  state.ram[0x97] = 0x25; // pci 0 temp in C
+  state.ram[0x98] = 0x25; // pci 1 temp in C
+  state.ram[0x99] = 0x25; // pci 2 temp in C
   state.ram[0x9a] = 0x8b; // fan 0 speed
   state.ram[0x9b] = 0x8b; // fan 1 speed
   state.ram[0x9c] = 0x8b; // fan 2 speed
@@ -330,7 +345,7 @@ CDPR::CDPR(CConfigurator * cfg, CSystem * c) : CSystemComponent(cfg,c)
   //	3700:37FF SRM Reserved
   //	3800:3AFF RMC RMC scratch space
 
-  printf("%s: $Id: DPR.cpp,v 1.15 2007/12/30 15:10:22 iamcamiel Exp $\n",devid_string);
+  printf("%s: $Id: DPR.cpp,v 1.16 2008/02/29 10:23:09 iamcamiel Exp $\n",devid_string);
 }
 
 /**
@@ -349,7 +364,9 @@ u64 CDPR::ReadMem(int index, u64 address, int dsize)
 
   data = state.ram[a];
 
-  TRC_DEV3("%%DPR-I-READ: Dual-Port RAM read @ 0x%08x: 0x%02x\n",a,(u32)(data&0xff));
+#if defined(DEBUG_DPR)
+  printf("%%DPR-I-READ: Dual-Port RAM read @ 0x%08x: 0x%02x\n",a,(u32)(data&0xff));
+#endif
   return data;
 }
 
@@ -358,9 +375,9 @@ void CDPR::WriteMem(int index, u64 address, int dsize, u64 data)
   int i;
   int a = (int)(address>>6);
   char trcbuffer[1000];
-
-  TRC_DEV3("%%DPR-I-WRITE: Dual-Port RAM write 0x%08x 0x%02x:\n",a,(u32)(data&0xff));
-
+#if defined(DEBUG_DPR)
+  printf("%%DPR-I-WRITE: Dual-Port RAM write 0x%08x 0x%02x:\n",a,(u32)(data&0xff));
+#endif
   // FOR COMMANDS:
   //
   // 0xf9:	buffer size
@@ -462,13 +479,17 @@ void CDPR::WriteMem(int index, u64 address, int dsize, u64 data)
 	      for(i=0;i<state.ram[0xf9]+1;i++)
 		{
 		  state.ram[state.ram[0xfb]*0x100 + state.ram[0xfa] + i] = state.ram[0x3500 + state.ram[0xfa] + i];			
-		  TRC_DEV4("%%DPR-I-FRU: FRU data %02x @ FRU %02x set to %02x\n",state.ram[0xfa]+i,state.ram[0xfb],state.ram[0x3500 + state.ram[0xfa]+i]);
+#if defined(DEBUG_DPR)
+		  printf("%%DPR-I-FRU: FRU data %02x @ FRU %02x set to %02x\n",state.ram[0xfa]+i,state.ram[0xfb],state.ram[0x3500 + state.ram[0xfa]+i]);
+#endif
 		}
 	      state.ram[0xfc] = 0;
 	      break;
 	    default:
-	      TRC_DEV2("%%DPR-I-RMC: RMC Command given: %02x\r\n",state.ram[0xfe]);
-	      TRC_DEV4("%%DPR-I-RMC: f9:%02x fb-fa:%02x%02x\r\n",state.ram[0xf9],state.ram[0xfb],state.ram[0xfa]);
+#if defined(DEBUG_DPR)
+	      printf("%%DPR-I-RMC: RMC Command given: %02x\r\n",state.ram[0xfe]);
+	      printf("%%DPR-I-RMC: f9:%02x fb-fa:%02x%02x\r\n",state.ram[0xf9],state.ram[0xfb],state.ram[0xfa]);
+#endif
 	      state.ram[0xfc] = 0x80;
 	    }
 	  break;
@@ -477,17 +498,21 @@ void CDPR::WriteMem(int index, u64 address, int dsize, u64 data)
 	  break;
 	case 3:
 	  // OCP-Write
+#if defined(DEBUG_DPR)
 	  sprintf(trcbuffer,"%%%%DPR-I-OCP: OCP Text set to \"0123456789abcdef\"\r\n");
 	  memcpy(trcbuffer+29,&(state.ram[0x3500]),16);
 	  //			srl[0]->write(trcbuffer);
-	  TRC_DEV(trcbuffer);
+	  printf(trcbuffer);
+#endif
 	  state.ram[0xfc] = 0;
 	  break;
 	case 0xf0:
 	  state.ram[0xfc] = 0;
 	default:
-	  TRC_DEV2("%%DPR-I-RMC: RMC Command given: %02x\r\n",state.ram[0xfe]);
-	  TRC_DEV4("%%DPR-I-RMC: f9:%02x fb-fa:%02x%02x\r\n",state.ram[0xf9],state.ram[0xfb],state.ram[0xfa]);
+#if defined(DEBUG_DPR)
+	  printf("%%DPR-I-RMC: RMC Command given: %02x\r\n",state.ram[0xfe]);
+	  printf("%%DPR-I-RMC: f9:%02x fb-fa:%02x%02x\r\n",state.ram[0xf9],state.ram[0xfb],state.ram[0xfa]);
+#endif
 	  state.ram[0xfc] = 0x81;
 	}
       break;

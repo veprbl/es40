@@ -27,7 +27,10 @@
  * \file
  * Contains the code for the emulated Keyboard and mouse devices and controller.
  *
- * $Id: Keyboard.cpp,v 1.3 2008/02/27 12:04:24 iamcamiel Exp $
+ * $Id: Keyboard.cpp,v 1.4 2008/02/29 10:23:09 iamcamiel Exp $
+ *
+ * X-1.4        Brian Wheeler                                   29-FEB-2008
+ *      ACK recognized, but unhandled, keyboard commands.
  *
  * X-1.3        Brian Wheeler                                   27-FEB-2008
  *      Avoid compiler warnings.
@@ -122,7 +125,7 @@ CKeyboard::CKeyboard(CConfigurator * cfg, CSystem * c) : CSystemComponent(cfg,c)
   state.kbd_controller_Qsource = 0;
 
 
-  printf("kbc: $Id: Keyboard.cpp,v 1.3 2008/02/27 12:04:24 iamcamiel Exp $\n");
+  printf("kbc: $Id: Keyboard.cpp,v 1.4 2008/02/29 10:23:09 iamcamiel Exp $\n");
 }
 
 /**
@@ -1187,6 +1190,9 @@ void CKeyboard::ctrl_to_kbd(u8 value)
     case 0xfa:  // PS/2 Set All Keys to Typematic Make/Break
     case 0xfb:  // PS/2 Set Key Type to Typematic
     case 0xfd:  // PS/2 Set Key Type to Make
+      printf("kbd: unhandled command: %02x, ACKing     \n",value);
+      enQ(0xFA);
+      break;
     default:
       printf("kbd: command %02x: not recognized!   \n", value);
       enQ(0xFE); /* send NACK */
