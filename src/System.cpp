@@ -27,7 +27,11 @@
  * \file 
  * Contains the code for the emulated Typhoon Chipset devices.
  *
- * $Id: System.cpp,v 1.64 2008/02/26 15:43:47 iamcamiel Exp $
+ * $Id: System.cpp,v 1.65 2008/02/29 10:41:00 iamcamiel Exp $
+ *
+ * X-1.64       Brian Wheeler                                   29-FEB-2008
+ *      Do not generate unknown PCI 0 memory messages for legacy VGA
+ *      memory region.
  *
  * X-1.63       Brian Wheeler                                   26-FEB-2008
  *      Support reading from Pchip TLBIV and TLBIA registers. (Which are
@@ -331,7 +335,7 @@ CSystem::CSystem(CConfigurator * cfg)
 
   CHECK_ALLOCATION(memory = calloc(1<<iNumMemoryBits,1));
 
-  printf("%s(%s): $Id: System.cpp,v 1.64 2008/02/26 15:43:47 iamcamiel Exp $\n",cfg->get_myName(),cfg->get_myValue());
+  printf("%s(%s): $Id: System.cpp,v 1.65 2008/02/29 10:41:00 iamcamiel Exp $\n",cfg->get_myName(),cfg->get_myValue());
 }
 
 /**
@@ -776,11 +780,13 @@ void CSystem::WriteMem(u64 address, int dsize, u64 data,CSystemComponent * sourc
       if (a>=X64(80000000000) && a<X64(80100000000))
       {
         // Unused PCI memory space
-        if (source)
-          printf("Write to unknown memory %"LL"x on PCI 0 from %s   \n",a & X64(ffffffff),source->devid_string);
-        else
-          printf("Write to unknown memory %"LL"x on PCI 0   \n",a & X64(ffffffff));
-        return;
+       u64 paddr = a & X64(ffffffff);
+       if(paddr > 0xb8fff || paddr < 0xb8000) { // skip legacy video
+         if (source)
+           printf("Write to unknown memory %"LL"x on PCI 0 from %s   \n",a & X64(ffffffff),source->devid_string);
+         else
+           printf("Write to unknown memory %"LL"x on PCI 0   \n",a & X64(ffffffff));
+       }
       }
 
       if (a>=X64(80200000000) && a<X64(80300000000))
@@ -994,10 +1000,13 @@ u64 CSystem::ReadMem(u64 address, int dsize, CSystemComponent * source)
       if (a>=X64(80000000000) && a<X64(80100000000))
       {
         // Unused PCI memory space
-        if (source)
-          printf("Read from unknown memory %"LL"x on PCI 0 from %s   \n",a & X64(ffffffff),source->devid_string);
-        else
-          printf("Read from unknown memory %"LL"x on PCI 0   \n",a & X64(ffffffff));
+        u64 paddr = a & X64(ffffffff);
+        if(paddr > 0xb8fff || paddr < 0xb8000) { // skip legacy video
+          if (source)
+            printf("Read from unknown memory %"LL"x on PCI 0 from %s   \n",a & X64(ffffffff),source->devid_string);
+          else
+            printf("Read from unknown memory %"LL"x on PCI 0   \n",a & X64(ffffffff));
+        }
         return 0;
       }
 
