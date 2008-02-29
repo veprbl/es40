@@ -27,7 +27,10 @@
  * \file 
  * Contains the code for the emulated DecChip 21264CB EV68 Alpha processor.
  *
- * $Id: AlphaCPU.cpp,v 1.68 2008/02/27 12:04:20 iamcamiel Exp $
+ * $Id: AlphaCPU.cpp,v 1.69 2008/02/29 10:50:09 iamcamiel Exp $
+ *
+ * X-1.69       Brian Wheeler                                   29-FEB-2008
+ *      Add BREAKPOINT INSTRUCTION command to IDB.
  *
  * X-1.68       Brian Wheeler                                   27-FEB-2008
  *      Avoid compiler warnings.
@@ -344,7 +347,7 @@ CAlphaCPU::CAlphaCPU(CConfigurator * cfg, CSystem * system) : CSystemComponent (
   bListing = false;
 #endif
   
-  printf("%s: $Id: AlphaCPU.cpp,v 1.68 2008/02/27 12:04:20 iamcamiel Exp $\n",devid_string);
+  printf("%s: $Id: AlphaCPU.cpp,v 1.69 2008/02/29 10:50:09 iamcamiel Exp $\n",devid_string);
 }
 
 /**
@@ -537,6 +540,9 @@ int CAlphaCPU::DoClock()
   }
 
   // Decode and dispatch opcode.
+#if defined(IDB)
+  last_instruction = ins;
+#endif
   opcode = ins >> 26;
   switch (opcode)
     {

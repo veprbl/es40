@@ -3,6 +3,8 @@
 
 \section c018 version 0.17 -> 0.17+
 
+ - Add BREAKPOINT INSTRUCTION command to IDB. (29-feb-2008, Brian
+   Wheeler)
  - Restart serial port connection if lost. (29-feb-2008, Brian
    Wheeler)
  - Fix RMC reported psu and temperature status. (29-feb-2008, Brian

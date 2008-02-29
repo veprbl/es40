@@ -27,7 +27,10 @@
  * \file 
  * Contains the definitions for the CPU tracing engine.
  *
- * $Id: TraceEngine.h,v 1.17 2008/01/02 09:30:21 iamcamiel Exp $
+ * $Id: TraceEngine.h,v 1.18 2008/02/29 10:50:10 iamcamiel Exp $
+ *
+ * X-1.18       Brian Wheeler                                   29-FEB-2008
+ *      Add BREAKPOINT INSTRUCTION command to IDB.
  *
  * X-1.17       Camiel Vanderhoeven                             02-JAN-2008
  *      Comments.
@@ -152,6 +155,7 @@ class CTraceEngine
   u64 iBreakPoint;
   int iBreakPointMode;
   bool bBreakPoint;
+  u32 iBreakPointInstruction;
 };
 
 extern bool bTrace;

@@ -28,7 +28,10 @@
  * Contains the code for the CPU tracing engine.
  * This will become the debugging engine (interactive debugger) soon.
  *
- * $Id: TraceEngine.cpp,v 1.32 2008/01/12 14:26:55 iamcamiel Exp $
+ * $Id: TraceEngine.cpp,v 1.33 2008/02/29 10:50:09 iamcamiel Exp $
+ *
+ * X-1.34       Brian Wheeler                                   29-FEB-2008
+ *      Add BREAKPOINT INSTRUCTION command to IDB.
  *
  * X-1.33	    Brian Wheeler    				                12-JAN-2008
  *	End run when Ctrl-C is received.
@@ -713,7 +716,7 @@ int CTraceEngine::parse(char command[100][100])
       printf("  STEP                                                               \n");
       printf("  TRACE [ ON | OFF ]                                                 \n");
       printf("  HASHING [ ON | OFF ]                                               \n");
-      printf("  BREAKPOINT [ OFF | > | < | = ] <hex value>                         \n");
+      printf("  BREAKPOINT [ OFF | [ > | < | = | INSTRUCTION ] <hex value> ]                         \n");
       printf("  DISASSEMBLE [ON | OFF ]	                                           \n");
 #if defined(DEBUG_TB)
       printf("  TBDEBUG [ON | OFF ]	                                           \n");
@@ -743,6 +746,10 @@ int CTraceEngine::parse(char command[100][100])
     }
     if (!strncasecmp(command[0],"DUMPREGS",strlen(command[0])))
     {
+      printf("\n==================== SYSTEM STATE =======================\n");
+      printf("PC: %" LL "x\n", theSystem->get_cpu(0)->get_pc());
+      printf("Physical PC: %" LL "x\n",theSystem->get_cpu(0)->get_current_pc_physical());
+      printf("Instruction count: %" LL "d\n",theSystem->get_cpu(0)->get_instruction_count());
       printf("\n==================== REGISTER VALUES ====================\n");
       for(i=0;i<32;i++)
       {
@@ -835,6 +842,23 @@ int CTraceEngine::parse(char command[100][100])
 	    break;
 	  }
 	}
+	break;
+      case 2:
+	// break when the instruction matches.  Great for stopping when
+	// pal_halt is called!
+	extern int got_sigint;
+	void sigint_handler(int);
+	signal(SIGINT,&sigint_handler);
+	while(1) 
+	{
+	  theSystem->SingleStep();
+	  if(theSystem->get_cpu(0)->get_last_instruction() == iBreakPointInstruction || got_sigint) 
+	  {
+	    printf("%%IDB-I-BRKPT: Found trapped instruction or control-c\n");
+	    break;
+	  }
+	}
+	got_sigint=0;
 	break;
       default:
 	break;
@@ -1000,6 +1024,21 @@ int CTraceEngine::parse(char command[100][100])
 	    }
 	  }
 	  break;
+	case 2:
+	  for(i=0;i<RunCycles;i++)
+	  {
+	    if (theSystem->SingleStep())
+	    {
+	      printf("%%IDB-I-ABORT : Abort run requested (probably from serial port)\n");
+	      break;
+	    }
+	    if(theSystem->get_cpu(0)->get_last_instruction() == iBreakPointInstruction) 
+	    {
+	      printf("%%IDB-I-BRKPT: Found trapped instruction\n");
+	      break;
+	    }
+	  }
+	  break;
         default:
 	  break;
 	}
@@ -1007,12 +1046,20 @@ int CTraceEngine::parse(char command[100][100])
       else
       {
         printf("%%IDB-I-RUNCYC: Running until max cycles reached.\n");
-	for(i=0;i<RunCycles;i++)
+	extern int got_sigint;
+	void sigint_handler(int);
+	signal(SIGINT,&sigint_handler);
+	for(i=0;i<RunCycles;i++) 
+	{
 	  if (theSystem->SingleStep())
 	  {
 	    printf("%%IDB-I-ABORT : Abort run requested (probably from serial port)\n");
 	    break;
 	  }
+	  if(got_sigint) 
+	    break;
+	}
+	got_sigint=0;
       }
       printf("%%IDB-I-ENDRUN: End of run.\n");
       return 0;
@@ -1070,6 +1117,23 @@ int CTraceEngine::parse(char command[100][100])
 	printf("%%IDB-I-BRKSET: Breakpoint set when PC %c %016" LL "x.\n",command[1][0],iBreakPoint);
 	bBreakPoint = true;
 	return 0;
+      } 
+      else 
+      {
+	if(!strncasecmp(command[1],"INSTRUCTION",strlen(command[1])))
+	{
+	  result = sscanf(command[2],"%" LL "x",&iBreakPointInstruction);
+	  if (result != 1)
+	  {
+	    printf("%%IDB-F-INVVAL: Invalid hexadecimal value.\n");
+	    bBreakPoint = false;
+	    return 0;
+	  }
+	  printf("%%IDB-I-BRKSET: Breakpoint set when instruction %08x is executed.\n",iBreakPointInstruction);
+	  bBreakPoint = true;
+	  iBreakPointMode = 2;
+	  return 0;
+	}
       }
     }
     if (!strncasecmp(command[0],"LOAD",strlen(command[0])))

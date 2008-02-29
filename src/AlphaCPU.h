@@ -28,7 +28,10 @@
  * \file
  * Contains the definitions for the emulated DecChip 21264CB EV68 Alpha processor.
  *
- * $Id: AlphaCPU.h,v 1.50 2008/02/08 20:08:13 iamcamiel Exp $
+ * $Id: AlphaCPU.h,v 1.51 2008/02/29 10:50:09 iamcamiel Exp $
+ *
+ * X-1.51       Brian Wheeler                                   29-FEB-2008
+ *      Add BREAKPOINT INSTRUCTION command to IDB.
  *
  * X-1.50       Camiel Vanderhoeven                             08-FEB-2008
  *      Show originating device name on memory errors.
@@ -242,6 +245,7 @@ class CAlphaCPU : public CSystemComponent
 #ifdef IDB
   u64 get_current_pc_physical();
   u64 get_instruction_count();
+  u32 get_last_instruction();
 #endif
   
   u64 get_clean_pc();
@@ -491,6 +495,7 @@ private:
 
 #ifdef IDB
   u64 current_pc_physical;		            /**< Physical address of current instruction */
+  u32 last_instruction;
 #endif
 };
 
@@ -758,7 +763,7 @@ inline u64 CAlphaCPU::get_pc()
 
 inline u64 CAlphaCPU::get_current_pc_physical()
 {
-  return current_pc_physical;
+  return state.pc_phys;
 }
 #endif
 
@@ -888,6 +893,13 @@ inline u64 CAlphaCPU::get_hwpcb(void)
 
   return p_pcb;
 }
+
+#if defined(IDB)
+inline u32 CAlphaCPU::get_last_instruction(void) 
+{
+  return last_instruction;
+}
+#endif
 
 extern bool bTB_Debug;
 
