@@ -2,6 +2,9 @@
 \page changelog Changelog
 
 \section c018 version 0.17 -> 0.17+
+
+ - Fix RMC reported psu and temperature status. (29-feb-2008, Brian
+   Wheeler)
  - Compute SROM checksum for network interface. Tru64 needs this.
    (29-feb-2008, Brian Wheeler)
  - Fix vms boot problems from ide cdrom and make Tru64 installation
