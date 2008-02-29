@@ -27,7 +27,10 @@
  * \file
  * Contains the code for the emulated Serial Port devices.
  *
- * $Id: Serial.cpp,v 1.37 2008/02/27 12:04:27 iamcamiel Exp $
+ * $Id: Serial.cpp,v 1.38 2008/02/29 10:40:39 iamcamiel Exp $
+ *
+ * X-1.38       Brian Wheeler                                   29-FEB-2008
+ *      Restart serial port connection if lost.
  *
  * X-1.37       Brian Wheeler                                   27-FEB-2008
  *      Avoid compiler warnings.
@@ -175,11 +178,11 @@ int  iCounter  = 0;
 
 CSerial::CSerial(CConfigurator * cfg, CSystem * c, u16 number) : CSystemComponent(cfg,c)
 {
-  u16 base = myCfg->get_int_value("port",8000+number);
+  listenPort = myCfg->get_int_value("port",8000+number);
   char s[1000];
   char * nargv = s;
   int i = 0;
-  
+
   c->RegisterMemory (this, 0, X64(00000801fc0003f8) - (0x100*number), 8);
 
 // Start Telnet server
@@ -203,7 +206,7 @@ CSerial::CSerial(CConfigurator * cfg, CSystem * c, u16 number) : CSystemComponen
   }
   
   Address.sin_addr.s_addr=INADDR_ANY;
-  Address.sin_port=htons((u16)(base));
+  Address.sin_port=htons((u16)(listenPort));
   Address.sin_family=AF_INET;
 
   int optval = 1;
@@ -211,95 +214,9 @@ CSerial::CSerial(CConfigurator * cfg, CSystem * c, u16 number) : CSystemComponen
   bind(listenSocket,(struct sockaddr *)&Address,sizeof(Address));
   listen(listenSocket, 1);
 
-  printf("%s: Waiting for connection on port %d.\n",devid_string,base);
+  printf("%s: Waiting for connection on port %d.\n",devid_string,listenPort);
 
-#if !defined(LS_SLAVE)
-  char s2[200];
-  char * argv[20];
-
-  strncpy(s, cfg->get_text_value("action",""),999);
-  s[999] = '\0';
-  //printf("%s: Specified : %s\n",devid_string,s);
-
-  if (strcmp(s,""))
-  {
-    // spawn external program (telnet client)...
-    while (*nargv)
-    {
-      argv[i] = nargv;
-      if (nargv[0] == '\"')
-        nargv = strchr(nargv+1,'\"');
-      if (nargv)
-        nargv = strchr(nargv,' ');
-      if (!nargv)
-        break;
-      *nargv++ = '\0';
-      i++;
-      argv[i] = NULL;
-    }
-    argv[i+1] = NULL;
-    strcpy(s2,argv[0]);
-    nargv = s2;
-    if (nargv[0] == '\"')
-    {
-      nargv++;
-      *(strchr(nargv,'\"')) = '\0';
-    }
-    //printf("%s: Starting %s\n", devid_string,nargv);
-#if defined(_WIN32)
-    _spawnvp(_P_NOWAIT, nargv, argv);
-#else
-    pid_t child;
-    int  status;
-    if (!(child=fork())){
-      execvp(argv[0], argv);
-      printf("Exec of '%s' failed.\n",argv[0]);
-      throw((int)1);
-    } else {
-      sleep(1);  // give it a chance to start up.
-      waitpid(child,&status,WNOHANG); // reap it, if needed.
-      if(kill(child,0) < 0) { // uh oh, no kiddo.
-	    printf("%%SRL-F-EXEC: Exec of '%s' has failed.\n",argv[0]);
-        throw((int)1);
-      }
-    }
-#endif
-  }
-
-#endif
-
-//  Wait until we have a connection
-
-  connectSocket = INVALID_SOCKET;
-  while (connectSocket == INVALID_SOCKET)
-  {
-    connectSocket = (int)accept(listenSocket,(struct sockaddr*)&Address,&nAddressSize);
-  }
-
-  state.serial_cycles = 0;
-
-  // Send some control characters to the telnet client to handle 
-  // character-at-a-time mode.  
-  char *telnet_options="%c%c%c";
-  char buffer[8];
-
-  sprintf(buffer,telnet_options,IAC,DO,TELOPT_ECHO);
-  this->write(buffer);
-
-  sprintf(buffer,telnet_options,IAC,DO,TELOPT_NAWS);
-  write(buffer);
-
-  sprintf(buffer,telnet_options,IAC,DO,TELOPT_LFLOW);
-  this->write(buffer);
-
-  sprintf(buffer,telnet_options,IAC,WILL,TELOPT_ECHO);
-  this->write(buffer);
-
-  sprintf(buffer,telnet_options,IAC,WILL,TELOPT_SGA);
-  this->write(buffer);
-
-  sprintf(s,"This is serial port #%d on AlphaSim\r\n",number);
-  this->write(s);
+  WaitForConnection();
 
 #if defined(IDB) && defined(LS_MASTER)
   struct sockaddr_in dest_addr;
@@ -331,7 +248,7 @@ CSerial::CSerial(CConfigurator * cfg, CSystem * c, u16 number) : CSystemComponen
 
   state.irq_active = false;
 
-  printf("%s: $Id: Serial.cpp,v 1.37 2008/02/27 12:04:27 iamcamiel Exp $\n",devid_string);
+  printf("%s: $Id: Serial.cpp,v 1.38 2008/02/29 10:40:39 iamcamiel Exp $\n",devid_string);
 }
 
 /**
@@ -482,7 +399,7 @@ void CSerial::eval_interrupts()
 
 void CSerial::write(char *s)
 {
-  send(connectSocket,s,(int)strlen(s)+1,0);
+  int val = send(connectSocket,s,(int)strlen(s)+1,0);
 }
 
 void CSerial::receive(const char* data)
@@ -525,6 +442,12 @@ int CSerial::DoClock()
 #else
       size = read(connectSocket,&buffer,FIFO_SIZE);
 #endif
+      if(size == 0) {
+	printf("%%SRL-W-DISCONNECT: Write socket closed on other end for serial port %d.\n",state.iNumber);
+	printf("-SRL-I-WAITFOR: Waiting for a new connection on port %d.\n",listenPort);
+	WaitForConnection();
+	return 0;
+      }
       buffer[size+1]=0; // force null termination.
       b=buffer;
       c=cbuffer;
@@ -706,4 +629,104 @@ int CSerial::RestoreState(FILE *f)
 
   printf("%s: %d bytes restored.\n",devid_string,(int)ss);
   return 0;
+}
+
+void CSerial::WaitForConnection() 
+{
+  struct sockaddr_in Address;
+  socklen_t nAddressSize=sizeof(struct sockaddr_in);
+  char *telnet_options="%c%c%c";
+  char buffer[8];
+  char s[1000];
+  char * nargv = s;
+  int i = 0;
+
+#if !defined(LS_SLAVE)
+  char s2[200];
+  char * argv[20];
+
+  strncpy(s, myCfg->get_text_value("action",""),999);
+  s[999] = '\0';
+  //printf("%s: Specified : %s\n",devid_string,s);
+
+  if (strcmp(s,""))
+  {
+    // spawn external program (telnet client)...
+    while (*nargv)
+    {
+      argv[i] = nargv;
+      if (nargv[0] == '\"')
+        nargv = strchr(nargv+1,'\"');
+      if (nargv)
+        nargv = strchr(nargv,' ');
+      if (!nargv)
+        break;
+      *nargv++ = '\0';
+      i++;
+      argv[i] = NULL;
+    }
+    argv[i+1] = NULL;
+    strcpy(s2,argv[0]);
+    nargv = s2;
+    if (nargv[0] == '\"')
+    {
+      nargv++;
+      *(strchr(nargv,'\"')) = '\0';
+    }
+    //printf("%s: Starting %s\n", devid_string,nargv);
+#if defined(_WIN32)
+    _spawnvp(_P_NOWAIT, nargv, argv);
+#else
+    pid_t child;
+    int  status;
+    if (!(child=fork())){
+      execvp(argv[0], argv);
+      printf("Exec of '%s' failed.\n",argv[0]);
+      throw((int)1);
+    } else {
+      sleep(1);  // give it a chance to start up.
+      waitpid(child,&status,WNOHANG); // reap it, if needed.
+      if(kill(child,0) < 0) { // uh oh, no kiddo.
+	    printf("%%SRL-F-EXEC: Exec of '%s' has failed.\n",argv[0]);
+        throw((int)1);
+      }
+    }
+#endif
+  }
+
+#endif
+
+  Address.sin_addr.s_addr=INADDR_ANY;
+  Address.sin_port=htons((u16)listenPort);
+  Address.sin_family=AF_INET;
+
+//  Wait until we have a connection
+
+  connectSocket = INVALID_SOCKET;
+  while (connectSocket == INVALID_SOCKET)
+  {
+    connectSocket = (int)accept(listenSocket,(struct sockaddr*)&Address,&nAddressSize);
+  }
+
+  state.serial_cycles = 0;
+
+  // Send some control characters to the telnet client to handle 
+  // character-at-a-time mode.  
+  sprintf(buffer,telnet_options,IAC,DO,TELOPT_ECHO);
+  this->write(buffer);
+
+  sprintf(buffer,telnet_options,IAC,DO,TELOPT_NAWS);
+  write(buffer);
+
+  sprintf(buffer,telnet_options,IAC,DO,TELOPT_LFLOW);
+  this->write(buffer);
+
+  sprintf(buffer,telnet_options,IAC,WILL,TELOPT_ECHO);
+  this->write(buffer);
+
+  sprintf(buffer,telnet_options,IAC,WILL,TELOPT_SGA);
+  this->write(buffer);
+
+  sprintf(s,"This is serial port #%d on AlphaSim\r\n",state.iNumber);
+  this->write(s);
 }

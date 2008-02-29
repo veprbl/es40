@@ -27,7 +27,10 @@
  * \file 
  * Contains the definitions for the emulated Serial Port devices.
  *
- * $Id: Serial.h,v 1.15 2008/02/12 11:02:48 iamcamiel Exp $
+ * $Id: Serial.h,v 1.16 2008/02/29 10:40:39 iamcamiel Exp $
+ *
+ * X-1.15       Brian Wheeler                                   29-FEB-2008
+ *      Restart serial port connection if lost.
  *
  * X-1.14       Camiel Vanderhoeven                             06-JAN-2008
  *      Proper interrupt handling. 
@@ -101,6 +104,7 @@ class CSerial : public CSystemComponent
   virtual int SaveState(FILE * f);
   virtual int RestoreState(FILE * f);
   void eval_interrupts();
+  void WaitForConnection();
 
  private:
   /// The state structure contains all elements that need to be saved to the statefile.
@@ -124,6 +128,7 @@ class CSerial : public CSystemComponent
     int iNumber;
     bool irq_active;
   } state;
+  int listenPort;
   int listenSocket;
   int connectSocket;
 #if defined(IDB) && defined(LS_MASTER) 
