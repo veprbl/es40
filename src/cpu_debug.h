@@ -27,7 +27,10 @@
  * \file 
  * Contains debugging macros used by AlphaCPU.cpp
  *
- * $Id: cpu_debug.h,v 1.22 2008/01/30 17:22:45 iamcamiel Exp $
+ * $Id: cpu_debug.h,v 1.23 2008/02/29 10:44:33 iamcamiel Exp $
+ *
+ * X-1.23       Brian Wheeler                                   29-FEB-2008
+ *      Fix IDB compilation.
  *
  * X-1.22       Camiel Vanderhoeven                             30-JAN-2008
  *      Always use set_pc or add_pc to change the program counter.
@@ -171,12 +174,12 @@ void handle_debug_string(char * s);
 		 cSystem->PtrToMem(state.current_pc));		        \
 	  state.pc = (state.current_pc + strlen(cSystem->PtrToMem(state.current_pc)) + 4)	\
 	    & ~X64(3);							\
-	  while (state.pc < 0x600000 && cSystem->ReadMem(state.pc,32)==0) state.pc += 4;	\
+	  while (state.pc < 0x600000 && cSystem->ReadMem(state.pc,32,this)==0) state.pc += 4; \
 	  return 0;							\
         }								\
       else if (bListing && !strcmp(funcname,"!SKIP"))			\
         {								\
-	  while (state.pc < 0x600000 && cSystem->ReadMem(state.pc,32)==0) state.pc += 4;	\
+	  while (state.pc < 0x600000 && cSystem->ReadMem(state.pc,32,this)==0) state.pc += 4; \
 	  return 0;							\
         }								\
       else if (bListing && !strncmp(funcname,"!CHAR-",6))		\
@@ -191,7 +194,7 @@ void handle_debug_string(char * s);
 		{							\
 		  printf("%08" LL "x: \"%s\"\n", state.pc, cSystem->PtrToMem(state.pc)); \
 		  state.pc += strlen(cSystem->PtrToMem(state.pc));			\
-		  while (state.pc < xx_upto && cSystem->ReadMem(state.pc,8)==0)	\
+		  while (state.pc < xx_upto && cSystem->ReadMem(state.pc,8,this)==0) \
 		    state.pc++;						\
 		}							\
 	      return 0;							\
@@ -209,12 +212,12 @@ void handle_debug_string(char * s);
 	      state.pc = state.current_pc;						\
 	      while (state.pc < xx_upto)					\
 		{							\
-		  stringlen = (int)cSystem->ReadMem(state.pc++,8);		\
+		  stringlen = (int)cSystem->ReadMem(state.pc++,8,this);	\
 		  memset(stringval,0,300);				\
 		  strncpy(stringval,cSystem->PtrToMem(state.pc),stringlen);	\
 		  printf("%08" LL "x: \"%s\"\n",state.pc-1, stringval);	\
 		  state.pc += stringlen;					\
-		  while (state.pc < xx_upto && cSystem->ReadMem(state.pc,8)==0)	\
+		  while (state.pc < xx_upto && cSystem->ReadMem(state.pc,8,this)==0) \
 		    state.pc++;						\
 		}							\
 	      return 0;							\
@@ -227,7 +230,7 @@ void handle_debug_string(char * s);
 	  while (   (state.pc==state.current_pc)					\
 		    || !trc->get_fnc_name(this,state.pc,&funcname) )		\
 	    {								\
-              printf("%08" LL "x: %016" LL "x\n",state.pc, cSystem->ReadMem(state.pc,64)); \
+              printf("%08" LL "x: %016" LL "x\n",state.pc, cSystem->ReadMem(state.pc,64,this)); \
 	      state.pc += 8;							\
 	    }								\
 	  return 0;							\
@@ -239,7 +242,7 @@ void handle_debug_string(char * s);
 	  while (   (state.pc==state.current_pc)					\
 		    || !trc->get_fnc_name(this,state.pc,&funcname) )		\
 	    {								\
-	      printf("%08" LL "x: %08" LL "x\n",state.pc, cSystem->ReadMem(state.pc,32)); \
+	      printf("%08" LL "x: %08" LL "x\n",state.pc, cSystem->ReadMem(state.pc,32,this)); \
 	      state.pc += 4;							\
 	    }								\
 	  return 0;							\
