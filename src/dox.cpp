@@ -30,7 +30,7 @@
  * You could read the documentation from this file; but it would probably
  * be easier to go to http://es40.sourceforge.net.
  *
- * $Id: dox.cpp,v 1.13 2008/03/02 09:54:33 iamcamiel Exp $
+ * $Id: dox.cpp,v 1.14 2008/03/02 10:31:59 iamcamiel Exp $
  *
  * \author Camiel Vanderhoeven (camiel@camicom.com / http://www.camicom.com)
  **/
@@ -145,6 +145,8 @@
  *  - Fang Zhe: OS X port.
  *  - David Hittner: Ethernet controller fixes, many wise suggestions in other places.
  *  - Fausto Saporito: Bugfixes.
+ *  - Alex: GNU/Win32 support.
+ *  - David Leonard: Bugfixes.
  *  - Pepito Grillo: Bugfixes.
  *  .
  *
