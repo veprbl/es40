@@ -27,7 +27,10 @@
  * \file 
  * Contains the code for the emulated Typhoon Chipset devices.
  *
- * $Id: System.cpp,v 1.65 2008/02/29 10:41:00 iamcamiel Exp $
+ * $Id: System.cpp,v 1.66 2008/03/02 09:42:52 iamcamiel Exp $
+ *
+ * X-1.65       Camiel Vanderhoeven                             02-MAR-2008
+ *      Natural way to specify large numeric values ("10M") in the config file.
  *
  * X-1.64       Brian Wheeler                                   29-FEB-2008
  *      Do not generate unknown PCI 0 memory messages for legacy VGA
@@ -301,7 +304,7 @@ CSystem::CSystem(CConfigurator * cfg)
   iNumSlowClocks = 0;
   iNumMemories = 0;
   iNumCPUs = 0;
-  iNumMemoryBits = myCfg->get_int_value("memory.bits",27);
+  iNumMemoryBits = (int)myCfg->get_num_value("memory.bits",27);
 //  iNumConfig = 0;
 
 #if defined(IDB)
@@ -335,7 +338,7 @@ CSystem::CSystem(CConfigurator * cfg)
 
   CHECK_ALLOCATION(memory = calloc(1<<iNumMemoryBits,1));
 
-  printf("%s(%s): $Id: System.cpp,v 1.65 2008/02/29 10:41:00 iamcamiel Exp $\n",cfg->get_myName(),cfg->get_myValue());
+  printf("%s(%s): $Id: System.cpp,v 1.66 2008/03/02 09:42:52 iamcamiel Exp $\n",cfg->get_myName(),cfg->get_myValue());
 }
 
 /**

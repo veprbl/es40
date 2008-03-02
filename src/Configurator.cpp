@@ -27,7 +27,10 @@
  * \file
  * Contains the code for the configuration file interpreter.
  *
- * $Id: Configurator.cpp,v 1.18 2008/02/27 12:04:22 iamcamiel Exp $
+ * $Id: Configurator.cpp,v 1.19 2008/03/02 09:42:52 iamcamiel Exp $
+ *
+ * X-1.19       Camiel Vanderhoeven                             02-MAR-2008
+ *      Natural way to specify large numeric values ("10M") in the config file.
  *
  * X-1.18       Brian Wheeler                                   27-FEB-2008
  *      Avoid compiler warnings.
@@ -356,7 +359,7 @@ CConfigurator::CConfigurator(class CConfigurator * parent, char * name, char * v
         memcpy(cur_value,&text[value_start],value_len);
         cur_value[value_len] = '\0';
 
-        printf("Calling strip_string for  <%s>. \n",cur_value);
+//        printf("Calling strip_string for  <%s>. \n",cur_value);
         strip_string(cur_value);
         add_value(cur_name, cur_value);
 
@@ -534,13 +537,45 @@ bool CConfigurator::get_bool_value(char * n, bool def)
  * our list of values, return def.
  **/
 
-int CConfigurator::get_int_value(char * n, int def)
+u64 CConfigurator::get_num_value(char * n, u64 def)
 {
   int i;
   for (i=0;i<iNumValues;i++)
   {
     if (!strcmp(pValues[i].name, n))
-      return atoi(pValues[i].value);
+    {
+      u64 retval = 0;
+      u64 partval = 0;
+      char * val = pValues[i].value;
+      int j = 0;
+      for(;;) {
+        while (val[j] && strchr("0123456789",val[j])) {
+          partval *=10;
+          partval += val[j]-'0';
+          j++;
+        }
+        switch(val[j])
+        {
+        case 'T':
+          partval *= 1024;
+        case 'G':
+          partval *= 1024;
+        case 'M':
+          partval *= 1024;
+        case 'K':
+          retval += partval*1024;
+          partval=0;
+          j++;
+          break;
+        case '\0':
+          retval += partval;
+          return retval;
+        default:
+          printf("%s: numeric value %s (%s) not in right format!\n",myName, n, val);
+          FAILURE("Configuration error");
+        }
+      } 
+    }
   }
   return def;
 }

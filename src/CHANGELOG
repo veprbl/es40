@@ -3,6 +3,8 @@
 
 \section c018 version 0.17 -> 0.17+
 
+ - Natural way to specify large numeric values ("10M") in the
+   config file. (02-mar-2008, Camiel vanderhoeven)
  - Add BREAKPOINT INSTRUCTION command to IDB. (29-feb-2008, Brian
    Wheeler)
  - Restart serial port connection if lost. (29-feb-2008, Brian

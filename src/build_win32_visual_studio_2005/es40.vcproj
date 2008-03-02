@@ -853,7 +853,7 @@
 				Optimization="2"
 				InlineFunctionExpansion="1"
 				AdditionalIncludeDirectories="c:\program files\winpcap\include,c:\program files\sdl\include"
-				PreprocessorDefinitions="WIN32;NDEBUG;_CONSOLE;HAVE_PCAP;HAVE_SDL;HAVE_NEW_IDE;DEBUG_KBD;HIDE_COUNTER"
+				PreprocessorDefinitions="WIN32;NDEBUG;_CONSOLE;HAVE_PCAP;HAVE_SDL;HAVE_NEW_IDE"
 				StringPooling="true"
 				RuntimeLibrary="0"
 				EnableFunctionLevelLinking="true"
@@ -3556,6 +3556,10 @@
 				</FileConfiguration>
 			</File>
 			<File
+				RelativePath="..\DMA.cpp"
+				>
+			</File>
+			<File
 				RelativePath="..\DPR.cpp"
 				>
 				<FileConfiguration
@@ -3860,6 +3864,10 @@
 						PreprocessorDefinitions=""
 					/>
 				</FileConfiguration>
+			</File>
+			<File
+				RelativePath="..\Ethernet.cpp"
+				>
 			</File>
 			<File
 				RelativePath="..\Flash.cpp"
@@ -5718,6 +5726,10 @@
 				</FileConfiguration>
 			</File>
 			<File
+				RelativePath="..\Sym53C810.cpp"
+				>
+			</File>
+			<File
 				RelativePath="..\Sym53C895.cpp"
 				>
 				<FileConfiguration
@@ -6692,11 +6704,11 @@
 				>
 			</File>
 			<File
-				RelativePath="..\gui\vga.h"
+				RelativePath="..\VGA.h"
 				>
 			</File>
 			<File
-				RelativePath="..\VGA.h"
+				RelativePath="..\gui\vga.h"
 				>
 			</File>
 		</Filter>

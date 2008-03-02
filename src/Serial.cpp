@@ -27,7 +27,10 @@
  * \file
  * Contains the code for the emulated Serial Port devices.
  *
- * $Id: Serial.cpp,v 1.38 2008/02/29 10:40:39 iamcamiel Exp $
+ * $Id: Serial.cpp,v 1.39 2008/03/02 09:42:52 iamcamiel Exp $
+ *
+ * X-1.39       Camiel Vanderhoeven                             02-MAR-2008
+ *      Natural way to specify large numeric values ("10M") in the config file.
  *
  * X-1.38       Brian Wheeler                                   29-FEB-2008
  *      Restart serial port connection if lost.
@@ -178,7 +181,7 @@ int  iCounter  = 0;
 
 CSerial::CSerial(CConfigurator * cfg, CSystem * c, u16 number) : CSystemComponent(cfg,c)
 {
-  listenPort = myCfg->get_int_value("port",8000+number);
+  listenPort = (int)myCfg->get_num_value("port",8000+number);
   char s[1000];
   char * nargv = s;
   int i = 0;
@@ -248,7 +251,7 @@ CSerial::CSerial(CConfigurator * cfg, CSystem * c, u16 number) : CSystemComponen
 
   state.irq_active = false;
 
-  printf("%s: $Id: Serial.cpp,v 1.38 2008/02/29 10:40:39 iamcamiel Exp $\n",devid_string);
+  printf("%s: $Id: Serial.cpp,v 1.39 2008/03/02 09:42:52 iamcamiel Exp $\n",devid_string);
 }
 
 /**

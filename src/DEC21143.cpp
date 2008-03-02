@@ -30,7 +30,10 @@
  * \file 
  * Contains the code for the emulated DEC 21143 NIC device.
  *
- * $Id: DEC21143.cpp,v 1.29 2008/02/29 10:12:36 iamcamiel Exp $
+ * $Id: DEC21143.cpp,v 1.30 2008/03/02 09:42:52 iamcamiel Exp $
+ *
+ * X-1.30       Camiel Vanderhoeven                             02-MAR-2008
+ *      Natural way to specify large numeric values ("10M") in the config file.
  *
  * X-1.29       Brian Wheeler                                   29-FEB-2008
  *      Compute SROM checksum. Tru64 needs this.
@@ -342,7 +345,7 @@ CDEC21143::CDEC21143(CConfigurator * confg, CSystem * c, int pcibus, int pcidev)
 	  printf("\n%%NIC-I-MACDEFAULT: MAC defaulted to %s\n", mac);
   }
 
-  rx_queue = new CPacketQueue("rx_queue", myCfg->get_int_value("queue", 100));
+  rx_queue = new CPacketQueue("rx_queue", myCfg->get_num_value("queue", 100));
   calc_crc = myCfg->get_bool_value("crc", false);
 
   c->RegisterClock(this, true);
@@ -363,7 +366,7 @@ CDEC21143::CDEC21143(CConfigurator * confg, CSystem * c, int pcibus, int pcidev)
   pthread_create(&receive_process_handle, NULL, recv_proc, this);
 #endif
 
-  printf("%s: $Id: DEC21143.cpp,v 1.29 2008/02/29 10:12:36 iamcamiel Exp $\n",devid_string);
+  printf("%s: $Id: DEC21143.cpp,v 1.30 2008/03/02 09:42:52 iamcamiel Exp $\n",devid_string);
 }
 
 /**

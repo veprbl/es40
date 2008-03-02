@@ -27,7 +27,10 @@
  * \file
  * Contains code to use a file as a disk image.
  *
- * $Id: DiskFile.cpp,v 1.16 2008/02/20 20:05:46 iamcamiel Exp $
+ * $Id: DiskFile.cpp,v 1.17 2008/03/02 09:42:52 iamcamiel Exp $
+ *
+ * X-1.17       Camiel Vanderhoeven                             02-MAR-2008
+ *      Natural way to specify large numeric values ("10M") in the config file.
  *
  * X-1.16       David Leonard                                   20-FEB-2008
  *      Show disk creation progress.
@@ -98,7 +101,7 @@ CDiskFile::CDiskFile(CConfigurator * cfg, CSystem * sys, CDiskController * c, in
   if (!handle)
   {
     printf("%s: Could not open file %s!\n",devid_string,filename);
-    int sz = myCfg->get_int_value("autocreate_size",0);
+    int sz = myCfg->get_num_value("autocreate_size",0)/1024/1024;
     if (!sz)
       FAILURE("File does not exist and no autocreate_size set");
     void * crt_buf;

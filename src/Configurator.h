@@ -27,7 +27,10 @@
  * \file
  * Contains the definitions for the configuration file interpreter.
  *
- * $Id: Configurator.h,v 1.10 2008/02/26 11:21:33 iamcamiel Exp $
+ * $Id: Configurator.h,v 1.11 2008/03/02 09:42:52 iamcamiel Exp $
+ *
+ * X-1.11       Camiel Vanderhoeven                             02-MAR-2008
+ *      Natural way to specify large numeric values ("10M") in the config file.
  *
  * X-1.10       Camiel Vanderhoeven                             26-FEB-2008
  *      Moved DMA code into it's own class (CDMA)
@@ -106,8 +109,8 @@ public:
   bool get_bool_value(char * n) { return get_bool_value(n, false); };
   bool get_bool_value(char * n, bool def);
 
-  int get_int_value(char * n) { return get_int_value(n, 0); };
-  int get_int_value(char * n, int def);
+  u64 get_num_value(char * n) { return get_num_value(n, 0); };
+  u64 get_num_value(char * n, u64 def);
 
   classid get_class_id() { return myClassId; };
   void * get_device() { return myDevice; };
