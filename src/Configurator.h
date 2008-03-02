@@ -27,7 +27,10 @@
  * \file
  * Contains the definitions for the configuration file interpreter.
  *
- * $Id: Configurator.h,v 1.11 2008/03/02 09:42:52 iamcamiel Exp $
+ * $Id: Configurator.h,v 1.12 2008/03/02 09:54:33 iamcamiel Exp $
+ *
+ * X-1.12       Pepito Grillo                                   02-MAR-2008
+ *      Avoid compiler warnings.
  *
  * X-1.11       Camiel Vanderhoeven                             02-MAR-2008
  *      Natural way to specify large numeric values ("10M") in the config file.
@@ -103,14 +106,14 @@ public:
   char * strip_string(char * c);
   void add_value(char * n, char * v);
 
-  char * get_text_value(char * n) { return get_text_value(n, (char*)0); };
-  char * get_text_value(char * n, char * def);
+  char * get_text_value(const char * n) { return get_text_value(n, (char*)0); };
+  char * get_text_value(const char * n, char * def);
 
-  bool get_bool_value(char * n) { return get_bool_value(n, false); };
-  bool get_bool_value(char * n, bool def);
+  bool get_bool_value(const char * n) { return get_bool_value(n, false); };
+  bool get_bool_value(const char * n, bool def);
 
-  u64 get_num_value(char * n) { return get_num_value(n, 0); };
-  u64 get_num_value(char * n, u64 def);
+  u64 get_num_value(const char * n) { return get_num_value(n, 0); };
+  u64 get_num_value(const char * n, u64 def);
 
   classid get_class_id() { return myClassId; };
   void * get_device() { return myDevice; };
