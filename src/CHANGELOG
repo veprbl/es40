@@ -1,7 +1,10 @@
 /**
 \page changelog Changelog
 
-\section c018 version 0.17 -> 0.17+
+\section c018 version 0.17 -> 0.18
+
+Version 0.18 contains a lot of compatibility fixes, both with
+host and guest operating systems.
 
  - Merged Brian wheeler's New IDE code into the standard 
    controller. NewIde class has disappeared. (04-mar-2008,
