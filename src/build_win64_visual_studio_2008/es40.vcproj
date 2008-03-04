@@ -363,7 +363,7 @@
 				FavorSizeOrSpeed="1"
 				WholeProgramOptimization="false"
 				AdditionalIncludeDirectories="c:\program files\winpcap\include;c:\program files\sdl\include"
-				PreprocessorDefinitions="WIN32;NDEBUG;_CONSOLE;IDB;HAVE_PCAP;HAVE_SDL;HAVE_NEW_IDE"
+				PreprocessorDefinitions="WIN32;NDEBUG;_CONSOLE;IDB;HAVE_PCAP;HAVE_SDL"
 				StringPooling="false"
 				MinimalRebuild="false"
 				BasicRuntimeChecks="0"
@@ -572,7 +572,7 @@
 				FavorSizeOrSpeed="1"
 				WholeProgramOptimization="true"
 				AdditionalIncludeDirectories="c:\program files\winpcap\include;c:\program files\sdl\include"
-				PreprocessorDefinitions="WIN32;NDEBUG;_CONSOLE;HAVE_SDL;HAVE_PCAP;HAVE_NEW_IDE;MIPS_ESTIMATE;DEBUG_KBD__;HIDE_COUNTER"
+				PreprocessorDefinitions="WIN32;NDEBUG;_CONSOLE;HAVE_SDL;HAVE_PCAP"
 				StringPooling="false"
 				MinimalRebuild="false"
 				ExceptionHandling="1"
@@ -1615,7 +1615,7 @@
 				FavorSizeOrSpeed="1"
 				WholeProgramOptimization="true"
 				AdditionalIncludeDirectories="c:\program files\sdl\include"
-				PreprocessorDefinitions="WIN32;NDEBUG;_CONSOLE;HAVE_SDL;HAVE_NEW_IDE"
+				PreprocessorDefinitions="WIN32;NDEBUG;_CONSOLE;HAVE_SDL"
 				StringPooling="false"
 				MinimalRebuild="false"
 				ExceptionHandling="1"
@@ -2445,7 +2445,7 @@
 				FavorSizeOrSpeed="1"
 				WholeProgramOptimization="true"
 				AdditionalIncludeDirectories=""
-				PreprocessorDefinitions="WIN32;NDEBUG;_CONSOLE;HAVE_NEW_IDE"
+				PreprocessorDefinitions="WIN32;NDEBUG;_CONSOLE"
 				StringPooling="false"
 				MinimalRebuild="false"
 				ExceptionHandling="1"
@@ -3275,7 +3275,7 @@
 				FavorSizeOrSpeed="1"
 				WholeProgramOptimization="true"
 				AdditionalIncludeDirectories="c:\program files\winpcap\include"
-				PreprocessorDefinitions="WIN32;NDEBUG;_CONSOLE;HAVE_PCAP;HAVE_NEW_IDE"
+				PreprocessorDefinitions="WIN32;NDEBUG;_CONSOLE;HAVE_PCAP"
 				StringPooling="false"
 				MinimalRebuild="false"
 				ExceptionHandling="1"
@@ -3698,7 +3698,7 @@
 				FavorSizeOrSpeed="1"
 				WholeProgramOptimization="true"
 				AdditionalIncludeDirectories=""
-				PreprocessorDefinitions="WIN32;NDEBUG;_CONSOLE;HAVE_NEW_IDE"
+				PreprocessorDefinitions="WIN32;NDEBUG;_CONSOLE"
 				StringPooling="false"
 				MinimalRebuild="false"
 				ExceptionHandling="1"
@@ -3840,11 +3840,19 @@
 				>
 			</File>
 			<File
+				RelativePath="..\DMA.cpp"
+				>
+			</File>
+			<File
 				RelativePath="..\DPR.cpp"
 				>
 			</File>
 			<File
 				RelativePath="..\es40_debug.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\Ethernet.cpp"
 				>
 			</File>
 			<File
@@ -3873,10 +3881,6 @@
 			</File>
 			<File
 				RelativePath="..\lockstep.cpp"
-				>
-			</File>
-			<File
-				RelativePath="..\NewIde.cpp"
 				>
 			</File>
 			<File
@@ -3913,6 +3917,10 @@
 			</File>
 			<File
 				RelativePath="..\StdAfx.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\Sym53C810.cpp"
 				>
 			</File>
 			<File
@@ -4057,6 +4065,10 @@
 				>
 			</File>
 			<File
+				RelativePath="..\DMA.h"
+				>
+			</File>
+			<File
 				RelativePath="..\DPR.h"
 				>
 			</File>
@@ -4066,6 +4078,10 @@
 			</File>
 			<File
 				RelativePath="..\es40_endian.h"
+				>
+			</File>
+			<File
+				RelativePath="..\Ethernet.h"
 				>
 			</File>
 			<File
@@ -4090,10 +4106,6 @@
 			</File>
 			<File
 				RelativePath="..\lockstep.h"
-				>
-			</File>
-			<File
-				RelativePath="..\NewIde.h"
 				>
 			</File>
 			<File
@@ -4141,6 +4153,10 @@
 				>
 			</File>
 			<File
+				RelativePath="..\Sym53C810.h"
+				>
+			</File>
+			<File
 				RelativePath="..\Sym53C895.h"
 				>
 			</File>
@@ -4161,11 +4177,11 @@
 				>
 			</File>
 			<File
-				RelativePath="..\gui\vga.h"
+				RelativePath="..\VGA.h"
 				>
 			</File>
 			<File
-				RelativePath="..\VGA.h"
+				RelativePath="..\gui\vga.h"
 				>
 			</File>
 		</Filter>
