@@ -27,7 +27,10 @@
  * \file
  * Contains the code for the configuration file interpreter.
  *
- * $Id: Configurator.cpp,v 1.21 2008/03/04 19:20:02 iamcamiel Exp $
+ * $Id: Configurator.cpp,v 1.22 2008/03/04 19:28:08 iamcamiel Exp $
+ *
+ * X-1.22       David Hittner                                   04-MAR-2008
+ *      Allow curly braces inside strings.
  *
  * X-1.21       Camiel Vanderhoeven                             04-MAR-2008
  *      Merged Brian wheeler's New IDE code into the standard controller.
@@ -295,7 +298,7 @@ CConfigurator::CConfigurator(class CConfigurator * parent, char * name, char * v
    * - comments have been removed.
    * - strings are valid.
    */
-  enum { STATE_NONE, STATE_NAME, STATE_IS, STATE_VALUE, 
+  enum { STATE_NONE, STATE_NAME, STATE_IS, STATE_VALUE, STATE_QUOTE,
 	 STATE_CHILD } state = STATE_NONE;
 
   char * cur_name;
@@ -346,8 +349,8 @@ CConfigurator::CConfigurator(class CConfigurator * parent, char * name, char * v
       if (text[curtext] == '\"')
       {
         value_start = curtext;
-        state = STATE_VALUE;
-        curtext--;
+        state = STATE_QUOTE;
+        //curtext--;
       }
       break;
     case STATE_VALUE:
@@ -375,6 +378,14 @@ CConfigurator::CConfigurator(class CConfigurator * parent, char * name, char * v
         child_depth = 1;
       }
       break;
+	case STATE_QUOTE:
+		if ((text[curtext] == '\"') && (text[curtext+1] == '\"')) {
+			curtext++;
+		}
+		else if (text[curtext] == '\"') {
+			state = STATE_VALUE;
+		}
+		break;
     case STATE_CHILD:
       if (text[curtext] == '{')
         child_depth++;
