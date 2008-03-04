@@ -27,7 +27,23 @@
  * \file
  * Contains the definitions for the emulated Ali M1543C IDE chipset part.
  *
- * $Id: AliM1543C_ide.h,v 1.11 2008/01/06 10:38:32 iamcamiel Exp $
+ * $Id: AliM1543C_ide.h,v 1.12 2008/03/04 19:20:02 iamcamiel Exp $
+ *
+ * X-1.12       Camiel Vanderhoeven                             04-MAR-2008
+ *      Merged Brian wheeler's New IDE code into the standard controller.
+ *
+ * X-1.11.4     Brian Wheeler                                   27-FEB-2008
+ *      Attempts to refire the interrupt if the controller seems to have
+ *      missed it -- before the OS declares a timeout.
+ *
+ * X-1.11.3     Camiel Vanderhoeven                             12-JAN-2008
+ *      Use disk's SCSI engine for ATAPI devices.
+ *
+ * X-1.11.2      Brian wheeler                                  08-JAN-2008
+ *      ATAPI improved.
+ *
+ * X-1.11.1      Brian wheeler                                  08-JAN-2008
+ *      Complete rewrite of IDE controller.
  *
  * X-1.11       Camiel Vanderhoeven                             06-JAN-2008
  *      Leave changing the blocksize to the disk itself.
@@ -69,6 +85,9 @@
 #define INCLUDED_ALIM1543C_IDE_H_
 
 #include "DiskController.h"
+#include "Configurator.h"
+#include "SCSIDevice.h"
+#include "SCSIBus.h"
 
 #define MAX_MULTIPLE_SECTORS 16
 
@@ -79,14 +98,17 @@
  *  - Ali M1543C B1 South Bridge Version 1.20 (http://mds.gotdns.com/sensors/docs/ali/1543dScb1-120.pdf)
  *  - AT Attachment with Packet Interface - 5 (ATA/ATAPI-5) (http://www.t13.org/Documents/UploadedDocuments/project/d1321r3-ATA-ATAPI-5.pdf)
  *  - Programming Interface for Bus Master IDE COntroller (http://suif.stanford.edu/%7Ecsapuntz/specs/idems100.ps)
+ *  - T13-1153Dr18  ATA/ATAPI-4
+ *  - Mt. Fuji Commands for Multimedia Devices Version 7 INF-8090i v7
  *  .
  **/
 
-class CAliM1543C_ide : public CDiskController  
+class CAliM1543C_ide : public CDiskController, public CSCSIDevice  
 {
  public:
-  virtual int SaveState(FILE * f);
-  virtual int RestoreState(FILE * f);
+  CAliM1543C_ide(CConfigurator * cfg, class CSystem * c, int pcibus, int pcidev);
+  virtual ~CAliM1543C_ide();
+  virtual void register_disk(class CDisk * dsk, int bus, int dev);
 
   virtual void WriteMem_Legacy(int index, u32 address, int dsize, u32 data);
   virtual u32 ReadMem_Legacy(int index, u32 address, int dsize);
@@ -94,13 +116,10 @@ class CAliM1543C_ide : public CDiskController
   virtual void WriteMem_Bar(int func,int bar, u32 address, int dsize, u32 data);
   virtual u32 ReadMem_Bar(int func,int bar, u32 address, int dsize);
 
-#if defined(NO_VMS)
-  virtual int  DoClock();
-#endif
+  virtual int SaveState(FILE * f);
+  virtual int RestoreState(FILE * f);
 
-  CAliM1543C_ide(CConfigurator * cfg, class CSystem * c, int pcibus, int pcidev);
-  virtual ~CAliM1543C_ide();
-//  FILE * get_ide_disk(int controller, int drive);
+  virtual int  DoClock();
   virtual void ResetPCI();
 
  private:
@@ -112,59 +131,185 @@ class CAliM1543C_ide : public CDiskController
   void ide_control_write(int channel, u32 address, u32 data);
   u32 ide_busmaster_read(int channel, u32 address, int dsize);
   void ide_busmaster_write(int channel, u32 address, u32 data, int dsize);
+  int do_dma_transfer(int index, u8 *buffer, u32 size, bool direction);
 
   void raise_interrupt(int channel);
   void set_signature(int channel, int id);
   u8 get_status(int index);
   void command_aborted(int index, u8 command);
-  void identify_drive(int index);
+  void identify_drive(int index,bool packet);
+  void ide_status(int index);
 
-  /// The state structure contains all elements that need to be saved to the statefile.
-  struct SIDE_state {
+// The state structure contains all elements that need to be saved to the statefile.
+  struct SAliM1543C_ideState {
+    struct SDriveState {
+      struct {
+	bool busy;
+	bool drive_ready;
+	bool fault;
+	bool seek_complete;
+	bool drq;
+	bool bit_2;
+	bool index_pulse;
+	bool err;
+	int index_pulse_count;
+	
+	// debugging
+	u8 debug_last_status;
+	bool debug_status_update;
+      } status;
+      
+      struct {
+	bool lba_mode;
+	int features;
+	int error;
+	int sector_count;
+	int sector_no;
+	int cylinder_no;
+	int head_no;
+	int command;
+      } registers;
+      
+      struct {
+	    bool command_in_progress;
+	    int current_command;
+	    int command_cycle;
+	    bool packet_dma;
+	    int packet_phase;
+	    u8 packet_command[12];
+	    int packet_buffersize;
+        u8 packet_sense;
+        u8 packet_asc;
+        u8 packet_ascq;
+      } command;
 
-    /// IDE control port
-    struct SIDE_control {
+      u8 multiple_size;
+    };
+    
+    
+    struct SControllerState {
+      // the attached devices
+      struct SDriveState drive[2];
+      
+      // control data.
       bool disable_irq;
       bool reset;
-#if defined(NO_VMS)
-      bool irq_ready;
-#endif
-    } ide_control[2];
+      
+      // internal state
+      bool reset_in_progress;
+      bool interrupt_pending;
+      int interrupt_fired;
+      int selected;
 
-    /// IDE status port
-    struct SIDE_status{
-      bool busy;
-      bool drive_ready;
-      bool seek_complete;
-      bool drq;
-      bool err;
-      bool index_pulse;
-      int index_pulse_count;
-      u8 current_command;
-    } ide_status[2][2];
+      // dma stuff
+      u8 busmaster[8];
+      u8 dma_mode;
+      u8 bm_status;
+      
+      // pio stuff
+#define IDE_BUFFER_SIZE 65536 // 64K words = 128K = 256 sectors @ 512 bytes
+      u16 data[IDE_BUFFER_SIZE];
+      int data_ptr;
+      int data_size;
+    } controller[2];
 
-    /// IDE per drive-data
-    struct SIDE_per_drive{
-      int head_no;
-      int sector_count;
-      int sector_no;
-      int cylinder_no;
-      int features;
-      bool lba_mode;
-    } ide_per_drive[2][2];
     
-    bool ide_reset_in_progress[2];
-    u8 ide_error[2];
-    u16 ide_data[2][256];
-    int ide_data_ptr[2];
-    int ide_atapi_size[2];
-    int ide_sectors[2];
-    int ide_selected[2];
+#define SEL_STATUS(a) state.controller[a].drive[state.controller[a].selected].status
+#define SEL_COMMAND(a) state.controller[a].drive[state.controller[a].selected].command
+#define SEL_REGISTERS(a) state.controller[a].drive[state.controller[a].selected].registers
 
-    // Bus Mastering
-    u8 busmaster[2][8];
+#define SEL_DISK(a) get_disk(a,state.controller[a].selected)
+#define SEL_PER_DRIVE(a) state.controller[a].drive[state.controller[a].selected]
+
+#define STATUS(a,b) state.controller[a].drive[b].status
+#define COMMAND(a,b) state.controller[a].drive[b].command
+#define REGISTERS(a,b) state.controller[a].drive[b].registers
+#define PER_DRIVE(a,b) state.controller[a].drive[b]
+#define CONTROLLER(a) state.controller[a]
+
+
+
   } state;
 };
 
-extern CAliM1543C_ide * theAliIDE;
-#endif // !defined(INCLUDED_ALIM1543C_IDE_H)
+extern CAliM1543C_ide * theIDE;
+
+/* memory region ids */
+#define PRI_COMMAND 1
+#define PRI_CONTROL 2
+#define SEC_COMMAND 3
+#define SEC_CONTROL 4
+#define PRI_BUSMASTER 5
+#define SEC_BUSMASTER 6
+
+/* bar IDs */
+#define BAR_PRI_COMMAND 0
+#define BAR_PRI_CONTROL 1
+#define BAR_SEC_COMMAND 2
+#define BAR_SEC_CONTROL 3
+#define BAR_BUSMASTER 4
+
+/* device registers */
+#define REG_COMMAND_DATA 0
+#define REG_COMMAND_ERROR 1
+#define REG_COMMAND_FEATURES 1
+#define REG_COMMAND_SECTOR_COUNT 2
+#define REG_COMMAND_SECTOR_NO 3
+#define REG_COMMAND_CYL_LOW 4
+#define REG_COMMAND_CYL_HI 5
+#define REG_COMMAND_DRIVE 6
+#define REG_COMMAND_STATUS 7
+#define REG_COMMAND_COMMAND 7
+
+static char *register_names[] = {
+  "DATA",
+  "ERROR/FEATURES",
+  "SECTOR_COUNT/PKT REASON",
+  "SECTOR_NO",
+  "CYL_LOW/PKT BYTE LOW",
+  "CYL_HI/PKT BYTE HI",
+  "DRIVE",
+  "STATUS/COMMAND",
+};
+
+/* misc constants */
+
+/* Packet Protocol Aliases */
+#define DMRD fault
+#define SERV seek_complete
+#define CHK  err
+#define BYTE_COUNT cylinder_no
+#define REASON sector_count
+#define IR_CD 0x01
+#define IR_IO 0x02
+#define IR_REL 0x04
+
+/* Packet protocol states */
+static char *packet_states[] = {
+  "DP0: Prepare A",
+  "DP1: Receive Packet",
+  "DP2: Prepare B",
+  "DP3/4: Ready INITRQ/Transfer Data",
+  "DIx: Device Interrupt ",
+};
+#define PACKET_NONE 0
+#define PACKET_DP0 0
+#define PACKET_DP1 1
+#define PACKET_DP2 2
+#define PACKET_DP34 3
+#define PACKET_DI  4
+
+/* SCSI SENSE Constants */
+#define SENSE_NONE 0x00
+#define SENSE_RECOVERED_ERROR 0x01
+#define SENSE_NOT_READY 0x02
+#define SENSE_MEDIUM_ERROR 0x03
+#define SENSE_HARDWARE_ERROR 0x04
+#define SENSE_ILLEGAL_REQUEST 0x05
+#define SENSE_UNIT_ATTENTION 0x06
+#define SENSE_DATA_PROTECT 0x07
+#define SENSE_BLANK_CHECK 0x08
+#define SENSE_ABORT_COMMAND 0x0b
+#define SENSE_MISCOMPARE 0x0e
+
+#endif 

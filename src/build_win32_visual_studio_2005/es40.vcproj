@@ -4643,10 +4643,6 @@
 				</FileConfiguration>
 			</File>
 			<File
-				RelativePath="..\NewIde.cpp"
-				>
-			</File>
-			<File
 				RelativePath="..\PCIDevice.cpp"
 				>
 				<FileConfiguration
@@ -6704,11 +6700,11 @@
 				>
 			</File>
 			<File
-				RelativePath="..\VGA.h"
+				RelativePath="..\gui\vga.h"
 				>
 			</File>
 			<File
-				RelativePath="..\gui\vga.h"
+				RelativePath="..\VGA.h"
 				>
 			</File>
 		</Filter>

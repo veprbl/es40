@@ -3,6 +3,9 @@
 
 \section c018 version 0.17 -> 0.17+
 
+ - Merged Brian wheeler's New IDE code into the standard 
+   controller. NewIde class has disappeared. (04-mar-2008,
+   Camiel Vanderhoeven)
  - Support some basic MP features. (CPUID read from C-Chip MISC 
    register, inter-processor interrupts) (04-mar-2008, Camiel
    Vanderhoeven)

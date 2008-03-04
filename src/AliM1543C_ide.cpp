@@ -27,7 +27,89 @@
  * \file
  * Contains the code for the emulated Ali M1543C IDE chipset part.
  *		
- * $Id: AliM1543C_ide.cpp,v 1.19 2008/01/08 15:58:55 iamcamiel Exp $
+ * $Id: AliM1543C_ide.cpp,v 1.20 2008/03/04 19:20:02 iamcamiel Exp $
+ *
+ * X-1.20       Camiel Vanderhoeven                             04-MAR-2008
+ *      Merged Brian wheeler's New IDE code into the standard controller.
+ *
+ * X-1.19.17    Brian Wheeler                                   27-FEB-2008
+ *     Re-fire interrupts less often.
+ *
+ * X-1.19.16    Brian Wheeler                                   27-FEB-2008
+ *     Improvement to last fix.
+ *
+ * X-1.19.15    Brian Wheeler                                   27-FEB-2008
+ *     This patch fixes the vms boot problems from ide cdrom and it also
+ *     allowed me to install tru64 -- albeit with timeouts:
+ *   a) Clears the busmaster active bit when the bit 1 is written to the
+ *      busmaster status register.
+ *   b) Attempts to refire the interrupt if the controller seems to have
+ *      missed it -- before the OS declares a timeout.
+ *
+ * X-1.19.14    Brian Wheeler                                   27-FEB-2008
+ *      Avoid compiler warnings.
+ *
+ * X-1.19.13    Brian Wheeler                                   29-JAN-2008
+ *      Avoid firing interrupts that occurred while interrupts were
+ *      disabled.
+ *
+ * X-1.19.12    Camiel Vanderhoeven                             28-JAN-2008
+ *      Avoid compiler warnings.
+ *
+ * X-1.19.11    Brian Wheeler                                   26-JAN-2008
+ *      Don't repeat interrupt too soon.
+ *
+ * X-1.19.10    Camiel Vanderhoeven                             24-JAN-2008
+ *      Use new CPCIDevice::do_pci_read and CPCIDevice::do_pci_write.
+ *
+ * X-1.19.9     Brian Wheeler                                   16-JAN-2008
+ *      Less timeouts.
+ *
+ * X-1.19.8     Brian Wheeler                                   14-JAN-2008
+ *      Less messages without debugging enabled.
+ *
+ * X-1.19.7     Fang Zhe                                        13-JAN-2008
+ *      Big-endian support.
+ *
+ * X-1.19.6     Camiel Vanderhoeven                             12-JAN-2008
+ *      Use disk's SCSI engine for ATAPI devices.
+ *
+ * X-1.19.5      Brian Wheeler                                   10-JAN-2008
+ *   - Stop dividing get_lba_size() by 4 in ATAPI Get Capacity.  SRM can
+ *     now boot cdrom images correctly, and OSes can use cdroms effectively...
+ *     at least until they call an unimplemented SCSI command.
+ *
+ * X-1.19.4      Brian Wheeler                                   09-JAN-2008
+ *   - During init, command_in_progress and command_cycle are cleared.
+ *   - Writes to ide_control are processed correctly.  Tru64 & FreeBSD
+ *     recognize disks now.
+ *   - interrupt is deasserted when command register is written.
+ *   - Removed a bunch of debugging sections.
+ *   - Made it quieter if DEBUG_IDE wasn't defined -- users should no longer
+ *     see Debug Pause messages.
+ *   - busy is asserted if we're currently processing a packet command when
+ *     drq is deasserted (i.e. when the read buffer is empty).  This lets us
+ *     get back into the ATAPI state machine before the host can start
+ *     messing  with the controller.
+ *   - Removed pauses for port 0x3n7 -- its really a floppy port.
+ *   - Remove pause when reset is being started.
+ *   - packet dma flag is presented when get_status() is run.
+ *   - ATAPI command 0x1e (media lock) implemented as no-op.
+ *   - ATAPI command 0x43 (read TOC) implemented as a hack.
+ *   - ATAPI read now uses get_block_size() for determining transfers.
+ *   - ATAPI state machine goes from DP34 to DI immediately upon completion 
+ *     instead of redirecting through DP2.
+ *   - Added ATA Command 0xc6 (Set Multiple).
+ *   .
+ *
+ * X-1.19.3      Brian wheeler                                   08-JAN-2008
+ *      ATAPI improved.
+ *
+ * X-1.19.2      Brian wheeler                                   08-JAN-2008
+ *      Handle blocksize correctly for ATAPI.
+ *
+ * X-1.19.1     Brian wheeler                                   08-JAN-2008
+ *      Complete rewrite of IDE controller.
  *
  * X-1.19       Fang Zhe                                        08-JAN-2008
  *      Endianess.
@@ -102,1201 +184,103 @@
 #include "AliM1543C.h"
 #include "Disk.h"
 
-#ifdef DEBUG_PIC
-extern bool pic_messages;
+#define PAUSE(msg) do { printf("Debug Pause: "); printf(msg); getc(stdin); } while(0);
+
+#ifdef DEBUG_IDE
+#define DEBUG_IDE_BUSMASTER
+#define DEBUG_IDE_COMMAND
+#define DEBUG_IDE_DMA
+#define DEBUG_IDE_INTERRUPT
+#define DEBUG_IDE_REG_COMMAND
+#define DEBUG_IDE_REG_CONTROL
+#define DEBUG_IDE_PACKET
 #endif
 
-u32 ide_cfg_data[64] = {
-/*00*/  0x522910b9, // CFID: vendor + device
-/*04*/  0x02800000, // CFCS: command + status
-/*08*/  0x0101fac1, // CFRV: class + revision
-/*0c*/  0x00000000, // CFLT: latency timer + cache line size
-/*10*/  0x000001f1, // BAR0: 
-/*14*/  0x000003f5, // BAR1: 
-/*18*/  0x00000171, // BAR2: 
-/*1c*/  0x00000375, // BAR3: 
-/*20*/  0x0000f001, // BAR4: 
-/*24*/  0x00000000, // BAR5: 
-/*28*/  0x00000000, // CCIC: CardBus
-/*2c*/  0x00000000, // CSID: subsystem + vendor
-/*30*/  0x00000000, // BAR6: expansion rom base
-/*34*/  0x00000000, // CCAP: capabilities pointer
-/*38*/  0x00000000,
-/*3c*/  0x040201ff, // CFIT: interrupt configuration
-        0,0,
-/*48*/  0x4a000000, // UDMA test
-/*4c*/  0x1aba0000, // reserved
-        0,
-/*54*/  0x44445555, // udma setting + fifo treshold
-        0,0,0,0,0,0,0,0,
-/*78*/  0x00000021, // ide clock
-        0,
-        0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-        0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+u32 AliM1543C_ide_cfg_data[64] = {
+  /*00*/  0x522910b9, // CFID: vendor + device
+  /*04*/  0x02800000, // CFCS: command + status
+  /*08*/  0x0101fac1, // CFRV: class + revision
+  /*0c*/  0x00000000, // CFLT: latency timer + cache line size
+  /*10*/  0x000001f1, // BAR0: 
+  /*14*/  0x000003f5, // BAR1: 
+  /*18*/  0x00000171, // BAR2: 
+  /*1c*/  0x00000375, // BAR3: 
+  /*20*/  0x0000f001, // BAR4: 
+  /*24*/  0x00000000, // BAR5: 
+  /*28*/  0x00000000, // CCIC: CardBus
+  /*2c*/  0x00000000, // CSID: subsystem + vendor
+  /*30*/  0x00000000, // BAR6: expansion rom base
+  /*34*/  0x00000000, // CCAP: capabilities pointer
+  /*38*/  0x00000000,
+  /*3c*/  0x040201ff, // CFIT: interrupt configuration
+  0,0,
+  /*48*/  0x4a000000, // UDMA test
+  /*4c*/  0x1aba0000, // reserved
+  0,
+  /*54*/  0x44445555, // udma setting + fifo treshold
+  0,0,0,0,0,0,0,0,
+  /*78*/  0x00000021, // ide clock
+  0,
+  0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+  0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
 };
 
-u32 ide_cfg_mask[64] = {
-/*00*/  0x00000000, // CFID: vendor + device
-/*04*/  0x00000105, // CFCS: command + status
-/*08*/  0x00000000, // CFRV: class + revision
-/*0c*/  0x0000ffff, // CFLT: latency timer + cache line size
-/*10*/  0xfffffff8, // BAR0
-/*14*/  0xfffffffc, // BAR1: CBMA
-/*18*/  0xfffffff8, // BAR2: 
-/*1c*/  0xfffffffc, // BAR3: 
-/*20*/  0xfffffff0, // BAR4: 
-/*24*/  0x00000000, // BAR5: 
-/*28*/  0x00000000, // CCIC: CardBus
-/*2c*/  0x00000000, // CSID: subsystem + vendor
-/*30*/  0x00000000, // BAR6: expansion rom base
-/*34*/  0x00000000, // CCAP: capabilities pointer
-/*38*/  0x00000000,
-/*3c*/  0x000000ff, // CFIT: interrupt configuration
-        0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-        0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-        0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+u32 AliM1543C_ide_cfg_mask[64] = {
+  /*00*/  0x00000000, // CFID: vendor + device
+  /*04*/  0x00000105, // CFCS: command + status
+  /*08*/  0x00000000, // CFRV: class + revision
+  /*0c*/  0x0000ffff, // CFLT: latency timer + cache line size
+  /*10*/  0xfffffff8, // BAR0
+  /*14*/  0xfffffffc, // BAR1: CBMA 
+  /*18*/  0xfffffff8, // BAR2: 
+  /*1c*/  0xfffffffc, // BAR3: 
+  /*20*/  0xfffffff0, // BAR4: 
+  /*24*/  0x00000000, // BAR5: 
+  /*28*/  0x00000000, // CCIC: CardBus
+  /*2c*/  0x00000000, // CSID: subsystem + vendor
+  /*30*/  0x00000000, // BAR6: expansion rom base
+  /*34*/  0x00000000, // CCAP: capabilities pointer
+  /*38*/  0x00000000,
+  /*3c*/  0x000000ff, // CFIT: interrupt configuration
+  0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+  0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+  0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
 };
-
-#define SEL_STATUS(a) state.ide_status[a][state.ide_selected[a]]
-#define SEL_DISK(a) get_disk(a,state.ide_selected[a])
-#define SEL_PER_DRIVE(a) state.ide_per_drive[a][state.ide_selected[a]]
-
-	// this handles point "d" in figure 16.
-#define ATAPI_OK(index) 	  \
-	SEL_PER_DRIVE(index).sector_count=0x03; \
-	SEL_STATUS(index).busy = false;  \
-	raise_interrupt(index);
-
-	// this handles point "b" in figure 16.
-#define ATAPI_OK_DATA(index,size) \
-	SEL_PER_DRIVE(index).cylinder_no=size; \
-	SEL_STATUS(index).busy = false; \
-	SEL_STATUS(index).drq = true; \
-	SEL_PER_DRIVE(index).sector_count=0x02; /* data in =2, data out = 0*/ \
-	state.ide_atapi_size[index] = size; \
-	state.ide_data_ptr[index] = 0; \
-	raise_interrupt(index);
-
-#define ATAPI_ERR(index,error) 	  SEL_STATUS(index).busy=false; \
-	  SEL_STATUS(index).drive_ready=true; \
-	  SEL_STATUS(index).drq=false; \
-	  SEL_STATUS(index).err=true; \
-	  SEL_PER_DRIVE(index).sector_count=0x03; \
-	  state.ide_error[index]=error; \
-	  raise_interrupt(index);
 
 /**
  * Constructor.
  **/
-
 CAliM1543C_ide::CAliM1543C_ide(CConfigurator * cfg, CSystem * c, int pcibus, int pcidev) 
-  : CDiskController(cfg,c,pcibus,pcidev,2,2)
-{
-  if (theAliIDE != 0)
-    FAILURE("More than one AliIDE!!");
-  theAliIDE = this;
+  : CDiskController(cfg,c,pcibus,pcidev,2,2) {
+  if (theIDE != 0)
+    FAILURE("More than one IDE controller!!\n");
+  theIDE = this;
 
-#if defined(NO_VMS)
   c->RegisterClock(this,true);
-#endif
 
+  add_function(0,AliM1543C_ide_cfg_data, AliM1543C_ide_cfg_mask);
 
-  add_function(0,ide_cfg_data, ide_cfg_mask);
+  add_legacy_io(PRI_COMMAND, 0x1f0, 8);
+  add_legacy_io(PRI_CONTROL, 0x3f6, 2);
+  add_legacy_io(SEC_COMMAND, 0x170, 8);
+  add_legacy_io(SEC_CONTROL, 0x376, 2);
+  add_legacy_io(PRI_BUSMASTER, 0xf000, 8);
+  add_legacy_io(SEC_BUSMASTER, 0xf008, 8);
 
-  add_legacy_io(14, 0x1f0, 8);
-  add_legacy_io(16, 0x3f6, 1);
-  add_legacy_io(15, 0x170, 8);
-  add_legacy_io(17, 0x376, 1);
-  add_legacy_io(18, 0xf000, 8);
-  add_legacy_io(19, 0xf008, 8);
-  
+  // create scsi busses
+  CSCSIBus * a = new CSCSIBus(cfg, c);
+  CSCSIBus * b = new CSCSIBus(cfg, c);
+  scsi_register(0, a, 7); // scsi id 7 by default
+  scsi_register(1, b, 7); // scsi id 7 by default
+
   ResetPCI();
 
-  printf("%s: $Id: AliM1543C_ide.cpp,v 1.19 2008/01/08 15:58:55 iamcamiel Exp $\n",devid_string);
+  printf("%%IDE-I-INIT: New IDE emulator initialized.\n");
 }
 
 CAliM1543C_ide::~CAliM1543C_ide()
 {
 }
-
-#if defined(NO_VMS)
-int CAliM1543C_ide::DoClock() 
-{
-  static int pause = 0;
-  // check for any pending interrupts from the ide drives.
-  for(int i=0;i<2;i++) {
-    if(state.ide_control[i].irq_ready && (pause > 8)) {
-      // issue the interrupt.
-      state.busmaster[i][2] |= 0x04;
-      theAli->pic_interrupt(1, 6+i);
-      state.ide_control[i].irq_ready=false;
-      pause = 0;
-    }
-  }
-  pause++;
-  return 0;
-}
-#endif
-
-u32 CAliM1543C_ide::ReadMem_Legacy(int index, u32 address, int dsize)
-{
-  int channel = 0;
-  switch(index)
-    {
-    case 15:
-    case 22:
-      channel = 1;
-    case 14:
-    case 21:
-      return ide_command_read(channel,address,dsize);
-    case 17:
-    case 24:
-      channel = 1;
-    case 16:
-    case 23:
-      return ide_control_read(channel,address);
-    case 19:
-    case 26:
-      channel = 1;
-    case 18:
-    case 25:
-      return ide_busmaster_read(channel,address,dsize);
-    }
-
-  return 0;
-}
-
-void CAliM1543C_ide::WriteMem_Legacy(int index, u32 address, int dsize, u32 data)
-{
-  int channel = 0;
-  switch(index)
-    {
-    case 15:
-    case 22:
-      channel = 1;
-    case 14:
-    case 21:
-      ide_command_write(channel,address, dsize,data);
-      return;
-    case 17:
-    case 24:
-      channel = 1;
-      ide_control_write(channel,address, data);
-      return;
-    case 16:
-    case 23:
-      ide_control_write(channel,address, data);
-      return;
-    case 19:
-    case 26:
-      channel = 1;
-    case 18:
-    case 25:
-      ide_busmaster_write(channel,address, data,dsize);
-      return;
-    }
-}
-
-
-u32 CAliM1543C_ide::ReadMem_Bar(int func, int bar, u32 address, int dsize)
-{
-  int channel = 0;
-  switch(bar)
-    {
-    case 2:
-      channel = 1;
-    case 0:
-      return ide_command_read(channel,address,dsize);
-    case 3:
-      channel = 1;
-    case 1:
-      return ide_control_read(channel,address);
-    case 4:
-      if (address <8)
-        return ide_busmaster_read(0,address,dsize);
-      else
-        return ide_busmaster_read(1,address-8,dsize);
-    }
-
-  return 0;
-}
-
-void CAliM1543C_ide::WriteMem_Bar(int func, int bar, u32 address, int dsize, u32 data)
-{
-  int channel = 0;
-  switch(bar)
-    {
-    case 2:
-      channel = 1;
-    case 0:
-      ide_command_write(channel,address, dsize,data);
-      return;
-    case 3:
-      channel = 1;
-    case 1:
-      ide_control_write(channel,address, data);
-      return;
-    case 4:
-      if (address <8)
-        ide_busmaster_write(0,address,data,dsize);
-      else
-        ide_busmaster_write(1,address-8,data,dsize);
-      return;
-    }
-}
-
-u32 CAliM1543C_ide::ide_command_read(int index, u32 address, int dsize)
-{
-  u32 data = 0;
-
-  switch (address)
-  {
-  case 0:
-    if (!SEL_STATUS(index).drq) 
-    {
-      //printf("IDE%d port 0 read with drq == 0: last command was %02xh\n", index, SEL_STATUS(index).current_command);
-      return 0;
-    }
-    switch(SEL_STATUS(index).current_command)
-    {
-    case 0x20: // read sector
-    case 0x21: // read sector
-#if defined(ES40_BIG_ENDIAN)
-      switch(dsize)
-      {
-      case 32:
-        if (state.ide_sectors[index]) {
-          data = endian_16(state.ide_data[index][state.ide_data_ptr[index]++]);
-          data |= endian_16(state.ide_data[index][state.ide_data_ptr[index]++]) << 16;
-        } else {
-          data = state.ide_data[index][state.ide_data_ptr[index]++];
-          data |= state.ide_data[index][state.ide_data_ptr[index]++] << 16;
-        }
-        break;
-      case 16:
-        if (state.ide_sectors[index])
-          data = endian_16(state.ide_data[index][state.ide_data_ptr[index]++]);
-        else
-          data = state.ide_data[index][state.ide_data_ptr[index]++];
-      }
-      if (state.ide_data_ptr[index]>=256)
-      {
-        SEL_STATUS(index).busy = false;
-        SEL_STATUS(index).drive_ready = true;
-        SEL_STATUS(index).seek_complete = true;
-        SEL_STATUS(index).err = false;
-        state.ide_data_ptr[index] = 0;
-
-        state.ide_sectors[index]--;
-
-        if (state.ide_sectors[index])
-        {
-          SEL_STATUS(index).drq = true;
-          SEL_DISK(index)->read_blocks(&(state.ide_data[index][0]),1);
-          raise_interrupt(index);
-        }
-        else
-          SEL_STATUS(index).drq = false;
-      }
-      break;
-#endif
-    case 0xec: // identify
-    case 0xa1: // packet identify
-      switch(dsize)
-      {
-      case 32:
-        data = state.ide_data[index][state.ide_data_ptr[index]++];
-        data |= state.ide_data[index][state.ide_data_ptr[index]++] << 16;
-        break;
-      case 16:
-        data = state.ide_data[index][state.ide_data_ptr[index]++];
-      }
-      if (state.ide_data_ptr[index]>=256)
-      {
-        SEL_STATUS(index).busy = false;
-        SEL_STATUS(index).drive_ready = true;
-        SEL_STATUS(index).seek_complete = true;
-        SEL_STATUS(index).err = false;
-        state.ide_data_ptr[index] = 0;
-
-        state.ide_sectors[index]--;
-#if defined(ES40_BIG_ENDIAN)
-          SEL_STATUS(index).drq = false;
-#else
-        if (!state.ide_sectors[index] || (SEL_STATUS(index).current_command == 0xec) || (SEL_STATUS(index).current_command == 0xa1))
-          SEL_STATUS(index).drq = false;
-        else
-        {
-          SEL_STATUS(index).drq = true;
-          SEL_DISK(index)->read_blocks(&(state.ide_data[index][0]),1);
-          raise_interrupt(index);
-        }
-#endif
-      }
-      break;
-
-    case 0xa0: // packet
-      data = 0;
-      switch(dsize)
-      {
-      case 32:
-        data = state.ide_data[index][state.ide_data_ptr[index]++];
-        data |= state.ide_data[index][state.ide_data_ptr[index]++] << 16;
-        break;
-      case 16:
-        data = state.ide_data[index][state.ide_data_ptr[index]++];
-      }
-      //printf("Reading %d bytes from ATAPI Packet: %x \n",dsize/8,data);
-      if (state.ide_data_ptr[index]>=(state.ide_atapi_size[index]/2))
-      {
-	    //printf("--Reached end of packet data. (point e)\n");
-        SEL_STATUS(index).busy = false;
-        SEL_STATUS(index).drive_ready = true;
-        SEL_STATUS(index).seek_complete = true;
-        SEL_STATUS(index).err = false;
-	    SEL_PER_DRIVE(index).sector_count=0x03; // set c/d & i/o
-        state.ide_data_ptr[index] = 0;
-	    SEL_STATUS(index).drq = false;
-	    raise_interrupt(index);
-      } else {
-	    //printf("--More packet data pending.\n");
-      }
-      break;
-
-    default:
-      printf("IDE read with unsupported command: %02x\n",SEL_STATUS(index).current_command);
-	  FAILURE("Unsupported IDE command");
-    }
-    break;
-  case 1:
-    data = state.ide_error[index]; // no error
-    break;
-  case 2:
-    data = SEL_PER_DRIVE(index).sector_count;
-    break;
-  case 3:
-    data = SEL_PER_DRIVE(index).sector_no;
-    break;
-  case 4:
-    data = SEL_PER_DRIVE(index).cylinder_no & 0xff;
-    break;
-  case 5:
-    data = (SEL_PER_DRIVE(index).cylinder_no>>8) & 0xff;
-    break;
-
-  case 6:
-    data =                                  0x80 
-         | (SEL_PER_DRIVE(index).lba_mode ? 0x40 : 0x00)
-         |                                  0x20 //512 byte sector size
-         | (state.ide_selected[index]     ? 0x10 : 0x00)
-         | (SEL_PER_DRIVE(index).head_no  & 0x0f       );
-    break;
-
-  case 7:
-      data = get_status(index);
-      // this is also supposed to clear any pending interrupts. (D1153)
-      theAli->pic_deassert(1,6+index); // clear the interrupt
-#if defined(NO_VMS)
-      state.ide_control[index].irq_ready=false;      
-#endif
-      break;
-    }
-
-  TRC_DEV4("%%ALI-I-READIDECMD: read port %d on IDE command %d: 0x%02x\n", (u32)(address), index, data);
-#ifdef DEBUG_IDE
-  if (address)
-    printf("%%ALI-I-READIDECMD: read port %d on IDE command %d: 0x%02x\n", (u32)(address), index, data);
-#endif
-  return data;
-}
-
-void CAliM1543C_ide::ide_command_write(int index, u32 address, int dsize, u32 data)
-{
-  int lba;
-
-  TRC_DEV4("%%ALI-I-WRITEIDECMD: write port %d on IDE command %d: 0x%02x\n",  (u32)(address),index, data);
-
-#ifdef DEBUG_IDE
-  //if (address)
-    printf("%%ALI-I-WRITEIDECMD: write port %d on IDE command %d: 0x%02x\n",  (u32)(address),index, data);
-#endif
-
-  switch(address)
-  {
-  case 0:
-    switch(SEL_STATUS(index).current_command)
-    {
-    case 0x30:
-      switch(dsize)
-      {
-      case 32:
-        state.ide_data[index][state.ide_data_ptr[index]++] = (u16)endian_16(data);
-        state.ide_data[index][state.ide_data_ptr[index]++] = (u16)endian_16(data>>16);
-        break;
-      case 16:
-        state.ide_data[index][state.ide_data_ptr[index]++] = (u16)endian_16(data);
-      }
-      if (state.ide_data_ptr[index]>=256)
-      {
-        SEL_STATUS(index).busy = false;
-        SEL_STATUS(index).drive_ready = true;
-        SEL_STATUS(index).seek_complete = true;
-        SEL_STATUS(index).err = false;
-        state.ide_data_ptr[index] = 0;
-        SEL_DISK(index)->write_blocks(&(state.ide_data[index][0]),1);
-	    state.ide_sectors[index]--;
-	    state.ide_data_ptr[index] = 0;
-
-        if (!state.ide_sectors[index])
-          SEL_STATUS(index).drq = false;
-        else
-          SEL_STATUS(index).drq = true;
-        raise_interrupt(index);
-      }
-      break;
-
-    case 0xa0: // packet
-      //printf("Writing %d bytes to ATAPI Packet: %x \n",dsize/8,data);
-      switch(dsize)
-      {
-      case 32:
-        state.ide_data[index][state.ide_data_ptr[index]++] = (u16)data & 0xffff;
-        state.ide_data[index][state.ide_data_ptr[index]++] = (u16)(data>>16) & 0xffff;
-        break;
-      case 16:
-        state.ide_data[index][state.ide_data_ptr[index]++] = (u16)data & 0xffff;
-      }
-
-      if(state.ide_data_ptr[index] >= 6) 
-      {
-	    //printf("Packet is complete (1153R18 pg 236).\n");
-	    SEL_STATUS(index).busy = true;
-	    SEL_STATUS(index).drq = false;
-
-	    // one command packet.  Let's see what we have.
-	    switch(state.ide_data[index][0] & 0xff) 
-        {
-	    case 0x00: // test unit ready.
-	      //printf("ATAPI: Test unit ready.\n");
-	      ATAPI_OK(index);
-	      break;
-	    case 0x1e: // prevent/allow medium removal
-	      // we're really ignoring this since the emulator
-	      // doesn't even have an ejectable cd :)
-	      //printf("ATAPI: lock/unlock door\n");
-	      ATAPI_OK(index);
-	      break;
-
-	    case 0x25: // CDVD Capacity
-	      //printf("ATAPI: get capacity\n");
-	      *(u32 *)&state.ide_data[index][0] = swap_32((u32) SEL_DISK(index)->get_lba_size());
-          *(u32 *)&state.ide_data[index][2] = swap_32((u32) SEL_DISK(index)->get_block_size());
-	      ATAPI_OK_DATA(index,8);
-	      break;
-
-	    case 0x5a: // mode sense
-	      //printf("ATAPI: mode sense PC: %x, page: %x\n", (state.ide_data[index][1] & 0xc0)>>6, state.ide_data[index][1]&0x3f);
-	      switch((state.ide_data[index][1] & 0xc0) >> 6) 
-          {
-	      case 0: // current values
-	      case 2: // default values
-	        // since none is changable (see below), then these two
-	        // will always be the same.
-	      case 1: // changable values
-	        // mark none as changable
-	      case 3: // saved values
-	        // we will error on this
-	        break;
-	      }
-	      ATAPI_OK(index); // um, we don't care?
-    	  break;
-
-	    case 0x43: // read toc-pma-atip
-	      state.ide_data[index][0] = 12;
-	      state.ide_data[index][1] = 0x0101; // one track
-	      state.ide_data[index][2] = 0x0000;
-	      state.ide_data[index][3] = 0x0001;
-	      *(u32 *)&state.ide_data[index][4] = 0; // track start address.
-	      ATAPI_OK_DATA(index,12);
-	      break;
-
-	    case 0x28: // read 10
-	    case 0x20: // ???
-	    case 0x03: // request sense
-	    default:
-	      printf("Unknown ATAPI command: ");
-	      for(int i=0;i<6;i++) 
-	        printf("%04x ",state.ide_data[index][i]);
-	        printf("\n");
-	        ATAPI_ERR(index,0x04);
-	      break;
-	    }
-      }
-      break;
-
-    default:
-      printf("IDE write with unsupported command: %02x\n",SEL_STATUS(index).current_command);
-    }
-    break;
-
-  case 1:
-    state.ide_per_drive[index][0].features = data;
-    state.ide_per_drive[index][1].features = data;
-    // ignore precompensation
-    break;
-  case 2:
-    state.ide_per_drive[index][0].sector_count = data & 0xff;
-    state.ide_per_drive[index][1].sector_count = data & 0xff;
-    break;
-  case 3:
-    state.ide_per_drive[index][0].sector_no = data & 0xff;
-    state.ide_per_drive[index][1].sector_no = data & 0xff;
-    break;
-  case 4:
-    state.ide_per_drive[index][0].cylinder_no = (state.ide_per_drive[index][0].cylinder_no & 0xff00) | (data & 0xff);
-    state.ide_per_drive[index][1].cylinder_no = (state.ide_per_drive[index][1].cylinder_no & 0xff00) | (data & 0xff);
-    break;
-  case 5:
-    state.ide_per_drive[index][0].cylinder_no = (state.ide_per_drive[index][0].cylinder_no & 0xff) | ((data<<8) & 0xff00);
-    state.ide_per_drive[index][1].cylinder_no = (state.ide_per_drive[index][1].cylinder_no & 0xff) | ((data<<8) & 0xff00);
-    break;
-  case 6:
-    state.ide_selected[index] = (data >> 4) & 1;
-    state.ide_per_drive[index][0].head_no = data & 0x0f;
-    state.ide_per_drive[index][1].head_no = data & 0x0f;
-    state.ide_per_drive[index][0].lba_mode = (data >> 6) & 1;
-    state.ide_per_drive[index][1].lba_mode = (data >> 6) & 1;
-    break;
-  case 7:
-    if (state.ide_selected[index] && !SEL_DISK(index))
-      // ignore command for non-existing slave.
-      break;
-
-    if(SEL_STATUS(index).busy)
-    {
-      printf("Command sent to busy IDE device!\n");
-      break;
-    }
-
-    SEL_STATUS(index).err = false;
-
-    if ( (data & 0xf0) == 0x10 )
-      data = 0x10;
-
-	SEL_STATUS(index).current_command = (u8)data;
-
-//    printf("IDE Command %02x\n",data);
-
-    switch (data)
-    {
-    case 0x00: // nop
-        SEL_STATUS(index).drive_ready = true;
-        SEL_STATUS(index).drq = false;
-        raise_interrupt(index);
-      break;
-
-    case 0x08: // reset drive (DRST) (ATAPI)
-      if (!SEL_DISK(index))
-      {
-        //printf("Disk %d.%d not present, aborting.\n",index,state.ide_selected[index]);
-        command_aborted(index,(u8)data);
-        break;
-      }
-      if(!SEL_DISK(index)->cdrom()) 
-      {
-	    command_aborted(index,(u8)data);
-	    break;
-      }
-	  SEL_STATUS(index).busy = false;
-	  SEL_STATUS(index).drive_ready = true;
-	  SEL_STATUS(index).drq = false;
-	  SEL_STATUS(index).seek_complete = true;
-	  state.ide_data_ptr[index]=0;
-	  raise_interrupt(index);
-	  break;
-      
-    case 0xa0: // packet send
-      if (!SEL_DISK(index))
-      {
-        //printf("Disk %d.%d not present, aborting.\n",index,state.ide_selected[index]);
-        command_aborted(index,(u8)data);
-        break;
-      }
-      if(!SEL_DISK(index)->cdrom()) 
-      {
-	    command_aborted(index,(u8)data);
-	    break;
-      }
-      //printf("%%IDE-I-ATAPI: Packet Send Command\n");
-      SEL_STATUS(index).busy = false;
-      SEL_STATUS(index).drq=true;
-      SEL_STATUS(index).current_command = (u8)data;
-      SEL_PER_DRIVE(index).sector_count=0x01; // set C/D
-      state.ide_data_ptr[index]=0;
-      break;
-
-    case 0xa1: // identify packet device (ATAPI)
-      if (!SEL_DISK(index))
-      {
-        //printf("Disk %d.%d not present, aborting.\n",index,state.ide_selected[index]);
-        command_aborted(index,(u8)data);
-        break;
-      }
-      if(!SEL_DISK(index)->cdrom()) 
-      {
-	    command_aborted(index,(u8)data);
-	    break;
-      }
-      //printf("%%IDE-I-ATAPI: Identify Packet Device\n");
-      
-	  size_t i;
-	  char serial_number[21];
-	  char model_number[41];
-	  char rev_number[9];
-  	
-	  for(i=0;i<256;i++)
-	    state.ide_data[index][i]=0;
-  	
-	  state.ide_data[index][0] = 0x8580; // atapi, cdrom, removable, 12-byte
-	  // 10 = serial
-	  strcpy(serial_number,"                    ");
-	  i = strlen(SEL_DISK(index)->get_serial());
-	  i = (i > 20)? 20 : i;
-	  memcpy(model_number,SEL_DISK(index)->get_serial(),i);
-	  for (i=0;i<10;i++)
-	    state.ide_data[index][10+i] = (serial_number[i*2] << 8) |
-	      serial_number[i*2 + 1];	
-	  // 23 = firmware
-	  strcpy(rev_number,"        ");
-	  i = strlen(SEL_DISK(index)->get_rev());
-	  i = (i > 8)? 8 : i;
-	  memcpy(model_number,SEL_DISK(index)->get_rev(),i);
-	  for (i=0;i<4;i++)
-	    state.ide_data[index][23+i] = (rev_number[i*2] << 8) |
-	      rev_number[i*2 + 1];
-	  // 27 = model
-	  strcpy(model_number,"                                        ");
-	  i = strlen(SEL_DISK(index)->get_model());
-	  i = (i > 40)? 40 : i;
-	  memcpy(model_number,SEL_DISK(index)->get_model(),i);
-	  for(i=0;i<20;i++) 
-	    state.ide_data[index][i+27]= (model_number[i*2] << 8) | model_number[i*2+1];
-
-  	
-	  state.ide_data[index][49] = 0x0200;		// capability LBA
-	  state.ide_data[index][51] = 0x200;
-	  state.ide_data[index][52] = 0x200;
-	  // 53 = 0:54-58 valid, 1:64-70 valid
-	  state.ide_data[index][53] = 0x00;
-	  // 62 = single-word dma transfers
-	  // 63 = multi-word dma transfers
-	  // 64 = pio transfer mode
-	  // 65 = minimum dma time
-	  // 66 = recommended dma
-	  // 67 = minimum pio w/o flow
-	  // 68 = minimum pio w/iordy flow
-	  // 71 = release time
-	  // 72 = release
-	  // 73 = major rev number (0x0000)
-	  // 74 = minor ref number (0x0000)
-	  // 126 = last lun number (0x0000);
-	  // 127 = 8:device write protect (0), 0-1:media status notification (01)
-	  state.ide_data[index][127]=0x0001;
-
-      SEL_STATUS(index).current_command = (u8)data;
-	  state.ide_error[index] = 0;
-  	
-	  SEL_STATUS(index).busy = false;
-	  SEL_STATUS(index).drive_ready = true;
-	  SEL_STATUS(index).drq = true;
-	  SEL_STATUS(index).seek_complete = true;
-	  state.ide_data_ptr[index]=0;
-	  raise_interrupt(index);
-      break;
-
-    case 0xa2: // service
-//#ifdef DEBUG_IDE
-      //printf("%%IDE-I-ATAPI: ATAPI service command.\n");
-//#endif
-      command_aborted(index,(u8)data);
-      break;
-
-    case 0x10: // CALIBRATE DRIVE
-
-      if (!SEL_DISK(index)) {
-        state.ide_error[index] = 0x02; // Track 0 not found
-        SEL_STATUS(index).busy = false;
-        SEL_STATUS(index).drive_ready = true;
-        SEL_STATUS(index).seek_complete = false;
-        SEL_STATUS(index).drq = false;
-        SEL_STATUS(index).err = true;
-        raise_interrupt(index);
-        //printf("calibrate drive: disk ata%d-%d not present\n", index,state.ide_selected[index]);
-        break;
-      }
-
-      /* move head to cylinder 0, issue IRQ */
-      state.ide_error[index] = 0;
-      SEL_STATUS(index).busy = false;
-      SEL_STATUS(index).drive_ready = true;
-      SEL_STATUS(index).seek_complete = true;
-      SEL_STATUS(index).drq = false;
-      SEL_STATUS(index).err = false;
-      SEL_PER_DRIVE(index).cylinder_no = 0;
-      raise_interrupt(index);
-      break;
-
-    case 0x20: // read sector, with retries
-    case 0x21: // read sector, without retries
-      if (!SEL_DISK(index))
-      {
-        FAILURE("Read from non-existing disk!");
-      }
-      if (!SEL_PER_DRIVE(index).lba_mode)
-      {
-        FAILURE("Non-LBA mode!!");
-      }
-      else
-      {
-        lba = (SEL_PER_DRIVE(index).head_no << 24)
-            | (SEL_PER_DRIVE(index).cylinder_no << 8)
-            | SEL_PER_DRIVE(index).sector_no;
-      }
-      if (!SEL_PER_DRIVE(index).sector_count)
-        state.ide_sectors[index] = 256;
-      else
-        state.ide_sectors[index] = SEL_PER_DRIVE(index).sector_count;
-      TRC_DEV5("%%IDE-I-READSECT: Read  %3d sectors @ IDE %d.%d LBA %8d\n",SEL_PER_DRIVE(index).sector_count,index,state.ide_selected[index],lba);
-#ifdef DEBUG_IDE
-      printf("%%IDE-I-READSECT: Read  %3d sectors @ IDE %d.%d LBA %8d\n",SEL_PER_DRIVE(index).sector_count,index,state.ide_selected[index],lba);
-#endif
-      SEL_STATUS(index).current_command = (u8)data;
-
-      SEL_DISK(index)->seek_block(lba);
-      SEL_DISK(index)->read_blocks(&(state.ide_data[index][0]),1);
-	  state.ide_data_ptr[index] = 0;
-      state.ide_error[index] = 0;
-      SEL_STATUS(index).busy = false;
-      SEL_STATUS(index).drive_ready = true;
-      SEL_STATUS(index).seek_complete = true;
-      SEL_STATUS(index).drq = true;
-      raise_interrupt(index);
-      break;
-
-    case 0x30: // write sectors, with retries
-      if (!SEL_DISK(index))
-      {
-        FAILURE("Write to non-existing disk!");
-      }
-      if (!SEL_PER_DRIVE(index).lba_mode)
-      {
-        FAILURE("Non-LBA mode!!");
-      }
-      else
-      {
-        lba = (SEL_PER_DRIVE(index).head_no << 24)
-            | (SEL_PER_DRIVE(index).cylinder_no << 8)
-            | SEL_PER_DRIVE(index).sector_no;
-      }
-      if (!SEL_PER_DRIVE(index).sector_count)
-        state.ide_sectors[index] = 256;
-      else
-        state.ide_sectors[index] = SEL_PER_DRIVE(index).sector_count;
-      TRC_DEV5("%%IDE-I-WRITSECT: Write %3d sectors @ IDE %d.%d LBA %8d\n",SEL_PER_DRIVE(index).sector_count,index,state.ide_selected[index],lba);
-#ifdef DEBUG_IDE
-      printf("%%IDE-I-WRITSECT: Write %3d sectors @ IDE %d.%d LBA %8d\n",SEL_PER_DRIVE(index).sector_count,index,state.ide_selected[index],lba);
-#endif
-      SEL_STATUS(index).current_command = (u8)data;
-
-      SEL_DISK(index)->seek_block(lba);
-      state.ide_data_ptr[index] = 0;
-      state.ide_error[index] = 0;
-      SEL_STATUS(index).busy = false;
-      SEL_STATUS(index).drive_ready = true;
-      SEL_STATUS(index).seek_complete = true;
-      SEL_STATUS(index).drq = true;
-      break;
-
-	case 0x91:			// SET TRANSLATION
-//#ifdef DEBUG_IDE
-      //printf("%%IDE-I-SETTRANS: Set IDE translation\n");
-//#endif
-      if (!SEL_DISK(index))
-      {
-        //printf("init drive params: ide%d.%d not present\n",index,state.ide_selected[index]);
-        SEL_STATUS(index).busy = false;
-        SEL_STATUS(index).drive_ready = true;
-        SEL_STATUS(index).drq = false;
-        raise_interrupt(index);
-        break;
-      }
-      SEL_STATUS(index).busy = false;
-      SEL_STATUS(index).drive_ready = true;
-      SEL_STATUS(index).drq = false;
-      raise_interrupt(index);
-      break;
-
-    case 0xc6: // SET MULTIPLE MODE
-      if (SEL_DISK(index)->cdrom())
-      {
-        //printf("set multiple mode issued to non-disk\n");
-        command_aborted(index, (u8)data);
-      } 
-      else if ((SEL_PER_DRIVE(index).sector_count > MAX_MULTIPLE_SECTORS) ||
-          ((SEL_PER_DRIVE(index).sector_count & (SEL_PER_DRIVE(index).sector_count - 1)) != 0) ||
-          (SEL_PER_DRIVE(index).sector_count == 0)) 
-      {
-        command_aborted(index, (u8)data);
-      } else {
-        //printf("set multiple mode: sectors=%d", SEL_PER_DRIVE(index).sector_count);
-        //SEL_STATUS(index).multiple_sectors = SEL_PER_DRIVE(index).sector_count;
-        SEL_STATUS(index).busy = false;
-        SEL_STATUS(index).drive_ready = true;
-        SEL_STATUS(index).drq = false;
-        raise_interrupt(index);
-      }
-      break;
-
-    case 0x70: // seek
-      SEL_STATUS(index).busy = false;
-      SEL_STATUS(index).drive_ready=true;
-      SEL_STATUS(index).seek_complete=true;
-      raise_interrupt(index);
-      break;
-
-    // power management & flush cache stubs
-    case 0xE0: // STANDBY NOW
-    case 0xE1: // IDLE IMMEDIATE
-    case 0xE7: // FLUSH CACHE
-    case 0xEA: // FLUSH CACHE EXT
-      SEL_STATUS(index).busy = false;
-      SEL_STATUS(index).drive_ready = true;
-      SEL_STATUS(index).drq = false;
-      raise_interrupt(index);
-      break;
-
-    case 0xe5: // CHECK POWER MODE
-      SEL_STATUS(index).busy = false;
-      SEL_STATUS(index).drive_ready = true;
-      SEL_STATUS(index).drq = false;
-      SEL_PER_DRIVE(index).sector_count = 0xff; // Active or Idle mode
-      raise_interrupt(index);
-      break;
-
-    case 0xec:
-//#ifdef DEBUG_IDE
-	  //printf("%%IDE-I-IDENTIFY: Identify IDE disk %d.%d   \n",index,state.ide_selected[index]);
-//#endif
-      if (!SEL_DISK(index))
-      {
-        //printf("Disk %d.%d not present, aborting.\n",index,state.ide_selected[index]);
-        command_aborted(index,(u8)data);
-        break;
-      }
-
-      SEL_STATUS(index).current_command = (u8)data;
-      state.ide_error[index] = 0;
-
-      SEL_STATUS(index).busy = false;
-      SEL_STATUS(index).drive_ready = true;
-      SEL_STATUS(index).drq = true;
-      SEL_STATUS(index).seek_complete = true;
-
-      identify_drive(index);
-
-      raise_interrupt(index);
-      break;
-
-    case 0xef: // SET FEATURES
-      switch(SEL_PER_DRIVE(index).features) 
-      {
-      case 0x03: // Set Transfer Mode
-        {
-          u8 type = SEL_PER_DRIVE(index).sector_count >> 3;
-          u8 mode = SEL_PER_DRIVE(index).sector_count & 0x07;
-          switch (type) 
-          {
-            case 0x00: // PIO default
-            case 0x01: // PIO mode
-              //printf("ide%d.%d: set transfer mode to PIO", index, state.ide_selected[index]);
-              //SEL_STATUS(index).mdma_mode = 0x00;
-              //SEL_STATUS(index).udma_mode = 0x00;
-              SEL_STATUS(index).drive_ready = true;
-              SEL_STATUS(index).seek_complete = true;
-              raise_interrupt(index);
-              break;
-            case 0x04: // MDMA mode
-              //printf("ide%d.%d: set transfer mode to MDMA%d", index, state.ide_selected[index],mode);
-              //SEL_STATUS(index).mdma_mode = 1 << mode;
-              //SEL_STATUS(index).udma_mode = 0x00;
-              SEL_STATUS(index).drive_ready = true;
-              SEL_STATUS(index).seek_complete = true;
-              raise_interrupt(index);
-              break;
-            case 0x08: // UDMA mode
-              //printf("ide%d.%d: set transfer mode to UDMA%d", index, state.ide_selected[index],mode);
-              //SEL_STATUS(index).mdma_mode = 0x00;
-              //SEL_STATUS(index).udma_mode = 1 << mode;
-              SEL_STATUS(index).drive_ready = true;
-              SEL_STATUS(index).seek_complete = true;
-              raise_interrupt(index);
-              break;
-            default:
-              //printf("ide%d.%d: set transfer mode to UNKNOWN %02x-%02x", index, state.ide_selected[index],type,mode);
-              raise_interrupt(index);
-              command_aborted(index, (u8)data);
-            }
-            break;
-          }
-        case 0x02: // Enable and
-        case 0x82: //  Disable write cache.
-        case 0xAA: // Enable and
-        case 0x55: //  Disable look-ahead cache.
-        case 0xCC: // Enable and
-        case 0x66: //  Disable reverting to power-on default
-          //printf("ide%d.%d: SET FEATURES subcommand 0x%02x not supported, but returning success",
-          //index,state.ide_selected[index],SEL_PER_DRIVE(index).features);
-          SEL_STATUS(index).drive_ready = true;
-          SEL_STATUS(index).seek_complete = true;
-          raise_interrupt(index);
-          break;
-
-        default:
-          //printf("ide%d.%d: SET FEATURES with unknown subcommand: 0x%02x",
-          //index,state.ide_selected[index],SEL_PER_DRIVE(index).features);
-          command_aborted(index, (u8)data);
-      }
-      break;
-
-      /*
-    case 0xc8: // read dma
-    case 0xc9: // read dma
-      {
-        u32 prd = (state.busmaster[index][4] << 0)
-          | (state.busmaster[index][5] << 8)
-          | (state.busmaster[index][6] << 16)
-          | (state.busmaster[index][7] << 24);
-        if(prd) 
-        {
-          // we have a valid prd.
-	      printf("PRD is at %08x\n",prd);
-          u64 prd_addr_phys = cSystem->PCI_Phys(myPCIBus, prd);
-	      u32 dma_addr = cSystem->ReadMem(prd_addr_phys,32);
-	      u16 dma_size = cSystem->ReadMem(prd_addr_phys+4,16);
-	      printf("DMA at %x, size: %d\n",dma_addr,dma_size);
-	      throw((int)1);
-        }
-      }
-*/
-    default:
-      printf("IDE: Unknown command: %02x!\n",data);
-      //printf("Press enter to continue>");
-      //getchar();
-      command_aborted(index, (u8)data);
-    }
-  }
-}
-
-/**
- * Read from the IDE controller control interface.
- * Return status when \a address is 2, otherwise return 0.
- *
- * TO DO: this address range is a combination of IDE and floppy ports.
- *        Split it up. (3f0 - 3f4 = floppy, 3f6-3f7 = IDE (??)
- **/
-
-u32 CAliM1543C_ide::ide_control_read(int index, u32 address)
-{
-  u32 data;
-
-  data = get_status(index);
-
-  TRC_DEV4("%%IDE-I-READCTRL: read port %d on IDE control %d: 0x%02x\n", (u32)(address), index, data);
-#ifdef DEBUG_IDE
-//  if (address!=2)
-  if(address==0) 
-    printf("%%IDE-I-READCTRL: alternate status at port %d on IDE control %d: 0x%02x\n", (u32)(address), index, data);
-#endif
-  return data;
-}
-
-/**
- * Write to the IDE controller control interface.
- * Not functional
- **/
-
-void CAliM1543C_ide::ide_control_write(int index, u32 address, u32 data)
-{
-  bool prev_reset;
-
-  TRC_DEV4("%%IDE-I-WRITCRTL: write port %d on IDE control %d: 0x%02x\n",  (u32)(address),index, data);
-//#ifdef DEBUG_IDE
-  //printf("%%IDE-I-WRITCTRL: write port %d on IDE control %d: 0x%02x\n",  (u32)(address),index, data);
-//#endif
-
-  prev_reset = state.ide_control[index].reset;
-  state.ide_control[index].reset       = (data>>2) & 1;
-  state.ide_control[index].disable_irq = (data>>1) & 1;
-
-  if (!prev_reset && state.ide_control[index].reset)
-  {
-    //printf("IDE reset on index %d started.\n",index);
-    
-    state.ide_status[index][0].busy = true;
-    state.ide_status[index][0].drive_ready = false;
-    state.ide_status[index][0].seek_complete = true;
-    state.ide_status[index][0].drq = false;
-    state.ide_status[index][0].err = false;
-    state.ide_status[index][0].current_command = 0;
-    state.ide_status[index][1].busy = true;
-    state.ide_status[index][1].drive_ready = false;
-    state.ide_status[index][1].seek_complete = true;
-    state.ide_status[index][1].drq = false;
-    state.ide_status[index][1].err = false;
-    state.ide_status[index][1].current_command = 0;
-
-    state.ide_reset_in_progress[index] = true;
-    state.ide_error[index] = 0x01; // no error
-    state.ide_status[index][0].current_command = 0;
-    state.ide_sectors[index] = 0;
-    state.ide_control[index].disable_irq = false;
-  }
-  else if (prev_reset && !state.ide_control[index].reset)
-  {
-    //printf("IDE reset on index %d ended.\n",index);
-    state.ide_status[index][0].busy = false;
-    state.ide_status[index][0].drive_ready = true;
-    state.ide_status[index][1].busy = false;
-    state.ide_status[index][1].drive_ready = true;
-    state.ide_reset_in_progress[index] = false;
-
-    set_signature(index,0);
-    set_signature(index,1);
-  }
-}
-
-void CAliM1543C_ide::set_signature(int index, int id)
-{
-  // Device signature
-  state.ide_per_drive[index][id].head_no       = 0;
-  state.ide_per_drive[index][id].sector_count  = 1;
-  state.ide_per_drive[index][id].sector_no     = 1;
-  if (get_disk(index,id))
-  {
-    if (!get_disk(index,id)->cdrom())
-    {
-      state.ide_per_drive[index][id].cylinder_no = 0;
-      state.ide_selected[index] = 0;
-    } else {
-      state.ide_per_drive[index][id].cylinder_no = 0xeb14;
-    } 
-  } else {
-    state.ide_per_drive[index][id].cylinder_no = 0xffff;
-  }
-}
-
-/**
- * Read from the IDE controller busmaster interface.
- * Always returns 0.
- **/
-
-u32 CAliM1543C_ide::ide_busmaster_read(int index, u32 address, int dsize)
-{
-  u32 data;
-  switch(dsize) {
-  case 8:
-    data = state.busmaster[index][address];
-    break;
-  case 32:
-    data = *(u32 *)(&state.busmaster[index][address]);
-    break;
-  default:
-  data = 0;
-    break;
-  }
-  //printf("%%IDE-I-READBUSM: read port %d on IDE bus master %d: 0x%02x\n", (u32)(address), index, data);
-  return data;
-}
-
-/**
- * Write to the IDE controller busmaster interface.
- * Not functional.
- **/
-
-void CAliM1543C_ide::ide_busmaster_write(int index, u32 address, u32 data, int dsize)
-{
-  TRC_DEV4("%%IDE-I-WRITBUSM: write port %d on IDE bus master %d: 0x%02x\n",  (u32)(address),index, data);
-#ifdef DEBUG_IDE
-  printf("%%IDE-I-WRITBUSM: write port %d on IDE bus master %d: 0x%02x\n",  (u32)(address),index, data);
-#endif
-
-  switch(address) {
-  case 0: // command register
-    // bit 3:  direction: 0=read 1=write
-    // bit 0: start/stop: 1 = start, 0 stop
-    // physical region descriptor:
-    // dword 0 = physical address
-    // dword 1 =
-    //   bit 31 = eot
-    //   bit 15-0 = count
-    state.busmaster[index][0] = (u8)data & 0xff;
-    break;
-
-  case 2: // status 
-    state.busmaster[index][2] = (u8)data & 0xff;
-    // bit 7 = always 0 for us
-    // bit 6 = drive 1 dma capable.
-    // bit 5 = drive 0 dma capable.
-    // bit 4,3 = reserved
-    if(data & 0x04) // interrupt 
-      state.busmaster[index][2] &= ~0x04;
-    if(data & 0x02) // error
-      state.busmaster[index][2] &= ~0x02;
-    // bit 1 = busmaster active.
-    break;
-  case 4: // descriptor table pointer register
-  case 5:
-  case 6:
-  case 7:
-    {
-      void * x = &state.busmaster[index][address];
-      switch (dsize)
-      {
-      case 8:
-        *(u8*)x = (u8)data;
-        break;
-      case 16:
-        *(u16*)x = (u16)data;
-        break;
-      case 32:
-        *(u32*)x = (u32)data;
-        break;
-      }
-    }
-    break;
-  default:
-    break;
-  }
-}
-
-void CAliM1543C_ide::raise_interrupt(int index)
-{
-  if (!state.ide_control[index].disable_irq) 
-  {
-#if !defined(NO_VMS)
-    state.busmaster[index][2] |= 0x04;
-    theAli->pic_interrupt(1, 6+index);
-#else
-    state.ide_control[index].irq_ready=true;
-#endif
-  }
-}
-
-
-/**
- * Make sure a clock interrupt is generated on the next clock.
- * used for debugging, or to speed tings up when software is waiting for a clock tick.
- **/
 
 void CAliM1543C_ide::ResetPCI()
 {
@@ -1304,30 +288,37 @@ void CAliM1543C_ide::ResetPCI()
 
   CPCIDevice::ResetPCI();
 
-  for (i=0;i<2;i++)
-  {
-    state.ide_error[i] = 0;
-//    state.ide_bm_status[i] = 0;
-    state.ide_sectors[i] = 0;
-    state.ide_selected[i] = 0;
-	state.ide_control[i].disable_irq = false;
-
-
-    for (j=0;j<2;j++)
-    {
-      state.ide_status[i][j].busy = false;
-      state.ide_status[i][j].drive_ready = false;
-      state.ide_status[i][j].drq = false;
-      state.ide_status[i][j].err = false;
-      state.ide_status[i][j].index_pulse = false;
-      state.ide_status[i][j].index_pulse_count = 0;
-      state.ide_status[i][j].seek_complete = false;
+  for (i=0;i<2;i++) {
+    CONTROLLER(i).bm_status = 0;
+    CONTROLLER(i).selected = 0;
+    for (j=0;j<2;j++) {
+      REGISTERS(i,j).error=0;
+      COMMAND(i,j).command_in_progress = 0;
+      COMMAND(i,j).command_cycle = 0;
+      STATUS(i,j).busy = false;
+      STATUS(i,j).drive_ready = false;
+      STATUS(i,j).drq = false;
+      STATUS(i,j).err = false;
+      STATUS(i,j).index_pulse = false;
+      STATUS(i,j).index_pulse_count = 0;
+      STATUS(i,j).seek_complete = false;
+      set_signature(i,j);
     }
   }
 }
 
+void CAliM1543C_ide::register_disk(class CDisk * dsk, int bus, int dev)
+{
+  CDiskController::register_disk(dsk, bus, dev);
+  if (dsk->cdrom())
+  {
+    dsk->scsi_register(0,scsi_bus[bus],dev);
+    dsk->set_atapi_mode();
+  }
+}
+
 static u32 ide_magic1 = 0xB222654D;
-static u32 ide_magic2 = 0xD456222B;
+static u32 ide_magic2 = 0xD456222C;
 
 /**
  * Save state to a Virtual Machine State file.
@@ -1345,7 +336,7 @@ int CAliM1543C_ide::SaveState(FILE *f)
   fwrite(&ss,sizeof(long),1,f);
   fwrite(&state,sizeof(state),1,f);
   fwrite(&ide_magic2,sizeof(u32),1,f);
-  printf("%s: %d bytes saved.\n",devid_string,ss);
+  printf("%s: %d bytes saved.\n",devid_string,(int)ss);
   return 0;
 }
 
@@ -1366,186 +357,1685 @@ int CAliM1543C_ide::RestoreState(FILE *f)
 
   r = fread(&m1,sizeof(u32),1,f);
   if (r!=1)
-  {
-    printf("%s: unexpected end of file!\n",devid_string);
-    return -1;
-  }
+    {
+      printf("%s: unexpected end of file!\n",devid_string);
+      return -1;
+    }
   if (m1 != ide_magic1)
-  {
-    printf("%s: MAGIC 1 does not match!\n",devid_string);
-    return -1;
-  }
+    {
+      printf("%s: MAGIC 1 does not match!\n",devid_string);
+      return -1;
+    }
 
   fread(&ss,sizeof(long),1,f);
   if (r!=1)
-  {
-    printf("%s: unexpected end of file!\n",devid_string);
-    return -1;
-  }
+    {
+      printf("%s: unexpected end of file!\n",devid_string);
+      return -1;
+    }
   if (ss != sizeof(state))
-  {
-    printf("%s: STRUCT SIZE does not match!\n",devid_string);
-    return -1;
-  }
+    {
+      printf("%s: STRUCT SIZE does not match!\n",devid_string);
+      return -1;
+    }
 
   fread(&state,sizeof(state),1,f);
   if (r!=1)
-  {
-    printf("%s: unexpected end of file!\n",devid_string);
-    return -1;
-  }
+    {
+      printf("%s: unexpected end of file!\n",devid_string);
+      return -1;
+    }
 
   r = fread(&m2,sizeof(u32),1,f);
   if (r!=1)
-  {
-    printf("%s: unexpected end of file!\n",devid_string);
-    return -1;
-  }
+    {
+      printf("%s: unexpected end of file!\n",devid_string);
+      return -1;
+    }
   if (m2 != ide_magic2)
-  {
-    printf("%s: MAGIC 1 does not match!\n",devid_string);
-    return -1;
+    {
+      printf("%s: MAGIC 1 does not match!\n",devid_string);
+      return -1;
+    }
+
+  printf("%s: %d bytes restored.\n",devid_string,(int)ss);
+  return 0;
+}
+
+/*
+ * Region read/write redirection
+ */
+
+u32 CAliM1543C_ide::ReadMem_Legacy(int index, u32 address, int dsize) {
+  int channel = 0;
+  switch(index) {
+  case SEC_COMMAND:
+    channel=1;
+  case PRI_COMMAND:
+    return ide_command_read(channel,address,dsize);
+       
+  case SEC_CONTROL:
+    channel=1;
+  case PRI_CONTROL:
+    return ide_control_read(channel,address);
+
+  case SEC_BUSMASTER:
+    channel=1;
+  case PRI_BUSMASTER:
+    return ide_busmaster_read(channel,address,dsize);
+  }
+  return 0;
+}
+
+void CAliM1543C_ide::WriteMem_Legacy(int index, u32 address, int dsize, u32 data) {
+  int channel = 0;
+  switch(index) {
+  case SEC_COMMAND:
+    channel=1;
+  case PRI_COMMAND:
+    ide_command_write(channel,address,dsize,data);
+    break;
+    
+  case SEC_CONTROL:
+    channel=1;
+  case PRI_CONTROL:
+    ide_control_write(channel,address,data);
+    break;
+
+  case SEC_BUSMASTER:
+    channel=1;
+  case PRI_BUSMASTER:
+    ide_busmaster_write(channel,address,dsize,data);
+    break;
+  }
+}
+
+u32 CAliM1543C_ide::ReadMem_Bar(int func, int bar, u32 address, int dsize) {
+  int channel = 0;
+  switch(bar) {
+  case BAR_SEC_COMMAND:
+    channel = 1;
+  case BAR_PRI_COMMAND:
+    return ide_command_read(channel,address,dsize);
+
+  case BAR_SEC_CONTROL:
+    channel = 1;
+  case BAR_PRI_CONTROL:
+    // we have to offset by two because the BAR starts at 3f4 vs 3f6
+    return ide_control_read(channel,address-2);
+
+  case BAR_BUSMASTER:
+    if (address <8)
+      return ide_busmaster_read(0,address,dsize);
+    else
+      return ide_busmaster_read(1,address-8,dsize);
+  }
+  return 0;
+}
+
+void CAliM1543C_ide::WriteMem_Bar(int func, int bar, u32 address, int dsize, u32 data) {
+  int channel = 0;
+  switch(bar) {
+  case BAR_SEC_COMMAND:
+    channel = 1;
+  case BAR_PRI_COMMAND:
+    ide_command_write(channel,address, dsize,data);
+    return;
+    
+  case BAR_SEC_CONTROL:
+    channel = 1;
+  case BAR_PRI_CONTROL:
+    // we have to offset by two because the BAR starts at 3f4 vs 3f6
+    ide_control_write(channel,address-2, data);
+    return;
+      
+  case BAR_BUSMASTER:
+    if (address <8)
+      return ide_busmaster_write(0,address,data,dsize);
+    else
+      return ide_busmaster_write(1,address-8,data,dsize);
+    return;
+  }
+}
+
+/*
+ * Register read/write handlers
+ */
+
+u32 CAliM1543C_ide::ide_command_read(int index, u32 address, int dsize) {
+  u32 data = 0;
+
+  if(!get_disk(index,0) &&
+     !get_disk(index,1)) {
+    // no disks are present, so the data lines actually float to
+    // a high state, which is logical 1.
+    return 0xffffffff;
   }
 
-  printf("%s: %d bytes restored.\n",devid_string,ss);
-  return 0;
+  switch(address) {
+  case REG_COMMAND_DATA:
+    if(!SEL_STATUS(index).drq) {
+#ifdef DEBUG_IDE_REG_COMMAND
+      printf("Reading from data buffer when data is not ready.\n");
+      ide_status(index);
+      PAUSE("WTF");
+#endif
+      break;
+    }
+
+    data = 0;
+
+    switch(dsize) {
+    case 32:
+      data = CONTROLLER(index).data[CONTROLLER(index).data_ptr++];
+      data |= CONTROLLER(index).data[CONTROLLER(index).data_ptr++] << 16;
+      break;
+    case 16:
+      data = CONTROLLER(index).data[CONTROLLER(index).data_ptr++];
+    }
+
+    if(CONTROLLER(index).data_ptr >= CONTROLLER(index).data_size) 
+    {
+      // there's no more to take.
+      SEL_STATUS(index).drq=false;
+      if(SEL_COMMAND(index).current_command == 0xa0 &&
+  	     SEL_COMMAND(index).command_in_progress) 
+      {
+	    // packet is a weird case.  We're actually going to set the
+	    // controller to busy so we can end up in the ATAPI state
+	    // machine before the host has a chance to do anything 
+	    // unexpected.
+	    SEL_STATUS(index).busy=true;
+        SEL_STATUS(index).drive_ready=false;
+#ifdef DEBUG_IDE_PACKET
+	    printf("%%IDE-I-READCMD:  Asserting Busy so we can resume ATAPI in state %s.\n",packet_states[SEL_COMMAND(index).packet_phase]);
+#endif
+      }
+    }
+
+    if(CONTROLLER(index).data_ptr > IDE_BUFFER_SIZE) {
+      printf("%%IDE-W-OVERFLOW: data pointer past end of buffer,  setting to 0.\n");
+      CONTROLLER(index).data_ptr=0;
+      SEL_STATUS(index).drq=false;
+    }
+    break;
+  case REG_COMMAND_ERROR:
+    data = SEL_REGISTERS(index).error;
+    break;
+  case REG_COMMAND_SECTOR_COUNT:
+    data = SEL_REGISTERS(index).sector_count;
+    break;
+  case REG_COMMAND_SECTOR_NO:
+    data = SEL_REGISTERS(index).sector_no;
+    break;
+  case REG_COMMAND_CYL_LOW:
+    data = SEL_REGISTERS(index).cylinder_no & 0xff;
+    break;
+  case REG_COMMAND_CYL_HI:
+    data = (SEL_REGISTERS(index).cylinder_no >> 8) & 0xff;
+    break;
+  case REG_COMMAND_DRIVE:
+    data =                                  0x80 
+      | (SEL_REGISTERS(index).lba_mode ? 0x40 : 0x00)
+      |                                  0x20 //512 byte sector size
+      | (CONTROLLER(index).selected     ? 0x10 : 0x00)
+      | (SEL_REGISTERS(index).head_no  & 0x0f       );
+    break;
+  case REG_COMMAND_STATUS:
+    // get the status and clear the interrupt.
+    data = get_status(index);
+    theAli->pic_deassert(1,6+index); 
+    CONTROLLER(index).interrupt_fired=0;
+#ifdef DEBUG_IDE_INTERRUPT
+    printf("%%IDE-I-INTERRUPT: Interrupt Acknowledged.\n");
+#endif
+    break;
+  }
+#ifdef DEBUG_IDE_REG_COMMAND
+  if(address != 0)
+    printf("%%IDE-I-REGCMD: Read from command register %d (%s) on controller %d, value: %x\n",address,register_names[address],index,data);
+#endif
+
+
+  return data;
+}
+
+void CAliM1543C_ide::ide_command_write(int index, u32 address, int dsize, u32 data) {
+#ifdef DEBUG_IDE_REG_COMMAND
+  if(address != 0)
+    printf("%%IDE-I-REGCMD: Write to command register %d (%s) on controller %d, value: %x\n",address,register_names[address],index,data);
+  SEL_STATUS(index).debug_status_update=true;
+#endif
+
+
+  switch(address) {
+  case REG_COMMAND_DATA:
+    if(!SEL_STATUS(index).drq) {
+#ifdef DEBUG_IDE_REG_COMMAND
+      printf("%%IDE-I-DATA: Unrequested data written to data port: %x\n",data);
+      ide_status(index);
+#endif
+      break;
+    }
+
+    switch(dsize) {
+    case 32:
+      CONTROLLER(index).data[CONTROLLER(index).data_ptr++] = data & 0xffff;
+      CONTROLLER(index).data[CONTROLLER(index).data_ptr++] = (data>>16) & 0xffff;
+      break;
+    case 16:
+      CONTROLLER(index).data[CONTROLLER(index).data_ptr++] = data & 0xffff;
+    }
+    if(CONTROLLER(index).data_ptr >= CONTROLLER(index).data_size) {
+      // we don't want any more.
+      SEL_STATUS(index).drq=false;
+      SEL_STATUS(index).busy=true;
+    }
+
+    if(CONTROLLER(index).data_ptr > IDE_BUFFER_SIZE) {
+      printf("%%IDE-W-OVERFLOW: data pointer overflow,  setting to 0.\n");
+      CONTROLLER(index).data_ptr=0;
+      SEL_STATUS(index).drq=false;
+    }
+    break;
+  case REG_COMMAND_FEATURES:
+    REGISTERS(index,0).features = data;
+    REGISTERS(index,1).features = data;
+    break;
+  case REG_COMMAND_SECTOR_COUNT:
+    REGISTERS(index,0).sector_count = 
+      REGISTERS(index,1).sector_count = data & 0xff;
+    break;
+  case REG_COMMAND_SECTOR_NO:
+    REGISTERS(index,0).sector_no =
+      REGISTERS(index,1).sector_no = data & 0xff;
+    break;
+  case REG_COMMAND_CYL_LOW:
+    REGISTERS(index,0).cylinder_no =
+      REGISTERS(index,1).cylinder_no = (REGISTERS(index,1).cylinder_no & 0xff00) | (data & 0xff);
+    break;
+  case REG_COMMAND_CYL_HI:
+    REGISTERS(index,0).cylinder_no =
+      REGISTERS(index,1).cylinder_no = (REGISTERS(index,1).cylinder_no & 0xff) | ((data<<8) & 0xff00);
+    break;
+  case REG_COMMAND_DRIVE:
+    CONTROLLER(index).selected = (data >> 4) & 1;
+    REGISTERS(index,0).head_no =
+      REGISTERS(index,1).head_no = data & 0x0f;
+    REGISTERS(index,0).lba_mode =
+      REGISTERS(index,1).lba_mode = (data >> 6) & 1;
+    break;
+  case REG_COMMAND_COMMAND:
+    theAli->pic_deassert(1,6+index);  // interrupt is cleared on write. 
+    if(!SEL_DISK(index)) {
+#ifdef DEBUG_IDE
+      printf("%%IDE-I-NODEV: Command to non-existing device %d.%d. cmd=%x\n",index,CONTROLLER(index).selected,data);
+#endif
+    }
+    if(SEL_COMMAND(index).command_in_progress==true) {
+      // we're already working, why is another command being issued?
+      // chances are, its a timing issue.  We will (hopefully) force
+      // the previous command to completion by calling DoClock() before
+      // processing the new command.  Unfortunately, if the registers
+      // have changed dramatically, it may actually be destructive.
+
+#ifdef DEBUG_IDE
+      printf("%%IDE-W-CIP: Command is already in progress.\n");
+      PAUSE("dang it!");
+#endif
+      DoClock(); 
+    } 
+
+    if((data & 0xf0) == 0x10)
+      data = 0x10;
+
+    SEL_COMMAND(index).command_in_progress=false;
+    SEL_COMMAND(index).current_command=data;
+    SEL_COMMAND(index).command_cycle=0;
+    SEL_STATUS(index).drq=false;
+    CONTROLLER(index).data_ptr=0;
+
+    if(data!=0x00) { // not a nop
+      SEL_STATUS(index).busy=true;
+      SEL_COMMAND(index).command_in_progress=true;
+      SEL_COMMAND(index).packet_phase=PACKET_NONE;
+    } else {
+      // this is a nop, so we cancel everything that's pending and
+      // pretend that this operation got done super fast!
+      if(SEL_DISK(index))
+	command_aborted(index,data);
+    }
+    break;
+  }
+}
+
+u32 CAliM1543C_ide::ide_control_read(int index, u32 address) {
+  u32 data=0;
+  switch(address) {
+  case 0:
+    data = get_status(index);
+#ifdef DEBUG_IDE_REG_CONTROL
+    static u32 last_data = 0;
+    if(last_data != data) {
+      printf("%%IDE-I-READCTRL: alternate status on IDE control %d: 0x%02x\n", index, data);
+    }
+    last_data=data;
+#endif
+    break;
+  case 1:
+    // 3x7h drive address register. (floppy?)
+    data |= (CONTROLLER(index).selected==0)?1:2;
+    data |= (SEL_REGISTERS(index).head_no)<<2;
+    data = (~data) & 0xff; // negate everything
+#ifdef DEBUG_IDE_REG_CONTROL
+    printf("%%IDE-I-READCTRL: drive address port on IDE control %d: 0x%02x\n", index, data);
+#endif
+    break;
+  }
+  return data;
+}
+
+/**
+ * Write to the IDE controller control interface.
+ **/
+
+void CAliM1543C_ide::ide_control_write(int index, u32 address, u32 data)
+{
+  bool prev_reset;
+#ifdef DEBUG_IDE_REG_CONTROL
+  printf("%%IDE-I-WRITCTRL: write port %d on IDE control %d: 0x%02x\n",  (u32)(address),index, data);
+#endif
+  switch(address) {
+  case 0:
+    prev_reset = CONTROLLER(index).reset;
+    CONTROLLER(index).reset       = (data>>2) & 1;
+    CONTROLLER(index).disable_irq = (data>>1) & 1;
+
+    if (!prev_reset && CONTROLLER(index).reset) {
+#ifdef DEBUG_IDE_REG_CONTROL
+       printf("IDE reset on index %d started.\n",index);
+#endif
+      STATUS(index,0).busy = true;
+      STATUS(index,0).drive_ready = false;
+      STATUS(index,0).seek_complete = true;
+      STATUS(index,0).drq = false;
+      STATUS(index,0).err = false;
+      COMMAND(index,0).current_command = 0;
+      COMMAND(index,0).command_in_progress = false;
+      STATUS(index,1).busy = true;
+      STATUS(index,1).drive_ready = false;
+      STATUS(index,1).seek_complete = true;
+      STATUS(index,1).drq = false;
+      STATUS(index,1).err = false;
+      COMMAND(index,1).current_command = 0;
+      COMMAND(index,1).command_in_progress = false;
+      
+      CONTROLLER(index).reset_in_progress = true;
+      SEL_REGISTERS(index).error = 0x01; // no error
+      COMMAND(index,0).current_command = 0;
+      CONTROLLER(index).disable_irq = false;
+    } else if (prev_reset && !CONTROLLER(index).reset) {
+#ifdef DEBUG_IDE_REG_CONTROL
+      printf("IDE reset on index %d ended.\n",index);
+#endif
+      STATUS(index,0).busy = false;
+      STATUS(index,0).drive_ready = true;
+      STATUS(index,1).busy = false;
+      STATUS(index,1).drive_ready = true;
+      CONTROLLER(index).reset_in_progress = false;
+      
+      set_signature(index,0);
+      set_signature(index,1);
+    }
+    break;
+
+  case 1:
+    // floppy?
+    break;
+  }
+}
+
+/**
+ * Read from the IDE controller busmaster interface.
+ **/
+
+u32 CAliM1543C_ide::ide_busmaster_read(int index, u32 address, int dsize)
+{
+  u32 data;
+  switch(dsize) {
+  case 8:
+    data = CONTROLLER(index).busmaster[address];
+    break;
+  case 32:
+    data = *(u32 *)(&CONTROLLER(index).busmaster[address]);
+    break;
+  default:
+    printf("16-bit read from busmaster.\n");
+    exit(1);
+    data = 0;
+    break;
+  }
+#ifdef DEBUG_IDE_BUSMASTER
+  printf("%%IDE-I-READBUSM: read port %d on IDE bus master %d: 0x%02x, %d bytes\n", (u32)(address), index, data, dsize/8);
+#endif
+  return data;
+}
+
+/**
+ * Write to the IDE controller busmaster interface.
+ **/
+void CAliM1543C_ide::ide_busmaster_write(int index, u32 address, u32 data, int dsize)
+{
+#ifdef DEBUG_IDE_BUSMASTER
+  if(!(dsize==8 && (address >= 4 && address <=7))) 
+    printf("%%IDE-I-WRITBUSM: write port %d on IDE bus master %d: 0x%02x, %d bytes\n",  (u32)(address),index, data, dsize/8);
+#endif
+
+  u32 prd_address;
+  u32 base,control;
+
+  switch(dsize) {
+  case 32:
+    ide_busmaster_write(index,address,data & 0xff, 8);
+    ide_busmaster_write(index,address+1,(data >> 8) & 0xff, 8);
+    ide_busmaster_write(index,address+2,(data >> 16) & 0xff, 8);
+    ide_busmaster_write(index,address+3,(data >> 24) & 0xff, 8);
+    return;
+  case 16:
+    ide_busmaster_write(index,address,data & 0xff, 8);
+    ide_busmaster_write(index,address+1,(data >> 8) & 0xff, 8);    
+    return;
+  }
+
+  switch(address) {
+  case 0: // command register
+#ifdef DEBUG_IDE_BUSMASTER
+    printf("%%IDE-I-BUSM: Bus master command got data: %x (%s,%s)\n",data,
+	   (data & 0x08 ? "write" : "read"), 
+	   (data & 0x01 ? "start" : "stop"));
+#endif
+    // bits 7:4 & 2:1 are reserved and must return zero on read.
+    CONTROLLER(index).busmaster[0] = data & 0x09;
+    if(data & 0x01) {
+      // set the status register
+      CONTROLLER(index).busmaster[2] |= 0x01;
+    } else {
+      // clear the status register
+      CONTROLLER(index).busmaster[2] &= 0xfe;
+    }
+    break;
+  case 2: // status 
+    // bit 7 = simplex only (0=both channels are independent)
+    // bit 6 = drive 1 dma capable.
+    // bit 5 = drive 0 dma capable.
+    // bit 4,3 = reserved
+    // bit 2 = interrupt (write 1 to reset)
+    // bit 1 = error (write 1 to reset)
+    // bit 0 = busmaster active.
+    CONTROLLER(index).busmaster[2] = data & 0x67;
+    //#ifdef DEBUG_IDE_BUSMASTER
+    //printf("-IDE-I-BUSM: Bus master status write, init data: %x\n",CONTROLLER(index).busmaster[2]);
+    //#endif
+    if(data & 0x04) // interrupt 
+      CONTROLLER(index).busmaster[2] &= ~0x04;
+    if(data & 0x02) // error
+      CONTROLLER(index).busmaster[2] &= ~0x02;
+    if(data & 0x01) // busy
+      CONTROLLER(index).busmaster[2] &= ~0x01;
+
+    //#ifdef DEBUG_IDE_BUSMASTER
+    //printf("-IDE-I-BUSM: Bus master status write, final data: %x\n",CONTROLLER(index).busmaster[2]);
+    //#endif
+    break;
+  case 4: // descriptor table pointer register(s)
+  case 5:
+  case 6:
+    CONTROLLER(index).busmaster[address]=data;
+    break;
+  case 7:
+    CONTROLLER(index).busmaster[address]=data;
+    prd_address = endian_32(*(u32 *)(&CONTROLLER(index).busmaster[4]));
+#ifdef DEBUG_IDE_BUSMASTER
+    printf("%IDE-I-PRD: Virtual address: %" LL "x  \n", endian_32(*(u32 *)(&CONTROLLER(index).busmaster[4])));
+    printf("-IDE-I-PRD: Physical address: %" LL "x  \n", prd_address);
+    do {
+      do_pci_read(prd_address, &base, 4, 1);
+      do_pci_read(prd_address+4, &control, 4, 1);
+      printf("-IDE-I-PRD: base: %x, control: %x  \n",base, control);
+      prd_address+=8;
+    } while(base & 0x80 == 0);
+#endif
+    break;
+  default:
+    break;
+  }
+}
+
+void CAliM1543C_ide::set_signature(int index, int id)
+{
+  // Device signature
+  REGISTERS(index,id).head_no       = 0;
+  REGISTERS(index,id).sector_count  = 1;
+  REGISTERS(index,id).sector_no     = 1;
+  if (get_disk(index,id)) {
+    if (!get_disk(index,id)->cdrom()) {
+      REGISTERS(index,id).cylinder_no = 0;
+      CONTROLLER(index).selected = 0;       // XXX: This may not be correct.
+    } else {
+      REGISTERS(index,id).cylinder_no = 0xeb14;
+    } 
+  } else {
+    REGISTERS(index,id).cylinder_no = 0xffff;
+  }
+}
+
+void CAliM1543C_ide::raise_interrupt(int index) {
+#ifdef DEBUG_IDE_INTERRUPT
+  printf("%%IDE-I-INTERRUPT: Interrupt scheduled to be raised on controller %d.\n",index);
+#endif
+  CONTROLLER(index).interrupt_pending=true;
 }
 
 u8 CAliM1543C_ide::get_status(int index)
 {
   u8 data;
 
-  if (!SEL_DISK(index))
+  if (!SEL_DISK(index)) {
+#ifdef DEBUG_IDE_REG_COMMAND
+    printf("%%IDE-I-STATUS: Read status for nonexiting device %d.%d\n",index,CONTROLLER(index).selected);
+#endif
     return 0;
+  }
 
   data = (SEL_STATUS(index).busy           ? 0x80 : 0x00)
-       | (SEL_STATUS(index).drive_ready    ? 0x40 : 0x00)
-       | (SEL_STATUS(index).seek_complete  ? 0x10 : 0x00)
-       | (SEL_STATUS(index).drq            ? 0x08 : 0x00)
-       | (SEL_STATUS(index).index_pulse    ? 0x02 : 0x00)
-       | (SEL_STATUS(index).err            ? 0x01 : 0x00);
+    | (SEL_STATUS(index).drive_ready    ? 0x40 : 0x00)
+    | (SEL_STATUS(index).fault          ? 0x20 : 0x00)
+    | (SEL_STATUS(index).seek_complete  ? 0x10 : 0x00)
+    | (SEL_STATUS(index).drq            ? 0x08 : 0x00)
+    | (SEL_STATUS(index).index_pulse    ? 0x02 : 0x00)
+    | (SEL_STATUS(index).err            ? 0x01 : 0x00);
   SEL_STATUS(index).index_pulse_count++;
   SEL_STATUS(index).index_pulse = false;
-  if (SEL_STATUS(index).index_pulse_count >= 10)
-  {
+  if (SEL_STATUS(index).index_pulse_count >= 10) {
     SEL_STATUS(index).index_pulse_count = 0;
     SEL_STATUS(index).index_pulse = true;
   }
 
+#ifdef DEBUG_IDE_REG_COMMAND
+  if((SEL_STATUS(index).debug_last_status & 0xfd) != (data & 0xfd) || SEL_STATUS(index).debug_status_update) {
+    printf("%%IDE-I-STATUS: Controller %d status: %x = %s %s %s %s %s %s %s\n",index,
+	   data,
+	   SEL_STATUS(index).busy?"busy":"",
+	   SEL_STATUS(index).drive_ready?"drdy":"",
+	   SEL_STATUS(index).fault?"fault":"",
+	   SEL_STATUS(index).seek_complete?"seek_complete":"",
+	   SEL_STATUS(index).drq?"drq":"",
+	   SEL_STATUS(index).index_pulse?"pulse":"",
+	   SEL_STATUS(index).err?"error":"");
+    SEL_STATUS(index).debug_status_update=false;
+  }
+  SEL_STATUS(index).debug_last_status=data;
+#endif
   return data;
 }
 
-void CAliM1543C_ide::identify_drive(int index)
+void CAliM1543C_ide::identify_drive(int index, bool packet)
 {
   char serial_number[21];
   char model_number[41];
   char rev_number[9];
   size_t i;
 
-  state.ide_data_ptr[index] = 0;
+  // clear the block.
+  for(i=0;i<256;i++)
+    CONTROLLER(index).data[i]=0;
 
-  state.ide_data[index][0] = SEL_DISK(index)->cdrom() ? 0x0080 : 0x0040;	// flags
-  
+  CONTROLLER(index).data_ptr = 0;
+  CONTROLLER(index).data_size = 256;
+
+  // The data here was taken from T13/1153D revision 18
+ 
+  if(!packet) {
+    // flags:  0x0080 = removable, 0x0040 = fixed. 
+    CONTROLLER(index).data[0] = SEL_DISK(index)->cdrom() ? 0x0080 : 0x0040;
+  } else {
+    // flags: 15-14: 10=atapi, 11=reserved; 12-8: packet set; 7: removable
+    //   6-5: timing info, 4-2: command, 1-0: 00= 12 byte packet
+    CONTROLLER(index).data[0] = 0x8580;
+  }
+
+  // logical cylinders
   if (SEL_DISK(index)->get_cylinders() > 16383)
-    state.ide_data[index][1] = 16383;	// cylinders
+    CONTROLLER(index).data[1] = 16383;   
   else
-    state.ide_data[index][1] = (u16)(SEL_DISK(index)->get_cylinders());	// cylinders
+    CONTROLLER(index).data[1] = (u16)(SEL_DISK(index)->get_cylinders());
 
-  state.ide_data[index][2] = 0xc837;	// specific configuration (ATA-4 specs)
+  // logical heads
+  CONTROLLER(index).data[3] = (u16)(SEL_DISK(index)->get_heads());
 
-  state.ide_data[index][3] = (u16)(SEL_DISK(index)->get_heads());		// heads
-  state.ide_data[index][4] = (u16)(SEL_DISK(index)->get_block_size() * SEL_DISK(index)->get_sectors());	// bytes per track
-  state.ide_data[index][5] = (u16)(SEL_DISK(index)->get_block_size());		// bytes per sector
-  state.ide_data[index][6] = (u16)(SEL_DISK(index)->get_sectors());		// sectors per track
-  state.ide_data[index][7] = 0;		// spec. bytes
-  state.ide_data[index][8] = 0;		// spec. bytes
-  state.ide_data[index][9] = 0;		// unique vendor status words
+  // logical sectors per logical track
+  CONTROLLER(index).data[6] = (u16)(SEL_DISK(index)->get_sectors());
 
+  // serial number
   strcpy(serial_number,"                    ");
   i = strlen(SEL_DISK(index)->get_serial());
   i = (i > 20)? 20 : i;
   memcpy(model_number,SEL_DISK(index)->get_serial(),i);
   for (i=0;i<10;i++)
-    state.ide_data[index][10+i] = (serial_number[i*2] << 8) |
+    CONTROLLER(index).data[10+i] = (serial_number[i*2] << 8) |
       serial_number[i*2 + 1];
 
-  state.ide_data[index][20] = 1;		// single ported, single buffer
-  state.ide_data[index][21] = 512;  	// buffer size
-  state.ide_data[index][22] = 4;		// ecc bytes
-
+  // firmware revision
   strcpy(rev_number,"        ");
   i = strlen(SEL_DISK(index)->get_rev());
   i = (i > 8)? 8 : i;
   memcpy(model_number,SEL_DISK(index)->get_rev(),i);
   for (i=0;i<4;i++)
-    state.ide_data[index][23+i] = (rev_number[i*2] << 8) |
+    CONTROLLER(index).data[23+i] = (rev_number[i*2] << 8) |
       rev_number[i*2 + 1];
 
+  // model number
   strcpy(model_number,"                                        ");
-  // clear the name
   i = strlen(SEL_DISK(index)->get_model());
   i = (i > 40)? 40 : i;
   memcpy(model_number,SEL_DISK(index)->get_model(),i);
   for(i=0;i<20;i++) 
-    state.ide_data[index][i+27]= (model_number[i*2] << 8) | model_number[i*2+1];
+    CONTROLLER(index).data[i+27]= (model_number[i*2] << 8) | model_number[i*2+1];
 
-  state.ide_data[index][47] = 0;		// read/write multiples
-  state.ide_data[index][48] = 1;		// double-word IO transfers supported
+  // read/write multiple (15-8 = 0x80, 7-0 = # sectors)
+  CONTROLLER(index).data[47] = 0x8000;               
+
+  // capabilities 
+  if(!packet) {
+    CONTROLLER(index).data[49] = 0x0300;          
+  } else {
+    CONTROLLER(index).data[49] = 0x0b00; // dma, iordy
+  }
+
+  // capabilities (2)
+  CONTROLLER(index).data[50] = 0x4000;      
+
+  // pio data transfer number (bits 15-8)
+  CONTROLLER(index).data[51] = 0x0300;
   
-  /** VMS doesn't like these as long as DMA doesn't work properly! **
-  state.ide_data[index][49] = 0x0300;		// capability LBA (was 0x0200)
-  state.ide_data[index][50] = 0x4000;       // was 0
-  **/
+  // validity:  bit 2 = #88 valid, 1 = 64-70 valid, 0 = 54-58 valid
+  CONTROLLER(index).data[53] = 7; 
+
+  // geometry
+  CONTROLLER(index).data[54] = (u16)(SEL_DISK(index)->get_cylinders());
+  CONTROLLER(index).data[55] = (u16)(SEL_DISK(index)->get_heads());
+  CONTROLLER(index).data[56] = (u16)(SEL_DISK(index)->get_sectors());
+  CONTROLLER(index).data[57] = (u16)(SEL_DISK(index)->get_chs_size() >> 0)  & 0xFFFF;
+  CONTROLLER(index).data[58] = (u16)(SEL_DISK(index)->get_chs_size() >> 16) & 0xFFFF;
+
+  // multiple sector setting (valid, 1 sector per interrupt)
+  CONTROLLER(index).data[59] = 0x0101;
+
+  // lba capacity
+  CONTROLLER(index).data[60] = (u16)(SEL_DISK(index)->get_lba_size() >> 0)  & 0xFFFF;
+  CONTROLLER(index).data[61] = (u16)(SEL_DISK(index)->get_lba_size() >> 16) & 0xFFFF;
   
-  state.ide_data[index][49] = 0x0200;		// capability LBA (was 0x0200)
-  state.ide_data[index][50] = 0x0000;       // was 0
+  // multiword dma capability (10-8: modes selected, 2-0, modes supported)
+  CONTROLLER(index).data[63] = CONTROLLER(index).dma_mode<<8 | 0x01;  // dma 0 supported 
 
-  state.ide_data[index][51] = 0x0300;		// cycle time (was 0x0200)
-  state.ide_data[index][52] = 0x0200;		// cycle time
-  state.ide_data[index][53] = 7;			// field_valid
+  // pio modes supported (bit 0 = mode 3, bit 1 = mode 4)
+  CONTROLLER(index).data[64] = 0x0002; 
 
-  state.ide_data[index][54] = (u16)(SEL_DISK(index)->get_cylinders());		// cylinders
-  state.ide_data[index][55] = (u16)(SEL_DISK(index)->get_heads());		// heads
-  state.ide_data[index][56] = (u16)(SEL_DISK(index)->get_sectors());		// sectors
+  // minimum cycle times
+  CONTROLLER(index).data[65] = 120;
+  CONTROLLER(index).data[66] = 120;
+  CONTROLLER(index).data[67] = 120;
+  CONTROLLER(index).data[68] = 120;
 
-  state.ide_data[index][57] = (u16)(SEL_DISK(index)->get_chs_size() >> 0)  & 0xFFFF;	// total_sectors
-  state.ide_data[index][58] = (u16)(SEL_DISK(index)->get_chs_size() >> 16) & 0xFFFF;	// ""
-  state.ide_data[index][59] = 0;							// multiple sector count
-  state.ide_data[index][60] = (u16)(SEL_DISK(index)->get_lba_size() >> 0)  & 0xFFFF;	// LBA capacity
-  state.ide_data[index][61] = (u16)(SEL_DISK(index)->get_lba_size() >> 16) & 0xFFFF;	// ""
+
+  if(packet) {
+    // packet to bus release time
+    CONTROLLER(index).data[71] = 120;
+    // service to bus release time
+    CONTROLLER(index).data[72] = 120;
+  }
+
+  // queue depth (we don't do queing)
+  CONTROLLER(index).data[75] = 0;
+
+  // ata version supported (bits/version: 1,2,3,4)
+  CONTROLLER(index).data[80] = 0x001e;
   
-  state.ide_data[index][62] = 0;
-  state.ide_data[index][63] = 0;
-  state.ide_data[index][64] = 0x0007; // advanced PIO modes supported (1,2,3)
-  state.ide_data[index][65] = 120;
-  state.ide_data[index][66] = 120;
-  state.ide_data[index][67] = 120;
-  state.ide_data[index][68] = 120;
-  state.ide_data[index][80] = 0x001e; // ATA 1,2,3,4
-  state.ide_data[index][81] = 0x000d; // ata/atapi-4 X3T13 1153d revision 6.
-  state.ide_data[index][82] = SEL_DISK(index)->cdrom() ? 0x4014 : 0x4000;
-  state.ide_data[index][83] = 0x5000;
-  state.ide_data[index][84] = 0x4000;
-  state.ide_data[index][85] = SEL_DISK(index)->cdrom() ? 0x4014 : 0x4000;
-  state.ide_data[index][86] = 0x5000;
-  state.ide_data[index][87] = 0x4000;
-  state.ide_data[index][88] = 0;
-  state.ide_data[index][93] = 0x6001;
-  state.ide_data[index][127] = SEL_DISK(index)->cdrom() ? 0x0001 : 0x0000;
+  // atapi revision supported (ata/atapi-4 T13 1153D revision 17)
+  CONTROLLER(index).data[81] = 0x0017;
+
+  // command set supported (cdrom = nop,packet,removable; disk=nop)
+  CONTROLLER(index).data[82] = SEL_DISK(index)->cdrom() ? 0x4014 : 0x4000;
+
+  // command sets supported(no additional command sets)
+  CONTROLLER(index).data[83] = 0x4000;
+  CONTROLLER(index).data[84] = 0x4000;
+
+  // command sets enabled.
+  CONTROLLER(index).data[85] = SEL_DISK(index)->cdrom() ? 0x4014 : 0x4000;
+  CONTROLLER(index).data[86] = 0x4000;
+  CONTROLLER(index).data[87] = 0x4000;
+
+  // ultra dma modes supported (10-8: modes selected, 2-0, modes supported)
+  CONTROLLER(index).data[88] = 0x0000;
 }
 
 void CAliM1543C_ide::command_aborted(int index, u8 command)
 {
-  //printf("ide%d.%d aborting on command 0x%02x \n", index, state.ide_selected[index], command);
-  SEL_STATUS(index).current_command = 0;
+  printf("ide%d.%d aborting on command 0x%02x \n", index, CONTROLLER(index).selected, command);
   SEL_STATUS(index).busy = false;
   SEL_STATUS(index).drive_ready = true;
   SEL_STATUS(index).err = true;
   SEL_STATUS(index).drq = false;
-
-  state.ide_error[index] = 0x04; // command ABORTED
-  state.ide_data_ptr[index] = 0;
+  SEL_REGISTERS(index).error |= 0x04; // command ABORTED
+  CONTROLLER(index).data_ptr = 0;
+  SEL_COMMAND(index).command_in_progress=false;
   raise_interrupt(index);
 }
 
-CAliM1543C_ide * theAliIDE = 0;
+CAliM1543C_ide * theIDE = 0;
+
+void CAliM1543C_ide::ide_status(int index) {
+  printf("IDE %d.%d: [busy: %d, drdy: %d, flt: %d, drq: %d, err: %d]\n"
+         "         [c: %d, h: %d, s: %d, #: %d, f: %x, lba: %d]\n"
+         "         [ptr: %d, size: %d, error: %d, cmd: %x, in progress: %d]\n"
+         "         [cycle: %d, pkt phase: %d, pkt cmd: %x, dma: %d]\n"
+         "         [bm-cmd: %x  bm-stat: %x]\n",
+	 index,
+	 CONTROLLER(index).selected,
+
+	 SEL_STATUS(index).busy,
+	 SEL_STATUS(index).drive_ready, 
+	 SEL_STATUS(index).fault,
+	 SEL_STATUS(index).drq, 
+	 SEL_STATUS(index).err, 
+	 
+	 SEL_REGISTERS(index).cylinder_no, 
+	 SEL_REGISTERS(index).head_no, 
+	 SEL_REGISTERS(index).sector_no, 
+	 SEL_REGISTERS(index).sector_count,
+	 SEL_REGISTERS(index).features, 
+	 (SEL_REGISTERS(index).head_no << 24) 
+	 | (SEL_REGISTERS(index).cylinder_no << 8) 
+	 | SEL_REGISTERS(index).sector_no,
+	 
+	 CONTROLLER(index).data_ptr,
+	 CONTROLLER(index).data_size,
+	 SEL_REGISTERS(index).error,
+	 SEL_COMMAND(index).current_command & 0xff,
+	 SEL_COMMAND(index).command_in_progress,
+
+	 SEL_COMMAND(index).command_cycle,
+	 SEL_COMMAND(index).packet_phase,
+	 SEL_COMMAND(index).packet_command[0],
+     SEL_COMMAND(index).packet_dma,
+
+	 CONTROLLER(index).busmaster[0],
+	 CONTROLLER(index).busmaster[2]
+	 );
+}
+
+/* Here's where the magic happens! */
+int CAliM1543C_ide::DoClock() 
+{
+  static int int_delay = 0;
+  for(int index=0;index<2;index++) 
+  {
+    if(SEL_COMMAND(index).command_in_progress) 
+    {
+      if(SEL_DISK(index) == NULL && SEL_COMMAND(index).current_command!=0x90) 
+      {
+  	    // this device doesn't exist (and its not execute device diagnostic)
+	    // so we'll just timeout
+	    SEL_COMMAND(index).command_in_progress=false;
+      } 
+      else 
+      {
+#ifdef DEBUG_IDE_COMMAND
+	    printf("%%IDE-I-COMMAND: Processing command on controller %d.\n",index);
+	    ide_status(index);
+#endif
+	    switch(SEL_COMMAND(index).current_command) 
+        {
+	    case 0x00: // nop
+	      SEL_REGISTERS(index).error=0x04;
+	      SEL_STATUS(index).busy=false;
+	      SEL_STATUS(index).drive_ready=true;
+	      SEL_STATUS(index).fault=true;
+	      SEL_STATUS(index).drq=false;
+	      SEL_STATUS(index).err=true;
+	      SEL_COMMAND(index).command_in_progress=false;
+	      raise_interrupt(index);
+	      printf("got nop on %d.%d\n",index,CONTROLLER(index).selected);
+	      FAILURE("This isn't possible, but you're seeing it.");
+	      break;
+
+	    case 0x08: // device reset
+	      if(SEL_DISK(index)->cdrom() || 1) 
+          {
+	        // the spec says that non-packet devices must not respond to
+	        // device reset.  However, by allowing it, Tru64 recognizes
+	        // the device properly.
+	        SEL_COMMAND(index).command_in_progress=false;
+	        //SEL_REGISTERS(index).error &= ~0x80; // turn off bit 7.
+	        SEL_REGISTERS(index).error = 0x01; // device passed.
+	        set_signature(index,CONTROLLER(index).selected);
+	        SEL_STATUS(index).busy=false;
+	        SEL_STATUS(index).drive_ready=false;
+	        SEL_STATUS(index).drq=false;
+	        SEL_STATUS(index).err=false;
+	        // some sources say there's no reset on device reset.
+	        //raise_interrupt(index);
+	      } 
+          else 
+          {
+	        command_aborted(index,SEL_COMMAND(index).current_command);
+	      }
+	      break;
+
+	    case 0x10: // calibrate drive
+	      SEL_STATUS(index).busy=false;
+	      SEL_STATUS(index).drive_ready=true;
+	      SEL_STATUS(index).seek_complete=true;
+	      SEL_STATUS(index).fault=false;
+	      SEL_STATUS(index).drq=false;
+	      SEL_STATUS(index).err=false;
+	      SEL_REGISTERS(index).cylinder_no=0;
+	      SEL_COMMAND(index).command_in_progress=false;
+	      raise_interrupt(index);
+	      break;
+
+	    case 0x20: // read with retries
+	    case 0x21: // read without retries
+	      if(SEL_COMMAND(index).command_cycle == 0) 
+          {	  
+	        // fixup the 0=256 case.
+	        if(SEL_REGISTERS(index).sector_count ==0)
+	          SEL_REGISTERS(index).sector_count=256;
+	      }
+
+	      if(!SEL_STATUS(index).drq) 
+          {
+	        // buffer is empty, so lets fill it.
+	        if(!SEL_REGISTERS(index).lba_mode) 
+            {
+	          FAILURE("Non-LBA disk read");
+	        } 
+            else 
+            {
+	          u32 lba = (SEL_REGISTERS(index).head_no << 24) 
+		              | (SEL_REGISTERS(index).cylinder_no << 8) 
+		              | SEL_REGISTERS(index).sector_no;
+    	      
+	          SEL_DISK(index)->seek_block(lba);
+	          SEL_DISK(index)->read_blocks(&(CONTROLLER(index).data[0]),1);
+#if defined(ES40_BIG_ENDIAN)
+              for (int i = 0; i < SEL_DISK(index)->get_block_size() / sizeof(u16); i ++)
+                CONTROLLER(index).data[i] = endian_16(CONTROLLER(index).data[i]);
+#endif
+	          SEL_STATUS(index).busy=false;
+	          SEL_STATUS(index).drive_ready=true;
+	          SEL_STATUS(index).fault=false;
+	          SEL_STATUS(index).drq=true;
+	          SEL_STATUS(index).err=false;
+	          CONTROLLER(index).data_ptr=0;
+	          CONTROLLER(index).data_size=256;
+	          // prepare for next sector
+	          SEL_REGISTERS(index).sector_count--;
+	          if(SEL_REGISTERS(index).sector_count==0) 
+              {
+		        SEL_COMMAND(index).command_in_progress=false;
+		        if(SEL_DISK(index)->cdrom())
+		          set_signature(index,CONTROLLER(index).selected); // per 9.1
+	          } 
+              else 
+              {	  
+		        // set the next block to read.
+		        // increment the lba.
+		        SEL_REGISTERS(index).sector_no++;
+		        if(SEL_REGISTERS(index).sector_no > 255) 
+                {
+		          SEL_REGISTERS(index).sector_no=0;
+		          SEL_REGISTERS(index).cylinder_no++;
+		          if(SEL_REGISTERS(index).cylinder_no > 65535) 
+                  {
+		            SEL_REGISTERS(index).cylinder_no=0;
+		            SEL_REGISTERS(index).head_no++;
+		          }
+		        }
+	          }
+	        }
+	        raise_interrupt(index);
+	      }
+	      break;
+
+	    case 0x30: // write with retries
+	    case 0x31: // write without retries
+	      if(SEL_COMMAND(index).command_cycle==0) 
+          {
+	        // this is our first time through
+	        if(SEL_DISK(index)->cdrom() || SEL_DISK(index)->ro()) 
+            {
+	          printf("%%IDE-W-RO: Write attempt to read-only disk %d.%d.\n",
+		         index, CONTROLLER(index).selected);
+	          command_aborted(index,SEL_COMMAND(index).current_command);	      
+	        } 
+            else 
+            {
+	          SEL_STATUS(index).drq=true;
+	          SEL_STATUS(index).busy=false;
+	          CONTROLLER(index).data_size=256;
+	          if(SEL_REGISTERS(index).sector_count ==0)
+		    SEL_REGISTERS(index).sector_count=256;
+	        }
+	      } 
+          else 
+          {
+	        // now we should be getting data.
+	        if(!SEL_STATUS(index).drq) {
+	          // the buffer is full.  Do something with the data.
+	          if(!SEL_REGISTERS(index).lba_mode) 
+              {
+		        FAILURE("Non-LBA disk write");
+	          } 
+              else 
+              {
+		        u32 lba = (SEL_REGISTERS(index).head_no << 24) 
+		                | (SEL_REGISTERS(index).cylinder_no << 8) 
+		                | SEL_REGISTERS(index).sector_no;
+    	      
+#if defined(ES40_BIG_ENDIAN)
+                {
+                  u16 data[IDE_BUFFER_SIZE];
+
+                  SEL_DISK(index)->seek_block(lba);
+                  for (int i = 0; i < SEL_DISK(index)->get_block_size() / sizeof(u16); i ++)
+                    data[i] = endian_16(CONTROLLER(index).data[i]);
+                  SEL_DISK(index)->write_blocks(&(data[0]),1);
+		        }
+#else
+		        SEL_DISK(index)->seek_block(lba);
+		        SEL_DISK(index)->write_blocks(&(CONTROLLER(index).data[0]),1);
+#endif        	    
+		        SEL_STATUS(index).busy=false;
+		        SEL_STATUS(index).drive_ready=true;
+		        SEL_STATUS(index).fault=false;
+		        SEL_STATUS(index).drq=true;
+		        SEL_STATUS(index).err=false;
+		        CONTROLLER(index).data_ptr=0;
+
+		        // prepare for next sector
+		        SEL_REGISTERS(index).sector_count--;
+		        if(SEL_REGISTERS(index).sector_count==0) 
+                {
+		          // we're done
+		          SEL_STATUS(index).drq=false;
+		          SEL_COMMAND(index).command_in_progress=false;
+		        } 
+                else 
+                {	  
+		          // set the next block to read.
+		          // increment the lba.
+		          SEL_REGISTERS(index).sector_no++;
+		          if(SEL_REGISTERS(index).sector_no > 255) 
+                  {
+		            SEL_REGISTERS(index).sector_no=0;
+		            SEL_REGISTERS(index).cylinder_no++;
+		            if(SEL_REGISTERS(index).cylinder_no > 65535) 
+                    {
+		              SEL_REGISTERS(index).cylinder_no=0;
+		              SEL_REGISTERS(index).head_no++;
+		            }
+		          }
+		        }
+	          }
+	          raise_interrupt(index);
+	        }
+	      }
+	      break;
+
+	      /* case 0x40, 0x41: read verify sector(s) is mandatory for
+	         non-packet (no w/packet */
+    	  
+	    case 0x70: // seek
+	      if(SEL_DISK(index)->cdrom()) 
+          {
+	        command_aborted(index,SEL_COMMAND(index).current_command);
+	      } 
+          else 
+          {
+	        SEL_STATUS(index).busy=false;
+	        SEL_STATUS(index).drive_ready=true;
+	        SEL_STATUS(index).seek_complete=true;
+	        SEL_STATUS(index).fault=false;
+	        SEL_STATUS(index).drq=false;
+	        SEL_STATUS(index).err=false;
+	        SEL_COMMAND(index).command_in_progress=false;
+	        raise_interrupt(index);
+	      }
+	      break;
+
+        /* 0x90: execute device diagnostic: mandatory */
+
+	    case 0x91: // initialize device parameters
+	      SEL_COMMAND(index).command_in_progress=false;
+	      if(SEL_DISK(index)->cdrom()) 
+          {
+	        command_aborted(index,SEL_COMMAND(index).current_command);
+	      } 
+          else 
+          {
+#ifdef DEBUG_IDE
+  	        printf("Original c: %d, h: %d, s: %d\n", SEL_DISK(index)->get_cylinders(), SEL_DISK(index)->get_heads(), SEL_DISK(index)->get_sectors());
+	        printf("Requested c: %d, h: %d, s: %d\n", SEL_REGISTERS(index).cylinder_no, SEL_REGISTERS(index).head_no+1, SEL_REGISTERS(index).sector_count);
+#endif
+	        if(SEL_DISK(index)->get_heads() == (SEL_REGISTERS(index).head_no+1)
+	           && SEL_DISK(index)->get_sectors() == SEL_REGISTERS(index).sector_count) 
+            {
+	          // use the default translation -- ok!
+	          SEL_STATUS(index).busy=false;
+	          SEL_STATUS(index).drive_ready=true;
+	          SEL_STATUS(index).fault=false;
+	          SEL_STATUS(index).drq=false;
+	          SEL_STATUS(index).err=false;
+	          raise_interrupt(index);
+	        } 
+            else 
+            {
+#ifdef DEBUG_IDE
+	          PAUSE("INIT DEV PARAMS -- geometry not supported!");
+#endif
+	          SEL_STATUS(index).busy=false;
+	          SEL_STATUS(index).drive_ready=true;
+	          SEL_STATUS(index).fault=false;
+	          SEL_STATUS(index).drq=false;
+	          SEL_STATUS(index).err=true;
+	          SEL_REGISTERS(index).error = 0x04; // ABORT.
+	          raise_interrupt(index);
+	        }
+	      }
+	      break;
+
+	    case 0xa0: // packet send
+	      /*
+	       * The state machine and protocol used here was actually
+	       * derived from ATA/ATAPI-5 (D1321R3) instead of the -4
+	       * documenation.  State names were taken from that document.
+	       */
+	      if(!SEL_DISK(index)->cdrom()) 
+          {
+	        command_aborted(index,SEL_COMMAND(index).current_command);
+	      } 
+          else 
+          {
+	        if(SEL_REGISTERS(index).features & 0x02) 
+            {
+	          // overlap not supported
+	          PAUSE("overlapping not supported");
+	          command_aborted(index,SEL_COMMAND(index).current_command);
+	        } 
+            else 
+            {
+	          if(SEL_COMMAND(index).packet_phase==PACKET_NONE) 
+              {
+		        // this must be the first time through.
+                if (!scsi_arbitrate(index))
+                  FAILURE("ATAPI SCSI bus busy");
+                if (!scsi_select(index,CONTROLLER(index).selected))
+                  FAILURE("ATAPI device not responding to selection");
+		        SEL_REGISTERS(index).REASON = IR_CD;
+		        SEL_STATUS(index).busy=false;
+		        SEL_STATUS(index).drq=true;
+		        SEL_STATUS(index).DMRD=false;
+		        SEL_STATUS(index).SERV=false;
+		        CONTROLLER(index).data_ptr=0;
+		        CONTROLLER(index).data_size=6;
+		        SEL_COMMAND(index).packet_dma = (SEL_REGISTERS(index).features & 0x01)?true:false;
+		        SEL_COMMAND(index).packet_phase = PACKET_DP1;
+	          } 
+	          /* This is the Packet I/O state machine.  
+	           * The gist of it is this:  we loop until yield==true, 
+	           * so we can move from state to state in the same DoClock().  
+	           *
+	           * By the time we get here, we're in DP1 (Receive Packet) and
+	           * we're waiting for an actual packet to arrive.
+	           */
+
+	          bool yield = false;
+	          do 
+              {
+#ifdef DEBUG_IDE_PACKET
+		        printf("PACKET STATE: %s (%d)\n",packet_states[SEL_COMMAND(index).packet_phase],SEL_COMMAND(index).packet_phase);
+		        if(SEL_COMMAND(index).packet_phase == PACKET_DP2) 
+                {
+		          printf("SCSI Command: %x %x %x %x %x %x %x %x %x %x %x %x\n",
+			         SEL_COMMAND(index).packet_command[0],
+			         SEL_COMMAND(index).packet_command[1],
+			         SEL_COMMAND(index).packet_command[2],
+			         SEL_COMMAND(index).packet_command[3],
+			         SEL_COMMAND(index).packet_command[4],
+			         SEL_COMMAND(index).packet_command[5],
+			         SEL_COMMAND(index).packet_command[6],
+			         SEL_COMMAND(index).packet_command[7],
+			         SEL_COMMAND(index).packet_command[8],
+			         SEL_COMMAND(index).packet_command[9],
+			         SEL_COMMAND(index).packet_command[10],
+			         SEL_COMMAND(index).packet_command[11]);
+		        };
+#endif
+		        switch(SEL_COMMAND(index).packet_phase) 
+                {
+		        case PACKET_DP1: // receive packet
+		          if(!SEL_STATUS(index).drq) 
+                  {
+		            // we now have a full command packet.
+                    if (scsi_get_phase(index) != SCSI_PHASE_COMMAND)
+                      FAILURE("SCSI command phase expected");
+                    void * cmd_ptr = scsi_xfer_ptr(index,12);
+                    memcpy(cmd_ptr,CONTROLLER(index).data,12);
+                    scsi_xfer_done(index);
+
+		            SEL_COMMAND(index).packet_phase = PACKET_DP2;
+		            SEL_COMMAND(index).packet_buffersize = SEL_REGISTERS(index).cylinder_no;
+		            SEL_STATUS(index).busy = true;
+
+		          } 
+                  else 
+                  {		    
+		            // yield to let the host finish writing the packet.
+		            yield=true;
+		          }
+		          break;
+    		    
+		        case PACKET_DP2:  // prepare b
+		          SEL_STATUS(index).busy=true;
+		          SEL_STATUS(index).drq=false;
+
+		          if(SEL_COMMAND(index).command_in_progress) 
+                  {
+                    switch (scsi_get_phase(index))
+                    {
+                    case SCSI_PHASE_DATA_IN:
+                      {
+                        size_t num_bytes = scsi_expected_xfer(index);
+                        void * data_ptr = scsi_xfer_ptr(index, num_bytes);
+                        memcpy(CONTROLLER(index).data, data_ptr, num_bytes);
+                        scsi_xfer_done(index);
+                        SEL_COMMAND(index).packet_phase = PACKET_DP34;
+		                SEL_REGISTERS(index).BYTE_COUNT=(int)num_bytes; 
+		                CONTROLLER(index).data_size=(int)num_bytes/2; // word count.
+		                CONTROLLER(index).data_ptr=0;
+                      }
+                      break;
+                    case SCSI_PHASE_DATA_OUT:
+                      FAILURE("ATAPI for now does not support write operations");
+                      break;
+                    case SCSI_PHASE_STATUS:
+                      scsi_xfer_ptr(index, scsi_expected_xfer(index));
+                      scsi_xfer_done(index);
+                      if (scsi_get_phase(index) != SCSI_PHASE_FREE)
+                        FAILURE("SCSI bus free phase expected");
+		              SEL_COMMAND(index).packet_phase = PACKET_DI;
+                      break;
+                    default:
+                      FAILURE("Unexpected SCSI phase");
+                    }
+		          } else {
+		            // transition to an idle state
+		            SEL_COMMAND(index).packet_phase=PACKET_DI;
+		          }
+		          break;
+    		    		    
+		        case PACKET_DP34:
+		          if(SEL_COMMAND(index).packet_dma) {
+		            // send back via dma
+#ifdef DEBUG_IDE_PACKET
+		            printf("Sending ATAPI data back via DMA.\n");
+#endif
+		            if((CONTROLLER(index).busmaster[2] & 0x01) == 1) {
+		              u8 status = do_dma_transfer(index,
+						          (u8 *)(&CONTROLLER(index).data[0]),
+						          SEL_REGISTERS(index).BYTE_COUNT,
+						          false);	
+                    
+                      if(scsi_get_phase(index) != SCSI_PHASE_STATUS)
+                        FAILURE("SCSI status phase expected");
+                      scsi_xfer_ptr(index, scsi_expected_xfer(index));
+                      scsi_xfer_done(index);
+                      if (scsi_get_phase(index) != SCSI_PHASE_FREE)
+                        FAILURE("SCSI bus free phase expected");
+
+  	                  SEL_STATUS(index).drq = true;
+		              SEL_STATUS(index).busy = false;
+			          SEL_COMMAND(index).packet_phase = PACKET_DI;
+			          //yield=true;
+		            } else {
+		              // the controller isn't ready for DMA yet.
+		              yield=1;
+		            }
+		          } else {
+		            // send back via pio
+		            if((!SEL_STATUS(index).drq) && 
+		               (CONTROLLER(index).data_ptr==0)) {
+		              // first time through: no data transferred, and drq=0
+		              SEL_STATUS(index).drq = true;
+		              SEL_STATUS(index).busy = false;
+		              SEL_REGISTERS(index).REASON = IR_IO;
+		              raise_interrupt(index);
+		              yield = true;
+		            } else {
+		              if(SEL_STATUS(index).drq) {
+#ifdef DEBUG_IDE_PACKET
+                        printf("Yielding until all PIO data is read.\n");
+#endif
+				        // FreeBSD sometimes loses interrupts with atapi
+				        // pio.  If we've been here 25 times and the 
+				        // pointer is still 0, we throw an interrupt 
+				        // just to be safe.
+				        if(SEL_COMMAND(index).command_cycle > 25
+				           && CONTROLLER(index).data_ptr==0)
+                        {
+				          raise_interrupt(index);
+					      SEL_COMMAND(index).command_cycle=1;
+				        }
+			            yield = true;  // yield.			    
+		              } else {			
+			            // all of the data has been read from the buffer.
+			            // for now I assume that it is everything.
+
+                        if(scsi_get_phase(index) != SCSI_PHASE_STATUS)
+                          FAILURE("SCSI status phase expected");
+                        scsi_xfer_ptr(index, scsi_expected_xfer(index));
+                        scsi_xfer_done(index);
+                        if (scsi_get_phase(index) != SCSI_PHASE_FREE)
+                          FAILURE("SCSI bus free phase expected");
+
+#ifdef DEBUG_IDE_PACKET
+                        printf("Finished transferring!\n");
+#endif
+                        SEL_COMMAND(index).packet_phase = PACKET_DI;
+			            yield=false;
+		              }
+		            }
+		          }
+        		    
+		          break;
+
+		case PACKET_DI:
+		  // this is either DI0 or DI1
+		  SEL_REGISTERS(index).REASON=IR_CD | IR_IO; 
+		  SEL_STATUS(index).busy=false;	
+		  SEL_STATUS(index).drive_ready=true; 
+		  SEL_STATUS(index).SERV=false;
+		  SEL_STATUS(index).CHK=false;
+		  SEL_STATUS(index).drq=false;
+		  raise_interrupt(index);
+		  SEL_COMMAND(index).command_in_progress=false;
+		  yield=true;
+		  break;
+		    
+		default:
+		  FAILURE("Unknown packet phase");
+		}
+	      } while(!yield);
+#ifdef DEBUG_IDE_PACKET
+	      ide_status(index);
+#endif
+	    }
+	  }
+	  break;
+
+	case 0xa1: // identify packet device	  
+	  if(SEL_DISK(index)->cdrom()) {
+	    identify_drive(index,true);
+	    SEL_STATUS(index).busy=false;
+	    SEL_STATUS(index).drive_ready=true;
+	    SEL_STATUS(index).seek_complete=true;
+	    SEL_STATUS(index).fault=false;
+	    SEL_STATUS(index).drq=true;
+	    SEL_STATUS(index).err=false;	
+	    SEL_COMMAND(index).command_in_progress=false;
+	    raise_interrupt(index);
+	  } else {
+	    command_aborted(index,SEL_COMMAND(index).current_command);
+	  }
+	  break;
+
+	  /* 
+	     0xc4: read multiple is mandatory for non-packet (no w/packet)
+	     0xc5: write multiple is mandatory for non-packet (no w/packet)
+	     0xc6: set multiple mode is mandatory for non-packet (no w/packet)
+	   */
+	case 0xc6: // write multiple
+	  if(SEL_DISK(index)->cdrom()) {
+	    command_aborted(index,SEL_COMMAND(index).current_command);
+	  } else {
+	    SEL_PER_DRIVE(index).multiple_size=SEL_REGISTERS(index).sector_count;
+	    SEL_STATUS(index).busy=false;
+	    SEL_STATUS(index).drive_ready=true;
+	    SEL_STATUS(index).fault=false;
+	    SEL_STATUS(index).drq=false;
+	    SEL_STATUS(index).err=false;	
+	    SEL_COMMAND(index).command_in_progress=false;
+	    raise_interrupt(index);
+	  }
+	  break;
+
+	case 0xc8: // read dma
+	case 0xc9: // read dma (old)
+	  if(SEL_DISK(index)->cdrom()) {
+	    command_aborted(index,SEL_COMMAND(index).current_command);
+	    SEL_COMMAND(index).command_in_progress=false;
+	  } else {
+	    if((CONTROLLER(index).busmaster[2] & 0x01) == 1) {
+	      SEL_COMMAND(index).command_in_progress=false;
+	      if(SEL_REGISTERS(index).sector_count ==0)
+		SEL_REGISTERS(index).sector_count=256;
+	      
+#ifdef DEBUG_IDE_DMA
+	      printf("%%IDE-I-DMA: Read %d sectors = %d bytes.\n",
+		     SEL_REGISTERS(index).sector_count,
+		     SEL_REGISTERS(index).sector_count*512);
+#endif	    
+	      
+	      u32 lba = (SEL_REGISTERS(index).head_no << 24) 
+		| (SEL_REGISTERS(index).cylinder_no << 8) 
+		| SEL_REGISTERS(index).sector_no;	    
+	      
+	      SEL_DISK(index)->seek_block(lba);
+	      SEL_DISK(index)->read_blocks(&(CONTROLLER(index).data[0]),
+					   SEL_REGISTERS(index).sector_count);
+	      
+	      u8 *ptr = (u8 *)(&CONTROLLER(index).data[0]);
+	      u8 status = do_dma_transfer(index, ptr,
+					  SEL_REGISTERS(index).sector_count*512,
+					  false);
+	      SEL_STATUS(index).busy=false;
+	      SEL_STATUS(index).drive_ready=true;
+	      SEL_STATUS(index).seek_complete=true;
+	      SEL_STATUS(index).fault=false;
+	      SEL_STATUS(index).drq=false;
+	      SEL_STATUS(index).err=false;	
+	    }
+	  }
+	  break;
+
+	case 0xca: // write dma
+	case 0xcb: // write dma (old)
+	  if(SEL_DISK(index)->cdrom() || SEL_DISK(index)->ro()) {
+	    command_aborted(index,SEL_COMMAND(index).current_command);
+	    SEL_COMMAND(index).command_in_progress=false;	    	  
+	  } else {
+	    if(SEL_DISK(index)->ro()) {
+	      printf("%%IDE-W-RO: DMA Write attempt to read-only disk %d.%d.\n",
+		     index, CONTROLLER(index).selected);
+	      command_aborted(index,SEL_COMMAND(index).current_command);
+	    } else {
+	      if((CONTROLLER(index).busmaster[2] & 0x01) == 1) {
+		SEL_COMMAND(index).command_in_progress=false;	    
+		if(SEL_REGISTERS(index).sector_count ==0)
+		  SEL_REGISTERS(index).sector_count=256;
+#ifdef DEBUG_IDE_DMA
+		printf("%%IDE-I-DMA: Write %d sectors = %d bytes.\n",
+		       SEL_REGISTERS(index).sector_count,
+		       SEL_REGISTERS(index).sector_count*512);
+#endif
+		
+		u8 *ptr = (u8 *)(&CONTROLLER(index).data[0]);
+		u8 status = do_dma_transfer(index, ptr,
+					    SEL_REGISTERS(index).sector_count*512,
+					    true);
+		u32 lba = (SEL_REGISTERS(index).head_no << 24) 
+		  | (SEL_REGISTERS(index).cylinder_no << 8) 
+		  | SEL_REGISTERS(index).sector_no;	    
+		
+		SEL_DISK(index)->seek_block(lba);
+		SEL_DISK(index)->write_blocks(&(CONTROLLER(index).data[0]),
+					      SEL_REGISTERS(index).sector_count);
+		
+		SEL_STATUS(index).busy=false;
+		SEL_STATUS(index).drive_ready=true;
+		SEL_STATUS(index).seek_complete=true;
+		SEL_STATUS(index).fault=false;
+		SEL_STATUS(index).drq=false;
+		SEL_STATUS(index).err=false;	
+	      }
+	    }
+	  }
+	  break;
+	    
+#if 0	  
+	case 0xe5: // check power mode
+	  ide_status(index);
+	  command_aborted(index,SEL_COMMAND(index).current_command);
+	  SEL_COMMAND(index).command_in_progress=false;
+	  //raise_interrupt(index);
+	  break;
+#endif
+
+	case 0xec: // identify
+	  if(!SEL_DISK(index)->cdrom()) {
+	    identify_drive(index,false);
+	    SEL_STATUS(index).busy=false;
+	    SEL_STATUS(index).drive_ready=true;
+	    SEL_STATUS(index).seek_complete=true;
+	    SEL_STATUS(index).fault=false;
+	    SEL_STATUS(index).drq=true;
+	    SEL_STATUS(index).err=false;	
+	    SEL_COMMAND(index).command_in_progress=false;	  
+	    raise_interrupt(index);
+	  } else {
+	    set_signature(index,CONTROLLER(index).selected);  // per 9.1
+	    command_aborted(index,0xec);
+	  }
+	  break;
+
+	case 0xef: // set features
+	  SEL_COMMAND(index).command_in_progress=false;
+	  switch(SEL_REGISTERS(index).features) {
+	  case 0x03: // set transfer mode
+	    if(SEL_REGISTERS(index).sector_count < 16) {
+	      // allow all PIO modes.
+	      SEL_STATUS(index).busy=false;
+	      SEL_STATUS(index).drive_ready=true;
+	      SEL_STATUS(index).seek_complete=true;
+	      SEL_STATUS(index).fault=false;
+	      SEL_STATUS(index).drq=false;
+	      SEL_STATUS(index).err=false;
+	      raise_interrupt(index);
+	      break;
+	    } else {
+	      // a DMA mode.
+	      switch(SEL_REGISTERS(index).sector_count) {
+	      case 0x20:
+	      case 0x21:
+	      case 0x22:
+		// multiword dma
+		CONTROLLER(index).dma_mode=SEL_REGISTERS(index).sector_count & 0x03;
+		SEL_STATUS(index).busy=false;
+		SEL_STATUS(index).drive_ready=true;
+		SEL_STATUS(index).seek_complete=true;
+		SEL_STATUS(index).fault=false;
+		SEL_STATUS(index).drq=false;
+		SEL_STATUS(index).err=false;
+		raise_interrupt(index);
+		break;
+	      case 0x40:
+	      case 0x41:
+	      case 0x42:
+		// ultra dma
+		command_aborted(index,SEL_COMMAND(index).current_command);
+		break;
+	      }
+	      break;
+	    }
+	  default:
+	    printf("%%IDE-I-FEAT: Unhandled set feature subcommand %x\n",
+		   SEL_REGISTERS(index).features);
+	    command_aborted(index,SEL_COMMAND(index).current_command);
+	    break;
+	  }
+	  break;
+
+
+	  /***
+	   * Special cases:  commands we don't support, but return success.
+	   ***/
+	case 0xe0: // standby now
+	case 0xe1: // idle immediate
+	case 0xe2: // standby
+	case 0xe3: // idle
+	case 0xe6: // sleep
+	case 0xe7: // flush cache
+	case 0xea: // flush cache ext
+	  SEL_STATUS(index).busy=false;
+	  SEL_STATUS(index).drive_ready=true;
+	  SEL_STATUS(index).drq=false;
+	  SEL_STATUS(index).err=false;
+	  SEL_COMMAND(index).command_in_progress=false;
+	  raise_interrupt(index);
+	  break;
+
+	default: // unknown/unhandled ATA command
+	  ide_status(index);
+	  printf("unhandled IDE command: %x\n",
+		 SEL_COMMAND(index).current_command);
+	  FAILURE("Unknown IDE command");
+	  break;
+	}
+#ifdef DEBUG_IDE_COMMAND
+	    if(SEL_COMMAND(index).command_in_progress==false) {
+	      ide_status(index);
+	      printf("%%IDE-I-COMMAND: Command has completed on controller %d.\n",
+		    index);
+	    }
+#endif
+      }
+    } 
+
+    SEL_COMMAND(index).command_cycle++;
+
+    if(!CONTROLLER(index).disable_irq) 
+    {
+      if (CONTROLLER(index).interrupt_pending) 
+      {
+
+#ifdef DEBUG_IDE_INTERRUPT
+  	    printf("%%IDE-I-INTERRUPT: Interrupt raised on controller %d.\n",index);
+#endif
+	    CONTROLLER(index).busmaster[2] |= 0x04;
+	    theAli->pic_interrupt(1, 6+index);
+	    CONTROLLER(index).interrupt_pending=false;
+	    CONTROLLER(index).interrupt_fired=SEL_COMMAND(index).command_cycle;
+      } 
+      else 
+      {
+	    // check to see if its been a long time(tm) since we fired
+	    // the interrupt, and if it has been, we re-fire it.
+	    if(CONTROLLER(index).interrupt_fired != 0) 
+	    {
+
+	      if((SEL_COMMAND(index).command_cycle - CONTROLLER(index).interrupt_fired) > 200)
+	      {
+	        CONTROLLER(index).interrupt_pending=1;
+	        theAli->pic_deassert(1,6+index); 
+#ifdef DEBUG_IDE_INTERRUPT
+	        printf("%%IDE-I-INTERRUPT: scheduling re-firing of interrupt on controller %d.\n",index);
+	        PAUSE("Yeee haa!");
+#endif
+	      }
+	      else
+	      {
+#ifdef DEBUG_IDE_INTERRUPT
+	        printf("%%IDE-I-INTERRUPT: waiting for int acknowledge on %d. (%d, %d)\n",index,SEL_COMMAND(index).command_cycle,CONTROLLER(index).interrupt_fired);
+#endif
+	      }
+	    }
+      }
+    }
+    else 
+    {
+      // if interrupts are disabled, make sure that we don't
+      // accidentally fire one later when they are enabled.
+      CONTROLLER(index).interrupt_pending=false;
+    }
+  }
+  return 0;
+}
+
+int CAliM1543C_ide::do_dma_transfer(int index, u8 *buffer, u32 buffersize, bool direction) {
+  u8 xfer;
+  size_t xfersize = 0;
+  u8 status = 0;
+  u8 count = 0;
+  u32 prd = endian_32(*(u32 *)(&CONTROLLER(index).busmaster[4]));
+	   
+  do {
+    u32 base;
+    do_pci_read(prd, &base, 4, 1);
+    u16 size_16;
+    do_pci_read(prd+4,&size_16, 2, 1);
+    size_t size = size_16?size_16:65536;
+    do_pci_read(prd+7, &xfer, 1, 1);
+
+#ifdef DEBUG_IDE_DMA	      
+    printf("-IDE-I-DMA: Transfer %d bytes to/from %lx (%x)\n",size,base,xfer);
+#endif	      
+
+    if(xfersize+size > buffersize) {
+      // only copy as much data as we have from the disk.
+      size = buffersize - xfersize;
+      status = 2;
+#ifdef DEBUG_IDE_DMA
+      printf("-IDE-I-DMA: Actual transfer size: %d bytes\n",size);
+#endif
+    }
+    
+    // copy it to/from ram.
+    if(!direction) {
+      do_pci_write(base, buffer, 1, size);
+      buffer += size;
+    } else {
+      do_pci_read(base, buffer, 1, size);
+      buffer += size;
+    }
+    xfersize+=size;
+    prd+=8; // go to next entry.
+    
+    if(xfer == 0x80 && xfersize < buffersize) {
+      // we still have disk data left over!
+      status = 1;
+    }
+    
+    if(count++ > 32) {
+      FAILURE("Too many PRD nodes?");
+    }
+    
+    
+    if(buffersize == xfersize &&
+       xfer != 0x80) {
+      // we're done, but there's more prd nodes.
+      status=2;
+    }
+    
+  } while(xfer != 0x80 && status == 0);
+
+  switch(status) {
+  case 0: // normal completion.
+    CONTROLLER(index).busmaster[2] &= 0xfe; // clear active.
+    raise_interrupt(index);
+    break;
+  case 1: // PRD is smaller than the data we have.
+    CONTROLLER(index).busmaster[2] &= 0xfe; // clear active.
+    // not not raise an interrupt
+    break;
+  case 2: // PRD is larger than the data we have.
+    // leave active set.
+    raise_interrupt(index);
+    break;
+  }
+
+  return status;
+}
+
+

@@ -27,7 +27,11 @@
 #
 # Makefile for GNU Linux. (And possibly many UNIX'es).
 #
-# $Id: Makefile,v 1.30 2008/02/26 15:54:57 iamcamiel Exp $
+# $Id: Makefile,v 1.31 2008/03/04 19:20:02 iamcamiel Exp $
+#
+# X-1.29       Camiel Vanderhoeven              04-MAR-2008
+#      Merged Brian wheeler's New IDE code into the standard 
+#      controller.
 #
 # X-1.28       Brian Wheeler                    26-FEB-2008
 #      adds the -rdynamic LD flag if DEBUG_BACKTRACE is
@@ -155,11 +159,10 @@ CDEBUGFLAGS = -g -DHIDE_COUNTER -DDEBUG_BACKTRACE
 # -DHAVE_SDL 		Use the SDL Library for GUI
 # -DHAVE_X11		Use X11 for GUI
 # -DHAVE_PCAP		Use Networking via PCAP
-# -DHAVE_NEW_IDE	Use the 'new' IDE Driver
 # -DHAVE_NEW_FP     Use the new floating-point code (with traps,
 #                   ut unfortunately, also with bugs)
 #
-OPTIONS = -DHAVE_SDL -DHAVE_X11 -DHAVE_PCAP -DHAVE_NEW_IDE
+OPTIONS = -DHAVE_SDL -DHAVE_X11 -DHAVE_PCAP
 
 
 ####################################
@@ -222,7 +225,6 @@ OBJS = AliM1543C.o \
        FloppyController.o \
        Keyboard.o \
        lockstep.o \
-       NewIde.o \
        PCIDevice.o \
        Port80.o \
        S3Trio64.o \

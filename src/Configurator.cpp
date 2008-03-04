@@ -27,7 +27,10 @@
  * \file
  * Contains the code for the configuration file interpreter.
  *
- * $Id: Configurator.cpp,v 1.20 2008/03/02 09:54:33 iamcamiel Exp $
+ * $Id: Configurator.cpp,v 1.21 2008/03/04 19:20:02 iamcamiel Exp $
+ *
+ * X-1.21       Camiel Vanderhoeven                             04-MAR-2008
+ *      Merged Brian wheeler's New IDE code into the standard controller.
  *
  * X-1.20       Pepito Grillo                                   02-MAR-2008
  *      Avoid compiler warnings.
@@ -102,11 +105,7 @@
 #include "AliM1543C.h"
 #include "Keyboard.h"
 #include "DMA.h"
-#if defined(HAVE_NEW_IDE)
-#include "NewIde.h"
-#else
 #include "AliM1543C_ide.h"
-#endif
 #include "AliM1543C_usb.h"
 #include "DiskFile.h"
 #include "DiskDevice.h"
@@ -782,11 +781,7 @@ void CConfigurator::initialize()
     break;
 
   case c_ali_ide:
-#if defined(HAVE_NEW_IDE)
-    myDevice = new CNewIde(this,(CSystem *)pParent->get_device(),pcibus,pcidev);
-#else
     myDevice = new CAliM1543C_ide(this,(CSystem *)pParent->get_device(),pcibus,pcidev);
-#endif
     break;
 
   case c_ali_usb:
