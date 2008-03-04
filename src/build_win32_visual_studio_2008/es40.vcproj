@@ -255,7 +255,7 @@
 				FavorSizeOrSpeed="1"
 				WholeProgramOptimization="true"
 				AdditionalIncludeDirectories="c:\program files\winpcap\include;c:\program files\sdl\include"
-				PreprocessorDefinitions="WIN32;NDEBUG;_CONSOLE;HAVE_SDL;HAVE_PCAP;HAVE_NEW_IDE"
+				PreprocessorDefinitions="WIN32;NDEBUG;_CONSOLE;HAVE_SDL;HAVE_PCAP"
 				StringPooling="false"
 				MinimalRebuild="false"
 				ExceptionHandling="1"
@@ -773,7 +773,7 @@
 				FavorSizeOrSpeed="1"
 				WholeProgramOptimization="true"
 				AdditionalIncludeDirectories="c:\program files\sdl\include"
-				PreprocessorDefinitions="WIN32;NDEBUG;_CONSOLE;HAVE_SDL;HAVE_NEW_IDE"
+				PreprocessorDefinitions="WIN32;NDEBUG;_CONSOLE;HAVE_SDL"
 				StringPooling="false"
 				MinimalRebuild="false"
 				ExceptionHandling="1"
@@ -1186,7 +1186,7 @@
 				FavorSizeOrSpeed="1"
 				WholeProgramOptimization="true"
 				AdditionalIncludeDirectories=""
-				PreprocessorDefinitions="WIN32;NDEBUG;_CONSOLE;HAVE_NEW_IDE"
+				PreprocessorDefinitions="WIN32;NDEBUG;_CONSOLE"
 				StringPooling="false"
 				MinimalRebuild="false"
 				ExceptionHandling="1"
@@ -1599,7 +1599,7 @@
 				FavorSizeOrSpeed="1"
 				WholeProgramOptimization="true"
 				AdditionalIncludeDirectories="c:\program files\winpcap\include"
-				PreprocessorDefinitions="WIN32;NDEBUG;_CONSOLE;HAVE_PCAP;HAVE_NEW_IDE"
+				PreprocessorDefinitions="WIN32;NDEBUG;_CONSOLE;HAVE_PCAP"
 				StringPooling="false"
 				MinimalRebuild="false"
 				ExceptionHandling="1"
@@ -1844,11 +1844,19 @@
 				>
 			</File>
 			<File
+				RelativePath="..\DMA.cpp"
+				>
+			</File>
+			<File
 				RelativePath="..\DPR.cpp"
 				>
 			</File>
 			<File
 				RelativePath="..\es40_debug.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\Ethernet.cpp"
 				>
 			</File>
 			<File
@@ -1868,15 +1876,15 @@
 				>
 			</File>
 			<File
+				RelativePath="..\Keyboard.cpp"
+				>
+			</File>
+			<File
 				RelativePath="..\gui\keymap.cpp"
 				>
 			</File>
 			<File
 				RelativePath="..\lockstep.cpp"
-				>
-			</File>
-			<File
-				RelativePath="..\NewIde.cpp"
 				>
 			</File>
 			<File
@@ -1913,6 +1921,10 @@
 			</File>
 			<File
 				RelativePath="..\StdAfx.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\Sym53C810.cpp"
 				>
 			</File>
 			<File
@@ -2053,6 +2065,10 @@
 				>
 			</File>
 			<File
+				RelativePath="..\DMA.h"
+				>
+			</File>
+			<File
 				RelativePath="..\DPR.h"
 				>
 			</File>
@@ -2065,6 +2081,10 @@
 				>
 			</File>
 			<File
+				RelativePath="..\Ethernet.h"
+				>
+			</File>
+			<File
 				RelativePath="..\Flash.h"
 				>
 			</File>
@@ -2074,6 +2094,10 @@
 			</File>
 			<File
 				RelativePath="..\gui\gui.h"
+				>
+			</File>
+			<File
+				RelativePath="..\Keyboard.h"
 				>
 			</File>
 			<File
@@ -2129,6 +2153,10 @@
 				>
 			</File>
 			<File
+				RelativePath="..\Sym53C810.h"
+				>
+			</File>
+			<File
 				RelativePath="..\Sym53C895.h"
 				>
 			</File>
@@ -2149,11 +2177,11 @@
 				>
 			</File>
 			<File
-				RelativePath="..\VGA.h"
+				RelativePath="..\gui\vga.h"
 				>
 			</File>
 			<File
-				RelativePath="..\gui\vga.h"
+				RelativePath="..\VGA.h"
 				>
 			</File>
 		</Filter>
