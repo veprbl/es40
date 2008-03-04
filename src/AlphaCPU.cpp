@@ -27,7 +27,11 @@
  * \file 
  * Contains the code for the emulated DecChip 21264CB EV68 Alpha processor.
  *
- * $Id: AlphaCPU.cpp,v 1.70 2008/02/29 13:50:25 iamcamiel Exp $
+ * $Id: AlphaCPU.cpp,v 1.71 2008/03/04 19:05:21 iamcamiel Exp $
+ *
+ * X-1.71       Camiel Vanderhoeven                             04-MAR-2008
+ *      Support some basic MP features. (CPUID read from C-Chip MISC 
+ *      register, inter-processor interrupts)
  *
  * X-1.70       Camiel Vanderhoeven                             29-FEB-2008
  *      Comments.
@@ -318,7 +322,6 @@
  **/
 CAlphaCPU::CAlphaCPU(CConfigurator * cfg, CSystem * system) : CSystemComponent (cfg,system)
 {
-  state.iProcNum = cSystem->RegisterCPU(this);
   cSystem = system;
 
 #if !defined(CPU_THREADS)
@@ -330,6 +333,7 @@ CAlphaCPU::CAlphaCPU(CConfigurator * cfg, CSystem * system) : CSystemComponent (
 #endif
 
   memset(&state,0,sizeof(state));
+  state.iProcNum = cSystem->RegisterCPU(this);
 
   icache_enabled = true;
   flush_icache();
@@ -350,7 +354,7 @@ CAlphaCPU::CAlphaCPU(CConfigurator * cfg, CSystem * system) : CSystemComponent (
   bListing = false;
 #endif
   
-  printf("%s: $Id: AlphaCPU.cpp,v 1.70 2008/02/29 13:50:25 iamcamiel Exp $\n",devid_string);
+  printf("%s: $Id: AlphaCPU.cpp,v 1.71 2008/03/04 19:05:21 iamcamiel Exp $\n",devid_string);
 }
 
 /**

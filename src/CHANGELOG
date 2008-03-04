@@ -3,6 +3,9 @@
 
 \section c018 version 0.17 -> 0.17+
 
+ - Support some basic MP features. (CPUID read from C-Chip MISC 
+   register, inter-processor interrupts) (04-mar-2008, Camiel
+   Vanderhoeven)
  - Allow memory sizes over 1 GB. (02-mar-2008, Brian Wheeler)
  - Natural way to specify large numeric values ("10M") in the
    config file. (02-mar-2008, Camiel vanderhoeven)

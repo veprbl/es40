@@ -27,7 +27,11 @@
  * \file 
  * Contains the code for the emulated Typhoon Chipset devices.
  *
- * $Id: System.cpp,v 1.67 2008/03/02 09:48:33 iamcamiel Exp $
+ * $Id: System.cpp,v 1.68 2008/03/04 19:05:21 iamcamiel Exp $
+ *
+ * X-1.67       Camiel Vanderhoeven                             04-MAR-2008
+ *      Support some basic MP features. (CPUID read from C-Chip MISC 
+ *      register, inter-processor interrupts)
  *
  * X-1.66       Brian Wheeler                                   02-MAR-2008
  *      Allow large memory sizes (>1GB).
@@ -349,7 +353,7 @@ CSystem::CSystem(CConfigurator * cfg)
   else
     CHECK_ALLOCATION(memory = calloc(1<<iNumMemoryBits,1));
 
-  printf("%s(%s): $Id: System.cpp,v 1.67 2008/03/02 09:48:33 iamcamiel Exp $\n",cfg->get_myName(),cfg->get_myValue());
+  printf("%s(%s): $Id: System.cpp,v 1.68 2008/03/04 19:05:21 iamcamiel Exp $\n",cfg->get_myName(),cfg->get_myValue());
 }
 
 /**
@@ -954,7 +958,7 @@ u64 CSystem::ReadMem(u64 address, int dsize, CSystemComponent * source)
     }
 
     if (a>=X64(00000801A0000000) && a<=X64(00000801AFFFFFFF))
-      return cchip_csr_read((u32)a&0xFFFFFFF);
+      return cchip_csr_read((u32)a&0xFFFFFFF, source);
 
     if (a>=X64(0000080180000000) && a<=X64(000008018FFFFFFF))
       return pchip_csr_read(0,(u32)a&0xFFFFFFF);
@@ -1517,14 +1521,15 @@ void CSystem::pchip_csr_write(int num, u32 a, u64 data)
   }
 }
 
-u64 CSystem::cchip_csr_read(u32 a)
+u64 CSystem::cchip_csr_read(u32 a, CSystemComponent * source)
 {
   switch(a)
   {
   case 0x000:
     return state.cchip.csc;
   case 0x080:
-    return state.cchip.misc;
+//    printf("MISC: %016" LL "x\n",state.cchip.misc | ((CAlphaCPU*)source)->get_cpuid());
+    return state.cchip.misc | ((CAlphaCPU*)source)->get_cpuid();
 
   case 0x100:
     // WE PUT ALL OUR MEMORY IN A SINGLE ARRAY FOR NOW...
@@ -1562,12 +1567,24 @@ void CSystem::cchip_csr_write(u32 a, u64 data)
 	state.cchip.csc |= (data & X64(0777777fff3f0000));
 	return;
   case 0x080: // MISC
-	state.cchip.misc |= (data & X64(00000f0000f0f000));	// W1S
+	state.cchip.misc |= (data & X64(00000f0000f00000));	// W1S
 	state.cchip.misc &=~(data & X64(0000000010000ff0));	// W1C
-	if       (data & X64(0000000001000000))
-	  state.cchip.misc &=~        X64(0000000000ff0000);	//Arbitration Clear
-	if    (!(state.cchip.misc & X64(00000000000f0000)))
-	  state.cchip.misc |= (data & X64(00000000000f0000));	//Arbitration try
+	if                  (data & X64(0000000001000000))
+    {
+	  state.cchip.misc &=~      X64(0000000000ff0000);	//Arbitration Clear
+//      printf("Arbitration clear.\n");
+    }
+    if (data & X64(00000000000f0000))
+    {
+//      printf("Arbitration %016" LL "x...",data);
+	  if    (!(state.cchip.misc & X64(00000000000f0000)))
+      {
+   	    state.cchip.misc |= (data & X64(00000000000f0000));	//Arbitration won
+//        printf("won  %016" LL "x\n",state.cchip.misc);
+      }
+//      else
+//        printf("lost %016" LL "x\n",state.cchip.misc);
+    }
     // stop interval timer interrupt
     if        (data & X64(00000000000000f0))
     {
@@ -1577,6 +1594,31 @@ void CSystem::cchip_csr_write(u32 a, u64 data)
         {
 	      acCPUs[i]->irq_h(2,false,0);
 	      //printf("*** TIMER interrupt cleared for CPU %d\n",i);
+        }
+   	  }
+	}			
+    // stop inter processor interrupt
+    if (data & X64(0000000000000f00))
+    {
+      for (int i=0;i<iNumCPUs;i++)
+      {
+	    if (data & (X64(100)<<i))
+        {
+	      acCPUs[i]->irq_h(3,false,0);
+//	      printf("*** IP interrupt cleared for CPU %d from CPU %d\n");
+        }
+   	  }
+	}			
+    // set inter processor interrupt
+    if (data & X64(000000000000f000))
+    {
+      for (int i=0;i<iNumCPUs;i++)
+      {
+	    if (data & (X64(1000)<<i))
+        {
+          state.cchip.misc |= X64(100)<<i;
+	      acCPUs[i]->irq_h(3,true,0);
+//	      printf("*** IP interrupt set for CPU %d\n",i);
         }
    	  }
 	}			
@@ -1790,9 +1832,11 @@ int CSystem::LoadROM()
   {
     printf("%%SYS-I-READROM: Reading decompressed ROM image from %s.\n", myCfg->get_text_value("rom.decompressed","decompressed.rom"));
     fread(&temp,1,sizeof(u64),f);
-    acCPUs[0]->set_pc(endian_64(temp));
+    for (int i = 0; i<iNumCPUs; i++)
+      acCPUs[i]->set_pc(endian_64(temp));
     fread(&temp,1,sizeof(u64),f);
-    acCPUs[0]->set_PAL_BASE(endian_64(temp));
+    for (int i = 0; i<iNumCPUs; i++)
+      acCPUs[i]->set_PAL_BASE(endian_64(temp));
     buffer = PtrToMem(0);
     fread(buffer,1,0x200000,f);
     fclose(f);
