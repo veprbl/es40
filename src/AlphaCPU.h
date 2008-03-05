@@ -28,7 +28,10 @@
  * \file
  * Contains the definitions for the emulated DecChip 21264CB EV68 Alpha processor.
  *
- * $Id: AlphaCPU.h,v 1.51 2008/02/29 10:50:09 iamcamiel Exp $
+ * $Id: AlphaCPU.h,v 1.52 2008/03/05 14:41:46 iamcamiel Exp $
+ *
+ * X-1.52       Camiel Vanderhoeven                             05-MAR-2008
+ *      Multi-threading version.
  *
  * X-1.51       Brian Wheeler                                   29-FEB-2008
  *      Add BREAKPOINT INSTRUCTION command to IDB.
@@ -216,7 +219,7 @@
  *  - Alpha Architecture Reference Manual, fourth edition [ARM] (http://download.majix.org/dec/alpha_arch_ref.pdf)
  *	.
  **/
-class CAlphaCPU : public CSystemComponent  
+class CAlphaCPU : public CSystemComponent, public Poco::Runnable  
 {
  public:
   void flush_icache_asm();
@@ -226,8 +229,12 @@ class CAlphaCPU : public CSystemComponent
   int get_cpuid();
   void flush_icache();
 
+  virtual void run(); // Poco Thread entry point
+  void execute();
+  void start_thread();
+
   void set_PAL_BASE(u64 pb);
-  virtual int DoClock();
+  virtual void check_state();
   CAlphaCPU(CConfigurator * cfg, CSystem * system);
   virtual ~CAlphaCPU();
   u64 get_r(int i, bool translate);
@@ -253,6 +260,8 @@ class CAlphaCPU : public CSystemComponent
   void set_pc(u64 p_pc);
   void add_pc(u64 a_pc);
 
+  u64 get_speed() { return cpu_hz; };
+
 //  CTranslationBuffer * get_tb(bool bIBOX);
   u64 va_form(u64 address, bool bIBOX);
 
@@ -263,26 +272,13 @@ class CAlphaCPU : public CSystemComponent
 
   int virt2phys(u64 virt, u64 * phys, int flags, bool * asm_bit, u32 instruction);
 
-#if defined(CPU_THREADS)
-
-  void thread_proc();
-  virtual void StartThreads();
-  virtual void StopThreads() { thread_shouldrun = false; };
-  virtual bool ActiveThreads() { return thread_doesrun; };
-
-private:
-#if defined(_WIN32)
-  HANDLE thread_handle;
-  DWORD thread_id;
-#else
-  pthread_t thread_handle;
-#endif
-
-  bool thread_shouldrun;
-  bool thread_doesrun;
-#endif
-
  private:
+
+  Poco::Thread myThread;
+  Poco::Semaphore mySemaphore;
+//  Poco::Mutex myRegLock;
+  bool StopThread;
+
   int get_icache(u64 address, u32 * data);
   int FindTBEntry(u64 virt, int flags);
   void add_tb(u64 virt, u64 pte_phys, u64 pte_flags, int flags);
@@ -393,12 +389,25 @@ private:
   int vmspal_int_initiate_interrupt();
 
   bool icache_enabled;
+
+  // ... ... ...
+  u64 cc_large;
+  u64 start_icount;
+  u64 start_cc;
+  Poco::Timestamp start_time;
+  u64 prev_icount;
+  u64 prev_cc;
+  u64 prev_time;
+  u64 cc_per_instruction;
+  u64 ins_per_timer_int;
+  u64 next_timer_int;
+  u64 cpu_hz;
   
   /// The state structure contains all elements that need to be saved to the statefile
   struct SCPU_state {
     u64 pal_base;			                /**< IPR PAL_BASE [HRM: p 5-15] */
     u64 pc;			                        /**< Program counter */
-    u32 cc;			                        /**< IPR CC: Cycle counter [HRM p 5-3] */
+    u64 cc;			                        /**< IPR CC: Cycle counter [HRM p 5-3] */
     u64 r[64];			                    /**< Integer registers (0-31 normal, 32-63 shadow) */
     u64 dc_stat;			                /**< IPR DC_STAT: Dcache status [HRM p 5-31..32] */
     bool ppcen;			                    /**< IPR PCTX: ppce (proc perf counting enable) [HRM p 5-21..23] */
@@ -482,7 +491,6 @@ private:
     int last_found_tb[2][2];                /**< Number of last translation buffer entry found */
     u32 rem_ins_in_page;     /**< Number of instructions remaining in current page */
     u64 pc_phys;
-    bool lock_flag;
     u64 f[64];			                    /**< Floating point registers (0-31 normal, 32-63 shadow) */
     int iProcNum;			                /**< number of the current processor (0 in a 1-processor system) */
     u64 instruction_count;                  /**< Number of times doclock has been called */
@@ -695,17 +703,6 @@ inline void CAlphaCPU::irq_h(int number, bool assert, int delay)
 
   if (assert && !active)
   {
-#if defined(CPU_THREADS)
-#if defined(_WIN32)
-    if (thread_id != GetCurrentThreadId())
-#else
-    if (thread_handle != pthread_self())
-#endif
-    {
-      StopThreads();
-      while(ActiveThreads());
-    }
-#endif
     if (delay)
     {
       state.irq_h_timer[number] = delay;
@@ -716,24 +713,10 @@ inline void CAlphaCPU::irq_h(int number, bool assert, int delay)
       state.eir |= (X64(1)<<number);
       state.check_int = true;
     }
-#if defined(CPU_THREADS)
-      StartThreads();
-#endif
     return;
   }
   if (!assert && active)
   {
-#if defined(CPU_THREADS)
-#if defined(_WIN32)
-    if (thread_id != GetCurrentThreadId())
-#else
-    if (thread_handle != pthread_self())
-#endif
-    {
-      StopThreads();
-      while(ActiveThreads());
-    }
-#endif
     state.eir &= ~(X64(1)<<number);
     state.irq_h_timer[number] = 0;
     state.check_timers = false;
@@ -742,9 +725,6 @@ inline void CAlphaCPU::irq_h(int number, bool assert, int delay)
       if (state.irq_h_timer[i])
         state.check_timers = true;
     }
-#if defined(CPU_THREADS)
-    StartThreads();
-#endif
   }
 }
 

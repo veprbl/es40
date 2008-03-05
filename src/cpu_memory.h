@@ -28,7 +28,10 @@
  * Contains code macros for the processor memory load/store instructions.
  * Based on ARM chapter 4.2.
  *
- * $Id: cpu_memory.h,v 1.8 2008/01/26 12:23:39 iamcamiel Exp $
+ * $Id: cpu_memory.h,v 1.9 2008/03/05 14:41:46 iamcamiel Exp $
+ *
+ * X-1.8        Camiel Vanderhoeven                             05-MAR-2008
+ *      Multi-threading version.
  *
  * X-1.7        Camiel Vanderhoeven                             25-JAN-2008
  *      Trap on unalogned memory access. The previous implementation where
@@ -69,9 +72,9 @@
 	  DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_READ, 3);	\
 	  state.r[REG_1] = sext_u64_32(READ_PHYS(32)); }
 
-#define DO_LDL_L								\
-	  state.lock_flag = true;							\
+#define DO_LDL_L								            \
 	  DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_READ, 3);	\
+      cSystem->cpu_lock(state.iProcNum,phys_address);       \
 	  state.r[REG_1] = sext_u64_32(READ_PHYS(32));
 
 #define DO_LDQ									\
@@ -80,8 +83,8 @@
 	  state.r[REG_1] = READ_PHYS(64); }
 
 #define DO_LDQ_L								\
-	  state.lock_flag = true;							\
 	  DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_READ, 7);	\
+      cSystem->cpu_lock(state.iProcNum,phys_address);       \
 	  state.r[REG_1] = READ_PHYS(64);
 
 #define DO_LDQ_U									\
@@ -101,24 +104,26 @@
 	  WRITE_PHYS(state.r[REG_1],32);
 
 #define DO_STL_C								\
-	  if (state.lock_flag) {							\
+	  if (cSystem->cpu_unlock(state.iProcNum)) {				\
 	      DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_WRITE, 3);	\
 	      WRITE_PHYS(state.r[REG_1],32);						\
-	    }									\
-	  state.r[REG_1] = state.lock_flag?1:0;						\
-	  state.lock_flag = false;
+          state.r[REG_1] = 1;       \
+	  }								\
+        else                                                  \
+          state.r[REG_1] = 0;
 
 #define DO_STQ									\
 	  DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_WRITE, 7);	\
 	  WRITE_PHYS(state.r[REG_1],64);
 
 #define DO_STQ_C								\
-	  if (state.lock_flag) {							\
+	  if (cSystem->cpu_unlock(state.iProcNum)) {				\
 	      DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_WRITE, 7);	\
 	      WRITE_PHYS(state.r[REG_1],64);						\
-	    }									\
-	  state.r[REG_1] = state.lock_flag?1:0;						\
-	  state.lock_flag = false;
+          state.r[REG_1] = 1;       \
+	  }								\
+        else                                                  \
+          state.r[REG_1] = 0;
 
 #define DO_STQ_U									\
 	  DATA_PHYS_NT((state.r[REG_2] + DISP_16)& ~X64(7), ACCESS_WRITE);	\

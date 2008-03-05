@@ -27,7 +27,10 @@
  * \file
  * Contains the code for the emulated DMA controller.
  *
- * $Id: DMA.cpp,v 1.2 2008/02/26 15:43:47 iamcamiel Exp $
+ * $Id: DMA.cpp,v 1.3 2008/03/05 14:41:46 iamcamiel Exp $
+ *
+ * X-1.3        Camiel Vanderhoeven                             05-MAR-2008
+ *      Multi-threading version.
  *
  * X-1.2        Brian Wheeler                                   26-FEB-2008
  *      Debugging statements conditionalized.
@@ -61,9 +64,7 @@ CDMA::CDMA(CConfigurator * cfg, CSystem * c) : CSystemComponent(cfg,c)
     state.channel[i].a_lobyte=true;
   }
 
-  c->RegisterClock(this, true);
-
-  printf("dma: $Id: DMA.cpp,v 1.2 2008/02/26 15:43:47 iamcamiel Exp $\n");
+  printf("dma: $Id: DMA.cpp,v 1.3 2008/03/05 14:41:46 iamcamiel Exp $\n");
 }
 
 /**

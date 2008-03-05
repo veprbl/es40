@@ -27,7 +27,10 @@
  * \file 
  * Contains the definitions for the emulated Serial Port devices.
  *
- * $Id: Serial.h,v 1.16 2008/02/29 10:40:39 iamcamiel Exp $
+ * $Id: Serial.h,v 1.17 2008/03/05 14:41:46 iamcamiel Exp $
+ *
+ * X-1.17       Camiel Vanderhoeven                             05-MAR-2008
+ *      Multi-threading version.
  *
  * X-1.15       Brian Wheeler                                   29-FEB-2008
  *      Restart serial port connection if lost.
@@ -91,7 +94,7 @@
  * The serial port is translated to a telnet port.
  **/
 
-class CSerial : public CSystemComponent  
+class CSerial : public CSystemComponent, public Poco::Runnable
 {
  public:
   void write(char * s);
@@ -100,13 +103,17 @@ class CSerial : public CSystemComponent
   CSerial(CConfigurator * cfg, CSystem * c, u16 number);
   virtual ~CSerial();
   void receive(const char* data);
-  virtual int DoClock();
+  virtual void check_state();
   virtual int SaveState(FILE * f);
   virtual int RestoreState(FILE * f);
   void eval_interrupts();
   void WaitForConnection();
+  virtual void run();
+  void execute();
 
  private:
+  Poco::Thread myThread;
+  bool StopThread;
   /// The state structure contains all elements that need to be saved to the statefile.
   struct SSrl_state {
     u8 bTHR;      /**< Transmit Hold Register */

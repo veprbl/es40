@@ -27,7 +27,10 @@
  * \file
  * Contains the definitions for the emulated Symbios SCSI controller.
  *
- * $Id: Sym53C895.h,v 1.12 2008/02/17 15:44:22 iamcamiel Exp $
+ * $Id: Sym53C895.h,v 1.13 2008/03/05 14:41:46 iamcamiel Exp $
+ *
+ * X-1.13       Camiel Vanderhoeven                             05-MAR-2008
+ *      Multi-threading version.
  *
  * X-1.12       Camiel Vanderhoeven                             17-FEB-2008
  *      Comments.
@@ -85,12 +88,14 @@
  *  .
  **/
 
-class CSym53C895 : public CDiskController, public CSCSIDevice 
+class CSym53C895 : public CDiskController, public CSCSIDevice, public Poco::Runnable
 {
  public:
   virtual int SaveState(FILE * f);
   virtual int RestoreState(FILE * f);
-  virtual int DoClock();
+  virtual void check_state();
+
+  virtual void run(); // Poco Thread entry point
 
   virtual void WriteMem_Bar(int func,int bar, u32 address, int dsize, u32 data);
   virtual u32 ReadMem_Bar(int func,int bar, u32 address, int dsize);
@@ -123,17 +128,16 @@ class CSym53C895 : public CDiskController, public CSCSIDevice
 
   void post_dsp_write();
 
-  int execute();
+  void execute();
 
-//  void select_target(int target);
-//  void byte_to_target(u8 value);
-//  u8 byte_from_target();
-//  void end_xfer();
-//  int do_command();
-//  int do_message();
   void eval_interrupts();
   void set_interrupt(int reg, u8 interrupt);
   void chip_reset();
+
+  Poco::Thread myThread;
+  Poco::Semaphore mySemaphore;
+  Poco::Mutex myRegLock;
+  bool StopThread;
 
   /// The state structure contains all elements that need to be saved to the statefile.
   struct SSym_state {

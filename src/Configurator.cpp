@@ -27,7 +27,10 @@
  * \file
  * Contains the code for the configuration file interpreter.
  *
- * $Id: Configurator.cpp,v 1.22 2008/03/04 19:28:08 iamcamiel Exp $
+ * $Id: Configurator.cpp,v 1.23 2008/03/05 14:41:46 iamcamiel Exp $
+ *
+ * X-1.23       Camiel Vanderhoeven                             05-MAR-2008
+ *      Multi-threading version.
  *
  * X-1.22       David Hittner                                   04-MAR-2008
  *      Allow curly braces inside strings.
@@ -551,9 +554,10 @@ bool CConfigurator::get_bool_value(const char * n, bool def)
  * our list of values, return def.
  **/
 
-u64 CConfigurator::get_num_value(const char * n, u64 def)
+u64 CConfigurator::get_num_value(const char * n, bool decimal, u64 def)
 {
   int i;
+  u64 multiplier = decimal?1000:1024;
   for (i=0;i<iNumValues;i++)
   {
     if (!strcmp(pValues[i].name, n))
@@ -571,13 +575,13 @@ u64 CConfigurator::get_num_value(const char * n, u64 def)
         switch(val[j])
         {
         case 'T':
-          partval *= 1024;
+          partval *= multiplier;
         case 'G':
-          partval *= 1024;
+          partval *= multiplier;
         case 'M':
-          partval *= 1024;
+          partval *= multiplier;
         case 'K':
-          retval += partval*1024;
+          retval += partval*multiplier;
           partval=0;
           j++;
           break;

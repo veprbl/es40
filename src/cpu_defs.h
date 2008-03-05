@@ -27,7 +27,10 @@
  * \file 
  * Contains some macro definitions and some inline functions for the Alpha CPU.
  *
- * $Id: cpu_defs.h,v 1.10 2008/02/08 20:08:13 iamcamiel Exp $
+ * $Id: cpu_defs.h,v 1.11 2008/03/05 14:41:46 iamcamiel Exp $
+ *
+ * X-1.11       Camiel Vanderhoeven                             05-MAR-2008
+ *      Multi-threading version.
  *
  * X-1.10       Camiel Vanderhoeven                             08-FEB-2008
  *      Show originating device name on memory errors.
@@ -435,12 +438,12 @@ return zsig;
     }                                                     \
   }                                                       \
   if (virt2phys(addr, &phys_address, flags, NULL, ins))   \
-    return 0
+    return
 
 
 #define DATA_PHYS_NT(addr,flags) 				          \
     if (virt2phys(addr, &phys_address, flags, NULL, ins)) \
-      return 0
+      return
 
 #undef DATA_PHYS
 #define DATA_PHYS(addr,flags,align) DATA_PHYS_NT(addr,flags)

@@ -29,7 +29,10 @@
  * DecChip 21264CB EV68 Alpha processor. Based on disassembly of original VMS
  * PALcode, HRM, and OpenVMS AXP Internals and Data Structures.
  *
- * $Id: AlphaCPU_vmspal.cpp,v 1.12 2008/02/08 20:08:13 iamcamiel Exp $
+ * $Id: AlphaCPU_vmspal.cpp,v 1.13 2008/03/05 14:41:46 iamcamiel Exp $
+ *
+ * X-1.13       Camiel Vanderhoeven                             05-MAR-2008
+ *      Multi-threading version.
  *
  * X-1.12       Camiel Vanderhoeven                             08-FEB-2008
  *      Show originating device name on memory errors.
@@ -277,8 +280,8 @@ void CAlphaCPU::vmspal_call_swpctx()
   hw_ldq(r16+0x40,p7);
   hw_ldq(r16+0x20,p6);
 
-  p4 = state.cc + state.cc_offset;
-  state.cc_offset = ((u32)p7 & 0xffffffff) - state.cc;
+  p4 = (state.cc & X64(ffffffff)) + state.cc_offset;
+  state.cc_offset = ((u32)p7 & 0xffffffff) - (state.cc & X64(ffffffff));
 
   p6 <<= 0x0d;
   hw_stq(p21+8,p6);
@@ -932,10 +935,10 @@ void CAlphaCPU::vmspal_call_wr_ps_sw()
 void CAlphaCPU::vmspal_call_rscc()
 {
   hw_ldq(p21+0xa0,r0);
-  if (state.cc<(r0 & X64(00000000ffffffff)))    
+  if ((state.cc & X64(ffffffff))<(r0 & X64(00000000ffffffff)))    
     r0 += X64(1)<<0x20;                         
   r0 &= X64(ffffffff00000000);                  
-  r0 |= state.cc;                               
+  r0 |= (state.cc & X64(ffffffff));                               
   hw_stq(p21+0xa0,r0);
 }
 
@@ -1137,13 +1140,13 @@ int CAlphaCPU::vmspal_ent_ext_int(int ei)
 
     hw_ldq(p21+0xa0,p20);
     p6 = X64(1)<<0x20;
-    p4 = state.cc;
+    p4 = (state.cc & X64(ffffffff));
     p5 = p20 & X64(ffffffff);
     p20 &= X64(ffffffff00000000);
     p7 = p4-p5;
     if (((s64)p7)<0)
       p20 += p6;
-    p20 |= state.cc;
+    p20 |= (state.cc & X64(ffffffff));
     hw_stq(p21+0xa0,p20);
     hw_stq(p21+0x1c8,0);
     p20 = 0x600;

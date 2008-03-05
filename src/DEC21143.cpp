@@ -30,7 +30,10 @@
  * \file 
  * Contains the code for the emulated DEC 21143 NIC device.
  *
- * $Id: DEC21143.cpp,v 1.30 2008/03/02 09:42:52 iamcamiel Exp $
+ * $Id: DEC21143.cpp,v 1.31 2008/03/05 14:41:46 iamcamiel Exp $
+ *
+ * X-1.31       Camiel Vanderhoeven                             05-MAR-2008
+ *      Multi-threading version.
  *
  * X-1.30       Camiel Vanderhoeven                             02-MAR-2008
  *      Natural way to specify large numeric values ("10M") in the config file.
@@ -150,14 +153,46 @@
 #define	MII_STATE_D				        5
 #define	MII_STATE_IDLE				    6
 
-#if defined(_WIN32)
-DWORD WINAPI recv_proc(LPVOID lpParam)
-#else
-static void * recv_proc(void * lpParam)
-#endif
+void CDEC21143::run()
 {
-  ((CDEC21143 *) lpParam)->receive_process();
-  return 0;
+  try
+  {
+    for (;;)
+    {
+//      mySemaphore.wait();
+      if (StopThread)
+      {
+        printf("nic: exit thread.\n");
+        return;
+      }
+      receive_process();
+      bool asserted;
+
+      if ((state.reg[CSR_OPMODE / 8] & OPMODE_ST))
+	    while (dec21143_tx());
+
+      /*  Normal and Abnormal interrupt summary:  */
+      state.reg[CSR_STATUS / 8] &= ~(STATUS_NIS | STATUS_AIS);
+      if (state.reg[CSR_STATUS / 8] & state.reg[CSR_INTEN / 8] & 0x00004845)
+	    state.reg[CSR_STATUS / 8] |= STATUS_NIS;
+      if (state.reg[CSR_STATUS / 8] & state.reg[CSR_INTEN / 8] & 0x0c0037ba)
+	    state.reg[CSR_STATUS / 8] |= STATUS_AIS;
+
+      asserted = (state.reg[CSR_STATUS / 8] & state.reg[CSR_INTEN / 8] & 0x0c01ffff)?true:false;
+
+      if (asserted != state.irq_was_asserted)
+      {
+        if (do_pci_interrupt(0, asserted))
+	      state.irq_was_asserted = asserted;
+      }
+      Poco::Thread::sleep(10);
+    }
+  }
+  catch (...)
+  {
+    printf("nic: exception in thread.\n");
+    // Let the thread die...
+  }
 }
 
 u32 dec21143_cfg_data[64] = {
@@ -211,7 +246,7 @@ int CDEC21143::nic_num = 0;
  **/
 
 CDEC21143::CDEC21143(CConfigurator * confg, CSystem * c, int pcibus, int pcidev)
-: CPCIDevice(confg, c, pcibus, pcidev)
+: CPCIDevice(confg, c, pcibus, pcidev), myThread("NIC")
 {
   pcap_if_t *alldevs, *d;
   u_int inum, i=0;
@@ -345,28 +380,20 @@ CDEC21143::CDEC21143(CConfigurator * confg, CSystem * c, int pcibus, int pcidev)
 	  printf("\n%%NIC-I-MACDEFAULT: MAC defaulted to %s\n", mac);
   }
 
-  rx_queue = new CPacketQueue("rx_queue", myCfg->get_num_value("queue", 100));
+  rx_queue = new CPacketQueue("rx_queue", (int)myCfg->get_num_value("queue", false, 100));
   calc_crc = myCfg->get_bool_value("crc", false);
-
-  c->RegisterClock(this, true);
 
   state.rx.cur_buf = NULL;
   state.tx.cur_buf = (unsigned char*) malloc(1514);
   state.irq_was_asserted = false;
   state.tx.idling = 0;
 
-
   ResetPCI();
 
-  shutting_down = false;
+  StopThread = false;
+  myThread.start(*this);
 
-#if defined(_WIN32)
-  receive_process_handle = CreateThread(NULL, 0, recv_proc, this, 0, NULL);
-#else
-  pthread_create(&receive_process_handle, NULL, recv_proc, this);
-#endif
-
-  printf("%s: $Id: DEC21143.cpp,v 1.30 2008/03/02 09:42:52 iamcamiel Exp $\n",devid_string);
+  printf("%s: $Id: DEC21143.cpp,v 1.31 2008/03/05 14:41:46 iamcamiel Exp $\n",devid_string);
 }
 
 /**
@@ -375,9 +402,9 @@ CDEC21143::CDEC21143(CConfigurator * confg, CSystem * c, int pcibus, int pcidev)
 
 CDEC21143::~CDEC21143()
 {
-  printf("%s: Waiting for receive process to shut down...\n",devid_string);
-  shutting_down = true;
-  sleep_ms(500);
+  StopThread = true;
+  myThread.join();
+
   pcap_close(fp);
   delete rx_queue;
 }
@@ -406,29 +433,10 @@ void CDEC21143::WriteMem_Bar(int func, int bar, u32 address, int dsize, u32 data
   printf("21143: WriteMem_Bar: unsupported bar %d\n", bar);
 }
 
-int CDEC21143::DoClock()
+void CDEC21143::check_state()
 {
-  bool asserted;
-
-  if ((state.reg[CSR_OPMODE / 8] & OPMODE_ST))
-	while (dec21143_tx());
-
-  /*  Normal and Abnormal interrupt summary:  */
-  state.reg[CSR_STATUS / 8] &= ~(STATUS_NIS | STATUS_AIS);
-  if (state.reg[CSR_STATUS / 8] & state.reg[CSR_INTEN / 8] & 0x00004845)
-	state.reg[CSR_STATUS / 8] |= STATUS_NIS;
-  if (state.reg[CSR_STATUS / 8] & state.reg[CSR_INTEN / 8] & 0x0c0037ba)
-	state.reg[CSR_STATUS / 8] |= STATUS_AIS;
-
-  asserted = (state.reg[CSR_STATUS / 8] & state.reg[CSR_INTEN / 8] & 0x0c01ffff)?true:false;
-
-  if (asserted != state.irq_was_asserted)
-  {
-    if (do_pci_interrupt(0, asserted))
-	  state.irq_was_asserted = asserted;
-  }
-
-  return 0;
+  if(!myThread.isRunning())
+    FAILURE("CPU thread has died");
 }
 
 void CDEC21143::receive_process()
@@ -436,7 +444,6 @@ void CDEC21143::receive_process()
   struct pcap_pkthdr* packet_header;
   const u_char* packet_data = NULL;
 
-  while (!shutting_down) {
 	// if receive process active
 	if (state.reg[CSR_OPMODE / 8] & OPMODE_SR) {
 	  // get packets from host nic if not in internal loopback mode
@@ -450,10 +457,6 @@ void CDEC21143::receive_process()
 	  // descriptors or packets to process
 	  while(dec21143_rx());
 	}
-
-	// go to sleep for a bit
-    sleep_ms(10);
-  }
 }
 
 /**
@@ -521,11 +524,11 @@ void CDEC21143::nic_write(u32 address, int dsize, u32 data)
         state.reg[CSR_STATUS/8] &= ~STATUS_TU;
         state.tx.suspend = false;
 		state.tx.idling = state.tx.idling_threshold;
-        DoClock();
+//        DoClock();
 		break;
 
 	case CSR_RXPOLL:	/*  csr2  */
-        DoClock();
+//        DoClock();
 		break;
 
 	case CSR_RXLIST:	/*  csr3  */
@@ -547,7 +550,7 @@ void CDEC21143::nic_write(u32 address, int dsize, u32 data)
 	case CSR_STATUS:	/*  csr5  */
 	case CSR_INTEN:		/*  csr7  */
 		/*  Recalculate interrupt assertion.  */
-		DoClock();
+//		DoClock();
 		break;
 
 	case CSR_OPMODE:	/*  csr6:  */
@@ -596,7 +599,7 @@ void CDEC21143::nic_write(u32 address, int dsize, u32 data)
 //		}
 
 
-		DoClock();
+//		DoClock();
 		break;
 
 	case CSR_MISSED:	/*  csr8  */
@@ -618,7 +621,7 @@ void CDEC21143::nic_write(u32 address, int dsize, u32 data)
           state.reg[CSR_STATUS / 8] |= STATUS_LNPANC;
           state.reg[CSR_SIATXRX / 8] &= ~(SIATXRX_TH | SIATXRX_THX | SIATXRX_T4);
           state.reg[CSR_SIATXRX / 8] |= SIATXRX_TXF;
-          DoClock();
+//          DoClock();
         }
         else
         {
@@ -636,7 +639,7 @@ void CDEC21143::nic_write(u32 address, int dsize, u32 data)
           state.reg[CSR_STATUS / 8] |= STATUS_LNPANC;
           state.reg[CSR_SIATXRX / 8] &= ~(SIATXRX_TH | SIATXRX_THX | SIATXRX_T4);
           state.reg[CSR_SIATXRX / 8] |= SIATXRX_TXF;
-          DoClock();
+//          DoClock();
         }
         break;
 	case CSR_SIAGEN:	/*  csr15  */

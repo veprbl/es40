@@ -30,7 +30,7 @@
  * You could read the documentation from this file; but it would probably
  * be easier to go to http://es40.sourceforge.net.
  *
- * $Id: dox.cpp,v 1.14 2008/03/02 10:31:59 iamcamiel Exp $
+ * $Id: dox.cpp,v 1.15 2008/03/05 14:41:46 iamcamiel Exp $
  *
  * \author Camiel Vanderhoeven (camiel@camicom.com / http://www.camicom.com)
  **/
@@ -270,4 +270,121 @@
  *   .
  * When booting CDROM-type media with the ali_ide device,
  * set the disk is cdrom=false.
+ **/
+
+/**
+ * \page dev_guide Developer's Guide
+ * On this page, people who want to contribute can find information.
+ *
+ * This page is a work in progress.
+ *
+ * \section d_dev Devices
+ * The emulator consists of classes that emulate different devices that are part
+ * of a real ES40 system.
+ *
+ * \subsection d_dev_thr Threading
+ * Some devices may need - or want - to perform certain activities in a different thread
+ * than the main execution thread. This needs to be done in a platform-independant manner,
+ * and for that purpose we are using the Threading part of the Poco-library 
+ * (http://pocoproject.org/).
+ *
+ * When multi-threading an application, one should think about the following:
+ *   - Efficiency of the thread. Don't let the thread run when there is no work to do.
+ *   - Handling exceptions that occur in the thread.
+ *   - Properly ending the thread when the emulator exits.
+ *   - Protect data-structures that are used across threads.
+ *   .
+ *
+ * Threading code
+ *
+ * Add the following include files to the header-file for the class:
+ * \code
+ * #include <Poco/Thread.h>
+ * #include <Poco/Runnable.h>
+ * #include <Poco/Semaphore.h>
+ * #include <Poco/Mutex.h>
+ * \endcode
+ *
+ * The device class should publicly inherit the Poco::Runnable class.
+ *
+ * The following data members should be added to the class:
+ * \code
+ *  Poco::Thread myThread;
+ *  Poco::Semaphore mySemaphore;
+ *  bool StopThread;
+ * \endcode
+ *
+ * The class also needs a method run, that performs the work that
+ * needs to run in the separate thread:
+ * \code
+ * void <class-name>::run()
+ * {
+ *   try
+ *   {
+ *     for(;;)
+ *     {
+ *       mySemaphore.wait();    // main thread will set the semaphore
+ *                              // when work needs to be done, or if
+ *                              // the thread needs to terminate.
+ *       if (StopThread)
+ *         return;              // main thread has signalled us that
+ *                              // we need to terminate.
+ *
+ *       < work >;              // do work as long as work needs to be
+ *                              // done.
+ *     }
+ *   }
+ *   catch(...) {}              // if an exception occurs, catch it and
+ *                              // terminate. The main thread will see
+ *                              // that this thread has terminated, and
+ *                              // throw a new exception.
+ * }
+ * \endcode
+ *
+ * mySemaphore and myThread need to be added to the initializer list on
+ * the class constructor:
+ * \code
+ * ... , mySemaphore(0,1), myThread("<thread-name>")
+ * \endcode
+ *
+ * The thread is started from the constructor:
+ * \code
+ *   StopThread = false;
+ *   myThread.start(*this);
+ * \endcode
+ *
+ * Whenever there is work that the thread needs to do, the thread is
+ * signalled with the following code:
+ * \code
+ *   mySemaphore.set();
+ * \endcode
+ *
+ * The thread should be shut down from the class' destructor:
+ * \code
+ *   StopThread = true;
+ *   mySemaphore.set();		// signal the thread to end
+ *   myThread.join();		// wait for the thread to end
+ * \endcode
+ *
+ * To catch unexpected termination of a thread due to an exception,
+ * the status of the thread is checked periodically (from DoClock):
+ * \code
+ *   if(!myThread.isRunning())
+ *     FAILURE("thread has died");
+ * \endcode
+ *
+ * If data structures need to be accessed by multiple threads, it may
+ * be necessary to protect these structures by a Mutex. These mutexes
+ * are class members of type Poco::Mutex, for instance:
+ * \code
+ *   Poco::Mutex myLock;
+ * \endcode
+ *
+ * The access to the data structures is then surrounded by a lock/unlock
+ * construction:
+ * \code
+ *   myLock::lock();
+ *   <access structure>;
+ *   myLock::unlock();
+ * \endcode
  **/

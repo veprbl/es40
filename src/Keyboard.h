@@ -27,7 +27,10 @@
  * \file
  * Contains the definitions for the emulated Keyboard and mouse devices and controller.
  *
- * $Id: Keyboard.h,v 1.1 2008/02/12 11:07:09 iamcamiel Exp $
+ * $Id: Keyboard.h,v 1.2 2008/03/05 14:41:46 iamcamiel Exp $
+ *
+ * X-1.2        Camiel Vanderhoeven                             05-MAR-2008
+ *      Multi-threading version.
  *
  * X-1.1        Camiel Vanderhoeven                             12-FEB-2008
  *      Created. Contains code previously found in AliM1543C.h
@@ -53,21 +56,26 @@
  * \brief Emulated keyboard controller, keyboard and mouse.
  **/
 
-class CKeyboard : public CSystemComponent  
+class CKeyboard : public CSystemComponent, public Poco::Runnable
 {
  public:
   CKeyboard(CConfigurator * cfg, CSystem * c);
   virtual ~CKeyboard();
 
-  virtual int DoClock();
+  virtual void check_state();
   virtual void WriteMem(int index, u64 address, int dsize, u64 data);
   virtual u64 ReadMem(int index, u64 address, int dsize);
   virtual int SaveState(FILE * f);
   virtual int RestoreState(FILE * f);
+  virtual void run();
+  void execute();
 
   void gen_scancode(u32 key);
 
  private:
+
+  Poco::Thread myThread;
+  bool StopThread;
 
   u8 read_60();
   void write_60(u8 data);
@@ -203,14 +211,7 @@ class CKeyboard : public CSystemComponent
     u8    kbd_controller_Q[BX_KBD_CONTROLLER_QSIZE];
     unsigned kbd_controller_Qsize;
     unsigned kbd_controller_Qsource; /**< 0=keyboard, 1=mouse */
-
-
   } state;
-  int listenSocket;
-  int connectSocket;
-#if defined(IDB) && defined(LS_MASTER) 
-  int throughSocket;
-#endif
 };
 
 extern CKeyboard * theKeyboard;

@@ -27,10 +27,26 @@
  * \file
  * Contains the definitions for the emulated Ali M1543C IDE chipset part.
  *
- * $Id: AliM1543C_ide.h,v 1.12 2008/03/04 19:20:02 iamcamiel Exp $
+ * $Id: AliM1543C_ide.h,v 1.13 2008/03/05 14:41:46 iamcamiel Exp $
+ *
+ * X-1.13       Camiel Vanderhoeven                             05-MAR-2008
+ *      Multi-threading version.
  *
  * X-1.12       Camiel Vanderhoeven                             04-MAR-2008
  *      Merged Brian wheeler's New IDE code into the standard controller.
+ *
+ * X-1.11.4     Brian Wheeler                                   27-FEB-2008
+ *      Attempts to refire the interrupt if the controller seems to have
+ *      missed it -- before the OS declares a timeout.
+ *
+ * X-1.11.3     Camiel Vanderhoeven                             12-JAN-2008
+ *      Use disk's SCSI engine for ATAPI devices.
+ *
+ * X-1.11.2      Brian wheeler                                  08-JAN-2008
+ *      ATAPI improved.
+ *
+ * X-1.11.1      Brian wheeler                                  08-JAN-2008
+ *      Complete rewrite of IDE controller.
  *
  * X-1.11.4     Brian Wheeler                                   27-FEB-2008
  *      Attempts to refire the interrupt if the controller seems to have
@@ -103,7 +119,7 @@
  *  .
  **/
 
-class CAliM1543C_ide : public CDiskController, public CSCSIDevice  
+class CAliM1543C_ide : public CDiskController, public CSCSIDevice, public Poco::Runnable  
 {
  public:
   CAliM1543C_ide(CConfigurator * cfg, class CSystem * c, int pcibus, int pcidev);
@@ -119,8 +135,10 @@ class CAliM1543C_ide : public CDiskController, public CSCSIDevice
   virtual int SaveState(FILE * f);
   virtual int RestoreState(FILE * f);
 
-  virtual int  DoClock();
+  virtual void check_state();
   virtual void ResetPCI();
+
+  virtual void run();
 
  private:
 
@@ -139,6 +157,13 @@ class CAliM1543C_ide : public CDiskController, public CSCSIDevice
   void command_aborted(int index, u8 command);
   void identify_drive(int index,bool packet);
   void ide_status(int index);
+
+  void execute(int index);
+
+  Poco::Thread myThread;
+  Poco::Semaphore mySemaphore;
+  Poco::Mutex myRegLock[2];
+  bool StopThread;
 
 // The state structure contains all elements that need to be saved to the statefile.
   struct SAliM1543C_ideState {

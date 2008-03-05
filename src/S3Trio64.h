@@ -27,7 +27,10 @@
  * \file
  * Contains the definitions for emulated S3 Trio 64 Video Card device.
  *
- * $Id: S3Trio64.h,v 1.9 2008/01/20 16:17:59 iamcamiel Exp $
+ * $Id: S3Trio64.h,v 1.10 2008/03/05 14:41:46 iamcamiel Exp $
+ *
+ * X-1.10       Camiel Vanderhoeven                             05-MAR-2008
+ *      Multi-threading version.
  *
  * X-1.9        Camiel Vanderhoeven                             20-JAN-2008
  *      Added X11 GUI.
@@ -55,11 +58,6 @@
  *
  * X-1.1        Camiel Vanderhoeven                             1-DEC-2007
  *      Initial version in CVS.
- *
- * X-0.0        bdwheele@indiana.edu     
- *      Generated file.
- *
- * \author  Brian Wheeler (bdwheele@indiana.edu)
  **/
 
 #if !defined(INCLUDED_S3Trio64_H_)
@@ -71,7 +69,6 @@
 /* video card has 4M of ram */
 #define VIDEO_RAM_SIZE 22
 #define CRTC_MAX 0x57
-#define VGA_BASE 0x3b0
 
 /**
  * \brief S3 Trio 64 Video Card
@@ -82,12 +79,12 @@
  *  .
  **/
 
-class CS3Trio64 : public CVGA
+class CS3Trio64 : public CVGA, public Poco::Runnable
 {
   public:
     virtual int SaveState(FILE * f);
     virtual int RestoreState(FILE * f);
-    virtual int DoClock();
+    virtual void check_state();
     virtual void WriteMem_Legacy(int index, u32 address, int dsize, u32 data);
     virtual u32 ReadMem_Legacy(int index, u32 address, int dsize);
 
@@ -98,6 +95,7 @@ class CS3Trio64 : public CVGA
     virtual ~CS3Trio64();
 
     void update(void);
+    void run(void);
 
     virtual u8 get_actl_palette_idx(u8 index);
     virtual void redraw_area(unsigned x0, unsigned y0, unsigned width, unsigned height);
@@ -126,10 +124,12 @@ private:
 
     u8 read_b_3c0();
     u8 read_b_3c1();
+    u8 read_b_3c2();
     u8 read_b_3c3();
     u8 read_b_3c4();
     u8 read_b_3c5();
     u8 read_b_3c9();
+    u8 read_b_3ca();
     u8 read_b_3cc();
     u8 read_b_3cf();
     u8 read_b_3d4();
@@ -141,7 +141,6 @@ private:
     void legacy_write(u32 address, int dsize, u32 data);
 
     u32 rom_read(u32 address, int dsize);
-    void rom_write(u32 address, int dsize, u32 data);
 
     void determine_screen_dimensions(unsigned *piHeight, unsigned *piWidth);
 
@@ -151,6 +150,11 @@ private:
     void vga_mem_write(u32 addr, u8 value);
     u8 vga_mem_read(u32 addr);
 
+  Poco::Thread myThread;
+//  Poco::Semaphore mySemaphore;
+  bool StopThread;
+
+    /// The state structure contains all elements that need to be saved to the statefile
     /// The state structure contains all elements that need to be saved to the statefile.
     struct SS3_state {
       bool vga_enabled;

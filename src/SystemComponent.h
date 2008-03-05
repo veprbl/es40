@@ -27,7 +27,10 @@
  * \file 
  * Contains definitions for the base class for devices that connect to the chipset.
  *
- * $Id: SystemComponent.h,v 1.14 2008/02/08 20:08:13 iamcamiel Exp $
+ * $Id: SystemComponent.h,v 1.15 2008/03/05 14:41:46 iamcamiel Exp $
+ *
+ * X-1.15       Camiel Vanderhoeven                             05-MAR-2008
+ *      Multi-threading version.
  *
  * X-1.14       Camiel Vanderhoeven                             08-FEB-2008
  *      Show originating device name on memory errors.
@@ -95,12 +98,8 @@ class CSystemComponent
   //=== abstract ===
   virtual u64 ReadMem(int index, u64 address, int dsize) {return 0;};
   virtual void WriteMem(int index, u64 address, int dsize, u64 data) {};
-  virtual int DoClock() {return 0;};
+  virtual void check_state() {};
   virtual void ResetPCI() {};
-
-  virtual void StartThreads() {};
-  virtual void StopThreads() {};
-  virtual bool ActiveThreads() { return false; };
 
   char * devid_string;
  protected: 

@@ -27,7 +27,10 @@
  * \file 
  * Contains the definitions for the ISA part of the emulated Ali M1543C chipset.
  *
- * $Id: AliM1543C.h,v 1.29 2008/02/26 11:21:31 iamcamiel Exp $
+ * $Id: AliM1543C.h,v 1.30 2008/03/05 14:41:45 iamcamiel Exp $
+ *
+ * X-1.30       Camiel Vanderhoeven                             05-MAR-2008
+ *      Multi-threading version.
  *
  * X-1.29       Camiel Vanderhoeven                             26-FEB-2008
  *      Moved DMA code into it's own class (CDMA)
@@ -138,24 +141,30 @@
  *  .
  **/
 
-class CAliM1543C : public CPCIDevice
+class CAliM1543C : public CPCIDevice, public Poco::Runnable
 {
  public:
   virtual int SaveState(FILE * f);
   virtual int RestoreState(FILE * f);
-  void instant_tick();
+  //    void instant_tick();
   //	void interrupt(int number);
-  virtual int DoClock();
+  virtual void run();
+  virtual void check_state();
   virtual void WriteMem_Legacy(int index, u32 address, int dsize, u32 data);
   virtual u32 ReadMem_Legacy(int index, u32 address, int dsize);
+
+  void do_pit_clock();
 
   CAliM1543C(CConfigurator * cfg, class CSystem * c, int pcibus, int pcidev);
   virtual ~CAliM1543C();
   void pic_interrupt(int index, int intno);
   void pic_deassert(int index, int intno);
 
-
  private:
+
+  Poco::Thread myThread;
+  Poco::Mutex myRegLock;
+  bool StopThread;
 
   // REGISTER 61 (NMI)
   u8 reg_61_read();

@@ -30,7 +30,10 @@
  * or project specific include files that are used frequently, but
  * are changed infrequently.
  *
- * $Id: StdAfx.h,v 1.26 2008/02/20 19:16:19 iamcamiel Exp $
+ * $Id: StdAfx.h,v 1.27 2008/03/05 14:41:46 iamcamiel Exp $
+ *
+ * X-1.18       Camiel Vanderhoeven                             05-MAR-2008
+ *      Multi-threading version.
  *
  * X-1.17       Alex                                            20-FEB-2008
  *      GNU compiler support on Windows.
@@ -119,24 +122,9 @@
 #if !defined(INCLUDED_STDAFX_H)
 #define INCLUDED_STDAFX_H
 
-// if we're compiling with interactive debugger features, things need to
-// be synchronous, so we disable CPU threads.
-#if defined(IDB)
-#undef CPU_THREADS
-#endif
-
 #include "datatypes.h"
 
-#if defined(__GNUWIN32__)
-
-#include <glib/gtimer.h>
-
-inline void sleep_ms(int ms)
-{
-   g_usleep(ms*1000);
-}
-
-#elif defined(_WIN32)
+#if defined(_WIN32)
 
 #ifndef _WIN32_WINNT
 #   define _WIN32_WINNT 0x400
@@ -153,11 +141,6 @@ inline void sleep_ms(int ms)
 #define strcasecmp(a,b) _stricmp(a,b)
 #define strncasecmp(a,b,c) _strnicmp (a,b,c)
 
-inline void sleep_ms(DWORD ms)
-{
-	Sleep(ms);
-}
-
 #include <process.h>
 #else // not windows
 #define _strdup strdup
@@ -167,12 +150,6 @@ inline void sleep_ms(DWORD ms)
 #include "pthread.h"
 #include "signal.h"
 #include <sys/wait.h>
-
-inline void sleep_ms(int ms)
-{
-	usleep(ms*1000);
-}
-
 #endif
 
 #include <stdlib.h>
@@ -231,5 +208,12 @@ inline char printable(char c)
 #define ftell_large ftello64
 #define off_t_large off64_t
 #endif
+
+#define POCO_NO_UNWINDOWS
+#include <Poco/Thread.h>
+#include <Poco/Runnable.h>
+#include <Poco/Semaphore.h>
+#include <Poco/Mutex.h>
+#include <Poco/Timestamp.h>
 
 #endif // !defined(INCLUDED_STDAFX_H)

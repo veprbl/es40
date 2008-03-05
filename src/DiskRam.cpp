@@ -27,7 +27,10 @@
  * \file
  * Contains code to use a RAM disk.
  *
- * $Id: DiskRam.cpp,v 1.15 2008/03/02 09:42:52 iamcamiel Exp $
+ * $Id: DiskRam.cpp,v 1.16 2008/03/05 14:41:46 iamcamiel Exp $
+ *
+ * X-1.16       Camiel Vanderhoeven                             05-MAR-2008
+ *      Multi-threading version.
  *
  * X-1.15       Camiel Vanderhoeven                             02-MAR-2008
  *      Natural way to specify large numeric values ("10M") in the config file.
@@ -77,7 +80,7 @@
 
 CDiskRam::CDiskRam(CConfigurator * cfg, CSystem * sys, CDiskController * c, int idebus, int idedev) : CDisk(cfg,sys,c,idebus,idedev)
 {
-  byte_size = myCfg->get_num_value("size",512*1024*1024);
+  byte_size = myCfg->get_num_value("size",false,512*1024*1024);
 
   CHECK_ALLOCATION(ramdisk = malloc((size_t)byte_size));
 

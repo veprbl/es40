@@ -27,7 +27,10 @@
  * \file
  * Contains the code for the emulated Symbios SCSI controller.
  *
- * $Id: Sym53C810.cpp,v 1.6 2008/02/27 12:04:28 iamcamiel Exp $
+ * $Id: Sym53C810.cpp,v 1.7 2008/03/05 14:41:46 iamcamiel Exp $
+ *
+ * X-1.7        Camiel Vanderhoeven                             05-MAR-2008
+ *      Multi-threading version.
  *
  * X-1.5        Brian Wheeler                                   27-FEB-2008
  *      Avoid compiler warnings.
@@ -334,18 +337,43 @@ u32 osym_cfg_mask[64] = {
         0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
 };
 
+void CSym53C810::run()
+{
+  try
+  {
+    for (;;)
+    {
+      mySemaphore.wait();
+      if (StopThread)
+      {
+        printf("SYM: exit thread.\n");
+        return;
+      }
+      while (state.executing)
+      {
+        myRegLock.lock();
+        execute();
+        myRegLock.unlock();
+      }
+    }
+  }
+  catch (...)
+  {
+    printf("SYM: exception in thread.\n");
+    // Let the thread die...
+  }
+}
+
 /**
  * Constructor.
  **/
 
 CSym53C810::CSym53C810(CConfigurator * cfg, CSystem * c, int pcibus, int pcidev) 
-  : CDiskController(cfg,c,pcibus,pcidev,1,7)
+  : CDiskController(cfg,c,pcibus,pcidev,1,7), mySemaphore(0,1), myThread("SYM53C810")
 {
   add_function(0, osym_cfg_data, osym_cfg_mask);
 
   ResetPCI();
-
-  c->RegisterClock(this, true);
 
   chip_reset();
 
@@ -353,11 +381,17 @@ CSym53C810::CSym53C810(CConfigurator * cfg, CSystem * c, int pcibus, int pcidev)
   CSCSIBus * a = new CSCSIBus(cfg, c);
   scsi_register(0, a, 7); // scsi id 7 by default
 
-  printf("%s: $Id: Sym53C810.cpp,v 1.6 2008/02/27 12:04:28 iamcamiel Exp $\n",devid_string);
+  StopThread = false;
+  myThread.start(*this);
+
+  printf("%s: $Id: Sym53C810.cpp,v 1.7 2008/03/05 14:41:46 iamcamiel Exp $\n",devid_string);
 }
 
 CSym53C810::~CSym53C810()
 {
+  StopThread = true;
+  mySemaphore.set();
+  myThread.join();
   delete scsi_bus[0];
 }
 
@@ -482,12 +516,14 @@ void CSym53C810::WriteMem_Bar(int func,int bar, u32 address, int dsize, u32 data
       switch(dsize)
       {
       case 8:
+        myRegLock.lock();
 #if defined(DEBUG_SYM_REGS)
         printf("SYM: Write to register %02x: %02x.   \n",address,data);
 #endif
         if (address>=R_SCRATCHB)
         {
           state.regs.reg8[address] = (u8)data;
+          myRegLock.unlock();
           break;
         }
         switch (address)
@@ -610,6 +646,7 @@ void CSym53C810::WriteMem_Bar(int func,int bar, u32 address, int dsize, u32 data
           printf("SYM: Write to unknown register at %02x with %08x.\n",address,data);
 	      throw((int)1);
         }
+        myRegLock.unlock();
         break;
       case 16:
         WriteMem_Bar(0,1,address+0,8,(data>>0) & 0xff);
@@ -654,9 +691,11 @@ u32 CSym53C810::ReadMem_Bar(int func,int bar, u32 address, int dsize)
       switch(dsize)
       {
       case 8:
+        myRegLock.lock();
         if (address>=R_SCRATCHB)
         {
             data = state.regs.reg8[address];
+            myRegLock.unlock();
             break;
         }
         switch(address)
@@ -759,6 +798,7 @@ u32 CSym53C810::ReadMem_Bar(int func,int bar, u32 address, int dsize)
 
 	      throw((int)1);
         }
+        myRegLock.unlock();
 #if defined(DEBUG_SYM_REGS)
         printf("SYM: Read frm register %02x: %02x.   \n",address,data);
 #endif
@@ -884,6 +924,7 @@ void CSym53C810::write_b_istat(u8 value)
       R32(DSP) = state.wait_jump;
       state.wait_reselect = false;
       state.executing = true;
+      mySemaphore.set();
     }
   }
 
@@ -970,7 +1011,10 @@ void CSym53C810::write_b_dcntl(u8 value)
 
   // start operation
   if (value & R_DCNTL_STD)
+  {
     state.executing = true;
+    mySemaphore.set();
+  }
 
   //IRQD bit...
   eval_interrupts();
@@ -999,12 +1043,16 @@ void CSym53C810::post_dsp_write()
   if (!TB_R8(DMODE,MAN))
   {
     state.executing = true;
+    mySemaphore.set();
     //printf("SYM: Execution started @ %08x.\n",R32(DSP));
   }
 }
 
-int CSym53C810::DoClock()
+void CSym53C810::check_state()
 {
+  if(!myThread.isRunning())
+    FAILURE("SYM thread has died");
+
   if (state.gen_timer)
   {
     state.gen_timer--;
@@ -1012,7 +1060,7 @@ int CSym53C810::DoClock()
     {
       state.gen_timer = (R8(STIME1) & R_STIME1_GEN) * 30;
       RAISE(SIST1,GEN);
-      return 0;
+      return;
     }
   }
 
@@ -1045,7 +1093,7 @@ int CSym53C810::DoClock()
       // disconnect expected
       //printf("SYM: Disconnect expected. stopping disconnect timer at %d.\n",state.disconnected);
       state.disconnected = 0;
-      return 0;
+      return;
     }
     state.disconnected--;
     if (!state.disconnected)
@@ -1054,18 +1102,12 @@ int CSym53C810::DoClock()
       //printf(">");
       //getchar();
       RAISE(SIST0,UDC);
-      return 0;
+      return;
     }
   }
-
-  while (state.executing)
-    if (execute())
-      return 1;
-
-  return 0;
 }
 
-int CSym53C810::execute()
+void CSym53C810::execute()
 {
   int optype;
 
@@ -1118,7 +1160,7 @@ int CSym53C810::execute()
           RAISE(SIST1,STO); // select time-out
           scsi_free(0);
           state.select_timeout = false;
-          return 0;
+          return;
         }
 
         if (real_phase == SCSI_PHASE_FREE && state.disconnected)
@@ -1128,7 +1170,7 @@ int CSym53C810::execute()
 #endif
           state.disconnected = 1;
           R32(DSP)-=8;
-          return 0;
+          return;
         }
 
         if (real_phase == scsi_phase)
@@ -1172,7 +1214,7 @@ int CSym53C810::execute()
           {
             //printf("SYM: Count equals zero!\n");
             RAISE(DSTAT,IID); // page 5-32
-            return 0;
+            return;
           }
           if ((size_t)count > scsi_expected_xfer(0))
           {
@@ -1201,7 +1243,7 @@ int CSym53C810::execute()
           }
           R8(SFBR) = *org_sdata_ptr;
           scsi_xfer_done(0);
-          return 0;
+          return;
         }
       }
       break;
@@ -1260,19 +1302,19 @@ int CSym53C810::execute()
               // scsi bus busy, try again next clock...
               printf("scsi bus busy...\n");
               R32(DSP) -= 8;
-              return 0;
+              return;
             }
             state.select_timeout = !scsi_select(0, destination);
             if (!state.select_timeout) // select ok
               SB_R8(SCNTL2,SDU,true);  // don't expect a disconnect
-            return 0;
+            return;
           case 1:
 #if defined(DEBUG_SYM_SCRIPTS)
             printf("SYM: %08x: WAIT DISCONNECT\n", R32(DSP)-8);
 #endif
             // maybe we need to do more??
             scsi_free(0);
-            return 0;
+            return;
 
           case 2:
 #if defined(DEBUG_SYM_SCRIPTS)
@@ -1291,7 +1333,7 @@ int CSym53C810::execute()
               state.wait_jump = dest_addr;
               state.executing = false;
             }
-            return 0;
+            return;
 
           case 3:
 #if defined(DEBUG_SYM_SCRIPTS)
@@ -1310,7 +1352,7 @@ int CSym53C810::execute()
             }
             if (sc_target) SB_R8(SCNTL0,TRG,true);
             if (sc_carry) state.alu.carry = true;
-            return 0;
+            return;
           case 4:
 #if defined(DEBUG_SYM_SCRIPTS)
             printf("SYM: %08x: CLEAR %s%s%s%s\n",R32(DSP)-8,sc_carry?"carry ":"",sc_target?"target ":"",sc_ack?"ack ":"",sc_atn?"atn ":"");
@@ -1328,7 +1370,7 @@ int CSym53C810::execute()
             }
             if (sc_target) SB_R8(SCNTL0,TRG,false);
             if (sc_carry) state.alu.carry = false;
-            return 0;
+            return;
 
             break;
           }
@@ -1444,7 +1486,7 @@ int CSym53C810::execute()
             WriteMem_Bar(0,1,reg_address,8,op_data);
           }
 
-          return 0;
+          return;
 
         }
       }
@@ -1511,7 +1553,7 @@ int CSym53C810::execute()
               RAISE(SIST1,STO); // select time-out
               scsi_free(0);
               state.select_timeout = false;
-              return 0;
+              return;
             }
 
             if (real_phase == SCSI_PHASE_FREE && state.disconnected)
@@ -1521,7 +1563,7 @@ int CSym53C810::execute()
 #endif
               state.disconnected = 1;
               R32(DSP)-=8;
-              return 0;
+              return;
             }
 
             if ((real_phase==scsi_phase) != jump_if)
@@ -1550,7 +1592,7 @@ int CSym53C810::execute()
 #endif
             R32(DSP) = dest_addr;
           }
-          return 0;
+          return;
           break;
         case 1:
 #if defined(DEBUG_SYM_SCRIPTS)
@@ -1564,7 +1606,7 @@ int CSym53C810::execute()
             R32(TEMP) = R32(DSP);
             R32(DSP) = dest_addr;
           }
-          return 0;
+          return;
           break;
         case 2:
 #if defined(DEBUG_SYM_SCRIPTS)
@@ -1577,7 +1619,7 @@ int CSym53C810::execute()
 #endif
             R32(DSP) = R32(TEMP);
           }
-          return 0;
+          return;
           break;
         case 3:
 #if defined(DEBUG_SYM_SCRIPTS)
@@ -1593,7 +1635,7 @@ int CSym53C810::execute()
             else
               RAISE(DSTAT,SIR);
           }
-          return 0;
+          return;
           break;
         default:
           printf("SYM: Transfer Control Instruction with opcode %d is RESERVED.\n",opcode);
@@ -1656,7 +1698,7 @@ int CSym53C810::execute()
               do_pci_write(memaddr+i, &dat, 1, 1);
             }
           }
-          return 0;
+          return;
         }
         else
         {
@@ -1673,12 +1715,12 @@ int CSym53C810::execute()
           do_pci_read(R32(DSPS), buf, 1, GET_DBC());
           do_pci_write(temp_shadow, buf, 1, GET_DBC());
           free(buf);
-          return 0;
+          return;
         }
       }
       break;
     }
-    return 1;
+    FAILURE("SCSI should never get here");
 }
 
 void CSym53C810::set_interrupt(int reg, u8 interrupt)

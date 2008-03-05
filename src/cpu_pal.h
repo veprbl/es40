@@ -28,7 +28,10 @@
  * Contains code macros for the processor PALmode instructions.
  * Based on HRM.
  *
- * $Id: cpu_pal.h,v 1.13 2008/01/30 17:22:45 iamcamiel Exp $
+ * $Id: cpu_pal.h,v 1.14 2008/03/05 14:41:46 iamcamiel Exp $
+ *
+ * X-1.14       Camiel Vanderhoeven                             05-MAR-2008
+ *      Multi-threading version.
  *
  * X-1.13       Camiel Vanderhoeven                             30-JAN-2008
  *      Always use set_pc or add_pc to change the program counter.
@@ -154,7 +157,7 @@
  	  state.r[REG_1] = 0;					                                \
 	  break;						                                        \
     case 0xc0: /* CC */					                                    \
- 	  state.r[REG_1] = (((u64)state.cc_offset) << 32) |  state.cc;		    \
+ 	  state.r[REG_1] = (((u64)state.cc_offset) << 32) |  (state.cc & X64(ffffffff));		    \
 	  break;						                                        \
     case 0xc2: /* VA */					                                    \
  	  state.r[REG_1] = state.fault_va;				                        \
@@ -328,8 +331,8 @@
 	      state.r[REG_1] = READ_PHYS_NT(32);					\
 	      break;								\
         case 2: /* longword physical locked */					\
-	      state.lock_flag = true;							\
 	      phys_address = state.r[REG_2] + DISP_12;				\
+          cSystem->cpu_lock(state.iProcNum,phys_address);       \
 	      state.r[REG_1] = READ_PHYS_NT(32);					\
 	      break;								\
         case 4: /* longword virtual vpte                 chk   alt    vpte */	\
@@ -364,8 +367,8 @@
 	      state.r[REG_1] = READ_PHYS_NT(64);					\
 	      break;								\
         case 3: /* quadword physical locked */					\
-	      state.lock_flag = true;							\
 	      phys_address = state.r[REG_2] + DISP_12;				\
+          cSystem->cpu_lock(state.iProcNum,phys_address);       \
 	      state.r[REG_1] = READ_PHYS_NT(64);					\
 	      break;								\
         case 5: /* quadword virtual vpte                 chk   alt    vpte */	\
@@ -400,12 +403,13 @@
 	      WRITE_PHYS_NT(state.r[REG_1],32);					\
 	      break;								\
         case 2: /* longword physical conditional */				\
-	      if (state.lock_flag) {							\
-		  phys_address = state.r[REG_2] + DISP_12;				\
-		  WRITE_PHYS_NT(state.r[REG_1],32);					\
-		}								\
-	      state.r[REG_1] = state.lock_flag?1:0;						\
-	      state.lock_flag = false;						\
+   	      if (cSystem->cpu_unlock(state.iProcNum)) {				\
+		    phys_address = state.r[REG_2] + DISP_12;				\
+		    WRITE_PHYS_NT(state.r[REG_1],32);					\
+            state.r[REG_1] = 1;         \
+		  }								\
+          else                                                  \
+            state.r[REG_1] = 0;                                 \
 	      break;								\
         case 4: /* longword virtual                      chk   alt    vpte */	\
 	      DATA_PHYS_NT(state.r[REG_2] + DISP_12, ACCESS_READ | NO_CHECK);	\
@@ -427,12 +431,13 @@
 	      WRITE_PHYS_NT(state.r[REG_1],64);					\
 	      break;								\
         case 3: /* quadword physical conditional */				\
-	      if (state.lock_flag) {							\
+   	      if (cSystem->cpu_unlock(state.iProcNum)) {				\
 		  phys_address = state.r[REG_2] + DISP_12;				\
 		  WRITE_PHYS_NT(state.r[REG_1],64);					\
-		}								\
-	      state.r[REG_1] = state.lock_flag?1:0;						\
-	      state.lock_flag = false;						\
+            state.r[REG_1] = 1;       \
+		  }								\
+          else                                                  \
+            state.r[REG_1] = 0;                                 \
 	      break;								\
         case 5: /* quadword virtual                      chk    alt    vpte */	\
 	      DATA_PHYS_NT(state.r[REG_2] + DISP_12, ACCESS_READ | NO_CHECK);	\

@@ -28,7 +28,10 @@
  * Contains code macros for miscellaneous processor instructions.
  * Based on ARM chapter 4.11.
  *
- * $Id: cpu_misc.h,v 1.10 2008/01/30 17:22:45 iamcamiel Exp $
+ * $Id: cpu_misc.h,v 1.11 2008/03/05 14:41:46 iamcamiel Exp $
+ *
+ * X-1.11       Camiel Vanderhoeven                             05-MAR-2008
+ *      Multi-threading version.
  *
  * X-1.10       Camiel Vanderhoeven                             30-JAN-2008
  *      Always use set_pc or add_pc to change the program counter.
@@ -250,7 +253,7 @@
 
 #define DO_IMPLVER state.r[REG_3] = CPU_IMPLVER;
 
-#define DO_RPCC state.r[REG_1] = ((u64)state.cc_offset)<<32 | state.cc;
+#define DO_RPCC state.r[REG_1] = ((u64)state.cc_offset)<<32 | (state.cc & X64(ffffffff));
 
 // The following ops have no function right now (at least, not until multiple CPU's are supported).
 #define DO_TRAPB ;

@@ -27,7 +27,10 @@
  * \file 
  * Contains the definitions for the emulated Typhoon Chipset devices.
  *
- * $Id: System.h,v 1.28 2008/03/04 19:05:21 iamcamiel Exp $
+ * $Id: System.h,v 1.29 2008/03/05 14:41:46 iamcamiel Exp $
+ *
+ * X-1.29       Camiel Vanderhoeven                             05-MAR-2008
+ *      Multi-threading version.
  *
  * X-1.28       Camiel Vanderhoeven                             04-MAR-2008
  *      Support some basic MP features. (CPUID read from C-Chip MISC 
@@ -207,7 +210,6 @@ class CSystem
   int SingleStep();
 
   int RegisterMemory(CSystemComponent * component, int index, u64 base, u64 length);
-  int RegisterClock(CSystemComponent * component, bool slow);
   int RegisterComponent(CSystemComponent * component);
   int RegisterCPU(class CAlphaCPU * cpu);
 	
@@ -233,10 +235,14 @@ class CSystem
   u64 get_c_dim(int ProcNum);
   void set_c_dim(int ProcNum,u64 value);
 
+  void cpu_lock(int cpuid, u64 address);
+  bool cpu_unlock(int cpuid);
+  void cpu_break_lock(int cpuid, CSystemComponent * source);
+
 private:
 
-  u64 cchip_csr_read(u32 address, CSystemComponent * src);
-  void cchip_csr_write(u32 address, u64 data);
+  u64 cchip_csr_read(u32 address, CSystemComponent * source);
+  void cchip_csr_write(u32 address, u64 data, CSystemComponent * source);
   u64 pchip_csr_read(int num, u32 address);
   void pchip_csr_write(int num, u32 address, u64 data);
   u8  dchip_csr_read(u32 address);
@@ -245,9 +251,13 @@ private:
   void tig_write(u32 address, u8 data);
 
   int iNumCPUs;
+  Poco::FastMutex cpu_lock_mutex;
 
   /// The state structure contains all elements that need to be saved to the statefile.
   struct SSys_state {
+
+    int cpu_lock_flags;
+    u64 cpu_lock_address[4];
 
     /**
      * TIGbus state data
@@ -428,10 +438,6 @@ private:
 
   int iNumComponents;
   CSystemComponent * acComponents[MAX_COMPONENTS];
-  int iNumFastClocks;
-  CSystemComponent * acFastClocks[MAX_COMPONENTS];
-  int iNumSlowClocks;
-  CSystemComponent * acSlowClocks[MAX_COMPONENTS];
   int iNumMemories;
   struct SMemoryUser * asMemories[MAX_COMPONENTS];
 

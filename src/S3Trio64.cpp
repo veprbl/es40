@@ -27,7 +27,10 @@
  * \file
  * Contains the code for emulated S3 Trio 64 Video Card device.
  *
- * $Id: S3Trio64.cpp,v 1.12 2008/02/27 12:04:25 iamcamiel Exp $
+ * $Id: S3Trio64.cpp,v 1.13 2008/03/05 14:41:46 iamcamiel Exp $
+ *
+ * X-1.13       Camiel Vanderhoeven                             05-MAR-2008
+ *      Multi-threading version.
  *
  * X-1.12       Brian Wheeler                                   27-FEB-2008
  *      Avoid compiler warnings.
@@ -64,11 +67,6 @@
  *
  * X-1.1        Camiel Vanderhoeven                             1-DEC-2007
  *      Initial version in CVS.
- *
- * X-0.0        bdwheele@indiana.edu     
- *      Generated file.
- *
- * \author  Brian Wheeler (bdwheele@indiana.edu)
  **/
 
 #include "StdAfx.h"
@@ -113,26 +111,34 @@ static const u8 ccdat[16][4] = {
      state.vga_tile_updated[(xtile)][(ytile)]                    \
      : 0)
 
-#if defined(_WIN32)
-static HANDLE screen_refresh_handle_s3;
-static DWORD WINAPI refresh_proc_s3(LPVOID lpParam)
-#else
-  pthread_t screen_refresh_handle_s3;
-  static void *refresh_proc_s3(void *lpParam)
-#endif
+
+void CS3Trio64::run()
 {
-  CS3Trio64 *c = (CS3Trio64 *) lpParam;
-  while(1) {
-    //c->screenrefresh();
-//    bx_gui->handle_events();
-    c->update();
-    bx_gui->flush();
-    sleep_ms(100); // 10 fps
+  try
+  {
+    for (;;)
+    {
+//      mySemaphore.wait();
+      if (StopThread)
+      {
+        printf("S3: exit thread.\n");
+        return;
+      }
+      bx_gui->lock();
+      update();
+      bx_gui->flush();
+      bx_gui->unlock();
+      Poco::Thread::sleep(100); // 10 fps
+    }
   }
-  return 0;
+  catch (...)
+  {
+    printf("S3: exception in thread.\n");
+    // Let the thread die...
+  }
 }
 
-static size_t rom_max;
+static unsigned int rom_max;
 static u8 option_rom[65536];
 
 
@@ -183,43 +189,45 @@ u32 s3_cfg_mask[64] = {
 /**
  * Constructor.
  **/
-CS3Trio64::CS3Trio64(CConfigurator * cfg, CSystem * c, int pcibus, int pcidev): CVGA(cfg,c,pcibus,pcidev)
+CS3Trio64::CS3Trio64(CConfigurator * cfg, CSystem * c, int pcibus, int pcidev): CVGA(cfg,c,pcibus,pcidev), myThread("S3")
 {
   add_function(0,s3_cfg_data,s3_cfg_mask);
 
   int i;
-  char *romfile;
 
-    c->RegisterClock(this, true);
+  memset((void*)&state,0,sizeof(state));
 
-    /* the VGA I/O ports are at 3b0 -> 3df */
-    add_legacy_io(2,0x3b0,48);
+  /* the VGA I/O ports are at 3b4, 3b5, 3ba and 3c0 -> 3cf, 3d4, 3d5, 3da */
+  add_legacy_io(1,0x3b4,2);
+  add_legacy_io(3,0x3ba,2);
+  add_legacy_io(2,0x3c0,16);
+  add_legacy_io(8,0x3d4,2);
+  add_legacy_io(9,0x3da,1);
 
-    /* we listen for messages from outer space (a.k.a. VGA bios) at port 500. */
-    add_legacy_io(7,0x500,1);
+  /* we listen for messages from outer space (a.k.a. VGA bios) at port 500. */
+  add_legacy_io(7,0x500,1);
 
-    /* legacy video address space: A0000 -> bffff */
-    add_legacy_mem(4,0xa0000,128*1024);
+  /* legacy video address space: A0000 -> bffff */
+  add_legacy_mem(4,0xa0000,128*1024);
 
-    ResetPCI();
+  ResetPCI();
 
-    bios_message_size = 0;
-    bios_message[0] = '\0';
+  bios_message_size = 0;
+  bios_message[0] = '\0';
 
-    // use a VGA rom from bochs
-    romfile=myCfg->get_text_value("vga.rom","vgabios.bin");
-    FILE *rom=fopen(romfile,"rb");
-    if(!rom) {
-      printf("%%VGA-F-ROM: Cannot open %s\n",romfile);
-      throw((int)1);
-    }
-    rom_max=fread(option_rom,1,65536,rom);
-    fclose(rom);
-    printf("%%VGA-I-ROMSIZE: ROM is %d bytes.\n",rom_max);
+  // use a VGA rom from bochs
+  FILE *rom=fopen(myCfg->get_text_value("rom","vgabios.bin"),"rb");
+  if(!rom) {
+    printf("S3: Cannot load rom '%s'\n",myCfg->get_text_value("rom","vgabios.bin"));
+    throw((int)1);
+  }
 
-    /* Option ROM address space: C0000  */
-    add_legacy_mem(5,0xc0000,(u32)rom_max);
+  rom_max=(unsigned)fread(option_rom,1,65536,rom);
+  fclose(rom);
+  printf("S3: ROM is %d bytes.\n",rom_max);
 
+  /* Option ROM address space: C0000  */
+  add_legacy_mem(5,0xc0000,rom_max);
 
   state.vga_enabled = 1;
   state.misc_output.color_emulation  = 1;
@@ -312,106 +320,47 @@ CS3Trio64::CS3Trio64(CConfigurator * cfg, CSystem * c, int pcibus, int pcidev): 
 
   bx_gui->init(state.x_tilesize, state.y_tilesize);
 
-#if !BX_SUPPORT_CLGD54XX
-//  this->init_systemtimer(timer_handler, vga_param_handler);
-#endif // !BX_SUPPORT_CLGD54XX
-
   state.charmap_address = 0;
   state.x_dotclockdiv2 = 0;
   state.y_doublescan = 0;
   state.last_bpp = 8;
 
-#if BX_SUPPORT_VBE  
-    // The following is for the vbe display extension
+  state.CRTC.reg[0x09] = 16;
+  state.graphics_ctrl.memory_mapping = 3; // color text mode
 
-  state.vbe_enabled=0;
-  state.vbe_8bit_dac=0;
-  if (!strcmp(extname, "vbe")) {
-    for (addr=VBE_DISPI_IOPORT_INDEX; addr<=VBE_DISPI_IOPORT_DATA; addr++) {
-      DEV_register_ioread_handler(this, vbe_read_handler, addr, "vga video", 7);
-      DEV_register_iowrite_handler(this, vbe_write_handler, addr, "vga video", 7);
-    }    
-    if (!BX_SUPPORT_PCIUSB || !SIM->get_param_bool(BXPN_USB1_ENABLED)->get()) {
-      for (addr=VBE_DISPI_IOPORT_INDEX_OLD; addr<=VBE_DISPI_IOPORT_DATA_OLD; addr++) {
-        DEV_register_ioread_handler(this, vbe_read_handler, addr, "vga video", 7);
-        DEV_register_iowrite_handler(this, vbe_write_handler, addr, "vga video", 7);
-      }    
-    }
-    DEV_register_memory_handlers(theVga, mem_read_handler, mem_write_handler,
-                                 VBE_DISPI_LFB_PHYSICAL_ADDRESS,
-                                 VBE_DISPI_LFB_PHYSICAL_ADDRESS + VBE_DISPI_TOTAL_VIDEO_MEMORY_BYTES - 1);
+  state.vga_mem_updated = 1;
 
-    if (state.memory == NULL)
-      state.memory = new u8[VBE_DISPI_TOTAL_VIDEO_MEMORY_BYTES];
-    memset(state.memory, 0, VBE_DISPI_TOTAL_VIDEO_MEMORY_BYTES);
-    state.memsize = VBE_DISPI_TOTAL_VIDEO_MEMORY_BYTES;
-    state.vbe_cur_dispi=VBE_DISPI_ID0;
-    state.vbe_xres=640;
-    state.vbe_yres=480;
-    state.vbe_bpp=8;
-    state.vbe_bank=0;
-    state.vbe_curindex=0;
-    state.vbe_offset_x=0;
-    state.vbe_offset_y=0;
-    state.vbe_virtual_xres=640;
-    state.vbe_virtual_yres=480;
-    state.vbe_bpp_multiplier=1;
-    state.vbe_virtual_start=0;
-    state.vbe_lfb_enabled=0;
-    state.vbe_get_capabilities=0;
-    bx_gui->get_capabilities(&max_xres, &max_yres,
-                             &max_bpp);
-    if (max_xres > VBE_DISPI_MAX_XRES) {
-      state.vbe_max_xres=VBE_DISPI_MAX_XRES;
-    } else {
-      state.vbe_max_xres=max_xres;
-    }
-    if (max_yres > VBE_DISPI_MAX_YRES) {
-      state.vbe_max_yres=VBE_DISPI_MAX_YRES;
-    } else {
-      state.vbe_max_yres=max_yres;
-    }
-    if (max_bpp > VBE_DISPI_MAX_BPP) {
-      state.vbe_max_bpp=VBE_DISPI_MAX_BPP;
-    } else {
-      state.vbe_max_bpp=max_bpp;
-    }
-    this->extension_init = 1;
-  
-    BX_INFO(("VBE Bochs Display Extension Enabled"));
-  }
-#endif  
-
-    state.CRTC.reg[0x09] = 16;
-    state.graphics_ctrl.memory_mapping = 3; // color text mode
-
-    state.vga_mem_updated = 1;
-
-#if defined(_WIN32)
-    screen_refresh_handle_s3 = CreateThread(NULL,0,refresh_proc_s3,this,0,NULL);
-#else
-    pthread_create(&screen_refresh_handle_s3,NULL,refresh_proc_s3,this);
-#endif
-
-  printf("%s: $Id: S3Trio64.cpp,v 1.12 2008/02/27 12:04:25 iamcamiel Exp $\n",devid_string);
+  StopThread = false;
+  myThread.start(*this);
+  printf("%s: $Id: S3Trio64.cpp,v 1.13 2008/03/05 14:41:46 iamcamiel Exp $\n",devid_string);
 }
 
 CS3Trio64::~CS3Trio64()
 {
-  printf("%%VGA-I-SHUTDOWN: vga console has shut down.\n");
+  StopThread = true;
+//  mySemaphore.set();
+  myThread.join();
+  printf("S3: vga console has shut down.\n");
 }
 
 u32 CS3Trio64::ReadMem_Legacy(int index, u32 address, int dsize)
 {
   switch(index)
     {
+    case 1: /* io ports */
+      return io_read(address+0x3b4, dsize);
     case 2: /* io ports */
-      return io_read(address, dsize);
+      return io_read(address+0x3c0, dsize);
+    case 3: /* io ports */
+      return io_read(address+0x3ba, dsize);
     case 4: /* legacy memory */
       return legacy_read(address, dsize);
     case 5: /* rom */
-    case 6:
       return rom_read(address, dsize);
+    case 8: /* io ports */
+      return io_read(address+0x3d4, dsize);
+    case 9: /* io ports */
+      return io_read(address+0x3da, dsize);
     }
   return 0;
 }
@@ -420,15 +369,17 @@ void CS3Trio64::WriteMem_Legacy(int index, u32 address, int dsize, u32 data)
 {
   switch(index)
     {
+    case 1:  /* io port */
+      io_write(address+0x3b4,dsize,data);
+      return;
     case 2:  /* io port */
-      io_write(address,dsize,data);
+      io_write(address+0x3c0,dsize,data);
+      return;
+    case 3:  /* io port */
+      io_write(address+0x3ba,dsize,data);
       return;
     case 4:  /* legacy memory */
       legacy_write(address,dsize,data);
-      return;
-    case 5:  /* rom */
-    case 6:
-      rom_write(address,dsize,data);
       return;
     case 7: /* bios message */
       bios_message[bios_message_size++] = (char) data & 0xff;
@@ -441,6 +392,12 @@ void CS3Trio64::WriteMem_Legacy(int index, u32 address, int dsize, u32 data)
         }
         bios_message_size = 0;
       }
+      return;
+    case 8:  /* io port */
+      io_write(address+0x3d4,dsize,data);
+      return;
+    case 9:  /* io port */
+      io_write(address+0x3da,dsize,data);
       return;
     }
 }
@@ -468,9 +425,10 @@ void CS3Trio64::WriteMem_Bar(int func, int bar, u32 address, int dsize, u32 data
 /**
  * Redraw the screen.
  **/
-int CS3Trio64::DoClock()
+void CS3Trio64::check_state()
 {
-  return 0;
+  if(!myThread.isRunning())
+    FAILURE("S3: thread has died");
 }
 
 static u32 s3_magic1 = 0x53338811;
@@ -593,12 +551,12 @@ u32 CS3Trio64::legacy_read(u32 address, int dsize)
   switch (dsize)
     {
     case 32:
-      data |= (u64)vga_mem_read(address + 0xA0002) << 16;// (u64)(*((u8*)x))&0xff;
-      data |= (u64)vga_mem_read(address + 0xA0003) << 24;// (u64)(*((u8*)x))&0xff;
+      data |= (u64)vga_mem_read((u32)address + 0xA0003) << 24;
+      data |= (u64)vga_mem_read((u32)address + 0xA0002) << 16;
     case 16:
-      data |= (u64)vga_mem_read(address + 0xA0001) << 8;// (u64)(*((u8*)x))&0xff;
+      data |= (u64)vga_mem_read((u32)address + 0xA0001) << 8;
     case 8:
-      data |= (u64)vga_mem_read(address + 0xA0000);// (u64)(*((u8*)x))&0xff;
+      data |= (u64)vga_mem_read((u32)address + 0xA0000);
     }
 //  //printf("S3 legacy read: %" LL "x, %d, %" LL "x   \n", address, dsize, data);
   return data;
@@ -612,14 +570,15 @@ void CS3Trio64::legacy_write(u32 address, int dsize, u32 data)
 //  //printf("S3 legacy write: %" LL "x, %d, %" LL "x   \n", address, dsize, data);
   switch(dsize) {
   case 32:
-    vga_mem_write(address+0xA0002, (u8)(data>>16));
-    vga_mem_write(address+0xA0003, (u8)(data>>24));
+    vga_mem_write((u32)address+0xA0002, (u8)(data>>16));
+    vga_mem_write((u32)address+0xA0003, (u8)(data>>24));
   case 16:
-    vga_mem_write(address+0xA0001, (u8)(data>>8));
+    vga_mem_write((u32)address+0xA0001, (u8)(data>>8));
   case 8:
-    vga_mem_write(address+0xA0000, (u8)(data));
+    vga_mem_write((u32)address+0xA0000, (u8)(data));
   }
 }
+
 
 /**
  * Read from Option ROM
@@ -650,29 +609,24 @@ u32 CS3Trio64::rom_read(u32 address, int dsize)
 }
 
 /**
- * Write to Option ROM
- */
-void CS3Trio64::rom_write(u32 address, int dsize, u32 data)
-{
-  //printf("S3 rom write: %" LL "x, %d, %" LL "x --", address, dsize, data);
-}
-
-/**
  * Read from I/O Port
  */
 u32 CS3Trio64::io_read(u32 address, int dsize)
 {
   u32 data = 0;
   if (dsize !=8)
-    FAILURE("Unsupported dsize!");
+    FAILURE("Unsupported dsize");
 
-  switch(address+VGA_BASE) {
+  switch(address) {
     case 0x3c0:
-        data = read_b_3c0();
-        break;
+      data = read_b_3c0();
+      break;
     case 0x3c1:
-        data = read_b_3c1();
-        break;
+      data = read_b_3c1();
+      break;
+    case 0x3c2:
+      data = read_b_3c2();
+      break;
     case 0x3c3:
       data = read_b_3c3();
       break;
@@ -685,72 +639,34 @@ u32 CS3Trio64::io_read(u32 address, int dsize)
     case 0x3c9:
       data = read_b_3c9();
       break;
-   case 0x3cc:
-        data = read_b_3cc();
-        break;
-   case 0x3cf:
-        data = read_b_3cf();
-        break;
+    case 0x3ca:
+      data = read_b_3ca();
+      break;
+    case 0x3cc:
+      data = read_b_3cc();
+      break;
+    case 0x3cf:
+      data = read_b_3cf();
+      break;
     case 0x3b4:
     case 0x3d4:
-        data = read_b_3d4();
-        break;
+      data = read_b_3d4();
+      break;
     case 0x3b5:
     case 0x3d5:
-        data = read_b_3d5();
-        break;
+      data = read_b_3d5();
+      break;
     case 0x3ba:
     case 0x3da:
-        data = read_b_3da();
-        break;
+      data = read_b_3da();
+      break;
 
-  //case 0x3d5:
-  //  switch(state.crtc_index) {
-  //    /* registers that are just mirrors of the data. */
-  //  case 0x0a: // cursor start line
-  //  case 0x0b: // cursor end line
-  //  case 0x38: // CR38 Register Lock 1
-  //  case 0x39: // CR39 Register Lock 2
-  //  case 0x46: 
-  //  case 0x54: // Extended Memory Control 2 Register
-  //  case 0x56: // External Sync Control 1 Register 
-  //  case 0x57:
-  //    data = state.crtc_data[state.crtc_index];
-  //    break;
-
-  //    /* constant or special registers */
-  //  case 0x2e: //Extended Chip ID
-  //    data = 0x11; // trio 64.
-  //    break;
-  //  case 0x2f: // Revision 
-  //    data = 0x00;
-  //    break;
-  //  case 0x36: // CR36 Reset State Read 1
-  //    // 000 1 10 10
-  //    // ^   ^ ^  ^- PCI
-  //    // |   | +---- Memory page mode select. EDO
-  //    // |   +------ Display memory dedicated
-  //    // +---------- Memory size.  4M
-  //    data = 0x1A;
-  //    break;
-
-  //    /* catchall */
-  //  default:
-  //    printf("%%VGA-I-CRTC: read unknown crtc index: %x\n",state.crtc_index);
-  //  }
-  //  break;
-  //case 0x3da: // input status #1 register
-  //  // this tells if there's a retrace in progress.  Nope!
-  //  data = 0x00;
-  //  // also resets the 3c0 mode.
-  //  state.reg_3c0_mode = 0;
-  //  break;
-  default:
-    printf("%%VGA-W-PORT: Unhandled port %x read\n",address+VGA_BASE);
-    throw((int)1);
+    default:
+    printf("%%VGA-W-PORT: Unhandled port %x read\n",address);
+      throw((int)1);
   }
 
-  //printf("S3 io read: %" LL "x, %d, %" LL "x   \n", address+VGA_BASE, dsize, data);
+  //printf("S3 io read: %" LL "x, %d, %" LL "x   \n", address, dsize, data);
 
   return data;
 }
@@ -767,8 +683,8 @@ void CS3Trio64::io_write(u32 address, int dsize, u32 data)
     io_write_b(address,(u8)data);
     break;
   case 16:
-    io_write_b(address    ,(u8) data    &0xff);
-    io_write_b(address + 1,(u8)(data>>8)&0xff);
+    io_write_b(address    ,(u8) data);
+    io_write_b(address + 1,(u8)(data>>8));
     break;
   default:
     FAILURE("Weird IO size!");
@@ -777,7 +693,7 @@ void CS3Trio64::io_write(u32 address, int dsize, u32 data)
 
 void CS3Trio64::io_write_b(u32 address, u8 data)
 {
-  switch(address+VGA_BASE) {
+  switch(address) {
 
     case 0x3c0:
         write_b_3c0(data);
@@ -819,7 +735,7 @@ void CS3Trio64::io_write_b(u32 address, u8 data)
       break;
 
   default:
-    printf("%%VGA-W-PORT: Unhandled port %x write\n",address+VGA_BASE);
+    printf("%%VGA-W-PORT: Unhandled port %x write\n",address);
     throw((int)1);
   }
 }
@@ -838,7 +754,9 @@ void CS3Trio64::write_b_3c0(u8 value)
 #endif
          if (state.attribute_ctrl.video_enabled == 0)
          {
+           bx_gui->lock();
            bx_gui->clear_screen();
+           bx_gui->unlock();
          }
          else if (!prev_video_enabled) {
 #if defined(DEBUG_VGA)
@@ -890,7 +808,9 @@ void CS3Trio64::write_b_3c0(u8 value)
              state.attribute_ctrl.mode_ctrl.internal_palette_size =
                (value >> 7) & 0x01;
              if (((value >> 2) & 0x01) != prev_line_graphics) {
+               bx_gui->lock();
                bx_gui->set_text_charmap( & state.memory[0x20000 + state.charmap_address]);
+               bx_gui->unlock();
                state.vga_mem_updated = 1;
              }
              if (((value >> 7) & 0x01) != prev_int_pal_size) {
@@ -980,7 +900,9 @@ void CS3Trio64::write_b_3c5(u8 value)
            {
              state.sequencer.char_map_select = 0;
              state.charmap_address = 0;
+             bx_gui->lock();
              bx_gui->set_text_charmap(& state.memory[0x20000 + state.charmap_address]);
+             bx_gui->unlock();
              state.vga_mem_updated = 1;
            }
           state.sequencer.reset1 = (value >> 0) & 0x01;
@@ -1006,7 +928,9 @@ void CS3Trio64::write_b_3c5(u8 value)
            if (charmap2 > 3) charmap2 = (charmap2 & 3) + 4;
            if (state.CRTC.reg[0x09] > 0) {
              state.charmap_address = (charmap1 << 13);
+             bx_gui->lock();
              bx_gui->set_text_charmap(& state.memory[0x20000 + state.charmap_address]);
+             bx_gui->unlock();
              state.vga_mem_updated = 1;
              }
            if (charmap2 != charmap1)
@@ -1026,7 +950,7 @@ void CS3Trio64::write_b_3c5(u8 value)
            break;
          default:
            printf("io write 3c5: index %u unhandled   \n", (unsigned) state.sequencer.index);
-           throw((int)1);
+	       throw((int)1);
          }
 }
 
@@ -1069,12 +993,17 @@ void CS3Trio64::write_b_3c9(u8 value)
            state.pel.data[state.pel.write_data_register].green = value;
            break;
          case 2:
-           state.pel.data[state.pel.write_data_register].blue = value;
-           if (bx_gui->palette_change(state.pel.write_data_register,
-             state.pel.data[state.pel.write_data_register].red<<2,
-             state.pel.data[state.pel.write_data_register].green<<2,
-             state.pel.data[state.pel.write_data_register].blue<<2))
-             redraw_area(0, 0, old_iWidth, old_iHeight);
+           {
+             state.pel.data[state.pel.write_data_register].blue = value;
+             bx_gui->lock();
+             bool changed = bx_gui->palette_change(state.pel.write_data_register,
+               state.pel.data[state.pel.write_data_register].red<<2,
+               state.pel.data[state.pel.write_data_register].green<<2,
+               state.pel.data[state.pel.write_data_register].blue<<2);
+             bx_gui->unlock();
+             if (changed)
+               redraw_area(0, 0, old_iWidth, old_iHeight);
+           }
            break;
          }
  
@@ -1177,7 +1106,7 @@ void CS3Trio64::write_b_3cf(u8 value)
          default:
            /* ??? */
            printf("io write: 3cf: index %u unhandled   \n", (unsigned) state.graphics_ctrl.index);
-           throw((int)1);
+	       throw((int)1);
          }
 }
 
@@ -1199,8 +1128,8 @@ void CS3Trio64::write_b_3d5(u8 value)
          printf("write: invalid CRTC register 0x%02x ignored",
            (unsigned) state.CRTC.address);
 #endif
-         return;
-       }
+    return;
+  }
        if (state.CRTC.write_protect && (state.CRTC.address < 0x08)) {
         if (state.CRTC.address == 0x07) {
           state.CRTC.reg[state.CRTC.address] &= ~0x10;
@@ -1322,14 +1251,18 @@ u8 CS3Trio64::read_b_3c1()
          default:
            printf("io read: 0x3c1: unknown register 0x%02x   \n",
              (unsigned) state.attribute_ctrl.address);
-           throw((int)1);
+	       throw((int)1);
          }
+}
+
+u8 CS3Trio64::read_b_3c2()
+{
+    return 0; // input status register
 }
 
 u8 CS3Trio64::read_b_3c3()
 {
       return state.vga_enabled;
-
 }
 
 u8 CS3Trio64::read_b_3c4()
@@ -1367,7 +1300,7 @@ u8 CS3Trio64::read_b_3c5()
            default:
           BX_DEBUG(("io read 0x3c5: index %u unhandled",
             (unsigned) state.sequencer.index));
-          throw((int)1);
+	      throw((int)1);
           return 0;
         }
 }
@@ -1400,6 +1333,12 @@ u8 CS3Trio64::read_b_3c9()
       }
       return retval;
 
+}
+
+u8 CS3Trio64::read_b_3ca()
+{
+    /* Feature control */
+    return 0;
 }
 
 u8 CS3Trio64::read_b_3cc()
@@ -1466,7 +1405,7 @@ u8 CS3Trio64::read_b_3cf()
           /* ??? */
           BX_DEBUG(("io read: 0x3cf: index %u unhandled",
             (unsigned) state.graphics_ctrl.index));
-          throw((int)1);
+	      throw((int)1);
           return (0);
       }
 
@@ -1482,7 +1421,7 @@ u8 CS3Trio64::read_b_3d5()
     if (state.CRTC.address > 0x18) {
         printf("io read: invalid CRTC register 0x%02x   \n",
           (unsigned) state.CRTC.address);
-        throw((int)1);
+	    throw((int)1);
         return 0;
       }
       return state.CRTC.reg[state.CRTC.address];
@@ -1548,20 +1487,10 @@ void CS3Trio64::redraw_area(unsigned x0, unsigned y0, unsigned width, unsigned h
 
   state.vga_mem_updated = 1;
 
-#if BX_SUPPORT_VBE
-  if (state.graphics_ctrl.graphics_alpha || state.vbe_enabled) {
-#else
   if (state.graphics_ctrl.graphics_alpha) {
-#endif
     // graphics mode
     xmax = old_iWidth;
     ymax = old_iHeight;
-#if BX_SUPPORT_VBE
-    if (state.vbe_enabled) {
-      xmax = state.vbe_xres;
-      ymax = state.vbe_yres;
-    }
-#endif
     xt0 = x0 / X_TILESIZE;
     yt0 = y0 / Y_TILESIZE;
     if (x0 < xmax) {
@@ -1601,277 +1530,6 @@ void CS3Trio64::update(void)
       || !state.sequencer.reset2 || !state.sequencer.reset1)
     return;
 
-  /* skip screen update if the vertical retrace is in progress
-     (using 72 Hz vertical frequency) */
-//  if ((bx_pc_system.time_usec() % 13888) < 70)
-//    return;
-
-#if BX_SUPPORT_VBE  
-  if ((state.vbe_enabled) && (state.vbe_bpp != VBE_DISPI_BPP_4))
-  {
-    // specific VBE code display update code
-    unsigned pitch;
-    unsigned xc, yc, xti, yti;
-    unsigned r, c, w, h;
-    int i;
-    unsigned long red, green, blue, colour;
-    u8 * vid_ptr, * vid_ptr2;
-    u8 * tile_ptr, * tile_ptr2;
-    bx_svga_tileinfo_t info;
-    u8 dac_size = state.vbe_8bit_dac ? 8 : 6;
-
-    iWidth=state.vbe_xres;
-    iHeight=state.vbe_yres;
-    pitch = state.line_offset;
-    u8 *disp_ptr = &state.memory[state.vbe_virtual_start]; 
-
-    if (bx_gui->graphics_tile_info(&info)) {
-      if (info.is_indexed) {
-        switch (state.vbe_bpp) {
-          case 4:
-          case 15:
-          case 16:
-          case 24:
-          case 32:
-            BX_ERROR(("current guest pixel format is unsupported on indexed colour host displays"));
-            break;
-          case 8:
-            for (yc=0, yti = 0; yc<iHeight; yc+=Y_TILESIZE, yti++) {
-              for (xc=0, xti = 0; xc<iWidth; xc+=X_TILESIZE, xti++) {
-                if (GET_TILE_UPDATED (xti, yti)) {
-                  vid_ptr = disp_ptr + (yc * pitch + xc);
-                  tile_ptr = bx_gui->graphics_tile_get(xc, yc, &w, &h);
-                  for (r=0; r<h; r++) {
-                    vid_ptr2  = vid_ptr;
-                    tile_ptr2 = tile_ptr;
-                    for (c=0; c<w; c++) {
-                      colour = 0;
-                      for (i=0; i<(int)state.vbe_bpp; i+=8) {
-                        colour |= *(vid_ptr2++) << i;
-                      }
-                      if (info.is_little_endian) {
-                        for (i=0; i<info.bpp; i+=8) {
-                          *(tile_ptr2++) = (u8)(colour >> i);
-                        }
-                      }
-                      else {
-                        for (i=info.bpp-8; i>-8; i-=8) {
-                          *(tile_ptr2++) = (u8)(colour >> i);
-                        }
-                      }
-                    }
-                    vid_ptr  += pitch;
-                    tile_ptr += info.pitch;
-                  }
-                  bx_gui->graphics_tile_update_in_place(xc, yc, w, h);
-                  SET_TILE_UPDATED (xti, yti, 0);
-                }
-              }
-            }
-            break;
-        }
-      }
-      else {
-        switch (state.vbe_bpp) {
-          case 4:
-            BX_ERROR(("cannot draw 4bpp SVGA"));
-            break;
-          case 8:
-            for (yc=0, yti = 0; yc<iHeight; yc+=Y_TILESIZE, yti++) {
-              for (xc=0, xti = 0; xc<iWidth; xc+=X_TILESIZE, xti++) {
-                if (GET_TILE_UPDATED (xti, yti)) {
-                  vid_ptr = disp_ptr + (yc * pitch + xc);
-                  tile_ptr = bx_gui->graphics_tile_get(xc, yc, &w, &h);
-                  for (r=0; r<h; r++) {
-                    vid_ptr2  = vid_ptr;
-                    tile_ptr2 = tile_ptr;
-                    for (c=0; c<w; c++) {
-                      colour = *(vid_ptr2++);
-                      colour = MAKE_COLOUR(
-                        state.pel.data[colour].red, dac_size, info.red_shift, info.red_mask,
-                        state.pel.data[colour].green, dac_size, info.green_shift, info.green_mask,
-                        state.pel.data[colour].blue, dac_size, info.blue_shift, info.blue_mask);
-                      if (info.is_little_endian) {
-                        for (i=0; i<info.bpp; i+=8) {
-                          *(tile_ptr2++) = (u8)(colour >> i);
-                        }
-                      }
-                      else {
-                        for (i=info.bpp-8; i>-8; i-=8) {
-                          *(tile_ptr2++) = (u8)(colour >> i);
-                        }
-                      }
-                    }
-                    vid_ptr  += pitch;
-                    tile_ptr += info.pitch;
-                  }
-                  bx_gui->graphics_tile_update_in_place(xc, yc, w, h);
-                  SET_TILE_UPDATED (xti, yti, 0);
-                }
-              }
-            }
-            break;
-          case 15:
-            for (yc=0, yti = 0; yc<iHeight; yc+=Y_TILESIZE, yti++) {
-              for (xc=0, xti = 0; xc<iWidth; xc+=X_TILESIZE, xti++) {
-                if (GET_TILE_UPDATED (xti, yti)) {
-                  vid_ptr = disp_ptr + (yc * pitch + (xc<<1));
-                  tile_ptr = bx_gui->graphics_tile_get(xc, yc, &w, &h);
-                  for (r=0; r<h; r++) {
-                    vid_ptr2  = vid_ptr;
-                    tile_ptr2 = tile_ptr;
-                    for (c=0; c<w; c++) {
-                      colour = *(vid_ptr2++);
-                      colour |= *(vid_ptr2++) << 8;
-                      colour = MAKE_COLOUR(
-                        colour & 0x001f, 5, info.blue_shift, info.blue_mask,
-                        colour & 0x03e0, 10, info.green_shift, info.green_mask,
-                        colour & 0x7c00, 15, info.red_shift, info.red_mask);
-                      if (info.is_little_endian) {
-                        for (i=0; i<info.bpp; i+=8) {
-                          *(tile_ptr2++) = (u8)(colour >> i);
-                        }
-                      }
-                      else {
-                        for (i=info.bpp-8; i>-8; i-=8) {
-                          *(tile_ptr2++) = (u8)(colour >> i);
-                        }
-                      }
-                    }
-                    vid_ptr  += pitch;
-                    tile_ptr += info.pitch; 
-                  }
-                  bx_gui->graphics_tile_update_in_place(xc, yc, w, h);
-                  SET_TILE_UPDATED (xti, yti, 0);
-                }
-              }
-            }
-            break;
-          case 16:
-            for (yc=0, yti = 0; yc<iHeight; yc+=Y_TILESIZE, yti++) {
-              for (xc=0, xti = 0; xc<iWidth; xc+=X_TILESIZE, xti++) {
-                if (GET_TILE_UPDATED (xti, yti)) {
-                  vid_ptr = disp_ptr + (yc * pitch + (xc<<1));
-                  tile_ptr = bx_gui->graphics_tile_get(xc, yc, &w, &h);
-                  for (r=0; r<h; r++) {
-                    vid_ptr2  = vid_ptr;
-                    tile_ptr2 = tile_ptr;
-                    for (c=0; c<w; c++) {
-                      colour = *(vid_ptr2++);
-                      colour |= *(vid_ptr2++) << 8;
-                      colour = MAKE_COLOUR(
-                        colour & 0x001f, 5, info.blue_shift, info.blue_mask,
-                        colour & 0x07e0, 11, info.green_shift, info.green_mask,
-                        colour & 0xf800, 16, info.red_shift, info.red_mask);
-                      if (info.is_little_endian) {
-                        for (i=0; i<info.bpp; i+=8) {
-                          *(tile_ptr2++) = (u8)(colour >> i);
-                        }
-                      }
-                      else {
-                        for (i=info.bpp-8; i>-8; i-=8) {
-                          *(tile_ptr2++) = (u8)(colour >> i);
-                        }
-                      }
-                    }
-                    vid_ptr  += pitch;
-                    tile_ptr += info.pitch; 
-                  }
-                  bx_gui->graphics_tile_update_in_place(xc, yc, w, h);
-                  SET_TILE_UPDATED (xti, yti, 0);
-                }
-              }
-            }
-            break;
-          case 24:
-            for (yc=0, yti = 0; yc<iHeight; yc+=Y_TILESIZE, yti++) {
-              for (xc=0, xti = 0; xc<iWidth; xc+=X_TILESIZE, xti++) {
-                if (GET_TILE_UPDATED (xti, yti)) {
-                  vid_ptr = disp_ptr + (yc * pitch + 3*xc);
-                  tile_ptr = bx_gui->graphics_tile_get(xc, yc, &w, &h);
-                  for (r=0; r<h; r++) {
-                    vid_ptr2  = vid_ptr;
-                    tile_ptr2 = tile_ptr;
-                    for (c=0; c<w; c++) {
-                      blue = *(vid_ptr2++);
-                      green = *(vid_ptr2++);
-                      red = *(vid_ptr2++);
-                      colour = MAKE_COLOUR(
-                        red, 8, info.red_shift, info.red_mask,
-                        green, 8, info.green_shift, info.green_mask,
-                        blue, 8, info.blue_shift, info.blue_mask);
-                      if (info.is_little_endian) {
-                        for (i=0; i<info.bpp; i+=8) {
-                          *(tile_ptr2++) = (u8)(colour >> i);
-                        }
-                      }
-                      else {
-                        for (i=info.bpp-8; i>-8; i-=8) {
-                          *(tile_ptr2++) = (u8)(colour >> i);
-                        }
-                      }
-                    }
-                    vid_ptr  += pitch;
-                    tile_ptr += info.pitch; 
-                  }
-                  bx_gui->graphics_tile_update_in_place(xc, yc, w, h);
-                  SET_TILE_UPDATED (xti, yti, 0);
-                }
-              }
-            }
-            break;
-          case 32:
-            for (yc=0, yti = 0; yc<iHeight; yc+=Y_TILESIZE, yti++) {
-              for (xc=0, xti = 0; xc<iWidth; xc+=X_TILESIZE, xti++) {
-                if (GET_TILE_UPDATED (xti, yti)) {
-                  vid_ptr = disp_ptr + (yc * pitch + (xc<<2));
-                  tile_ptr = bx_gui->graphics_tile_get(xc, yc, &w, &h);
-                  for (r=0; r<h; r++) {
-                    vid_ptr2  = vid_ptr;
-                    tile_ptr2 = tile_ptr;
-                    for (c=0; c<w; c++) {
-                      blue = *(vid_ptr2++);
-                      green = *(vid_ptr2++);
-                      red = *(vid_ptr2++);
-                      vid_ptr2++;
-                      colour = MAKE_COLOUR(
-                        red, 8, info.red_shift, info.red_mask,
-                        green, 8, info.green_shift, info.green_mask,
-                        blue, 8, info.blue_shift, info.blue_mask);
-                      if (info.is_little_endian) {
-                        for (i=0; i<info.bpp; i+=8) {
-                          *(tile_ptr2++) = (u8)(colour >> i);
-                        }
-                      }
-                      else {
-                        for (i=info.bpp-8; i>-8; i-=8) {
-                          *(tile_ptr2++) = (u8)(colour >> i);
-                        }
-                      }
-                    }
-                    vid_ptr  += pitch;
-                    tile_ptr += info.pitch;
-                  }
-                  bx_gui->graphics_tile_update_in_place(xc, yc, w, h);
-                  SET_TILE_UPDATED (xti, yti, 0);
-                }
-              }
-            }
-            break;
-        }
-      }
-      old_iWidth = iWidth;
-      old_iHeight = iHeight;
-      state.vga_mem_updated = 0;
-    }
-    else {
-      BX_PANIC(("cannot get svga tile info"));
-    }
-
-    // after a vbe display update, don't try to do any 'normal vga' updates anymore
-    return;
-  }
-#endif  
   // fields that effect the way video memory is serialized into screen output:
   // GRAPHICS CONTROLLER:
   //   state.graphics_ctrl.shift_reg:
@@ -1946,26 +1604,12 @@ void CS3Trio64::update(void)
         } else { // output data in serial fashion with each display plane
                  // output on its associated serial output.  Standard EGA/VGA format
 
-#if BX_SUPPORT_VBE  
-          if (state.vbe_enabled)
-          {
-            plane0 = &state.memory[0<<VBE_DISPI_4BPP_PLANE_SHIFT];
-            plane1 = &state.memory[1<<VBE_DISPI_4BPP_PLANE_SHIFT];
-            plane2 = &state.memory[2<<VBE_DISPI_4BPP_PLANE_SHIFT];
-            plane3 = &state.memory[3<<VBE_DISPI_4BPP_PLANE_SHIFT];
-            start_addr = state.vbe_virtual_start;
-            line_compare = 0xffff;
-          }
-          else
-#endif
-          {
             plane0 = &state.memory[0<<16];
             plane1 = &state.memory[1<<16];
             plane2 = &state.memory[2<<16];
             plane3 = &state.memory[3<<16];
             line_compare = state.line_compare;
             if (state.y_doublescan) line_compare >>= 1;
-          }
 
           for (yc=0, yti=0; yc<iHeight; yc+=Y_TILESIZE, yti++) {
             for (xc=0, xti=0; xc<iWidth; xc+=X_TILESIZE, xti++) {
@@ -2070,7 +1714,7 @@ void CS3Trio64::update(void)
           if (state.misc_output.select_high_bank != 1)
           {
             printf("update: select_high_bank != 1   \n");
-            throw((int)1);
+	        throw((int)1);
           }
 
           for (yc=0, yti=0; yc<iHeight; yc+=Y_TILESIZE, yti++) {
@@ -2133,6 +1777,7 @@ void CS3Trio64::update(void)
     }
 
   else { // text mode
+
     unsigned long start_address;
     unsigned long cursor_address, cursor_x, cursor_y;
     bx_vga_tminfo_t tm_info;
@@ -2274,23 +1919,7 @@ u8 CS3Trio64::vga_mem_read(u32 addr)
   u32 offset;
   u8 *plane0, *plane1, *plane2, *plane3;
   u8 retval = 0;
-
-#if BX_SUPPORT_VBE  
-  // if in a vbe enabled mode, read from the vbe_memory
-  if ((state.vbe_enabled) && (state.vbe_bpp != VBE_DISPI_BPP_4))
-  {
-        return vbe_mem_read(addr);
-  }
-  else if (addr >= VBE_DISPI_LFB_PHYSICAL_ADDRESS)
-  {
-        return 0xff;
-  }
-#endif  
-
-#if defined(VGA_TRACE_FEATURE)
-//  BX_DEBUG(("8-bit memory read from 0x%08x", addr));
-#endif
-
+ 
   switch (state.graphics_ctrl.memory_mapping) {
     case 1: // 0xA0000 .. 0xAFFFF
       if (addr > 0xAFFFF) return 0xff;
@@ -2312,23 +1941,10 @@ u8 CS3Trio64::vga_mem_read(u32 addr)
     // Mode 13h: 320 x 200 256 color mode: chained pixel representation
     return state.memory[(offset & ~0x03) + (offset % 4)*65536];
   }
-
-#if BX_SUPPORT_VBE  
-  if (state.vbe_enabled)
-  {
-    plane0 = &state.memory[(0<<VBE_DISPI_4BPP_PLANE_SHIFT) + (state.vbe_bank<<16)];
-    plane1 = &state.memory[(1<<VBE_DISPI_4BPP_PLANE_SHIFT) + (state.vbe_bank<<16)];
-    plane2 = &state.memory[(2<<VBE_DISPI_4BPP_PLANE_SHIFT) + (state.vbe_bank<<16)];
-    plane3 = &state.memory[(3<<VBE_DISPI_4BPP_PLANE_SHIFT) + (state.vbe_bank<<16)];
-  }
-  else
-#endif
-  {
     plane0 = &state.memory[0<<16];
     plane1 = &state.memory[1<<16];
     plane2 = &state.memory[2<<16];
     plane3 = &state.memory[3<<16];
-  }
 
   /* addr between 0xA0000 and 0xAFFFF */
   switch (state.graphics_ctrl.read_mode) {
@@ -2375,23 +1991,6 @@ void CS3Trio64::vga_mem_write(u32 addr, u8 value)
   u8 new_val[4];
   unsigned start_addr;
   u8 *plane0, *plane1, *plane2, *plane3;
-
-#if BX_SUPPORT_VBE
-  // if in a vbe enabled mode, write to the vbe_memory
-  if ((state.vbe_enabled) && (state.vbe_bpp != VBE_DISPI_BPP_4))
-  {
-    vbe_mem_write(addr,value);
-    return;
-  }
-  else if (addr >= VBE_DISPI_LFB_PHYSICAL_ADDRESS)
-  {
-    return;
-  }
-#endif
-
-#if defined(VGA_TRACE_FEATURE)
-//	BX_DEBUG(("8-bit memory write to %08x = %02x", addr, value));
-#endif
 
   switch (state.graphics_ctrl.memory_mapping) {
     case 1: // 0xA0000 .. 0xAFFFF
@@ -2492,23 +2091,10 @@ void CS3Trio64::vga_mem_write(u32 addr, u8 value)
   }
 
   /* addr between 0xA0000 and 0xAFFFF */
-
-#if BX_SUPPORT_VBE
-  if (state.vbe_enabled)
-  {
-    plane0 = &state.memory[(0<<VBE_DISPI_4BPP_PLANE_SHIFT) + (state.vbe_bank<<16)];
-    plane1 = &state.memory[(1<<VBE_DISPI_4BPP_PLANE_SHIFT) + (state.vbe_bank<<16)];
-    plane2 = &state.memory[(2<<VBE_DISPI_4BPP_PLANE_SHIFT) + (state.vbe_bank<<16)];
-    plane3 = &state.memory[(3<<VBE_DISPI_4BPP_PLANE_SHIFT) + (state.vbe_bank<<16)];
-  }
-  else
-#endif
-  {
     plane0 = &state.memory[0<<16];
     plane1 = &state.memory[1<<16];
     plane2 = &state.memory[2<<16];
     plane3 = &state.memory[3<<16];
-  }
 
   switch (state.graphics_ctrl.write_mode) {
     unsigned i;
@@ -2619,7 +2205,7 @@ void CS3Trio64::vga_mem_write(u32 addr, u8 value)
           default:
             printf("vga_mem_write: write mode 0: op = %u",
                       (unsigned) state.graphics_ctrl.raster_op);
-            throw((int)1);
+		    throw((int)1);
         }
       }
       break;
@@ -2764,7 +2350,9 @@ void CS3Trio64::vga_mem_write(u32 addr, u8 value)
     if (state.sequencer.map_mask & 0x04) {
       if ((offset & 0xe000) == state.charmap_address) {
         //printf("Updating character map %04x with %02x...\n  ", (offset & 0x1fff), new_val[2]);
+        bx_gui->lock();
         bx_gui->set_text_charbyte((u16)(offset & 0x1fff), new_val[2]);
+        bx_gui->unlock();
       }
       plane2[offset] = new_val[2];
     }

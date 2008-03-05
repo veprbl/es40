@@ -27,7 +27,10 @@
  * \file 
  * Contains the code for the emulated Ali M1543C chipset devices.
  *
- * $Id: AliM1543C.cpp,v 1.60 2008/02/27 12:04:19 iamcamiel Exp $
+ * $Id: AliM1543C.cpp,v 1.61 2008/03/05 14:41:45 iamcamiel Exp $
+ *
+ * X-1.61       Camiel Vanderhoeven                             05-MAR-2008
+ *      Multi-threading version.
  *
  * X-1.60       Brian Wheeler                                   27-FEB-2008
  *      Avoid compiler warnings.
@@ -315,7 +318,7 @@ u32 ali_cfg_mask[64] = {
  * Constructor.
  **/
 
-CAliM1543C::CAliM1543C(CConfigurator * cfg, CSystem * c, int pcibus, int pcidev): CPCIDevice(cfg,c,pcibus,pcidev)
+CAliM1543C::CAliM1543C(CConfigurator * cfg, CSystem * c, int pcibus, int pcidev): CPCIDevice(cfg,c,pcibus,pcidev), myThread("ALi")
 {
   if (theAli != 0)
     FAILURE("More than one Ali!!");
@@ -349,8 +352,6 @@ CAliM1543C::CAliM1543C(CConfigurator * cfg, CSystem * c, int pcibus, int pcidev)
   for(i=0;i<9;i++)
     state.pit_counter[i] = 0;
 
-  c->RegisterClock(this, true);
-
   add_legacy_io(7,0x20,2);
   add_legacy_io(8,0xa0,2);
   add_legacy_io(30,0x4d0,2);
@@ -376,7 +377,10 @@ CAliM1543C::CAliM1543C(CConfigurator * cfg, CSystem * c, int pcibus, int pcidev)
   }
   lpt_reset();
 
-  printf("%s: $Id: AliM1543C.cpp,v 1.60 2008/02/27 12:04:19 iamcamiel Exp $\n",devid_string);
+  StopThread = false;
+  myThread.start(*this);
+
+  printf("%s: $Id: AliM1543C.cpp,v 1.61 2008/03/05 14:41:45 iamcamiel Exp $\n",devid_string);
 }
 
 /**
@@ -385,6 +389,9 @@ CAliM1543C::CAliM1543C(CConfigurator * cfg, CSystem * c, int pcibus, int pcidev)
 
 CAliM1543C::~CAliM1543C()
 {
+  StopThread = true;
+  myThread.join();
+
   if(lpt)
     fclose(lpt);
 }
@@ -816,6 +823,25 @@ void CAliM1543C::pit_clock() {
   }
 }
 
+void CAliM1543C::run()
+{
+  try {
+    for (;;) {
+      Poco::Thread::sleep(1);
+      if (StopThread) {
+        printf("ALi: exit thread.\n");
+        return;
+      }
+      do_pit_clock();
+    }
+  }
+  catch (...)
+  {
+    printf("ALi: exception in thread.\n");
+    // Let the thread die...
+  }
+}
+
 #define PIT_RATIO 1
 
 /**
@@ -823,36 +849,18 @@ void CAliM1543C::pit_clock() {
  *
  * This is a slow-clocked device, which means this DoClock isn't called as often as the CPU's DoClock.
  * Do the following:
- *  - Generate the 1024 Hz clock interrupt at IRQ_H 2 on the CPU's.
- *  - Handle keyboard clock.
  *  - Handle PIT clock.
  *  .
  **/
 
-int CAliM1543C::DoClock()
+void CAliM1543C::do_pit_clock()
 {
-  static int interrupt_factor=0;
-  cSystem->interrupt(-1, true);
-
-#if 0
-  // this isn't ready yet.
-  if(state.toy_stored_data[0x0b] & 0x40 && interrupt_factor++ > 10000) 
-  {
-    //printf("Issuing RTC Interrupt\n");
-    pic_interrupt(1,0);
-    state.toy_stored_data[0x0c] |= 0xf0; // mark that the interrupt has happened.
-    interrupt_factor=0;
-  }
-#endif
-
   static int pit_counter = 0;
   if(pit_counter++ >= PIT_RATIO)
   {
     pit_counter = 0;
     pit_clock();
   }
-
-  return 0;
 }
 
 #define PIC_STD 0
@@ -1085,16 +1093,6 @@ void CAliM1543C::pic_deassert(int index, int intno)
     cSystem->interrupt(55,false);
 }
 
-/**
- * Make sure a clock interrupt is generated on the next clock.
- * used for debugging, or to speed tings up when software is waiting for a clock tick.
- **/
-
-void CAliM1543C::instant_tick()
-{
-  DoClock();
-}
-
 static u32 ali_magic1 = 0xA111543C;
 static u32 ali_magic2 = 0xC345111A;
 
@@ -1287,5 +1285,10 @@ void CAliM1543C::lpt_write(u32 address, u8 data) {
   }
 }
 
+void CAliM1543C::check_state()
+{
+  if(!myThread.isRunning())
+    FAILURE("ALi thread has died");
+}
 
 CAliM1543C * theAli = 0;

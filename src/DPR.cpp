@@ -27,6 +27,9 @@
  * \file
  * Contains the code for the emulated Dual Port Ram and RMC devices.
  *
+ * X-1.17       Camiel Vanderhoeven                             05-MAR-2008
+ *      Multi-threading version.
+ *
  * X-1.16       Brian Wheeler                                   29-FEB-2008
  *      Fix psu and temperature status so Tru64 likes it.
  *
@@ -83,6 +86,7 @@
 #include "System.h"
 #include "Serial.h"
 #include <time.h>
+#include "AlphaCPU.h"
 
 #define ToBCD(x) (((x)/10 << 4) | ((x)%10))
 
@@ -98,44 +102,51 @@ CDPR::CDPR(CConfigurator * cfg, CSystem * c) : CSystemComponent(cfg,c)
   if (theDPR)
     FAILURE("More than one DPR!!");
   theDPR = this;
-  u8 i;
 
   c->RegisterMemory(this, 0, X64(0000080110000000),0x100000); // 16KB
+}
+
+void CDPR::init()
+{
+  u8 i;
+
   memset(state.ram,0,16*1024);
-  //
-  state.ram[0x3401] = 1;	// SROM valid
 
-  state.ram[0] = 1;		// EV6 BIST
-  state.ram[1] = 0x80;	// SROM status
-  state.ram[2] = 1;		// STR status
-  state.ram[3] = 1;		// CSC status
-  state.ram[4] = 1;		// Pchip0 status
-  state.ram[5] = 1;		// Pchip1 status
-  state.ram[6] = 1;		// DIMx status
-  state.ram[7] = 1;		// TIG bus status
-  state.ram[8] = 0xdd;	// DPR test started
-  state.ram[9] = 1;		// DPR status
-  state.ram[10] = 0xff;	// CPU speed status
-  state.ram[11] = 833%256;	//speed
-  state.ram[12] = 833/256;	//speed
-  // powerup time BCD:
-  time_t now = time(NULL);
-  struct tm *t = localtime(&now);
-  state.ram[16] = ToBCD(t->tm_hour);
-  state.ram[17] = ToBCD(t->tm_min);
-  state.ram[18] = ToBCD(t->tm_sec);
-  state.ram[19] = ToBCD(t->tm_mday);
-  state.ram[20] = ToBCD(t->tm_mon+1);
-  state.ram[21] = ToBCD(t->tm_year-100); // tm_year is based on 1900
+  int j = 0;
+  for (int j = 0; j<cSystem->get_cpu_num(); j++)
+  {
+    state.ram[j*0x20+0x00] = 1;		// EV6 BIST
+    state.ram[j*0x20+0x01] = (j==0)?0x80:j;	// SROM status
+    state.ram[j*0x20+0x02] = 1;		// STR status
+    state.ram[j*0x20+0x03] = 1;		// CSC status
+    state.ram[j*0x20+0x04] = 1;		// Pchip0 status
+    state.ram[j*0x20+0x05] = 1;		// Pchip1 status
+    state.ram[j*0x20+0x06] = 1;		// DIMx status
+    state.ram[j*0x20+0x07] = 1;		// TIG bus status
+    state.ram[j*0x20+0x08] = 0xdd;	// DPR test started
+    state.ram[j*0x20+0x09] = 1;		// DPR status
+    state.ram[j*0x20+0x0a] = 0xff;	// CPU speed status
+    state.ram[j*0x20+0x0b] = (cSystem->get_cpu(j)->get_speed()/1000000)%256;	//speed
+    state.ram[j*0x20+0x0c] = (cSystem->get_cpu(j)->get_speed()/1000000)/256;	//speed
+    // powerup time BCD:
+    time_t now = time(NULL);
+    struct tm *t = localtime(&now);
+    state.ram[j*0x20+0x10] = ToBCD(t->tm_hour);
+    state.ram[j*0x20+0x11] = ToBCD(t->tm_min);
+    state.ram[j*0x20+0x12] = ToBCD(t->tm_sec);
+    state.ram[j*0x20+0x13] = ToBCD(t->tm_mday);
+    state.ram[j*0x20+0x14] = ToBCD(t->tm_mon+1);
+    state.ram[j*0x20+0x15] = ToBCD(t->tm_year-100); // tm_year is based on 1900
 
-#if defined(DEBUG_DPR)
-  printf("%%DPR-I-BOOTDATE: %02x-%02x-%02x, %02x:%02x:%02x\n",
-	 state.ram[21],state.ram[20],state.ram[19],
-	 state.ram[16],state.ram[17],state.ram[18]);
-#endif
-  state.ram[0x16] = 0;	// no error
-  state.ram[0x1e] = 0x80; // CPU SROM sync moet 0x80 zijn; anders --> cpu0 startup failure
-  state.ram[0x1f] = 8;	// cach size in MB
+  #if defined(DEBUG_DPR)
+    printf("%%DPR-I-BOOTDATE: %02x-%02x-%02x, %02x:%02x:%02x\n",
+	   state.ram[j*0x20+21],state.ram[j*0x20+20],state.ram[j*0x20+19],
+	   state.ram[j*0x20+16],state.ram[j*0x20+17],state.ram[j*0x20+18]);
+  #endif
+    state.ram[j*0x20+0x16] = 0;	// no error
+    state.ram[j*0x20+0x1e] = 0x80; // CPU SROM sync moet 0x80 zijn; anders --> cpu0 startup failure
+    state.ram[j*0x20+0x1f] = 8;	// cach size in MB
+  }
 
   state.ram[0xda] = 0xaa; // TIG load
 
@@ -188,7 +199,21 @@ CDPR::CDPR(CConfigurator * cfg, CSystem * c) : CSystemComponent(cfg,c)
   state.ram[0xad] = 0xff; // MMB2
   state.ram[0xae] = 0xff; // MMB3
 
-  state.ram[0xaf] = 0x0e; // all MMB I2C's read + CPU 0
+  switch(cSystem->get_cpu_num())
+  {
+  case 1:
+    state.ram[0xaf] = 0x0e; // all MMB I2C's read + CPU 0
+    break;
+  case 2:
+    state.ram[0xaf] = 0x0c; // all MMB I2C's read + CPU 0
+    break;
+  case 3:
+    state.ram[0xaf] = 0x08; // all MMB I2C's read + CPU 0
+    break;
+  case 4:
+    state.ram[0xaf] = 0x00; // all MMB I2C's read + CPU 0
+    break;
+  }
   state.ram[0xb0] = 0x00; // PCI i2c read
   state.ram[0xb1] = 0x00; // mainboard i2c read
   state.ram[0xb2] = 0x00; // psu's and scsi backplanes i2c read
@@ -345,7 +370,7 @@ CDPR::CDPR(CConfigurator * cfg, CSystem * c) : CSystemComponent(cfg,c)
   //	3700:37FF SRM Reserved
   //	3800:3AFF RMC RMC scratch space
 
-  printf("%s: $Id: DPR.cpp,v 1.16 2008/02/29 10:23:09 iamcamiel Exp $\n",devid_string);
+  printf("%s: $Id: DPR.cpp,v 1.17 2008/03/05 14:41:46 iamcamiel Exp $\n",devid_string);
 }
 
 /**
@@ -374,7 +399,6 @@ void CDPR::WriteMem(int index, u64 address, int dsize, u64 data)
 {
   int i;
   int a = (int)(address>>6);
-  char trcbuffer[1000];
 #if defined(DEBUG_DPR)
   printf("%%DPR-I-WRITE: Dual-Port RAM write 0x%08x 0x%02x:\n",a,(u32)(data&0xff));
 #endif
@@ -453,6 +477,15 @@ void CDPR::WriteMem(int index, u64 address, int dsize, u64 data)
 	  // FRU-Write
 	  switch(state.ram[0xfb])
 	    {
+	    case 0x21:
+        case 0x22:
+        case 0x23:
+        case 0x24:
+          if ((state.ram[0xfb]-0x20)>cSystem->get_cpu_num())
+          {
+	        state.ram[0xfc] = 0x80;
+            break;
+          }
 	    case 1:
 	    case 2:
 	    case 3:
@@ -461,7 +494,6 @@ void CDPR::WriteMem(int index, u64 address, int dsize, u64 data)
 	    case 6:
 	    case 7:
 	    case 8:
-	    case 0x21:
 	    case 0x25:
 	    case 0x26:
 	    case 0x27:

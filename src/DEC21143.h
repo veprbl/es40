@@ -30,7 +30,10 @@
  * \file 
  * Contains the definitions for the emulated DEC 21143 NIC device.
  *
- * $Id: DEC21143.h,v 1.14 2008/02/29 10:12:36 iamcamiel Exp $
+ * $Id: DEC21143.h,v 1.15 2008/03/05 14:41:46 iamcamiel Exp $
+ *
+ * X-1.15       Camiel Vanderhoeven                             05-MAR-2008
+ *      Multi-threading version.
  *
  * X-1.14       Brian Wheeler                                   29-FEB-2008
  *      Compute SROM checksum. Tru64 needs this.
@@ -99,14 +102,14 @@
  *  .
  **/
 
-class CDEC21143 : public CPCIDevice  
+class CDEC21143 : public CPCIDevice, public Poco::Runnable
 {
  public:
   virtual int SaveState(FILE * f);
   virtual int RestoreState(FILE * f);
   void instant_tick();
   //	void interrupt(int number);
-  virtual int DoClock();
+  virtual void check_state();
   virtual void WriteMem_Bar(int func, int bar, u32 address, int dsize, u32 data);
   virtual u32 ReadMem_Bar(int func, int bar, u32 address, int dsize);
 
@@ -116,14 +119,14 @@ class CDEC21143 : public CPCIDevice
   void ResetNIC();
   void SetupFilter();
   void receive_process();
+  void run();
 
  private:
   static int nic_num;
-#if defined(_WIN32)
-  HANDLE receive_process_handle;
-#else
-  pthread_t receive_process_handle;
-#endif
+
+  Poco::Thread myThread;
+//  Poco::Semaphore mySemaphore;
+  bool StopThread;
 
   u32 nic_read(u32 address, int dsize);
   void nic_write(u32 address, int dsize, u32 data);
@@ -138,7 +141,6 @@ class CDEC21143 : public CPCIDevice
   CPacketQueue*	rx_queue;
   pcap_t *fp;
   struct bpf_program fcode;
-  bool shutting_down;
   bool calc_crc;
 
   /// The state structure contains all elements that need to be saved to the statefile.

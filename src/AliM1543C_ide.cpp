@@ -27,10 +27,92 @@
  * \file
  * Contains the code for the emulated Ali M1543C IDE chipset part.
  *		
- * $Id: AliM1543C_ide.cpp,v 1.20 2008/03/04 19:20:02 iamcamiel Exp $
+ * $Id: AliM1543C_ide.cpp,v 1.21 2008/03/05 14:41:46 iamcamiel Exp $
+ *
+ * X-1.21       Camiel Vanderhoeven                             05-MAR-2008
+ *      Multi-threading version.
  *
  * X-1.20       Camiel Vanderhoeven                             04-MAR-2008
  *      Merged Brian wheeler's New IDE code into the standard controller.
+ *
+ * X-1.19.17    Brian Wheeler                                   27-FEB-2008
+ *     Re-fire interrupts less often.
+ *
+ * X-1.19.16    Brian Wheeler                                   27-FEB-2008
+ *     Improvement to last fix.
+ *
+ * X-1.19.15    Brian Wheeler                                   27-FEB-2008
+ *     This patch fixes the vms boot problems from ide cdrom and it also
+ *     allowed me to install tru64 -- albeit with timeouts:
+ *   a) Clears the busmaster active bit when the bit 1 is written to the
+ *      busmaster status register.
+ *   b) Attempts to refire the interrupt if the controller seems to have
+ *      missed it -- before the OS declares a timeout.
+ *
+ * X-1.19.14    Brian Wheeler                                   27-FEB-2008
+ *      Avoid compiler warnings.
+ *
+ * X-1.19.13    Brian Wheeler                                   29-JAN-2008
+ *      Avoid firing interrupts that occurred while interrupts were
+ *      disabled.
+ *
+ * X-1.19.12    Camiel Vanderhoeven                             28-JAN-2008
+ *      Avoid compiler warnings.
+ *
+ * X-1.19.11    Brian Wheeler                                   26-JAN-2008
+ *      Don't repeat interrupt too soon.
+ *
+ * X-1.19.10    Camiel Vanderhoeven                             24-JAN-2008
+ *      Use new CPCIDevice::do_pci_read and CPCIDevice::do_pci_write.
+ *
+ * X-1.19.9     Brian Wheeler                                   16-JAN-2008
+ *      Less timeouts.
+ *
+ * X-1.19.8     Brian Wheeler                                   14-JAN-2008
+ *      Less messages without debugging enabled.
+ *
+ * X-1.19.7     Fang Zhe                                        13-JAN-2008
+ *      Big-endian support.
+ *
+ * X-1.19.6     Camiel Vanderhoeven                             12-JAN-2008
+ *      Use disk's SCSI engine for ATAPI devices.
+ *
+ * X-1.19.5      Brian Wheeler                                   10-JAN-2008
+ *   - Stop dividing get_lba_size() by 4 in ATAPI Get Capacity.  SRM can
+ *     now boot cdrom images correctly, and OSes can use cdroms effectively...
+ *     at least until they call an unimplemented SCSI command.
+ *
+ * X-1.19.4      Brian Wheeler                                   09-JAN-2008
+ *   - During init, command_in_progress and command_cycle are cleared.
+ *   - Writes to ide_control are processed correctly.  Tru64 & FreeBSD
+ *     recognize disks now.
+ *   - interrupt is deasserted when command register is written.
+ *   - Removed a bunch of debugging sections.
+ *   - Made it quieter if DEBUG_IDE wasn't defined -- users should no longer
+ *     see Debug Pause messages.
+ *   - busy is asserted if we're currently processing a packet command when
+ *     drq is deasserted (i.e. when the read buffer is empty).  This lets us
+ *     get back into the ATAPI state machine before the host can start
+ *     messing  with the controller.
+ *   - Removed pauses for port 0x3n7 -- its really a floppy port.
+ *   - Remove pause when reset is being started.
+ *   - packet dma flag is presented when get_status() is run.
+ *   - ATAPI command 0x1e (media lock) implemented as no-op.
+ *   - ATAPI command 0x43 (read TOC) implemented as a hack.
+ *   - ATAPI read now uses get_block_size() for determining transfers.
+ *   - ATAPI state machine goes from DP34 to DI immediately upon completion 
+ *     instead of redirecting through DP2.
+ *   - Added ATA Command 0xc6 (Set Multiple).
+ *   .
+ *
+ * X-1.19.3      Brian wheeler                                   08-JAN-2008
+ *      ATAPI improved.
+ *
+ * X-1.19.2      Brian wheeler                                   08-JAN-2008
+ *      Handle blocksize correctly for ATAPI.
+ *
+ * X-1.19.1     Brian wheeler                                   08-JAN-2008
+ *      Complete rewrite of IDE controller.
  *
  * X-1.19.17    Brian Wheeler                                   27-FEB-2008
  *     Re-fire interrupts less often.
@@ -247,16 +329,51 @@ u32 AliM1543C_ide_cfg_mask[64] = {
   0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
 };
 
+void CAliM1543C_ide::run()
+{
+  bool executing;
+
+  try
+  {
+    for(;;)
+    {
+      mySemaphore.wait();
+      if (StopThread)
+      {
+        printf("IDE: exit thread.\n");
+        return;
+      }
+      do 
+      {
+        executing = false;
+        for (int index = 0; index < 2; index++)
+        {
+          if(SEL_COMMAND(index).command_in_progress) 
+          {
+            executing = true;
+            myRegLock[index].lock();
+            execute(index);
+            myRegLock[index].unlock();
+          }
+        }
+      } while (executing);
+    }
+  }
+  catch(...)
+  {
+    printf("IDE: exception in thread.\n");
+    // Let the thread die...
+  }
+}
+
 /**
  * Constructor.
  **/
 CAliM1543C_ide::CAliM1543C_ide(CConfigurator * cfg, CSystem * c, int pcibus, int pcidev) 
-  : CDiskController(cfg,c,pcibus,pcidev,2,2) {
+  : CDiskController(cfg,c,pcibus,pcidev,2,2), mySemaphore(0,1), myThread("IDE") {
   if (theIDE != 0)
     FAILURE("More than one IDE controller!!\n");
   theIDE = this;
-
-  c->RegisterClock(this,true);
 
   add_function(0,AliM1543C_ide_cfg_data, AliM1543C_ide_cfg_mask);
 
@@ -275,11 +392,17 @@ CAliM1543C_ide::CAliM1543C_ide(CConfigurator * cfg, CSystem * c, int pcibus, int
 
   ResetPCI();
 
+  StopThread = false;
+  myThread.start(*this);
+
   printf("%%IDE-I-INIT: New IDE emulator initialized.\n");
 }
 
 CAliM1543C_ide::~CAliM1543C_ide()
 {
+  StopThread = true;
+  mySemaphore.set();
+  myThread.join();
 }
 
 void CAliM1543C_ide::ResetPCI()
@@ -683,7 +806,7 @@ void CAliM1543C_ide::ide_command_write(int index, u32 address, int dsize, u32 da
       printf("%%IDE-W-CIP: Command is already in progress.\n");
       PAUSE("dang it!");
 #endif
-      DoClock(); 
+//      DoClock(); 
     } 
 
     if((data & 0xf0) == 0x10)
@@ -699,6 +822,7 @@ void CAliM1543C_ide::ide_command_write(int index, u32 address, int dsize, u32 da
       SEL_STATUS(index).busy=true;
       SEL_COMMAND(index).command_in_progress=true;
       SEL_COMMAND(index).packet_phase=PACKET_NONE;
+      mySemaphore.set();
     } else {
       // this is a nop, so we cancel everything that's pending and
       // pretend that this operation got done super fast!
@@ -1175,14 +1299,14 @@ void CAliM1543C_ide::ide_status(int index) {
 	 );
 }
 
-/* Here's where the magic happens! */
-int CAliM1543C_ide::DoClock() 
+void CAliM1543C_ide::check_state() 
 {
-  static int int_delay = 0;
-  for(int index=0;index<2;index++) 
-  {
-    if(SEL_COMMAND(index).command_in_progress) 
-    {
+  if(!myThread.isRunning())
+    FAILURE("IDE thread has died");
+}
+
+void CAliM1543C_ide::execute(int index)
+{
       if(SEL_DISK(index) == NULL && SEL_COMMAND(index).current_command!=0x90) 
       {
   	    // this device doesn't exist (and its not execute device diagnostic)
@@ -1911,7 +2035,7 @@ int CAliM1543C_ide::DoClock()
 	    }
 #endif
       }
-    } 
+//    } 
 
     SEL_COMMAND(index).command_cycle++;
 
@@ -1959,8 +2083,6 @@ int CAliM1543C_ide::DoClock()
       // accidentally fire one later when they are enabled.
       CONTROLLER(index).interrupt_pending=false;
     }
-  }
-  return 0;
 }
 
 int CAliM1543C_ide::do_dma_transfer(int index, u8 *buffer, u32 buffersize, bool direction) {

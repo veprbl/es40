@@ -27,7 +27,10 @@
  * \file
  * Contains the definitions for the emulated Cirrus CL GD-5434 Video Card device.
  *
- * $Id: Cirrus.h,v 1.9 2008/02/20 19:53:31 iamcamiel Exp $
+ * $Id: Cirrus.h,v 1.10 2008/03/05 14:41:46 iamcamiel Exp $
+ *
+ * X-1.10       Camiel Vanderhoeven                             05-MAR-2008
+ *      Multi-threading version.
  *
  * X-1.9        David Leonard                                   20-FEB-2008
  *      Avoid 'Xlib: unexpected async reply' errors on Linux/Unix/BSD's by
@@ -78,12 +81,12 @@
  *  .
  **/
 
-class CCirrus : public CVGA
+class CCirrus : public CVGA, public Poco::Runnable
 {
   public:
     virtual int SaveState(FILE * f);
     virtual int RestoreState(FILE * f);
-    virtual int DoClock();
+    virtual void check_state();
     virtual void WriteMem_Legacy(int index, u32 address, int dsize, u32 data);
     virtual u32 ReadMem_Legacy(int index, u32 address, int dsize);
 
@@ -94,6 +97,7 @@ class CCirrus : public CVGA
     virtual ~CCirrus();
 
     void update(void);
+    void run(void);
 
     virtual u8 get_actl_palette_idx(u8 index);
     virtual void redraw_area(unsigned x0, unsigned y0, unsigned width, unsigned height);
@@ -139,7 +143,6 @@ private:
     void legacy_write(u32 address, int dsize, u32 data);
 
     u32 rom_read(u32 address, int dsize);
-    void rom_write(u32 address, int dsize, u32 data);
 
     void determine_screen_dimensions(unsigned *piHeight, unsigned *piWidth);
 
@@ -148,6 +151,9 @@ private:
 
     void vga_mem_write(u32 addr, u8 value);
     u8 vga_mem_read(u32 addr);
+
+  Poco::Thread myThread;
+  bool StopThread;
 
     /// The state structure contains all elements that need to be saved to the statefile
     struct SCirrus_state {

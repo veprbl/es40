@@ -27,7 +27,10 @@
  * \file 
  * Contains the code for the emulated Typhoon Chipset devices.
  *
- * $Id: System.cpp,v 1.68 2008/03/04 19:05:21 iamcamiel Exp $
+ * $Id: System.cpp,v 1.69 2008/03/05 14:41:46 iamcamiel Exp $
+ *
+ * X-1.68       Camiel Vanderhoeven                             05-MAR-2008
+ *      Multi-threading version.
  *
  * X-1.67       Camiel Vanderhoeven                             04-MAR-2008
  *      Support some basic MP features. (CPUID read from C-Chip MISC 
@@ -281,6 +284,7 @@
 #include "System.h"
 #include "AlphaCPU.h"
 #include "lockstep.h"
+#include "DPR.h"
 
 #include <ctype.h>
 #include <stdlib.h>
@@ -307,11 +311,9 @@ CSystem::CSystem(CConfigurator * cfg)
   myCfg = cfg;
 
   iNumComponents = 0;
-  iNumFastClocks = 0;
-  iNumSlowClocks = 0;
   iNumMemories = 0;
   iNumCPUs = 0;
-  iNumMemoryBits = (int)myCfg->get_num_value("memory.bits",27);
+  iNumMemoryBits = (int)myCfg->get_num_value("memory.bits",false,27);
 //  iNumConfig = 0;
 
 #if defined(IDB)
@@ -353,7 +355,7 @@ CSystem::CSystem(CConfigurator * cfg)
   else
     CHECK_ALLOCATION(memory = calloc(1<<iNumMemoryBits,1));
 
-  printf("%s(%s): $Id: System.cpp,v 1.68 2008/03/04 19:05:21 iamcamiel Exp $\n",cfg->get_myName(),cfg->get_myValue());
+  printf("%s(%s): $Id: System.cpp,v 1.69 2008/03/05 14:41:46 iamcamiel Exp $\n",cfg->get_myName(),cfg->get_myValue());
 }
 
 /**
@@ -433,25 +435,6 @@ int CSystem::RegisterCPU(class CAlphaCPU * cpu)
 }
 
 /**
- * Register a device as being clocked.
- **/
-
-int CSystem::RegisterClock(CSystemComponent *component, bool slow)
-{
-  if (slow)
-  {
-    acSlowClocks[iNumSlowClocks] = component;
-    iNumSlowClocks++;
-  }
-  else
-  {
-    acFastClocks[iNumFastClocks] = component;
-    iNumFastClocks++;
-  }
-  return 0;
-}
-
-/**
  * Reserve a range of the 64-bit system address space for a device.
  **/
 
@@ -498,36 +481,20 @@ void sigint_handler (int signum)
 int CSystem::Run()
 {
   int i,j,k;
-  int result;
 
   /* catch CTRL-C and shutdown gracefully */
   signal(SIGINT,&sigint_handler);
 
-  // start any threads...
-  for (i=0;i<iNumComponents;i++)
-    acComponents[i]->StartThreads();
+  theDPR->init();
+
+  for(j=0; j<iNumCPUs; j++)
+    acCPUs[j]->start_thread();
 
   for(k=0;!got_sigint;k++)
   {
-
-#if defined(CPU_THREADS)
-      sleep_ms(1);
-#else
-    for(j=0;j<CLOCK_RATIO;j++)
-    {
-      for(i=0;i<iNumFastClocks;i++)
-      {
-        if (result = acFastClocks[i]->DoClock())
-	     return result;
-      }
-    }
-#endif
-
-    for(i=0;i<iNumSlowClocks;i++)
-    {
-      if (result = acSlowClocks[i]->DoClock())
-    	return result;
-    }
+    Poco::Thread::sleep(100); // 100ms sleep
+    for (i=0;i<iNumComponents;i++)
+      acComponents[i]->check_state();
 #if !defined(HIDE_COUNTER)
 #if defined(PROFILE)
     printf("%d | %016" LL "x | %" LL "d profiled instructions.  \r",k,acCPUs[0]->get_pc(),profiled_insts);
@@ -535,22 +502,6 @@ int CSystem::Run()
     printf("%d | %016" LL "x\r",k,acCPUs[0]->get_pc());
 #endif
 #endif
-  }
-
-  // stop any threads...
-  for (i=0;i<iNumComponents;i++)
-    acComponents[i]->StopThreads();
-
-  bool x = true;
-  while(x)
-  {
-    x = false;
-    for (i=0;i<iNumComponents;i++)
-      if (acComponents[i]->ActiveThreads())
-      {
-        x = true;
-        sleep_ms(1);
-      }
   }
 
   printf("%%SYS-W-SHUTDOWN: CTRL-C or Device Failed\n");
@@ -567,14 +518,10 @@ int CSystem::SingleStep()
   int i;
   int result;
 
-  for(i=0;i<iNumFastClocks;i++)
-  {
-    result = acFastClocks[i]->DoClock();
-    if (result)
-      return result;
-  }
+  for (i=0; i<iNumCPUs;i++)
+    acCPUs[i]->execute();
 
-  iSingleStep++;
+//  iSingleStep++;
 
 #if defined(LS_MASTER) || defined(LS_SLAVE)
   if (!(iSingleStep % 50))
@@ -586,23 +533,23 @@ int CSystem::SingleStep()
      *dbg_strptr='\0';
   }
 #endif
-  if (iSingleStep >= CLOCK_RATIO)
-  {
-     iSingleStep = 0;
-     for(i=0;i<iNumSlowClocks;i++)
-     {
-        result = acSlowClocks[i]->DoClock();
-	if (result)
-	  return result;
-     }
-#ifdef IDB
-     iSSCycles++;
-#if !defined(LS_SLAVE)
-     if (bHashing)
-#endif
-       printf("%d | %016" LL "x\r",iSSCycles,acCPUs[0]->get_pc());
-#endif
-  }
+//  if (iSingleStep >= CLOCK_RATIO)
+//  {
+//     iSingleStep = 0;
+//     for(i=0;i<iNumSlowClocks;i++)
+//     {
+//        result = acSlowClocks[i]->DoClock();
+//	if (result)
+//	  return result;
+//     }
+//#ifdef IDB
+//     iSSCycles++;
+//#if !defined(LS_SLAVE)
+//     if (bHashing)
+//#endif
+//       printf("%d | %016" LL "x\r",iSSCycles,acCPUs[0]->get_pc());
+//#endif
+//  }
   return 0;
 }
 
@@ -610,6 +557,34 @@ int CSystem::SingleStep()
 #ifdef DEBUG_PORTACCESS
 u64 lastport;
 #endif
+
+void CSystem::cpu_lock(int cpuid, u64 address)
+{
+  cpu_lock_mutex.lock();
+//  printf("cpu%d: lock %" LL "x.   \n",cpuid,address);
+  state.cpu_lock_flags |= (1<<cpuid);
+  state.cpu_lock_address[cpuid] = address;
+  cpu_lock_mutex.unlock();
+}
+
+bool CSystem::cpu_unlock(int cpuid)
+{
+  bool retval;
+  cpu_lock_mutex.lock();
+  retval = state.cpu_lock_flags & (1<<cpuid);
+//  printf("cpu%d: unlock (%s).   \n",cpuid,retval?"ok":"failed");
+  state.cpu_lock_flags &= ~(1<<cpuid);
+  cpu_lock_mutex.unlock();
+  return retval;
+}
+
+void CSystem::cpu_break_lock(int cpuid, CSystemComponent * source)
+{
+  cpu_lock_mutex.lock();
+  printf("cpu%d: lock broken by %s.   \n",cpuid,source->devid_string);
+  state.cpu_lock_flags &= ~(1<<cpuid);
+  cpu_lock_mutex.unlock();
+ }
 
 /**
  * \brief Write 8, 4, 2 or 1 byte(s) to a 64-bit system address. This could be memory,
@@ -705,6 +680,15 @@ void CSystem::WriteMem(u64 address, int dsize, u64 data,CSystemComponent * sourc
   u16 t16;
 #endif
 
+  if (state.cpu_lock_flags) {
+    for (i=0;i<iNumCPUs;i++) {
+      if ( (state.cpu_lock_flags & (1<<i)) &&
+           (!((state.cpu_lock_address[i] ^address) & X64(00000807ffffff00) )) &&
+           (source != acCPUs[i]))
+        cpu_break_lock(i,source);
+    }
+  }
+
   a = address & X64(00000807ffffffff);
 
   if (a>>iNumMemoryBits) // non-memory
@@ -748,7 +732,7 @@ void CSystem::WriteMem(u64 address, int dsize, u64 data,CSystemComponent * sourc
 
     if  (a>=X64(00000801A0000000) && a<=X64(00000801AFFFFFFF))
     {
-      cchip_csr_write((u32)a&0xFFFFFFF,data);
+      cchip_csr_write((u32)a&0xFFFFFFF,data, source);
       return;
     }
 
@@ -1523,12 +1507,13 @@ void CSystem::pchip_csr_write(int num, u32 a, u64 data)
 
 u64 CSystem::cchip_csr_read(u32 a, CSystemComponent * source)
 {
+  CAlphaCPU * cpu = (CAlphaCPU *) source;
   switch(a)
   {
   case 0x000:
     return state.cchip.csc;
   case 0x080:
-//    printf("MISC: %016" LL "x\n",state.cchip.misc | ((CAlphaCPU*)source)->get_cpuid());
+//    printf("MISC: %016" LL "x from CPU %d (@%" LL "x) (other @ %" LL "x).\n",state.cchip.misc | cpu->get_cpuid(),cpu->get_cpuid(), cpu->get_pc()-4, acCPUs[1-cpu->get_cpuid()]->get_pc());
     return state.cchip.misc | ((CAlphaCPU*)source)->get_cpuid();
 
   case 0x100:
@@ -1558,8 +1543,9 @@ u64 CSystem::cchip_csr_read(u32 a, CSystemComponent * source)
   }
 }
 
-void CSystem::cchip_csr_write(u32 a, u64 data)
+void CSystem::cchip_csr_write(u32 a, u64 data, CSystemComponent * source)
 {
+  CAlphaCPU * cpu = (CAlphaCPU *) source;
   switch(a)
   {
   case 0x000: // CSC
@@ -1572,18 +1558,18 @@ void CSystem::cchip_csr_write(u32 a, u64 data)
 	if                  (data & X64(0000000001000000))
     {
 	  state.cchip.misc &=~      X64(0000000000ff0000);	//Arbitration Clear
-//      printf("Arbitration clear.\n");
+      printf("Arbitration clear from CPU %d (@%" LL "x).\n",cpu->get_cpuid(), cpu->get_pc()-4);
     }
     if (data & X64(00000000000f0000))
     {
-//      printf("Arbitration %016" LL "x...",data);
+      printf("Arbitration %016" LL "x from CPU %d (@%" LL "x)... ",data,cpu->get_cpuid(), cpu->get_pc()-4);
 	  if    (!(state.cchip.misc & X64(00000000000f0000)))
       {
    	    state.cchip.misc |= (data & X64(00000000000f0000));	//Arbitration won
-//        printf("won  %016" LL "x\n",state.cchip.misc);
+        printf("won  %016" LL "x\n",state.cchip.misc);
       }
-//      else
-//        printf("lost %016" LL "x\n",state.cchip.misc);
+      else
+        printf("lost %016" LL "x\n",state.cchip.misc);
     }
     // stop interval timer interrupt
     if        (data & X64(00000000000000f0))
@@ -1605,7 +1591,7 @@ void CSystem::cchip_csr_write(u32 a, u64 data)
 	    if (data & (X64(100)<<i))
         {
 	      acCPUs[i]->irq_h(3,false,0);
-//	      printf("*** IP interrupt cleared for CPU %d from CPU %d\n");
+	      printf("*** IP interrupt cleared for CPU %d from CPU %d(@ %" LL "x).\n",i,cpu->get_cpuid(), cpu->get_pc()-4);
         }
    	  }
 	}			
@@ -1618,7 +1604,8 @@ void CSystem::cchip_csr_write(u32 a, u64 data)
         {
           state.cchip.misc |= X64(100)<<i;
 	      acCPUs[i]->irq_h(3,true,0);
-//	      printf("*** IP interrupt set for CPU %d\n",i);
+	      printf("*** IP interrupt set for CPU %d from CPU %d(@ %" LL "x)\n",i,cpu->get_cpuid(), cpu->get_pc()-4);
+//          Poco::Thread::sleep(10);
         }
    	  }
 	}			
@@ -1791,6 +1778,9 @@ int CSystem::LoadROM()
     acCPUs[0]->set_pc(0x900001);
     acCPUs[0]->set_PAL_BASE(0x900000);
     acCPUs[0]->enable_icache();
+    acCPUs[1]->set_pc(0x900001);
+    acCPUs[1]->set_PAL_BASE(0x900000);
+    acCPUs[1]->enable_icache();
 
     j = 0;
     while (acCPUs[0]->get_clean_pc() > 0x200000)
@@ -1810,6 +1800,8 @@ int CSystem::LoadROM()
     }
     printf("100%%\n");
     acCPUs[0]->restore_icache();
+    acCPUs[1]->restore_icache();
+    printf("PC %" LL "x, %" LL "x.   \n",acCPUs[0]->get_pc(),acCPUs[1]->get_pc());
 
     f = fopen(myCfg->get_text_value("rom.decompressed","decompressed.rom"),"wb");
     if (!f)
@@ -1853,6 +1845,8 @@ int CSystem::LoadROM()
   WriteMem(X64(8bb78),32,0xe7e00000,0);       // memory test (aa)
   WriteMem(X64(8bc0c),32,0xe7e00000,0);       // memory test (bb)
   WriteMem(X64(8bc94),32,0xe7e00000,0);       // memory test (00)
+
+  //WriteMem(X64(b1158),32,0xe7e00000,0);   // CPU sync?
 #endif
 
   printf("%%SYS-I-ROMLOADED: ROM Image loaded successfully!\n");
@@ -1952,7 +1946,7 @@ void CSystem::interrupt(int number, bool assert)
       // timer int...
       state.cchip.misc |= 0xf0;
       for(i=0;i<iNumCPUs;i++)
-	acCPUs[i]->irq_h(2,true,0); // timer interrupt is immediate
+  	    acCPUs[i]->irq_h(2,true,0); // timer interrupt is immediate
     }
   else if (assert)
     {

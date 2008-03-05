@@ -27,7 +27,10 @@
  * \file 
  * Contains the code for the emulated DecChip 21264CB EV68 Alpha processor.
  *
- * $Id: AlphaCPU.cpp,v 1.71 2008/03/04 19:05:21 iamcamiel Exp $
+ * $Id: AlphaCPU.cpp,v 1.72 2008/03/05 14:41:46 iamcamiel Exp $
+ *
+ * X-1.72       Camiel Vanderhoeven                             05-MAR-2008
+ *      Multi-threading version.
  *
  * X-1.71       Camiel Vanderhoeven                             04-MAR-2008
  *      Support some basic MP features. (CPUID read from C-Chip MISC 
@@ -317,22 +320,44 @@
 #include "es40_float.h"
 #endif
 
+void CAlphaCPU::start_thread()
+{
+  mySemaphore.set();
+}
+
+void CAlphaCPU::run()
+{
+  try {
+    for (;;) {
+      mySemaphore.wait();
+      for(;;) {
+        if (StopThread) {
+          printf("CPU: exit thread.\n");
+          return;
+        }
+        for (int i=0;i<1000000;i++)
+          execute();
+      }
+    }
+  }
+  catch (...)
+  {
+    printf("CPU: exception in thread.\n");
+    // Let the thread die...
+  }
+}
+
 /**
  * Constructor.
  **/
-CAlphaCPU::CAlphaCPU(CConfigurator * cfg, CSystem * system) : CSystemComponent (cfg,system)
+CAlphaCPU::CAlphaCPU(CConfigurator * cfg, CSystem * system) : CSystemComponent (cfg,system), mySemaphore(0,1), myThread("CPU")
 {
   cSystem = system;
 
-#if !defined(CPU_THREADS)
-  // if the CPU doesn't have it's own thread, register it as a fast clocked device.
-  cSystem->RegisterClock(this, false);
-#else
-  thread_shouldrun = false;
-  thread_doesrun = false;
-#endif
-
   memset(&state,0,sizeof(state));
+
+  cpu_hz = cfg->get_num_value("speed",true,500000000);
+
   state.iProcNum = cSystem->RegisterCPU(this);
 
   icache_enabled = true;
@@ -354,7 +379,23 @@ CAlphaCPU::CAlphaCPU(CConfigurator * cfg, CSystem * system) : CSystemComponent (
   bListing = false;
 #endif
   
-  printf("%s: $Id: AlphaCPU.cpp,v 1.71 2008/03/04 19:05:21 iamcamiel Exp $\n",devid_string);
+  StopThread = false;
+  myThread.start(*this);
+
+  cc_large = 0;
+  prev_cc = 0;
+  start_cc = 0;
+  prev_time = 0;
+  prev_icount = 0;
+  start_icount = 0;
+
+  cc_per_instruction = 70;
+  ins_per_timer_int = cpu_hz/1024;
+  next_timer_int = state.iProcNum?X64(FFFFFFFFFFFFFFFF):ins_per_timer_int; /* only on CPU 0 */
+
+  state.r[22] = state.r[22+32] = state.iProcNum;
+
+  printf("%s(%d): $Id: AlphaCPU.cpp,v 1.72 2008/03/05 14:41:46 iamcamiel Exp $\n",devid_string,state.iProcNum);
 }
 
 /**
@@ -362,6 +403,9 @@ CAlphaCPU::CAlphaCPU(CConfigurator * cfg, CSystem * system) : CSystemComponent (
  **/
 CAlphaCPU::~CAlphaCPU()
 {
+  StopThread = true;
+  mySemaphore.set();
+  myThread.join();
 }
 
 
@@ -403,6 +447,44 @@ static double min_mips = 999999999999999.0;
 static double max_mips = 0.0;
 #endif
 
+void CAlphaCPU::check_state()
+{
+  if(!myThread.isRunning())
+    FAILURE("CPU thread has died");
+
+  // correct CPU timing loop...
+
+  u64 icount = state.instruction_count;
+  u64 cc = cc_large;
+  u64 time = start_time.elapsed();
+  s64 ce = cc_per_instruction;
+
+  u64 cc_aim = time * cpu_hz / 1000000; // microsecond resolution
+  u64 ce_aim = cc_aim / icount;
+
+  s64 icount_lapse = icount - prev_icount;
+  s64 cc_diff = cc_aim - cc;
+  s64 ce_diff = (u64)((float)cc_diff / (float)icount_lapse);
+
+  s64 ce_new = ce_aim + ce_diff;
+  if (ce_new<0) ce_new = 0;
+  if (ce_new>200) ce_new = 200;
+
+  if (ce_new != ce)
+  {
+//    printf("                                     time %12" LL "d | prev %12" LL "d  \n",time,prev_time);
+//    printf("          count lapse %12" LL "d | curr %12" LL "d | prev %12" LL "d  \n",icount_lapse,icount,prev_icount);
+//    printf("cc %12" LL "d | aim %12" LL "d | diff %12" LL "d | prev %12" LL "d  \n",cc,cc_aim,cc_diff,prev_cc);
+//    printf("ce %12" LL "d | aim %12" LL "d | diff %12" LL "d | new  %12" LL "d  \n",ce,ce_aim,ce_diff,ce_new);
+//    printf("==========================================================================  \n");
+    cc_per_instruction = ce_new;
+  }
+  prev_cc = cc;
+  prev_icount = icount;
+  prev_time = time;
+  return;
+}
+
 /**
  * \brief Called each clock-cycle.
  *
@@ -411,10 +493,8 @@ static double max_mips = 0.0;
  * complicated enough as it is. The one exception is the instruction cache, which is
  * implemented, to accomodate self-modifying code. The instruction cache can be disabled
  * if self-modifying code is not expected.
- *
- * \return  0 (succes)
  **/
-int CAlphaCPU::DoClock()
+void CAlphaCPU::execute()
 {
   u32 ins;
   int i;
@@ -455,10 +535,6 @@ int CAlphaCPU::DoClock()
 
   state.current_pc = state.pc;
 
-#ifdef IDB
-  state.instruction_count++;
-#endif
-
   // Service interrupts
   if (DO_ACTION) {
     // We're actually executing code. Cycle counter should be updated, interrupt and interrupt
@@ -466,12 +542,18 @@ int CAlphaCPU::DoClock()
     // instruction cache.
 
     // Increase the cycle counter if it is currently enabled.
+
+    state.instruction_count++;
+    cc_large += cc_per_instruction;
+
+    if (cc_large>next_timer_int)
+    {
+      next_timer_int += ins_per_timer_int;
+      cSystem->interrupt(-1,true);
+    }
+
     if (state.cc_ena) {
-#if defined(CPU_THREADS)
-      state.cc+=20;
-#else
-      state.cc+=83;
-#endif
+      state.cc += cc_per_instruction;
     }
 
     if (state.check_timers) {
@@ -500,7 +582,7 @@ int CAlphaCPU::DoClock()
       // One or more of the variables that affect interrupt status have changed, and we are not
       // currently inside PALmode. It is not certain that this means we hava an interrupt to
       // service, but we might have. This needs to be checked.
-      
+/*      
       if (state.pal_vms) {
         // PALcode base is set to 0x8000; meaning OpenVMS PALcode is currently active. In this
         // case, our VMS PALcode replacement routines are valid, and should be used as it is
@@ -508,29 +590,36 @@ int CAlphaCPU::DoClock()
         
         if (state.eir & state.eien & 6)
           if (vmspal_ent_ext_int(state.eir&state.eien & 6))
-            return 0;
+            return;
 
         if (state.sir & state.sien & 0xfffc)
           if (vmspal_ent_sw_int(state.sir&state.sien))
-            return 0;
+            return;
 
         if (state.asten && (state.aster & state.astrr & ((1<<(state.cm+1))-1) ))
           if (vmspal_ent_ast_int(state.aster & state.astrr & ((1<<(state.cm+1))-1) ))
-            return 0;
+            return;
 
         if (state.sir & state.sien)
           if (vmspal_ent_sw_int(state.sir&state.sien))
-            return 0;
-      } else {
+            return;
+      } else 
+*/
+      {
         // PALcode base is set to an unsupported value. We have no choice but to transfer control
         // to PALmode at the PALcode interrupt entry point.
+
+//        if (state.eir & 8)
+//        {
+//          printf("%s: IP interrupt received%s...\n",devid_string, (state.eien&8)?"(enabled)":"(masked)");
+//        }
 
         if ((state.eien & state.eir) || 
             (state.sien & state.sir) || 
             (state.asten && (state.aster & state.astrr & ((1<<(state.cm+1))-1) )))
         {
           GO_PAL(INTERRUPT);
-          return 0;
+          return;
         }
       }
 
@@ -546,7 +635,7 @@ int CAlphaCPU::DoClock()
 
     // Get the next instruction from the instruction cache.
     if (get_icache(state.pc, &ins))
-      return 0;
+      return;
 
   } // if (DO_ACTION) 
   else 
@@ -896,7 +985,6 @@ int CAlphaCPU::DoClock()
       OP(HW_LDL,HW_LD);
     }
 
-
   case 0x1c: // FPTI* instructions
     function = (ins>>5) & 0x7f;
     switch (function)
@@ -974,7 +1062,7 @@ int CAlphaCPU::DoClock()
 
   default: UNKNOWN1;
   }
-  return 0;
+  return;
 }
 
 #if defined(IDB)
@@ -1719,41 +1807,6 @@ void CAlphaCPU::restore_icache()
 
   icache_enabled = newval;
 }
-
-#if defined(CPU_THREADS)
-void CAlphaCPU::thread_proc()
-{
-  thread_doesrun = true;
-  while(thread_shouldrun)
-    DoClock();
-  thread_doesrun = false;
-}
-
-#if defined(_WIN32)
-DWORD WINAPI do_proc(LPVOID lpParam)
-#else
-static void * do_proc(void * lpParam)
-#endif
-{
-  ((CAlphaCPU *) lpParam)->thread_proc();
-  return 0;
-}
-
-void CAlphaCPU::StartThreads()
-{
-  thread_shouldrun = true;
-
-  if (!thread_doesrun)
-  {
-#if defined(_WIN32)
-    thread_handle = CreateThread(NULL, 0, do_proc, this, 0, &thread_id);
-#else
-    pthread_create(&thread_handle, NULL, do_proc, this);
-#endif
-  }
-}
-
-#endif
 
 #if defined(IDB)
 

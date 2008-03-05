@@ -27,7 +27,10 @@
  * \file
  * Contains the code for the emulated Serial Port devices.
  *
- * $Id: Serial.cpp,v 1.39 2008/03/02 09:42:52 iamcamiel Exp $
+ * $Id: Serial.cpp,v 1.40 2008/03/05 14:41:46 iamcamiel Exp $
+ *
+ * X-1.40       Camiel Vanderhoeven                             05-MAR-2008
+ *      Multi-threading version.
  *
  * X-1.39       Camiel Vanderhoeven                             02-MAR-2008
  *      Natural way to specify large numeric values ("10M") in the config file.
@@ -179,9 +182,9 @@ int  iCounter  = 0;
  * Constructor.
  **/
 
-CSerial::CSerial(CConfigurator * cfg, CSystem * c, u16 number) : CSystemComponent(cfg,c)
+CSerial::CSerial(CConfigurator * cfg, CSystem * c, u16 number) : CSystemComponent(cfg,c), myThread("Serial")
 {
-  listenPort = (int)myCfg->get_num_value("port",8000+number);
+  listenPort = (int)myCfg->get_num_value("port",false,8000+number);
   char s[1000];
   char * nargv = s;
   int i = 0;
@@ -189,8 +192,6 @@ CSerial::CSerial(CConfigurator * cfg, CSystem * c, u16 number) : CSystemComponen
   c->RegisterMemory (this, 0, X64(00000801fc0003f8) - (0x100*number), 8);
 
 // Start Telnet server
-
-  c->RegisterClock(this, true);
 
 #if defined(_WIN32)
   // Windows Sockets only work after calling WSAStartup.
@@ -251,7 +252,10 @@ CSerial::CSerial(CConfigurator * cfg, CSystem * c, u16 number) : CSystemComponen
 
   state.irq_active = false;
 
-  printf("%s: $Id: Serial.cpp,v 1.39 2008/03/02 09:42:52 iamcamiel Exp $\n",devid_string);
+  StopThread = false;
+  myThread.start(*this);
+
+  printf("%s: $Id: Serial.cpp,v 1.40 2008/03/05 14:41:46 iamcamiel Exp $\n",devid_string);
 }
 
 /**
@@ -260,6 +264,8 @@ CSerial::CSerial(CConfigurator * cfg, CSystem * c, u16 number) : CSystemComponen
 
 CSerial::~CSerial()
 {
+  StopThread = true;
+  myThread.join();
 }
 
 u64 CSerial::ReadMem(int index, u64 address, int dsize)
@@ -421,7 +427,37 @@ void CSerial::receive(const char* data)
     }
 }
 
-int CSerial::DoClock() 
+void CSerial::run()
+{
+  try
+  {
+    for (;;)
+    {
+//      mySemaphore.wait();
+      if (StopThread)
+      {
+        printf("Serial: exit thread.\n");
+        return;
+      }
+      execute();
+      Poco::Thread::sleep(20); 
+    }
+  }
+  catch (...)
+  {
+    printf("Serial: exception in thread.\n");
+    // Let the thread die...
+  }
+}
+
+void CSerial::check_state()
+{
+  if(!myThread.isRunning())
+    FAILURE("Serial: thread has died");
+
+}
+
+void CSerial::execute() 
 {
   fd_set readset;
   unsigned char buffer[FIFO_SIZE+1];
@@ -449,7 +485,7 @@ int CSerial::DoClock()
 	printf("%%SRL-W-DISCONNECT: Write socket closed on other end for serial port %d.\n",state.iNumber);
 	printf("-SRL-I-WAITFOR: Waiting for a new connection on port %d.\n",listenPort);
 	WaitForConnection();
-	return 0;
+	return;
       }
       buffer[size+1]=0; // force null termination.
       b=buffer;
@@ -501,7 +537,7 @@ int CSerial::DoClock()
 	          if (select(connectSocket+1,&readset,NULL,NULL,&tv) <= 0) 
 	          {
 		        write("%SRL-I-TIMEOUT: no timely answer received. Continuing emulation.\r\n");
-		        return 0;
+		        return;
 	          }
 #if defined(_WIN32)
 	          size = recv(connectSocket,(char*)buffer,FIFO_SIZE, 0);
@@ -512,23 +548,23 @@ int CSerial::DoClock()
 	          {
 	          case '0':
 	            write("%SRL-I-CONTINUE: continuing emulation.\r\n");
-	            return 0;
+	            return;
 	          case '1':
 	            write("%SRL-I-EXIT: exiting emulation gracefully.\r\n");
-	            return 1;
+	            return;
 	          case '2':
 	            write("%SRL-I-ABORT: aborting emulation.\r\n");
-	            return -1;
+	            FAILURE("Aborting");
               case '3':
                 write("%SRL-I-SAVESTATE: Saving state to autosave.axp.\r\n");
                 cSystem->SaveState("autosave.axp");
 	            write("%SRL-I-CONTINUE: continuing emulation.\r\n");
-	            return 0;
+	            return;
               case '4':
                 write("%SRL-I-LOADSTATE: Loading state from autosave.axp.\r\n");
                 cSystem->RestoreState("autosave.axp");
 	            write("%SRL-I-CONTINUE: continuing emulation.\r\n");
-	            return 0;
+	            return;
 	          }
 	          write("%SRL-W-INVALID: Not a valid answer.\r\n");
 	        }
@@ -553,8 +589,6 @@ int CSerial::DoClock()
   }
 
   eval_interrupts();
-
-  return 0;
 }
 
 static u32 srl_magic1 = 0x5A15A15A;

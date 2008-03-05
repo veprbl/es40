@@ -27,7 +27,10 @@
  * \file 
  * Contains debugging macros used by AlphaCPU.cpp
  *
- * $Id: cpu_debug.h,v 1.24 2008/02/29 13:50:25 iamcamiel Exp $
+ * $Id: cpu_debug.h,v 1.25 2008/03/05 14:41:46 iamcamiel Exp $
+ *
+ * X-1.25       Camiel Vanderhoeven                             05-MAR-2008
+ *      Multi-threading version.
  *
  * X-1.24       Camiel Vanderhoeven                             29-FEB-2008
  *      Comments.
@@ -691,11 +694,11 @@ void handle_debug_string(char * s);
 
 #define UNKNOWN1							                        \
   printf("Unknown opcode: %02x   \n", opcode);			            \
-  return 0;		
+  return;		
 
 #define UNKNOWN2							                        \
   printf("Unknown opcode: %02x.%02x   \n", opcode, function);	    \
-  return 0;	
+  return;	
 
 #endif
 
@@ -711,7 +714,7 @@ void handle_debug_string(char * s);
   }									                                \
   POST_##format;								                    \
   handle_debug_string(dbg_string);					                \
-  return 0;
+  return;
 
 // Execute a function rather than a DO_<mnemonic> macro for an instruction
 #define OP_FNC(mnemonic, format)					                \
@@ -721,7 +724,7 @@ void handle_debug_string(char * s);
   }									                                \
   POST_##format;								                    \
   handle_debug_string(dbg_string);				                    \
-  return 0;
+  return;
 
 #else //defined(IDB)
   
@@ -729,12 +732,12 @@ void handle_debug_string(char * s);
 // Execute the DO_<mnemonic> macro for an instruction.
 #define OP(mnemonic, format)						                \
   DO_##mnemonic;								                    \
-  return 0;
+  return;
 
 // Execute a function rather than a DO_<mnemonic> macro for an instruction
 #define OP_FNC(mnemonic, format)					                \
   mnemonic();								                        \
-  return 0;
+  return;
 
 #endif //defined(IDB)
 

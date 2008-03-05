@@ -27,7 +27,10 @@
  * \file
  * Contains the code for the emulated Keyboard and mouse devices and controller.
  *
- * $Id: Keyboard.cpp,v 1.4 2008/02/29 10:23:09 iamcamiel Exp $
+ * $Id: Keyboard.cpp,v 1.5 2008/03/05 14:41:46 iamcamiel Exp $
+ *
+ * X-1.5        Camiel Vanderhoeven                             05-MAR-2008
+ *      Multi-threading version.
  *
  * X-1.4        Brian Wheeler                                   29-FEB-2008
  *      ACK recognized, but unhandled, keyboard commands.
@@ -58,7 +61,7 @@
  * Constructor.
  **/
 
-CKeyboard::CKeyboard(CConfigurator * cfg, CSystem * c) : CSystemComponent(cfg,c)
+CKeyboard::CKeyboard(CConfigurator * cfg, CSystem * c) : CSystemComponent(cfg,c), myThread("kbd")
 {
   if (theKeyboard != 0)
     FAILURE("More than one Keyboard controller!!");
@@ -68,8 +71,6 @@ CKeyboard::CKeyboard(CConfigurator * cfg, CSystem * c) : CSystemComponent(cfg,c)
 
   c->RegisterMemory (this, 0, X64(00000801fc000060), 1);
   c->RegisterMemory (this, 1, X64(00000801fc000064), 1);
-
-  c->RegisterClock(this, true);
 
   resetinternals(1);
 
@@ -124,8 +125,10 @@ CKeyboard::CKeyboard(CConfigurator * cfg, CSystem * c) : CSystemComponent(cfg,c)
   state.kbd_controller_Qsize = 0;
   state.kbd_controller_Qsource = 0;
 
+  StopThread = false;
+  myThread.start(*this);
 
-  printf("kbc: $Id: Keyboard.cpp,v 1.4 2008/02/29 10:23:09 iamcamiel Exp $\n");
+  printf("kbc: $Id: Keyboard.cpp,v 1.5 2008/03/05 14:41:46 iamcamiel Exp $\n");
 }
 
 /**
@@ -134,6 +137,8 @@ CKeyboard::CKeyboard(CConfigurator * cfg, CSystem * c) : CSystemComponent(cfg,c)
 
 CKeyboard::~CKeyboard()
 {
+  StopThread = true;
+  myThread.join();
 }
 
 u64 CKeyboard::ReadMem(int index, u64 address, int dsize)
@@ -406,7 +411,7 @@ u8 CKeyboard::read_60()
 
       //DEV_pic_lower_irq(12);
       state.timer_pending = 1;
-      DoClock();
+      execute();
 #if defined(DEBUG_KBD)
       BX_DEBUG(("[mouse] read from 0x60 returns 0x%02x", val));
 #endif
@@ -438,7 +443,7 @@ u8 CKeyboard::read_60()
 
 //      DEV_pic_lower_irq(1);
       state.timer_pending = 1;
-      DoClock();
+      execute();
 #if defined(DEBUG_KBD)
       BX_DEBUG(("READ(60) = %02x", (unsigned) val));
 #endif
@@ -657,7 +662,7 @@ void CKeyboard::write_60(u8 value)
       set_kbd_clock_enable(1);
     ctrl_to_kbd(value);
   }
-  DoClock();
+  execute();
 }
 
 /**
@@ -885,7 +890,7 @@ void CKeyboard::write_64(u8 value)
     BX_ERROR(("unsupported io write to keyboard port 64, value = %x", (unsigned) value));
     break;
   }
-  DoClock();
+  execute();
 }
 
 /**
@@ -1668,6 +1673,7 @@ void CKeyboard::create_mouse_packet(bool force_enq)
   mouse_enQ_packet(b1, b2, b3, b4);
 }
 
+
 /**
  * Keyboard clock. Handle events on a clocked basis.
  *
@@ -1677,8 +1683,7 @@ void CKeyboard::create_mouse_packet(bool force_enq)
  *  - Assert interrupts as needed.
  *  .
  **/
-
-int CKeyboard::DoClock()
+void CKeyboard::execute()
 {
   unsigned retval;
 
@@ -1695,7 +1700,30 @@ int CKeyboard::DoClock()
     theAli->pic_interrupt(0,1);
   if(retval&0x02)
     theAli->pic_interrupt(1,4);
-  return 0;
+}
+
+void CKeyboard::check_state()
+{
+  if(!myThread.isRunning())
+    FAILURE("KBD thread has died");
+}
+
+void CKeyboard::run() {
+  try {
+    for (;;) {
+      if (StopThread) {
+        printf("kbd: exit thread.\n");
+        return;
+      }
+      execute();
+      Poco::Thread::sleep(20);
+    }
+  }
+  catch (...)
+  {
+    printf("kbd: exception in thread.\n");
+    // Let the thread die...
+  }
 }
 
 static u32 kb_magic1 = 0x65481687;
