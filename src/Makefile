@@ -27,7 +27,7 @@
 #
 # Makefile for GNU Linux. (And possibly many UNIX'es).
 #
-# $Id: Makefile,v 1.31 2008/03/04 19:20:02 iamcamiel Exp $
+# $Id: Makefile,v 1.32 2008/03/05 19:38:38 iamcamiel Exp $
 #
 # X-1.29       Camiel Vanderhoeven              04-MAR-2008
 #      Merged Brian wheeler's New IDE code into the standard 
@@ -124,7 +124,7 @@ LD = g++
 #  -O3   -- optimize at level 3
 #  -mtune=<cpu>   -- cpu is one of:  generic, core2, athlon64, pentium4, etc
 #
-CTUNINGFLAGS = -O3 -mtune=generic 
+CTUNINGFLAGS =  -O3 -mtune=core2
 
 #
 # CDEBUGFLAGS - turn on debugging in ES40
@@ -137,7 +137,7 @@ CTUNINGFLAGS = -O3 -mtune=generic
 #   -DDEBUG_IDE		    Turn on all IDE Debugging.
 #   -DDEBUG_IDE_<opt>	Turn on specific IDE debugging.  Options are:
 #	            		BUSMASTER, COMMAND, DMA, INTERRUPT, REG_COMMAND,
-#           			REG_CONTROL, PACKET
+#           			REG_CONTROL, PACKET, THREADS
 #   -DDEBUG_UNKMEM	    Turn on unknown memory access debugging
 #   -DDEBUG_PCI		    Turn on PCI Debugging
 #   -DDEBUG_TB		    Turn on Translation Buffer debugging
@@ -152,7 +152,6 @@ CTUNINGFLAGS = -O3 -mtune=generic
 #   -DDEBUG_BACKTRACE   Turn on backtrace dump on SIGSEGV
 #
 CDEBUGFLAGS = -g -DHIDE_COUNTER -DDEBUG_BACKTRACE
-
 #
 # ES40 Options
 #
@@ -192,7 +191,7 @@ endif
 
 CFLAGS =  -I. -I..  \
 	$(CDEBUGFLAGS) $(CTUNINGFLAGS) $(OPTIONS) $(COPTIONFLAGS)
-LDFLAGS = $(LDOPTIONFLAGS)
+LDFLAGS = $(LDOPTIONFLAGS) -lPocoFoundation
 
 IDB_CFLAGS = -DIDB 
 LSM_CFLAGS = -DIDB -DLS_MASTER
@@ -284,4 +283,3 @@ depend: $(SRCS)
 	$(DEPEND) -o.do -a -- $(IDB_CFLAGS) -- $(SRCS)
 clean:
 	rm -f es40 es40_idb es40_lss es40_lsm *.o *.do *.mao *.slo *.trc gui/*.o gui/*.mao gui/*.slo gui/*.do
-

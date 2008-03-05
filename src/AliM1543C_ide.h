@@ -27,26 +27,16 @@
  * \file
  * Contains the definitions for the emulated Ali M1543C IDE chipset part.
  *
- * $Id: AliM1543C_ide.h,v 1.13 2008/03/05 14:41:46 iamcamiel Exp $
+ * $Id: AliM1543C_ide.h,v 1.14 2008/03/05 19:38:38 iamcamiel Exp $
+ *
+ * X-1.14       Brian Wheeler                                   05-MAR-2008
+ *      Nicer, more efficient multi-threading version.
  *
  * X-1.13       Camiel Vanderhoeven                             05-MAR-2008
  *      Multi-threading version.
  *
  * X-1.12       Camiel Vanderhoeven                             04-MAR-2008
  *      Merged Brian wheeler's New IDE code into the standard controller.
- *
- * X-1.11.4     Brian Wheeler                                   27-FEB-2008
- *      Attempts to refire the interrupt if the controller seems to have
- *      missed it -- before the OS declares a timeout.
- *
- * X-1.11.3     Camiel Vanderhoeven                             12-JAN-2008
- *      Use disk's SCSI engine for ATAPI devices.
- *
- * X-1.11.2      Brian wheeler                                  08-JAN-2008
- *      ATAPI improved.
- *
- * X-1.11.1      Brian wheeler                                  08-JAN-2008
- *      Complete rewrite of IDE controller.
  *
  * X-1.11.4     Brian Wheeler                                   27-FEB-2008
  *      Attempts to refire the interrupt if the controller seems to have
@@ -160,9 +150,13 @@ class CAliM1543C_ide : public CDiskController, public CSCSIDevice, public Poco::
 
   void execute(int index);
 
-  Poco::Thread myThread;
-  Poco::Semaphore mySemaphore;
-  Poco::Mutex myRegLock[2];
+  Poco::Thread * threadIde[2];  // one thread for each controller chip
+  Poco::Semaphore * mySemaphore[2]; // one semaphore for each thread.
+  Poco::Semaphore * bmSemaphore[2]; // semaphores for Bus Mastering
+  Poco::Mutex myRegLock[2]; // synchronize access to command/control registers 
+  Poco::Mutex bmRegLock[2]; // synchronize access to busmaster registers
+#define LOCK_REGS(i) Poco::Mutex::ScopedLock lock(myRegLock[i]);
+#define LOCK_BM_REGS(i) Poco::Mutex::ScopedLock lock(bmRegLock[i]);
   bool StopThread;
 
 // The state structure contains all elements that need to be saved to the statefile.
@@ -222,8 +216,6 @@ class CAliM1543C_ide : public CDiskController, public CSCSIDevice, public Poco::
       
       // internal state
       bool reset_in_progress;
-      bool interrupt_pending;
-      int interrupt_fired;
       int selected;
 
       // dma stuff
@@ -336,5 +328,6 @@ static char *packet_states[] = {
 #define SENSE_BLANK_CHECK 0x08
 #define SENSE_ABORT_COMMAND 0x0b
 #define SENSE_MISCOMPARE 0x0e
+
 
 #endif 

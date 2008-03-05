@@ -27,92 +27,16 @@
  * \file
  * Contains the code for the emulated Ali M1543C IDE chipset part.
  *		
- * $Id: AliM1543C_ide.cpp,v 1.21 2008/03/05 14:41:46 iamcamiel Exp $
+ * $Id: AliM1543C_ide.cpp,v 1.22 2008/03/05 19:38:38 iamcamiel Exp $
+ *
+ * X-1.22       Brian Wheeler                                   05-MAR-2008
+ *      Nicer, more efficient multi-threading version.
  *
  * X-1.21       Camiel Vanderhoeven                             05-MAR-2008
  *      Multi-threading version.
  *
  * X-1.20       Camiel Vanderhoeven                             04-MAR-2008
  *      Merged Brian wheeler's New IDE code into the standard controller.
- *
- * X-1.19.17    Brian Wheeler                                   27-FEB-2008
- *     Re-fire interrupts less often.
- *
- * X-1.19.16    Brian Wheeler                                   27-FEB-2008
- *     Improvement to last fix.
- *
- * X-1.19.15    Brian Wheeler                                   27-FEB-2008
- *     This patch fixes the vms boot problems from ide cdrom and it also
- *     allowed me to install tru64 -- albeit with timeouts:
- *   a) Clears the busmaster active bit when the bit 1 is written to the
- *      busmaster status register.
- *   b) Attempts to refire the interrupt if the controller seems to have
- *      missed it -- before the OS declares a timeout.
- *
- * X-1.19.14    Brian Wheeler                                   27-FEB-2008
- *      Avoid compiler warnings.
- *
- * X-1.19.13    Brian Wheeler                                   29-JAN-2008
- *      Avoid firing interrupts that occurred while interrupts were
- *      disabled.
- *
- * X-1.19.12    Camiel Vanderhoeven                             28-JAN-2008
- *      Avoid compiler warnings.
- *
- * X-1.19.11    Brian Wheeler                                   26-JAN-2008
- *      Don't repeat interrupt too soon.
- *
- * X-1.19.10    Camiel Vanderhoeven                             24-JAN-2008
- *      Use new CPCIDevice::do_pci_read and CPCIDevice::do_pci_write.
- *
- * X-1.19.9     Brian Wheeler                                   16-JAN-2008
- *      Less timeouts.
- *
- * X-1.19.8     Brian Wheeler                                   14-JAN-2008
- *      Less messages without debugging enabled.
- *
- * X-1.19.7     Fang Zhe                                        13-JAN-2008
- *      Big-endian support.
- *
- * X-1.19.6     Camiel Vanderhoeven                             12-JAN-2008
- *      Use disk's SCSI engine for ATAPI devices.
- *
- * X-1.19.5      Brian Wheeler                                   10-JAN-2008
- *   - Stop dividing get_lba_size() by 4 in ATAPI Get Capacity.  SRM can
- *     now boot cdrom images correctly, and OSes can use cdroms effectively...
- *     at least until they call an unimplemented SCSI command.
- *
- * X-1.19.4      Brian Wheeler                                   09-JAN-2008
- *   - During init, command_in_progress and command_cycle are cleared.
- *   - Writes to ide_control are processed correctly.  Tru64 & FreeBSD
- *     recognize disks now.
- *   - interrupt is deasserted when command register is written.
- *   - Removed a bunch of debugging sections.
- *   - Made it quieter if DEBUG_IDE wasn't defined -- users should no longer
- *     see Debug Pause messages.
- *   - busy is asserted if we're currently processing a packet command when
- *     drq is deasserted (i.e. when the read buffer is empty).  This lets us
- *     get back into the ATAPI state machine before the host can start
- *     messing  with the controller.
- *   - Removed pauses for port 0x3n7 -- its really a floppy port.
- *   - Remove pause when reset is being started.
- *   - packet dma flag is presented when get_status() is run.
- *   - ATAPI command 0x1e (media lock) implemented as no-op.
- *   - ATAPI command 0x43 (read TOC) implemented as a hack.
- *   - ATAPI read now uses get_block_size() for determining transfers.
- *   - ATAPI state machine goes from DP34 to DI immediately upon completion 
- *     instead of redirecting through DP2.
- *   - Added ATA Command 0xc6 (Set Multiple).
- *   .
- *
- * X-1.19.3      Brian wheeler                                   08-JAN-2008
- *      ATAPI improved.
- *
- * X-1.19.2      Brian wheeler                                   08-JAN-2008
- *      Handle blocksize correctly for ATAPI.
- *
- * X-1.19.1     Brian wheeler                                   08-JAN-2008
- *      Complete rewrite of IDE controller.
  *
  * X-1.19.17    Brian Wheeler                                   27-FEB-2008
  *     Re-fire interrupts less often.
@@ -329,48 +253,13 @@ u32 AliM1543C_ide_cfg_mask[64] = {
   0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
 };
 
-void CAliM1543C_ide::run()
-{
-  bool executing;
-
-  try
-  {
-    for(;;)
-    {
-      mySemaphore.wait();
-      if (StopThread)
-      {
-        printf("IDE: exit thread.\n");
-        return;
-      }
-      do 
-      {
-        executing = false;
-        for (int index = 0; index < 2; index++)
-        {
-          if(SEL_COMMAND(index).command_in_progress) 
-          {
-            executing = true;
-            myRegLock[index].lock();
-            execute(index);
-            myRegLock[index].unlock();
-          }
-        }
-      } while (executing);
-    }
-  }
-  catch(...)
-  {
-    printf("IDE: exception in thread.\n");
-    // Let the thread die...
-  }
-}
 
 /**
  * Constructor.
  **/
 CAliM1543C_ide::CAliM1543C_ide(CConfigurator * cfg, CSystem * c, int pcibus, int pcidev) 
-  : CDiskController(cfg,c,pcibus,pcidev,2,2), mySemaphore(0,1), myThread("IDE") {
+  : CDiskController(cfg,c,pcibus,pcidev,2,2)
+{
   if (theIDE != 0)
     FAILURE("More than one IDE controller!!\n");
   theIDE = this;
@@ -392,26 +281,36 @@ CAliM1543C_ide::CAliM1543C_ide(CConfigurator * cfg, CSystem * c, int pcibus, int
 
   ResetPCI();
 
+  // start controller threads
   StopThread = false;
-  myThread.start(*this);
-
+  for(int i=0;i<2;i++) {
+    char buffer[5];
+    mySemaphore[i]=new Poco::Semaphore(0,1); // disk controller
+    bmSemaphore[i]=new Poco::Semaphore(0,1); // bus master
+    sprintf(buffer,"ide%d",i);
+    threadIde[i] = new Poco::Thread(buffer);
+    threadIde[i]->start(*this);
+    printf("Thread %d started \"%s\" %d\n",i,threadIde[i]->getName().c_str(),threadIde[i]->id());
+  }
   printf("%%IDE-I-INIT: New IDE emulator initialized.\n");
 }
 
 CAliM1543C_ide::~CAliM1543C_ide()
 {
   StopThread = true;
-  mySemaphore.set();
-  myThread.join();
+  for(int i=0;i<2;i++) {
+    mySemaphore[i]->set(); // wake up the controller
+    threadIde[i]->join();
+  }
 }
 
 void CAliM1543C_ide::ResetPCI()
 {
   int i,j;
-
   CPCIDevice::ResetPCI();
 
   for (i=0;i<2;i++) {
+    LOCK_REGS(i);
     CONTROLLER(i).bm_status = 0;
     CONTROLLER(i).selected = 0;
     for (j=0;j<2;j++) {
@@ -627,7 +526,7 @@ void CAliM1543C_ide::WriteMem_Bar(int func, int bar, u32 address, int dsize, u32
 
 u32 CAliM1543C_ide::ide_command_read(int index, u32 address, int dsize) {
   u32 data = 0;
-
+  LOCK_REGS(index);
   if(!get_disk(index,0) &&
      !get_disk(index,1)) {
     // no disks are present, so the data lines actually float to
@@ -661,9 +560,8 @@ u32 CAliM1543C_ide::ide_command_read(int index, u32 address, int dsize) {
     {
       // there's no more to take.
       SEL_STATUS(index).drq=false;
-      if(SEL_COMMAND(index).current_command == 0xa0 &&
-  	     SEL_COMMAND(index).command_in_progress) 
-      {
+      if(SEL_COMMAND(index).command_in_progress) {
+	if(SEL_COMMAND(index).current_command == 0xa0) {
 	    // packet is a weird case.  We're actually going to set the
 	    // controller to busy so we can end up in the ATAPI state
 	    // machine before the host has a chance to do anything 
@@ -673,6 +571,8 @@ u32 CAliM1543C_ide::ide_command_read(int index, u32 address, int dsize) {
 #ifdef DEBUG_IDE_PACKET
 	    printf("%%IDE-I-READCMD:  Asserting Busy so we can resume ATAPI in state %s.\n",packet_states[SEL_COMMAND(index).packet_phase]);
 #endif
+      }
+	mySemaphore[index]->set(); // wake up the controller.
       }
     }
 
@@ -708,7 +608,6 @@ u32 CAliM1543C_ide::ide_command_read(int index, u32 address, int dsize) {
     // get the status and clear the interrupt.
     data = get_status(index);
     theAli->pic_deassert(1,6+index); 
-    CONTROLLER(index).interrupt_fired=0;
 #ifdef DEBUG_IDE_INTERRUPT
     printf("%%IDE-I-INTERRUPT: Interrupt Acknowledged.\n");
 #endif
@@ -724,6 +623,7 @@ u32 CAliM1543C_ide::ide_command_read(int index, u32 address, int dsize) {
 }
 
 void CAliM1543C_ide::ide_command_write(int index, u32 address, int dsize, u32 data) {
+  LOCK_REGS(index);
 #ifdef DEBUG_IDE_REG_COMMAND
   if(address != 0)
     printf("%%IDE-I-REGCMD: Write to command register %d (%s) on controller %d, value: %x\n",address,register_names[address],index,data);
@@ -753,6 +653,7 @@ void CAliM1543C_ide::ide_command_write(int index, u32 address, int dsize, u32 da
       // we don't want any more.
       SEL_STATUS(index).drq=false;
       SEL_STATUS(index).busy=true;
+      mySemaphore[index]->set(); // wake the controller up.
     }
 
     if(CONTROLLER(index).data_ptr > IDE_BUFFER_SIZE) {
@@ -822,7 +723,7 @@ void CAliM1543C_ide::ide_command_write(int index, u32 address, int dsize, u32 da
       SEL_STATUS(index).busy=true;
       SEL_COMMAND(index).command_in_progress=true;
       SEL_COMMAND(index).packet_phase=PACKET_NONE;
-      mySemaphore.set();
+      mySemaphore[index]->set();  // wake up the controller.
     } else {
       // this is a nop, so we cancel everything that's pending and
       // pretend that this operation got done super fast!
@@ -835,6 +736,7 @@ void CAliM1543C_ide::ide_command_write(int index, u32 address, int dsize, u32 da
 
 u32 CAliM1543C_ide::ide_control_read(int index, u32 address) {
   u32 data=0;
+  LOCK_REGS(index);
   switch(address) {
   case 0:
     data = get_status(index);
@@ -866,6 +768,7 @@ u32 CAliM1543C_ide::ide_control_read(int index, u32 address) {
 void CAliM1543C_ide::ide_control_write(int index, u32 address, u32 data)
 {
   bool prev_reset;
+  LOCK_REGS(index);
 #ifdef DEBUG_IDE_REG_CONTROL
   printf("%%IDE-I-WRITCTRL: write port %d on IDE control %d: 0x%02x\n",  (u32)(address),index, data);
 #endif
@@ -926,6 +829,7 @@ void CAliM1543C_ide::ide_control_write(int index, u32 address, u32 data)
 u32 CAliM1543C_ide::ide_busmaster_read(int index, u32 address, int dsize)
 {
   u32 data;
+  LOCK_BM_REGS(index);
   switch(dsize) {
   case 8:
     data = CONTROLLER(index).busmaster[address];
@@ -950,6 +854,7 @@ u32 CAliM1543C_ide::ide_busmaster_read(int index, u32 address, int dsize)
  **/
 void CAliM1543C_ide::ide_busmaster_write(int index, u32 address, u32 data, int dsize)
 {
+  LOCK_BM_REGS(index);
 #ifdef DEBUG_IDE_BUSMASTER
   if(!(dsize==8 && (address >= 4 && address <=7))) 
     printf("%%IDE-I-WRITBUSM: write port %d on IDE bus master %d: 0x%02x, %d bytes\n",  (u32)(address),index, data, dsize/8);
@@ -983,6 +888,7 @@ void CAliM1543C_ide::ide_busmaster_write(int index, u32 address, u32 data, int d
     if(data & 0x01) {
       // set the status register
       CONTROLLER(index).busmaster[2] |= 0x01;
+      bmSemaphore[index]->set();
     } else {
       // clear the status register
       CONTROLLER(index).busmaster[2] &= 0xfe;
@@ -1037,6 +943,7 @@ void CAliM1543C_ide::ide_busmaster_write(int index, u32 address, u32 data, int d
 
 void CAliM1543C_ide::set_signature(int index, int id)
 {
+  LOCK_REGS(index);
   // Device signature
   REGISTERS(index,id).head_no       = 0;
   REGISTERS(index,id).sector_count  = 1;
@@ -1054,16 +961,22 @@ void CAliM1543C_ide::set_signature(int index, int id)
 }
 
 void CAliM1543C_ide::raise_interrupt(int index) {
+  LOCK_REGS(index);
+  if(!CONTROLLER(index).disable_irq) 
+  {
 #ifdef DEBUG_IDE_INTERRUPT
-  printf("%%IDE-I-INTERRUPT: Interrupt scheduled to be raised on controller %d.\n",index);
+    printf("%%IDE-I-INTERRUPT: Interrupt raised on controller %d.\n",index);
 #endif
-  CONTROLLER(index).interrupt_pending=true;
+    LOCK_BM_REGS(index);
+    CONTROLLER(index).busmaster[2] |= 0x04;
+    theAli->pic_interrupt(1, 6+index);
+  } 
 }
 
 u8 CAliM1543C_ide::get_status(int index)
 {
   u8 data;
-
+  LOCK_REGS(index);
   if (!SEL_DISK(index)) {
 #ifdef DEBUG_IDE_REG_COMMAND
     printf("%%IDE-I-STATUS: Read status for nonexiting device %d.%d\n",index,CONTROLLER(index).selected);
@@ -1110,6 +1023,7 @@ void CAliM1543C_ide::identify_drive(int index, bool packet)
   char rev_number[9];
   size_t i;
 
+  LOCK_REGS(index);
   // clear the block.
   for(i=0;i<256;i++)
     CONTROLLER(index).data[i]=0;
@@ -1246,6 +1160,7 @@ void CAliM1543C_ide::identify_drive(int index, bool packet)
 
 void CAliM1543C_ide::command_aborted(int index, u8 command)
 {
+  LOCK_REGS(index);
   printf("ide%d.%d aborting on command 0x%02x \n", index, CONTROLLER(index).selected, command);
   SEL_STATUS(index).busy = false;
   SEL_STATUS(index).drive_ready = true;
@@ -1260,6 +1175,7 @@ void CAliM1543C_ide::command_aborted(int index, u8 command)
 CAliM1543C_ide * theIDE = 0;
 
 void CAliM1543C_ide::ide_status(int index) {
+  LOCK_REGS(index);
   printf("IDE %d.%d: [busy: %d, drdy: %d, flt: %d, drq: %d, err: %d]\n"
          "         [c: %d, h: %d, s: %d, #: %d, f: %x, lba: %d]\n"
          "         [ptr: %d, size: %d, error: %d, cmd: %x, in progress: %d]\n"
@@ -1301,8 +1217,10 @@ void CAliM1543C_ide::ide_status(int index) {
 
 void CAliM1543C_ide::check_state() 
 {
-  if(!myThread.isRunning())
-    FAILURE("IDE thread has died");
+  if(!threadIde[0]->isRunning())
+    FAILURE("IDE 0 thread has died");
+  if(!threadIde[1]->isRunning())
+    FAILURE("IDE 1 thread has died");
 }
 
 void CAliM1543C_ide::execute(int index)
@@ -1616,7 +1534,12 @@ void CAliM1543C_ide::execute(int index)
 		        CONTROLLER(index).data_size=6;
 		        SEL_COMMAND(index).packet_dma = (SEL_REGISTERS(index).features & 0x01)?true:false;
 		        SEL_COMMAND(index).packet_phase = PACKET_DP1;
+		    // we drop out of the thread and shut down the controller.
+		    // we will be awakened when the drq flag is false, and 
+		    // the process will start in the state machine.
+		    break;
 	          } 
+
 	          /* This is the Packet I/O state machine.  
 	           * The gist of it is this:  we loop until yield==true, 
 	           * so we can move from state to state in the same DoClock().  
@@ -1624,6 +1547,10 @@ void CAliM1543C_ide::execute(int index)
 	           * By the time we get here, we're in DP1 (Receive Packet) and
 	           * we're waiting for an actual packet to arrive.
 	           */
+#ifdef DEBUG_IDE_PACKET
+		  printf("Entering Packet state machine %d\n",index);
+		  ide_status(index);
+#endif
 
 	          bool yield = false;
 	          do 
@@ -1645,7 +1572,7 @@ void CAliM1543C_ide::execute(int index)
 			         SEL_COMMAND(index).packet_command[9],
 			         SEL_COMMAND(index).packet_command[10],
 			         SEL_COMMAND(index).packet_command[11]);
-		        };
+		    }
 #endif
 		        switch(SEL_COMMAND(index).packet_phase) 
                 {
@@ -1667,6 +1594,8 @@ void CAliM1543C_ide::execute(int index)
                   else 
                   {		    
 		            // yield to let the host finish writing the packet.
+			// XXX: We really shouldn't ever get here...right?
+			PAUSE("Waiting for CPU thread to write packet.\n");
 		            yield=true;
 		          }
 		          break;
@@ -1704,40 +1633,37 @@ void CAliM1543C_ide::execute(int index)
                     default:
                       FAILURE("Unexpected SCSI phase");
                     }
-		          } else {
+		      } 
+		      else 
+		      {
 		            // transition to an idle state
 		            SEL_COMMAND(index).packet_phase=PACKET_DI;
 		          }
 		          break;
     		    		    
 		        case PACKET_DP34:
-		          if(SEL_COMMAND(index).packet_dma) {
+		      if(SEL_COMMAND(index).packet_dma) 
+		      {
 		            // send back via dma
 #ifdef DEBUG_IDE_PACKET
 		            printf("Sending ATAPI data back via DMA.\n");
 #endif
-		            if((CONTROLLER(index).busmaster[2] & 0x01) == 1) {
 		              u8 status = do_dma_transfer(index,
 						          (u8 *)(&CONTROLLER(index).data[0]),
 						          SEL_REGISTERS(index).BYTE_COUNT,
 						          false);	
-                    
                       if(scsi_get_phase(index) != SCSI_PHASE_STATUS)
                         FAILURE("SCSI status phase expected");
                       scsi_xfer_ptr(index, scsi_expected_xfer(index));
                       scsi_xfer_done(index);
                       if (scsi_get_phase(index) != SCSI_PHASE_FREE)
                         FAILURE("SCSI bus free phase expected");
-
   	                  SEL_STATUS(index).drq = true;
 		              SEL_STATUS(index).busy = false;
 			          SEL_COMMAND(index).packet_phase = PACKET_DI;
-			          //yield=true;
-		            } else {
-		              // the controller isn't ready for DMA yet.
-		              yield=1;
 		            }
-		          } else {
+		      else 
+		      {
 		            // send back via pio
 		            if((!SEL_STATUS(index).drq) && 
 		               (CONTROLLER(index).data_ptr==0)) {
@@ -1747,8 +1673,11 @@ void CAliM1543C_ide::execute(int index)
 		              SEL_REGISTERS(index).REASON = IR_IO;
 		              raise_interrupt(index);
 		              yield = true;
-		            } else {
-		              if(SEL_STATUS(index).drq) {
+			} 
+			else 
+			{
+			  if(SEL_STATUS(index).drq) 
+			  {
 #ifdef DEBUG_IDE_PACKET
                         printf("Yielding until all PIO data is read.\n");
 #endif
@@ -1763,17 +1692,17 @@ void CAliM1543C_ide::execute(int index)
 					      SEL_COMMAND(index).command_cycle=1;
 				        }
 			            yield = true;  // yield.			    
-		              } else {			
+			  } 
+			  else 
+			  {			
 			            // all of the data has been read from the buffer.
 			            // for now I assume that it is everything.
-
                         if(scsi_get_phase(index) != SCSI_PHASE_STATUS)
                           FAILURE("SCSI status phase expected");
                         scsi_xfer_ptr(index, scsi_expected_xfer(index));
                         scsi_xfer_done(index);
                         if (scsi_get_phase(index) != SCSI_PHASE_FREE)
                           FAILURE("SCSI bus free phase expected");
-
 #ifdef DEBUG_IDE_PACKET
                         printf("Finished transferring!\n");
 #endif
@@ -1782,7 +1711,6 @@ void CAliM1543C_ide::execute(int index)
 		              }
 		            }
 		          }
-        		    
 		          break;
 
 		case PACKET_DI:
@@ -1803,6 +1731,7 @@ void CAliM1543C_ide::execute(int index)
 		}
 	      } while(!yield);
 #ifdef DEBUG_IDE_PACKET
+		  printf("Drop out of packet state machine %d\n",index);
 	      ide_status(index);
 #endif
 	    }
@@ -1851,8 +1780,6 @@ void CAliM1543C_ide::execute(int index)
 	    command_aborted(index,SEL_COMMAND(index).current_command);
 	    SEL_COMMAND(index).command_in_progress=false;
 	  } else {
-	    if((CONTROLLER(index).busmaster[2] & 0x01) == 1) {
-	      SEL_COMMAND(index).command_in_progress=false;
 	      if(SEL_REGISTERS(index).sector_count ==0)
 		SEL_REGISTERS(index).sector_count=256;
 	      
@@ -1874,6 +1801,7 @@ void CAliM1543C_ide::execute(int index)
 	      u8 status = do_dma_transfer(index, ptr,
 					  SEL_REGISTERS(index).sector_count*512,
 					  false);
+	    SEL_COMMAND(index).command_in_progress=false;
 	      SEL_STATUS(index).busy=false;
 	      SEL_STATUS(index).drive_ready=true;
 	      SEL_STATUS(index).seek_complete=true;
@@ -1881,7 +1809,6 @@ void CAliM1543C_ide::execute(int index)
 	      SEL_STATUS(index).drq=false;
 	      SEL_STATUS(index).err=false;	
 	    }
-	  }
 	  break;
 
 	case 0xca: // write dma
@@ -1895,8 +1822,6 @@ void CAliM1543C_ide::execute(int index)
 		     index, CONTROLLER(index).selected);
 	      command_aborted(index,SEL_COMMAND(index).current_command);
 	    } else {
-	      if((CONTROLLER(index).busmaster[2] & 0x01) == 1) {
-		SEL_COMMAND(index).command_in_progress=false;	    
 		if(SEL_REGISTERS(index).sector_count ==0)
 		  SEL_REGISTERS(index).sector_count=256;
 #ifdef DEBUG_IDE_DMA
@@ -1916,7 +1841,7 @@ void CAliM1543C_ide::execute(int index)
 		SEL_DISK(index)->seek_block(lba);
 		SEL_DISK(index)->write_blocks(&(CONTROLLER(index).data[0]),
 					      SEL_REGISTERS(index).sector_count);
-		
+	      SEL_COMMAND(index).command_in_progress=false;	    		
 		SEL_STATUS(index).busy=false;
 		SEL_STATUS(index).drive_ready=true;
 		SEL_STATUS(index).seek_complete=true;
@@ -1925,7 +1850,6 @@ void CAliM1543C_ide::execute(int index)
 		SEL_STATUS(index).err=false;	
 	      }
 	    }
-	  }
 	  break;
 	    
 #if 0	  
@@ -2038,51 +1962,6 @@ void CAliM1543C_ide::execute(int index)
 //    } 
 
     SEL_COMMAND(index).command_cycle++;
-
-    if(!CONTROLLER(index).disable_irq) 
-    {
-      if (CONTROLLER(index).interrupt_pending) 
-      {
-
-#ifdef DEBUG_IDE_INTERRUPT
-  	    printf("%%IDE-I-INTERRUPT: Interrupt raised on controller %d.\n",index);
-#endif
-	    CONTROLLER(index).busmaster[2] |= 0x04;
-	    theAli->pic_interrupt(1, 6+index);
-	    CONTROLLER(index).interrupt_pending=false;
-	    CONTROLLER(index).interrupt_fired=SEL_COMMAND(index).command_cycle;
-      } 
-      else 
-      {
-	    // check to see if its been a long time(tm) since we fired
-	    // the interrupt, and if it has been, we re-fire it.
-	    if(CONTROLLER(index).interrupt_fired != 0) 
-	    {
-
-	      if((SEL_COMMAND(index).command_cycle - CONTROLLER(index).interrupt_fired) > 200)
-	      {
-	        CONTROLLER(index).interrupt_pending=1;
-	        theAli->pic_deassert(1,6+index); 
-#ifdef DEBUG_IDE_INTERRUPT
-	        printf("%%IDE-I-INTERRUPT: scheduling re-firing of interrupt on controller %d.\n",index);
-	        PAUSE("Yeee haa!");
-#endif
-	      }
-	      else
-	      {
-#ifdef DEBUG_IDE_INTERRUPT
-	        printf("%%IDE-I-INTERRUPT: waiting for int acknowledge on %d. (%d, %d)\n",index,SEL_COMMAND(index).command_cycle,CONTROLLER(index).interrupt_fired);
-#endif
-	      }
-	    }
-      }
-    }
-    else 
-    {
-      // if interrupts are disabled, make sure that we don't
-      // accidentally fire one later when they are enabled.
-      CONTROLLER(index).interrupt_pending=false;
-    }
 }
 
 int CAliM1543C_ide::do_dma_transfer(int index, u8 *buffer, u32 buffersize, bool direction) {
@@ -2090,8 +1969,9 @@ int CAliM1543C_ide::do_dma_transfer(int index, u8 *buffer, u32 buffersize, bool 
   size_t xfersize = 0;
   u8 status = 0;
   u8 count = 0;
+  bmSemaphore[index]->wait();  // wait until the start bit is set.
+  LOCK_BM_REGS(index);
   u32 prd = endian_32(*(u32 *)(&CONTROLLER(index).busmaster[4]));
-	   
   do {
     u32 base;
     do_pci_read(prd, &base, 4, 1);
@@ -2156,8 +2036,33 @@ int CAliM1543C_ide::do_dma_transfer(int index, u8 *buffer, u32 buffersize, bool 
     raise_interrupt(index);
     break;
   }
-
   return status;
 }
 
-
+void CAliM1543C_ide::run()
+{
+  bool executing;
+  int index = (threadIde[0] == Poco::Thread::current())?0:1;
+  printf("IDE %d: thread starting.\n",index);
+  try {
+    for(;;) {
+      mySemaphore[index]->wait();
+      if(StopThread) {
+	printf("IDE %d: Exiting thread.\n",index);
+	return;
+      }
+      {
+	LOCK_REGS(index);
+#ifdef DEBUG_IDE_THREADS
+	printf("Thread %d: \n",index);
+	ide_status(index);
+#endif
+	if(SEL_COMMAND(index).command_in_progress) 
+	  execute(index);
+      }
+    }
+  }
+  catch(...) {
+    printf("IDE: exception in thread %d.\n",index);
+  }
+}
