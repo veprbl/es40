@@ -1,6 +1,14 @@
 /**
 \page changelog Changelog
 
+\section c019 version 0.18 -> 0.18+
+
+ - Use separate threads for devices rather than crowding
+   everything into one thread. Use Poco libraries for platform
+   independent threading. NOTE: This patch breaks some 
+   functionality that we will regain in the future.
+ .
+ 
 \section c018 version 0.17 -> 0.18
 
 Version 0.18 contains a lot of compatibility fixes, both with
