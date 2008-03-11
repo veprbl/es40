@@ -27,7 +27,10 @@
  * \file 
  * Contains the definitions for the different locking structures for multi-threading.
  *
- * $Id: Lock.h,v 1.1 2008/03/11 09:10:41 iamcamiel Exp $
+ * $Id: Lock.h,v 1.2 2008/03/11 15:13:28 iamcamiel Exp $
+ *
+ * X-1.2        Brian Wheeler                                   11-MAR-2007
+ *      Fixed macro concatenation syntax error.
  *
  * X-1.1        Camiel Vanderhoeven                             11-MAR-2007
  *      File created to support named, debuggable mutexes.
@@ -346,10 +349,10 @@ inline CScopedRWLock::~CScopedRWLock()
 #define MUTEX_WRITE_LOCK(mutex) mutex->writeLock()
 #define MUTEX_UNLOCK(mutex) mutex->unlock()
 
-#define SCOPED_M_LOCK(mutex) CMutex::ScopedLock L_##__LINE__##(mutex)
+#define SCOPED_M_LOCK(mutex) CMutex::ScopedLock L_##__LINE__(mutex)
 
-#define SCOPED_FM_LOCK(mutex) CFastMutex::ScopedLock L_##__LINE__##(mutex)
+#define SCOPED_FM_LOCK(mutex) CFastMutex::ScopedLock L_##__LINE__(mutex)
 
-#define SCOPED_READ_LOCK(mutex) CRWMutex::ScopedLock L_##__LINE__##(mutex,false)
+#define SCOPED_READ_LOCK(mutex) CRWMutex::ScopedLock L_##__LINE__(mutex,false)
 
-#define SCOPED_WRITE_LOCK(mutex) CRWMutex::ScopedLock L_##__LINE__##(mutex,true)
+#define SCOPED_WRITE_LOCK(mutex) CRWMutex::ScopedLock L_##__LINE__(mutex,true)
