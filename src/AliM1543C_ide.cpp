@@ -27,7 +27,7 @@
  * \file
  * Contains the code for the emulated Ali M1543C IDE chipset part.
  *		
- * $Id: AliM1543C_ide.cpp,v 1.22 2008/03/05 19:38:38 iamcamiel Exp $
+ * $Id: AliM1543C_ide.cpp,v 1.23 2008/03/11 08:45:30 iamcamiel Exp $
  *
  * X-1.22       Brian Wheeler                                   05-MAR-2008
  *      Nicer, more efficient multi-threading version.
@@ -285,12 +285,12 @@ CAliM1543C_ide::CAliM1543C_ide(CConfigurator * cfg, CSystem * c, int pcibus, int
   StopThread = false;
   for(int i=0;i<2;i++) {
     char buffer[5];
-    mySemaphore[i]=new Poco::Semaphore(0,1); // disk controller
-    bmSemaphore[i]=new Poco::Semaphore(0,1); // bus master
+    semController[i]=new Poco::Semaphore(0,1); // disk controller
+    semBusMaster[i]=new Poco::Semaphore(0,1); // bus master
     sprintf(buffer,"ide%d",i);
-    threadIde[i] = new Poco::Thread(buffer);
-    threadIde[i]->start(*this);
-    printf("Thread %d started \"%s\" %d\n",i,threadIde[i]->getName().c_str(),threadIde[i]->id());
+    thrController[i] = new Poco::Thread(buffer);
+    thrController[i]->start(*this);
+    printf("Thread %d started \"%s\" %d\n",i,thrController[i]->getName().c_str(),thrController[i]->id());
   }
   printf("%%IDE-I-INIT: New IDE emulator initialized.\n");
 }
@@ -299,8 +299,8 @@ CAliM1543C_ide::~CAliM1543C_ide()
 {
   StopThread = true;
   for(int i=0;i<2;i++) {
-    mySemaphore[i]->set(); // wake up the controller
-    threadIde[i]->join();
+    semController[i]->set(); // wake up the controller
+    thrController[i]->join();
   }
 }
 
@@ -310,7 +310,6 @@ void CAliM1543C_ide::ResetPCI()
   CPCIDevice::ResetPCI();
 
   for (i=0;i<2;i++) {
-    LOCK_REGS(i);
     CONTROLLER(i).bm_status = 0;
     CONTROLLER(i).selected = 0;
     for (j=0;j<2;j++) {
@@ -526,7 +525,7 @@ void CAliM1543C_ide::WriteMem_Bar(int func, int bar, u32 address, int dsize, u32
 
 u32 CAliM1543C_ide::ide_command_read(int index, u32 address, int dsize) {
   u32 data = 0;
-  LOCK_REGS(index);
+  LOCK_CMD_REGS(index);
   if(!get_disk(index,0) &&
      !get_disk(index,1)) {
     // no disks are present, so the data lines actually float to
@@ -572,7 +571,7 @@ u32 CAliM1543C_ide::ide_command_read(int index, u32 address, int dsize) {
 	    printf("%%IDE-I-READCMD:  Asserting Busy so we can resume ATAPI in state %s.\n",packet_states[SEL_COMMAND(index).packet_phase]);
 #endif
       }
-	mySemaphore[index]->set(); // wake up the controller.
+	semController[index]->set(); // wake up the controller.
       }
     }
 
@@ -623,7 +622,7 @@ u32 CAliM1543C_ide::ide_command_read(int index, u32 address, int dsize) {
 }
 
 void CAliM1543C_ide::ide_command_write(int index, u32 address, int dsize, u32 data) {
-  LOCK_REGS(index);
+  LOCK_CMD_REGS(index);
 #ifdef DEBUG_IDE_REG_COMMAND
   if(address != 0)
     printf("%%IDE-I-REGCMD: Write to command register %d (%s) on controller %d, value: %x\n",address,register_names[address],index,data);
@@ -653,7 +652,7 @@ void CAliM1543C_ide::ide_command_write(int index, u32 address, int dsize, u32 da
       // we don't want any more.
       SEL_STATUS(index).drq=false;
       SEL_STATUS(index).busy=true;
-      mySemaphore[index]->set(); // wake the controller up.
+      semController[index]->set(); // wake the controller up.
     }
 
     if(CONTROLLER(index).data_ptr > IDE_BUFFER_SIZE) {
@@ -698,16 +697,10 @@ void CAliM1543C_ide::ide_command_write(int index, u32 address, int dsize, u32 da
     }
     if(SEL_COMMAND(index).command_in_progress==true) {
       // we're already working, why is another command being issued?
-      // chances are, its a timing issue.  We will (hopefully) force
-      // the previous command to completion by calling DoClock() before
-      // processing the new command.  Unfortunately, if the registers
-      // have changed dramatically, it may actually be destructive.
-
 #ifdef DEBUG_IDE
       printf("%%IDE-W-CIP: Command is already in progress.\n");
       PAUSE("dang it!");
 #endif
-//      DoClock(); 
     } 
 
     if((data & 0xf0) == 0x10)
@@ -723,7 +716,7 @@ void CAliM1543C_ide::ide_command_write(int index, u32 address, int dsize, u32 da
       SEL_STATUS(index).busy=true;
       SEL_COMMAND(index).command_in_progress=true;
       SEL_COMMAND(index).packet_phase=PACKET_NONE;
-      mySemaphore[index]->set();  // wake up the controller.
+      semController[index]->set();  // wake up the controller.
     } else {
       // this is a nop, so we cancel everything that's pending and
       // pretend that this operation got done super fast!
@@ -736,7 +729,7 @@ void CAliM1543C_ide::ide_command_write(int index, u32 address, int dsize, u32 da
 
 u32 CAliM1543C_ide::ide_control_read(int index, u32 address) {
   u32 data=0;
-  LOCK_REGS(index);
+  LOCK_CTL_REGS(index);
   switch(address) {
   case 0:
     data = get_status(index);
@@ -768,7 +761,7 @@ u32 CAliM1543C_ide::ide_control_read(int index, u32 address) {
 void CAliM1543C_ide::ide_control_write(int index, u32 address, u32 data)
 {
   bool prev_reset;
-  LOCK_REGS(index);
+  LOCK_CTL_REGS(index);
 #ifdef DEBUG_IDE_REG_CONTROL
   printf("%%IDE-I-WRITCTRL: write port %d on IDE control %d: 0x%02x\n",  (u32)(address),index, data);
 #endif
@@ -854,7 +847,6 @@ u32 CAliM1543C_ide::ide_busmaster_read(int index, u32 address, int dsize)
  **/
 void CAliM1543C_ide::ide_busmaster_write(int index, u32 address, u32 data, int dsize)
 {
-  LOCK_BM_REGS(index);
 #ifdef DEBUG_IDE_BUSMASTER
   if(!(dsize==8 && (address >= 4 && address <=7))) 
     printf("%%IDE-I-WRITBUSM: write port %d on IDE bus master %d: 0x%02x, %d bytes\n",  (u32)(address),index, data, dsize/8);
@@ -876,6 +868,7 @@ void CAliM1543C_ide::ide_busmaster_write(int index, u32 address, u32 data, int d
     return;
   }
 
+  LOCK_BM_REGS(index);
   switch(address) {
   case 0: // command register
 #ifdef DEBUG_IDE_BUSMASTER
@@ -888,7 +881,7 @@ void CAliM1543C_ide::ide_busmaster_write(int index, u32 address, u32 data, int d
     if(data & 0x01) {
       // set the status register
       CONTROLLER(index).busmaster[2] |= 0x01;
-      bmSemaphore[index]->set();
+      semBusMaster[index]->set(); // wake up the controller for busmastering
     } else {
       // clear the status register
       CONTROLLER(index).busmaster[2] &= 0xfe;
@@ -943,7 +936,6 @@ void CAliM1543C_ide::ide_busmaster_write(int index, u32 address, u32 data, int d
 
 void CAliM1543C_ide::set_signature(int index, int id)
 {
-  LOCK_REGS(index);
   // Device signature
   REGISTERS(index,id).head_no       = 0;
   REGISTERS(index,id).sector_count  = 1;
@@ -961,7 +953,6 @@ void CAliM1543C_ide::set_signature(int index, int id)
 }
 
 void CAliM1543C_ide::raise_interrupt(int index) {
-  LOCK_REGS(index);
   if(!CONTROLLER(index).disable_irq) 
   {
 #ifdef DEBUG_IDE_INTERRUPT
@@ -976,7 +967,6 @@ void CAliM1543C_ide::raise_interrupt(int index) {
 u8 CAliM1543C_ide::get_status(int index)
 {
   u8 data;
-  LOCK_REGS(index);
   if (!SEL_DISK(index)) {
 #ifdef DEBUG_IDE_REG_COMMAND
     printf("%%IDE-I-STATUS: Read status for nonexiting device %d.%d\n",index,CONTROLLER(index).selected);
@@ -1023,7 +1013,6 @@ void CAliM1543C_ide::identify_drive(int index, bool packet)
   char rev_number[9];
   size_t i;
 
-  LOCK_REGS(index);
   // clear the block.
   for(i=0;i<256;i++)
     CONTROLLER(index).data[i]=0;
@@ -1120,10 +1109,10 @@ void CAliM1543C_ide::identify_drive(int index, bool packet)
   CONTROLLER(index).data[64] = 0x0002; 
 
   // minimum cycle times
-  CONTROLLER(index).data[65] = 120;
-  CONTROLLER(index).data[66] = 120;
-  CONTROLLER(index).data[67] = 120;
-  CONTROLLER(index).data[68] = 120;
+  CONTROLLER(index).data[65] = 480; // mode 0
+  CONTROLLER(index).data[66] = 480; // mode 0
+  CONTROLLER(index).data[67] = 120; // pio4
+  CONTROLLER(index).data[68] = 120; // pio4
 
 
   if(packet) {
@@ -1160,7 +1149,6 @@ void CAliM1543C_ide::identify_drive(int index, bool packet)
 
 void CAliM1543C_ide::command_aborted(int index, u8 command)
 {
-  LOCK_REGS(index);
   printf("ide%d.%d aborting on command 0x%02x \n", index, CONTROLLER(index).selected, command);
   SEL_STATUS(index).busy = false;
   SEL_STATUS(index).drive_ready = true;
@@ -1175,7 +1163,6 @@ void CAliM1543C_ide::command_aborted(int index, u8 command)
 CAliM1543C_ide * theIDE = 0;
 
 void CAliM1543C_ide::ide_status(int index) {
-  LOCK_REGS(index);
   printf("IDE %d.%d: [busy: %d, drdy: %d, flt: %d, drq: %d, err: %d]\n"
          "         [c: %d, h: %d, s: %d, #: %d, f: %x, lba: %d]\n"
          "         [ptr: %d, size: %d, error: %d, cmd: %x, in progress: %d]\n"
@@ -1217,9 +1204,9 @@ void CAliM1543C_ide::ide_status(int index) {
 
 void CAliM1543C_ide::check_state() 
 {
-  if(!threadIde[0]->isRunning())
+  if(!thrController[0]->isRunning())
     FAILURE("IDE 0 thread has died");
-  if(!threadIde[1]->isRunning())
+  if(!thrController[1]->isRunning())
     FAILURE("IDE 1 thread has died");
 }
 
@@ -1849,7 +1836,6 @@ void CAliM1543C_ide::execute(int index)
 		SEL_STATUS(index).drq=false;
 		SEL_STATUS(index).err=false;	
 	      }
-	    }
 	  break;
 	    
 #if 0	  
@@ -1959,7 +1945,7 @@ void CAliM1543C_ide::execute(int index)
 	    }
 #endif
       }
-//    } 
+      } 
 
     SEL_COMMAND(index).command_cycle++;
 }
@@ -1969,7 +1955,7 @@ int CAliM1543C_ide::do_dma_transfer(int index, u8 *buffer, u32 buffersize, bool 
   size_t xfersize = 0;
   u8 status = 0;
   u8 count = 0;
-  bmSemaphore[index]->wait();  // wait until the start bit is set.
+  semBusMaster[index]->wait();  // wait until the start bit is set.
   LOCK_BM_REGS(index);
   u32 prd = endian_32(*(u32 *)(&CONTROLLER(index).busmaster[4]));
   do {
@@ -2042,21 +2028,21 @@ int CAliM1543C_ide::do_dma_transfer(int index, u8 *buffer, u32 buffersize, bool 
 void CAliM1543C_ide::run()
 {
   bool executing;
-  int index = (threadIde[0] == Poco::Thread::current())?0:1;
+  int index = (thrController[0] == Poco::Thread::current())?0:1;
   printf("IDE %d: thread starting.\n",index);
   try {
     for(;;) {
-      mySemaphore[index]->wait();
+      semController[index]->wait();
       if(StopThread) {
 	printf("IDE %d: Exiting thread.\n",index);
 	return;
       }
       {
-	LOCK_REGS(index);
 #ifdef DEBUG_IDE_THREADS
 	printf("Thread %d: \n",index);
 	ide_status(index);
 #endif
+	LOCK_CMD_REGS(index);
 	if(SEL_COMMAND(index).command_in_progress) 
 	  execute(index);
       }
@@ -2066,3 +2052,4 @@ void CAliM1543C_ide::run()
     printf("IDE: exception in thread %d.\n",index);
   }
 }
+
