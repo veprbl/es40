@@ -27,7 +27,10 @@
  * \file 
  * Contains the code for the emulated DecChip 21264CB EV68 Alpha processor.
  *
- * $Id: AlphaCPU.cpp,v 1.72 2008/03/05 14:41:46 iamcamiel Exp $
+ * $Id: AlphaCPU.cpp,v 1.73 2008/03/11 09:01:52 iamcamiel Exp $
+ *
+ * X-1.73       Camiel Vanderhoeven                             11-MAR-2008
+ *      Don't printf calibration loop.
  *
  * X-1.72       Camiel Vanderhoeven                             05-MAR-2008
  *      Multi-threading version.
@@ -395,7 +398,7 @@ CAlphaCPU::CAlphaCPU(CConfigurator * cfg, CSystem * system) : CSystemComponent (
 
   state.r[22] = state.r[22+32] = state.iProcNum;
 
-  printf("%s(%d): $Id: AlphaCPU.cpp,v 1.72 2008/03/05 14:41:46 iamcamiel Exp $\n",devid_string,state.iProcNum);
+  printf("%s(%d): $Id: AlphaCPU.cpp,v 1.73 2008/03/11 09:01:52 iamcamiel Exp $\n",devid_string,state.iProcNum);
 }
 
 /**
@@ -475,7 +478,7 @@ void CAlphaCPU::check_state()
 //    printf("                                     time %12" LL "d | prev %12" LL "d  \n",time,prev_time);
 //    printf("          count lapse %12" LL "d | curr %12" LL "d | prev %12" LL "d  \n",icount_lapse,icount,prev_icount);
 //    printf("cc %12" LL "d | aim %12" LL "d | diff %12" LL "d | prev %12" LL "d  \n",cc,cc_aim,cc_diff,prev_cc);
-//    printf("ce %12" LL "d | aim %12" LL "d | diff %12" LL "d | new  %12" LL "d  \n",ce,ce_aim,ce_diff,ce_new);
+    printf("ce %12" LL "d | aim %12" LL "d | diff %12" LL "d | new  %12" LL "d  \n",ce,ce_aim,ce_diff,ce_new);
 //    printf("==========================================================================  \n");
     cc_per_instruction = ce_new;
   }
