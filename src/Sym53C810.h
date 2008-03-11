@@ -27,7 +27,10 @@
  * \file
  * Contains the definitions for the emulated Symbios SCSI controller.
  *
- * $Id: Sym53C810.h,v 1.3 2008/03/05 14:41:46 iamcamiel Exp $
+ * $Id: Sym53C810.h,v 1.4 2008/03/11 09:10:40 iamcamiel Exp $
+ *
+ * X-1.4       Camiel Vanderhoeven                             11-MAR-2008
+ *      Named, debuggable mutexes.
  *
  * X-1.3        Camiel Vanderhoeven                             05-MAR-2008
  *      Multi-threading version.
@@ -104,7 +107,7 @@ class CSym53C810 : public CDiskController, public CSCSIDevice, public Poco::Runn
 
   Poco::Thread myThread;
   Poco::Semaphore mySemaphore;
-  Poco::Mutex myRegLock;
+  CMutex * myRegLock;
   bool StopThread;
 
   /// The state structure contains all elements that need to be saved to the statefile.

@@ -6652,6 +6652,10 @@
 				>
 			</File>
 			<File
+				RelativePath="..\Lock.h"
+				>
+			</File>
+			<File
 				RelativePath="..\lockstep.h"
 				>
 			</File>
@@ -6716,11 +6720,11 @@
 				>
 			</File>
 			<File
-				RelativePath="..\gui\vga.h"
+				RelativePath="..\VGA.h"
 				>
 			</File>
 			<File
-				RelativePath="..\VGA.h"
+				RelativePath="..\gui\vga.h"
 				>
 			</File>
 		</Filter>

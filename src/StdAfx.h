@@ -30,12 +30,15 @@
  * or project specific include files that are used frequently, but
  * are changed infrequently.
  *
- * $Id: StdAfx.h,v 1.27 2008/03/05 14:41:46 iamcamiel Exp $
+ * $Id: StdAfx.h,v 1.28 2008/03/11 09:10:40 iamcamiel Exp $
  *
- * X-1.18       Camiel Vanderhoeven                             05-MAR-2008
+ * X-1.28       Camiel Vanderhoeven                             11-MAR-2008
+ *      Named, debuggable mutexes.
+ *
+ * X-1.27       Camiel Vanderhoeven                             05-MAR-2008
  *      Multi-threading version.
  *
- * X-1.17       Alex                                            20-FEB-2008
+ * X-1.26       Alex                                            20-FEB-2008
  *      GNU compiler support on Windows.
  *
  * X-1.25       Camiel Vanderhoeven                             19-JAN-2008
@@ -215,5 +218,7 @@ inline char printable(char c)
 #include <Poco/Semaphore.h>
 #include <Poco/Mutex.h>
 #include <Poco/Timestamp.h>
+
+#include "Lock.h"
 
 #endif // !defined(INCLUDED_STDAFX_H)

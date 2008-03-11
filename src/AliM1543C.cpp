@@ -27,7 +27,10 @@
  * \file 
  * Contains the code for the emulated Ali M1543C chipset devices.
  *
- * $Id: AliM1543C.cpp,v 1.61 2008/03/05 14:41:45 iamcamiel Exp $
+ * $Id: AliM1543C.cpp,v 1.62 2008/03/11 09:10:40 iamcamiel Exp $
+ *
+ * X-1.62       Camiel Vanderhoeven                             11-MAR-2008
+ *      Named, debuggable mutexes.
  *
  * X-1.61       Camiel Vanderhoeven                             05-MAR-2008
  *      Multi-threading version.
@@ -377,10 +380,11 @@ CAliM1543C::CAliM1543C(CConfigurator * cfg, CSystem * c, int pcibus, int pcidev)
   }
   lpt_reset();
 
+  myRegLock = new CMutex("ali-reg");
   StopThread = false;
   myThread.start(*this);
 
-  printf("%s: $Id: AliM1543C.cpp,v 1.61 2008/03/05 14:41:45 iamcamiel Exp $\n",devid_string);
+  printf("%s: $Id: AliM1543C.cpp,v 1.62 2008/03/11 09:10:40 iamcamiel Exp $\n",devid_string);
 }
 
 /**

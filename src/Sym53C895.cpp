@@ -27,7 +27,10 @@
  * \file
  * Contains the code for the emulated Symbios SCSI controller.
  *
- * $Id: Sym53C895.cpp,v 1.24 2008/03/05 14:41:46 iamcamiel Exp $
+ * $Id: Sym53C895.cpp,v 1.25 2008/03/11 09:10:41 iamcamiel Exp $
+ *
+ * X-1.25       Camiel Vanderhoeven                             11-MAR-2008
+ *      Named, debuggable mutexes.
  *
  * X-1.24       Camiel Vanderhoeven                             05-MAR-2008
  *      Multi-threading version.
@@ -420,9 +423,9 @@ void CSym53C895::run()
       }
       while (state.executing)
       {
-        myRegLock.lock();
+        MUTEX_LOCK(myRegLock);
         execute();
-        myRegLock.unlock();
+        MUTEX_UNLOCK(myRegLock);
       }
     }
   }
@@ -450,10 +453,12 @@ CSym53C895::CSym53C895(CConfigurator * cfg, CSystem * c, int pcibus, int pcidev)
   CSCSIBus * a = new CSCSIBus(cfg, c);
   scsi_register(0, a, 7); // scsi id 7 by default
 
+  myRegLock = new CMutex("sym-reg");
+
   StopThread = false;
   myThread.start(*this);
 
-  printf("%s: $Id: Sym53C895.cpp,v 1.24 2008/03/05 14:41:46 iamcamiel Exp $\n",devid_string);
+  printf("%s: $Id: Sym53C895.cpp,v 1.25 2008/03/11 09:10:41 iamcamiel Exp $\n",devid_string);
 }
 
 CSym53C895::~CSym53C895()
@@ -585,13 +590,13 @@ void CSym53C895::WriteMem_Bar(int func,int bar, u32 address, int dsize, u32 data
       switch(dsize)
       {
       case 8:
-        myRegLock.lock();
+        MUTEX_LOCK(myRegLock);
 #if defined(DEBUG_SYM_REGS)
         printf("SYM: Write to register %02x: %02x.   \n",address,data);
 #endif
         if (address>=R_SCRATCHC)        {
           state.regs.reg8[address] = (u8)data;
-          myRegLock.unlock();
+          MUTEX_UNLOCK(myRegLock);
           break;
         }
         switch (address)
@@ -717,7 +722,7 @@ void CSym53C895::WriteMem_Bar(int func,int bar, u32 address, int dsize, u32 data
           printf("SYM: Write 8 bits to unknown memory at %02x with %08x.\n",address,data);
 	      throw((int)1);
         }
-        myRegLock.unlock();
+        MUTEX_UNLOCK(myRegLock);
         break;
       case 16:
         WriteMem_Bar(0,1,address+0,8,(data>>0) & 0xff);
@@ -762,11 +767,11 @@ u32 CSym53C895::ReadMem_Bar(int func,int bar, u32 address, int dsize)
       switch(dsize)
       {
       case 8:
-        myRegLock.lock();
+        MUTEX_LOCK(myRegLock);
         if (address>=R_SCRATCHC)
         {
             data = state.regs.reg8[address];
-            myRegLock.unlock();
+            MUTEX_UNLOCK(myRegLock);
             break;
         }
         switch(address)
@@ -872,7 +877,7 @@ u32 CSym53C895::ReadMem_Bar(int func,int bar, u32 address, int dsize)
           printf("SYM: Attempt to read %d bits from memory at %02x\n", dsize, address);
 	      throw((int)1);
         }
-        myRegLock.unlock();
+        MUTEX_UNLOCK(myRegLock);
 #if defined(DEBUG_SYM_REGS)
         printf("SYM: Read frm register %02x: %02x.   \n",address,data);
 #endif

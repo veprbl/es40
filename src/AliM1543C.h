@@ -27,7 +27,10 @@
  * \file 
  * Contains the definitions for the ISA part of the emulated Ali M1543C chipset.
  *
- * $Id: AliM1543C.h,v 1.30 2008/03/05 14:41:45 iamcamiel Exp $
+ * $Id: AliM1543C.h,v 1.31 2008/03/11 09:10:40 iamcamiel Exp $
+ *
+ * X-1.31       Camiel Vanderhoeven                             11-MAR-2008
+ *      Named, debuggable mutexes.
  *
  * X-1.30       Camiel Vanderhoeven                             05-MAR-2008
  *      Multi-threading version.
@@ -163,7 +166,7 @@ class CAliM1543C : public CPCIDevice, public Poco::Runnable
  private:
 
   Poco::Thread myThread;
-  Poco::Mutex myRegLock;
+  CMutex * myRegLock;
   bool StopThread;
 
   // REGISTER 61 (NMI)

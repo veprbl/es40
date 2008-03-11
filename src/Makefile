@@ -27,7 +27,7 @@
 #
 # Makefile for GNU Linux. (And possibly many UNIX'es).
 #
-# $Id: Makefile,v 1.33 2008/03/11 08:45:33 iamcamiel Exp $
+# $Id: Makefile,v 1.34 2008/03/11 09:10:40 iamcamiel Exp $
 #
 # X-1.29       Camiel Vanderhoeven              04-MAR-2008
 #      Merged Brian wheeler's New IDE code into the standard 
@@ -150,6 +150,7 @@ CTUNINGFLAGS =  -O3 -mtune=generic
 #   -DDEBUG_SYM         Turn on debugging for Sym53C810 controller
 #   -DDEBUG_DMA         Turn on debugging for DMA controller
 #   -DDEBUG_BACKTRACE   Turn on backtrace dump on SIGSEGV
+#   -DDEBUG_LOCKS       Turn on debugging for mutexes
 #
 CDEBUGFLAGS = -g -DHIDE_COUNTER -DDEBUG_BACKTRACE
 #

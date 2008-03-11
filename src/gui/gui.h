@@ -34,7 +34,10 @@
  * Contains the definitions for the bx_gui_c base class used for interfacing with
  * SDL and other device interfaces.
  *
- * $Id: gui.h,v 1.7 2008/03/05 14:41:46 iamcamiel Exp $
+ * $Id: gui.h,v 1.8 2008/03/11 09:10:42 iamcamiel Exp $
+ *
+ * X-1.8        Camiel Vanderhoeven                             11-MAR-2008
+ *      Named, debuggable mutexes.
  *
  * X-1.7        Camiel Vanderhoeven                             05-MAR-2008
  *      Multi-threading version.
@@ -134,7 +137,7 @@ public:
   void unlock();
 
 protected:
-  Poco::Mutex guiMutex;
+  CMutex * guiMutex;
   static s32 make_text_snapshot (char **snapshot, u32 *length);
 //  static void toggle_mouse_enable(void);
 

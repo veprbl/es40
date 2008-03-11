@@ -27,7 +27,13 @@
  * \file
  * Contains the definitions for the emulated Ali M1543C IDE chipset part.
  *
- * $Id: AliM1543C_ide.h,v 1.15 2008/03/11 08:45:33 iamcamiel Exp $
+ * $Id: AliM1543C_ide.h,v 1.16 2008/03/11 09:10:40 iamcamiel Exp $
+ *
+ * X-1.16       Camiel Vanderhoeven                             11-MAR-2008
+ *      Named, debuggable mutexes.
+ *
+ * X-1.15       Brian Wheeler                                   11-MAR-2008
+ *      Even nicer, more efficient multi-threading version.
  *
  * X-1.14       Brian Wheeler                                   05-MAR-2008
  *      Nicer, more efficient multi-threading version.
@@ -153,12 +159,12 @@ class CAliM1543C_ide : public CDiskController, public CSCSIDevice, public Poco::
   Poco::Thread * thrController[2];  // one thread for each controller chip
   Poco::Semaphore * semController[2]; // controller start/stop
   Poco::Semaphore * semBusMaster[2]; // bus master start/stop
-  Poco::Mutex mtControl[2]; // controller registers
-  Poco::Mutex mtCommand[2]; // command registers
-  Poco::Mutex mtBusMaster[2]; // busmaster registers
-#define LOCK_CMD_REGS(i) Poco::Mutex::ScopedLock lock(mtCommand[i]);
-#define LOCK_CTL_REGS(i) Poco::Mutex::ScopedLock lock(mtControl[i]);
-#define LOCK_BM_REGS(i)  Poco::Mutex::ScopedLock lock(mtBusMaster[i]);
+  CMutex * mtControl[2]; // controller registers
+  CMutex * mtCommand[2]; // command registers
+  CMutex * mtBusMaster[2]; // busmaster registers
+#define LOCK_CMD_REGS(i) SCOPED_M_LOCK(mtCommand[i]);
+#define LOCK_CTL_REGS(i) SCOPED_M_LOCK(mtControl[i]);
+#define LOCK_BM_REGS(i)  SCOPED_M_LOCK(mtBusMaster[i]);
   bool StopThread;
 
 // The state structure contains all elements that need to be saved to the statefile.
