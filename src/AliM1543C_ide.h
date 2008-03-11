@@ -27,7 +27,7 @@
  * \file
  * Contains the definitions for the emulated Ali M1543C IDE chipset part.
  *
- * $Id: AliM1543C_ide.h,v 1.14 2008/03/05 19:38:38 iamcamiel Exp $
+ * $Id: AliM1543C_ide.h,v 1.15 2008/03/11 08:45:33 iamcamiel Exp $
  *
  * X-1.14       Brian Wheeler                                   05-MAR-2008
  *      Nicer, more efficient multi-threading version.
@@ -150,13 +150,15 @@ class CAliM1543C_ide : public CDiskController, public CSCSIDevice, public Poco::
 
   void execute(int index);
 
-  Poco::Thread * threadIde[2];  // one thread for each controller chip
-  Poco::Semaphore * mySemaphore[2]; // one semaphore for each thread.
-  Poco::Semaphore * bmSemaphore[2]; // semaphores for Bus Mastering
-  Poco::Mutex myRegLock[2]; // synchronize access to command/control registers 
-  Poco::Mutex bmRegLock[2]; // synchronize access to busmaster registers
-#define LOCK_REGS(i) Poco::Mutex::ScopedLock lock(myRegLock[i]);
-#define LOCK_BM_REGS(i) Poco::Mutex::ScopedLock lock(bmRegLock[i]);
+  Poco::Thread * thrController[2];  // one thread for each controller chip
+  Poco::Semaphore * semController[2]; // controller start/stop
+  Poco::Semaphore * semBusMaster[2]; // bus master start/stop
+  Poco::Mutex mtControl[2]; // controller registers
+  Poco::Mutex mtCommand[2]; // command registers
+  Poco::Mutex mtBusMaster[2]; // busmaster registers
+#define LOCK_CMD_REGS(i) Poco::Mutex::ScopedLock lock(mtCommand[i]);
+#define LOCK_CTL_REGS(i) Poco::Mutex::ScopedLock lock(mtControl[i]);
+#define LOCK_BM_REGS(i)  Poco::Mutex::ScopedLock lock(mtBusMaster[i]);
   bool StopThread;
 
 // The state structure contains all elements that need to be saved to the statefile.

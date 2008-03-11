@@ -852,7 +852,7 @@
 				Name="VCCLCompilerTool"
 				Optimization="2"
 				InlineFunctionExpansion="1"
-				AdditionalIncludeDirectories="c:\program files\winpcap\include,c:\program files\sdl\include;c:\program files\poco\include"
+				AdditionalIncludeDirectories="c:\program files\poco\include,c:\program files\winpcap\include,c:\program files\sdl\include"
 				PreprocessorDefinitions="WIN32;NDEBUG;_CONSOLE;HAVE_PCAP;HAVE_SDL;HAVE_NEW_IDE;HIDE_COUNTER"
 				StringPooling="true"
 				RuntimeLibrary="0"
@@ -877,11 +877,11 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				AdditionalDependencies="odbc32.lib odbccp32.lib ws2_32.lib wpcap.lib sdl.lib sdlmain.lib pocofoundation.lib"
+				AdditionalDependencies="odbc32.lib odbccp32.lib ws2_32.lib wpcap.lib sdl.lib sdlmain.lib PocoFoundation.lib"
 				OutputFile="bin/es40.exe"
 				LinkIncremental="1"
 				SuppressStartupBanner="true"
-				AdditionalLibraryDirectories="c:\program files\sdl\lib,c:\program files\winpcap\lib;c:\program files\poco\lib"
+				AdditionalLibraryDirectories="c:\program files\poco\lib,c:\program files\sdl\lib,c:\program files\winpcap\lib"
 				ProgramDatabaseFile=".\Release/es40.pdb"
 				SubSystem="1"
 				TargetMachine="1"
@@ -1393,7 +1393,7 @@
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="0"
-				AdditionalIncludeDirectories="c:\program files\winpcap\include,c:\program files\sdl\include;c:\program files\poco\include"
+				AdditionalIncludeDirectories="c:\program files\winpcap\include,c:\program files\sdl\include"
 				PreprocessorDefinitions="WIN32;_DEBUG;_CONSOLE;HAVE_NEW_IDE"
 				MinimalRebuild="true"
 				BasicRuntimeChecks="3"
@@ -1419,11 +1419,11 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				AdditionalDependencies="odbc32.lib odbccp32.lib ws2_32.lib pocofoundation.lib"
+				AdditionalDependencies="odbc32.lib odbccp32.lib ws2_32.lib PocoFoundation.lib"
 				OutputFile=".\Debug/es40.exe"
 				LinkIncremental="2"
 				SuppressStartupBanner="true"
-				AdditionalLibraryDirectories="c:\program files\sdl\lib,c:\program files\winpcap\lib;c:\program files\poco\lib"
+				AdditionalLibraryDirectories="c:\program files\sdl\lib,c:\program files\winpcap\lib,c:\program files\poco\lib"
 				GenerateDebugInformation="true"
 				ProgramDatabaseFile=".\Debug/es40.pdb"
 				SubSystem="1"
@@ -6608,6 +6608,10 @@
 				>
 			</File>
 			<File
+				RelativePath="..\DMA.h"
+				>
+			</File>
+			<File
 				RelativePath="..\DPR.h"
 				>
 			</File>
@@ -6620,6 +6624,10 @@
 				>
 			</File>
 			<File
+				RelativePath="..\Ethernet.h"
+				>
+			</File>
+			<File
 				RelativePath="..\Flash.h"
 				>
 			</File>
@@ -6629,6 +6637,10 @@
 			</File>
 			<File
 				RelativePath="..\gui\gui.h"
+				>
+			</File>
+			<File
+				RelativePath="..\gui\gui_win32_font.h"
 				>
 			</File>
 			<File

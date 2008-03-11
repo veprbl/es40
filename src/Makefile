@@ -27,7 +27,7 @@
 #
 # Makefile for GNU Linux. (And possibly many UNIX'es).
 #
-# $Id: Makefile,v 1.32 2008/03/05 19:38:38 iamcamiel Exp $
+# $Id: Makefile,v 1.33 2008/03/11 08:45:33 iamcamiel Exp $
 #
 # X-1.29       Camiel Vanderhoeven              04-MAR-2008
 #      Merged Brian wheeler's New IDE code into the standard 
@@ -124,7 +124,7 @@ LD = g++
 #  -O3   -- optimize at level 3
 #  -mtune=<cpu>   -- cpu is one of:  generic, core2, athlon64, pentium4, etc
 #
-CTUNINGFLAGS =  -O3 -mtune=core2
+CTUNINGFLAGS =  -O3 -mtune=generic
 
 #
 # CDEBUGFLAGS - turn on debugging in ES40

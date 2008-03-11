@@ -27,7 +27,7 @@
  * \file
  * Contains the code for the emulated Serial Port devices.
  *
- * $Id: Serial.cpp,v 1.40 2008/03/05 14:41:46 iamcamiel Exp $
+ * $Id: Serial.cpp,v 1.41 2008/03/11 08:45:34 iamcamiel Exp $
  *
  * X-1.40       Camiel Vanderhoeven                             05-MAR-2008
  *      Multi-threading version.
@@ -255,7 +255,7 @@ CSerial::CSerial(CConfigurator * cfg, CSystem * c, u16 number) : CSystemComponen
   StopThread = false;
   myThread.start(*this);
 
-  printf("%s: $Id: Serial.cpp,v 1.40 2008/03/05 14:41:46 iamcamiel Exp $\n",devid_string);
+  printf("%s: $Id: Serial.cpp,v 1.41 2008/03/11 08:45:34 iamcamiel Exp $\n",devid_string);
 }
 
 /**
@@ -481,7 +481,8 @@ void CSerial::execute()
 #else
       size = read(connectSocket,&buffer,FIFO_SIZE);
 #endif
-      if(size == 0) {
+      extern int got_sigint;
+      if(size == 0 && !got_sigint) {
 	printf("%%SRL-W-DISCONNECT: Write socket closed on other end for serial port %d.\n",state.iNumber);
 	printf("-SRL-I-WAITFOR: Waiting for a new connection on port %d.\n",listenPort);
 	WaitForConnection();
