@@ -27,7 +27,10 @@
  * \file
  * Contains the definitions for the configuration file interpreter.
  *
- * $Id: Configurator.h,v 1.13 2008/03/05 14:41:46 iamcamiel Exp $
+ * $Id: Configurator.h,v 1.14 2008/03/13 13:19:18 iamcamiel Exp $
+ *
+ * X-1.14       Camiel Vanderhoeven                             13-MAR-2008
+ *      Create init() start_threads() and stop_threads() functions.
  *
  * X-1.13       Camiel Vanderhoeven                             05-MAR-2008
  *      Multi-threading version.
@@ -75,72 +78,103 @@
 #define CFG_MAX_CHILDREN  25
 #define CFG_MAX_VALUES    50
 
-typedef enum {c_none,
-              // chipsets
-              c_tsunami,
-              // system devices
-              c_ev68cb,
-              c_serial,
-              // pci devices
-              c_ali,
-              c_ali_ide,
-              c_ali_usb,
-              c_s3,
-              c_cirrus,
-              c_radeon,
-              c_dec21143,
-              c_sym53c895,
-              c_sym53c810,
-              // disk devices
-              c_file,
-              c_device,
-              c_ramdisk,
-              // gui's
-              c_sdl,
-              c_win32,
-              c_x11 } classid;
+typedef enum
+{ c_none,
+  // chipsets
+  c_tsunami,
+  // system devices
+  c_ev68cb,
+  c_serial,
+  // pci devices
+  c_ali,
+  c_ali_ide,
+  c_ali_usb,
+  c_s3,
+  c_cirrus,
+  c_radeon,
+  c_dec21143,
+  c_sym53c895,
+  c_sym53c810,
+  // disk devices
+  c_file,
+  c_device,
+  c_ramdisk,
+  // gui's
+  c_sdl,
+  c_win32,
+  c_x11
+} classid;
 
 class CConfigurator
 {
 public:
-  CConfigurator(class CConfigurator * parent, char * name, char * value, char * text, size_t textlen);
-  ~CConfigurator(void);
+  CConfigurator (class CConfigurator * parent, char *name, char *value,
+                 char *text, size_t textlen);
+   ~CConfigurator (void);
 
-  char * strip_string(char * c);
-  void add_value(char * n, char * v);
+  char *strip_string (char *c);
+  void add_value (char *n, char *v);
 
-  char * get_text_value(const char * n) { return get_text_value(n, (char*)0); };
-  char * get_text_value(const char * n, char * def);
+  char *get_text_value (const char *n)
+  {
+    return get_text_value (n, (char *) 0);
+  };
+  char *get_text_value (const char *n, char *def);
 
-  bool get_bool_value(const char * n) { return get_bool_value(n, false); };
-  bool get_bool_value(const char * n, bool def);
+  bool get_bool_value (const char *n)
+  {
+    return get_bool_value (n, false);
+  };
+  bool get_bool_value (const char *n, bool def);
 
-  u64 get_num_value(const char * n, bool decimal_suffixes) { return get_num_value(n, decimal_suffixes, 0); };
-  u64 get_num_value(const char * n, bool decimal_suffixes, u64 def);
+  u64 get_num_value (const char *n, bool decimal_suffixes)
+  {
+    return get_num_value (n, decimal_suffixes, 0);
+  };
+  u64 get_num_value (const char *n, bool decimal_suffixes, u64 def);
 
-  classid get_class_id() { return myClassId; };
-  void * get_device() { return myDevice; };
-  int get_flags() { return myFlags; };
+  classid get_class_id ()
+  {
+    return myClassId;
+  };
+  void *get_device ()
+  {
+    return myDevice;
+  };
+  int get_flags ()
+  {
+    return myFlags;
+  };
 
-  char * get_myName() { return myName; };
-  char * get_myValue() { return myValue; };
-  CConfigurator * get_myParent() { return pParent; };
+  char *get_myName ()
+  {
+    return myName;
+  };
+  char *get_myValue ()
+  {
+    return myValue;
+  };
+  CConfigurator *get_myParent ()
+  {
+    return pParent;
+  };
 
-  void initialize();
+  void initialize ();
 
 private:
   class CConfigurator * pParent;
-  class CConfigurator * pChildren[CFG_MAX_CHILDREN];
+  class CConfigurator *pChildren[CFG_MAX_CHILDREN];
   int iNumChildren;
-  char * myName;
-  char * myValue;
-  void * myDevice;
+  char *myName;
+  char *myValue;
+  void *myDevice;
   classid myClassId;
   int myFlags;
   int iNumValues;
-  struct SCfg_Value {
-    char * name;
-    char * value;
+  struct SCfg_Value
+  {
+    char *name;
+    char *value;
   } pValues[CFG_MAX_VALUES];
 
 };

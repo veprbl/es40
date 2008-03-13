@@ -27,6 +27,9 @@
  * \file 
  * Contains code for the base class for devices that connect to the chipset.
  *
+ * X-1.12       Camiel Vanderhoeven                             13-MAR-2008
+ *      Create init(), start_threads() and stop_threads() functions.
+ *
  * X-1.11       Camiel Vanderhoeven                             29-DEC-2007
  *      Fix memory-leak.
  *
@@ -71,27 +74,28 @@
  * Constructor.
  **/
 
-CSystemComponent::CSystemComponent(CConfigurator * cfg, CSystem * system)
+CSystemComponent::CSystemComponent (CConfigurator * cfg, CSystem * system)
 {
-  char * a;
-  char * b;
+  char *a;
+  char *b;
 
-  system->RegisterComponent(this);
+  system->RegisterComponent (this);
   cSystem = system;
   myCfg = cfg;
 
-  a = myCfg->get_myName();
-  b = myCfg->get_myValue();
+  a = myCfg->get_myName ();
+  b = myCfg->get_myValue ();
 
-  CHECK_ALLOCATION(devid_string = (char*) malloc(strlen(a)+strlen(b)+3));
-  sprintf(devid_string,"%s(%s)",a,b);
+  CHECK_ALLOCATION (devid_string =
+                    (char *) malloc (strlen (a) + strlen (b) + 3));
+  sprintf (devid_string, "%s(%s)", a, b);
 }
 
 /**
  * destructor.
  **/
 
-CSystemComponent::~CSystemComponent()
+CSystemComponent::~CSystemComponent ()
 {
-  free(devid_string);
+  free (devid_string);
 }

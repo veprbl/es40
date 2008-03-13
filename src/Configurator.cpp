@@ -27,7 +27,10 @@
  * \file
  * Contains the code for the configuration file interpreter.
  *
- * $Id: Configurator.cpp,v 1.23 2008/03/05 14:41:46 iamcamiel Exp $
+ * $Id: Configurator.cpp,v 1.24 2008/03/13 13:19:18 iamcamiel Exp $
+ *
+ * X-1.24       Camiel Vanderhoeven                             13-MAR-2008
+ *      Create init() start_threads() and stop_threads() functions.
  *
  * X-1.23       Camiel Vanderhoeven                             05-MAR-2008
  *      Multi-threading version.
@@ -143,156 +146,174 @@
  *      few minutes. Also, more comments should be provided to make it more readable.
  **/
 
-CConfigurator::CConfigurator(class CConfigurator * parent, char * name, char * value, char * text, size_t textlen)
+CConfigurator::CConfigurator (class CConfigurator * parent, char *name,
+                              char *value, char *text, size_t textlen)
 {
-  if(parent == 0) {
+  if (parent == 0)
+  {
     /* Phase 1:  Basic Syntax Check & Strip [first pass only]
      * - Make sure quotes and comments are closed.
      * - Make sure braces are balanced
      * - remove everything except configuration data.
      */
 
-    char *dst = (char *)malloc(textlen+1);
+    char *dst = (char *) malloc (textlen + 1);
     char *p = dst;
     char *q = text;
 
-    int cbrace=0;
-    enum { STATE_NONE, STATE_C_COMMENT, STATE_CC_COMMENT, 
-	   STATE_STRING } state=STATE_NONE;
+    int cbrace = 0;
+    enum
+    { STATE_NONE, STATE_C_COMMENT, STATE_CC_COMMENT,
+      STATE_STRING
+    } state = STATE_NONE;
     int state_start = 0;
     int line = 1;
     int col = 1;
-    for(int i = 0; i < textlen; i++, q++, col++) 
+    for (int i = 0; i < textlen; i++, q++, col++)
     {
-      if(*q == 0x0a) 
+      if (*q == 0x0a)
       {
-	line++;
-	col=1;
+        line++;
+        col = 1;
       }
-      switch(state) 
+      switch (state)
       {
       case STATE_NONE:
-	switch(*q) {
-	case '"':
-	  state=STATE_STRING;
-	  state_start = line;
-	  *p++=*q;
-	  break;
-	case '/':
-	  if(i == textlen - 1) 
-	  { 
-	    printf("%%SYS-E-PARSE: file ends in mid-token.  Line %d, Col %d\n",
-		   line,col);
-	    exit(1); 
-	  }
-	  
-	  if(*(q+1) == '/') 
-	  {
-	    state=STATE_CC_COMMENT;	
-	    state_start = line;  
-	  } else if(*(q+1) == '*') {
-	    state=STATE_C_COMMENT;	  
-	    state_start = line;
-	  }
-	  break;
-	case '{':
-	  cbrace++;
-	  *p++=*q;
-	  break;
-	case '}':
-	  if(cbrace==0) 
-	  {
-	    printf("%%SYS-E-PARSE: too many closed braces.  Line %d, Col %d\n",
-		   line,col);
-	    exit(1); 
-	  }
-	  cbrace--;
-	  *p++=*q;
-	  break;
-	default:
-	  if(!isspace(*q)) 
-	  {
-	    if(isalnum(*q) || *q=='_' || *q=='.' || *q=='=' || *q==';') 
-	    {
-	      *p++=*q;
-	    } else {
-	      printf("%%SYS-E-PARSE: Illegal character '%c'.  Line %d, Col %d\n",
-		     *q,line,col);
-	      exit(1); 
-	    }
-	  }
-	}
-	break;
-      case STATE_CC_COMMENT: // c++ comment
-	if(*q == 0x0d || *q == 0x0a) 
-	{
-	  state=STATE_NONE;
-	  state_start = line;
-	}
-	break;
-      case STATE_C_COMMENT: // c comment
-	if(*q == '*') 
-	{
-	  if(i == textlen - 1) 
-	  { 
-	    printf("%%SYS-E-PARSE: file ends in mid-comment.  Line %d, Col %d\n",
-		   line,col);
-	    exit(1); 
-	  }
-	  if(*(q+1) == '/') 
-	  { 
-	    state=STATE_NONE;
-	    state_start = line;
-	  }
-	}
-	break;
-      case STATE_STRING: // string
-	if(*q == '"') 
-	{
-	  if(i == textlen - 1) 
-	  { 
-	    printf("%%SYS-E-PARSE: file ends in mid-string.  Line %d, Col %d\n",
-		   line,col);
-	    exit(1); 
-	  }
-	  if(*(q+1) != '"') 
-	  {
-	    state_start = line;
-	    state=STATE_NONE;
-	  }
-      else
-      {
+        switch (*q)
+        {
+        case '"':
+          state = STATE_STRING;
+          state_start = line;
+          *p++ = *q;
+          break;
+        case '/':
+          if (i == textlen - 1)
+          {
+            printf
+              ("%%SYS-E-PARSE: file ends in mid-token.  Line %d, Col %d\n",
+               line, col);
+            exit (1);
+          }
+
+          if (*(q + 1) == '/')
+          {
+            state = STATE_CC_COMMENT;
+            state_start = line;
+          }
+          else if (*(q + 1) == '*')
+          {
+            state = STATE_C_COMMENT;
+            state_start = line;
+          }
+          break;
+        case '{':
+          cbrace++;
+          *p++ = *q;
+          break;
+        case '}':
+          if (cbrace == 0)
+          {
+            printf
+              ("%%SYS-E-PARSE: too many closed braces.  Line %d, Col %d\n",
+               line, col);
+            exit (1);
+          }
+          cbrace--;
+          *p++ = *q;
+          break;
+        default:
+          if (!isspace (*q))
+          {
+            if (isalnum (*q) || *q == '_' || *q == '.' || *q == '='
+                || *q == ';')
+            {
+              *p++ = *q;
+            }
+            else
+            {
+              printf
+                ("%%SYS-E-PARSE: Illegal character '%c'.  Line %d, Col %d\n",
+                 *q, line, col);
+              exit (1);
+            }
+          }
+        }
+        break;
+      case STATE_CC_COMMENT:   // c++ comment
+        if (*q == 0x0d || *q == 0x0a)
+        {
+          state = STATE_NONE;
+          state_start = line;
+        }
+        break;
+      case STATE_C_COMMENT:    // c comment
+        if (*q == '*')
+        {
+          if (i == textlen - 1)
+          {
+            printf
+              ("%%SYS-E-PARSE: file ends in mid-comment.  Line %d, Col %d\n",
+               line, col);
+            exit (1);
+          }
+          if (*(q + 1) == '/')
+          {
+            state = STATE_NONE;
+            state_start = line;
+          }
+        }
+        break;
+      case STATE_STRING:       // string
+        if (*q == '"')
+        {
+          if (i == textlen - 1)
+          {
+            printf
+              ("%%SYS-E-PARSE: file ends in mid-string.  Line %d, Col %d\n",
+               line, col);
+            exit (1);
+          }
+          if (*(q + 1) != '"')
+          {
+            state_start = line;
+            state = STATE_NONE;
+          }
+          else
+          {
+            *p++ = *q;
+            i++;
+            q++;
+          }
+        }
+        else if (*q == 0x0a || *q == 0x0d)
+        {
+          printf
+            ("%%SYS-E-PARSE: multi-line strings are forbidden.  Line %d, Col %d\n",
+             line, col);
+          exit (1);
+        }
         *p++ = *q;
-        i++;
-        q++;
-      }
-	} else if(*q == 0x0a || *q == 0x0d) 
-	{
-	  printf("%%SYS-E-PARSE: multi-line strings are forbidden.  Line %d, Col %d\n",
-		 line,col);
-	  exit(1); 
-	}
-	*p++=*q;
-	break;
+        break;
       }
     }
-    *p++=0;
-    
-    if(state != 0 && state != 1) 
+    *p++ = 0;
+
+    if (state != 0 && state != 1)
     {
-      printf("%%SYS-E-PARSE: unclosed %s.  Started on line %d.\n",state==STATE_C_COMMENT?"comment":"string",state_start);
-    }
-    
-    if(cbrace != 0) 
-    {
-      printf("%%SYS-E-PARSE: unclosed brace in file.\n");   
+      printf ("%%SYS-E-PARSE: unclosed %s.  Started on line %d.\n",
+              state == STATE_C_COMMENT ? "comment" : "string", state_start);
     }
 
-    textlen=strlen(dst);
-    memcpy(text,dst,textlen+1);
-    free(dst);
+    if (cbrace != 0)
+    {
+      printf ("%%SYS-E-PARSE: unclosed brace in file.\n");
+    }
+
+    textlen = strlen (dst);
+    memcpy (text, dst, textlen + 1);
+    free (dst);
   }
-    
+
   /* Phase 2: Parse the file [every time]
    * The data is in a very compressed form at this point.  We also
    * know some important things about the data:
@@ -301,11 +322,13 @@ CConfigurator::CConfigurator(class CConfigurator * parent, char * name, char * v
    * - comments have been removed.
    * - strings are valid.
    */
-  enum { STATE_NONE, STATE_NAME, STATE_IS, STATE_VALUE, STATE_QUOTE,
-	 STATE_CHILD } state = STATE_NONE;
+  enum
+  { STATE_NONE, STATE_NAME, STATE_IS, STATE_VALUE, STATE_QUOTE,
+    STATE_CHILD
+  } state = STATE_NONE;
 
-  char * cur_name;
-  char * cur_value;
+  char *cur_name;
+  char *cur_value;
 
   int child_depth = 0;
 
@@ -326,10 +349,11 @@ CConfigurator::CConfigurator(class CConfigurator * parent, char * name, char * v
 
   for (size_t curtext = 0; curtext < textlen; curtext++)
   {
-    switch(state)
+    switch (state)
     {
     case STATE_NONE:
-      if (isalnum((unsigned char)text[curtext]) || text[curtext]=='.' || text[curtext]=='_')
+      if (isalnum ((unsigned char) text[curtext]) || text[curtext] == '.'
+          || text[curtext] == '_')
       {
         name_start = curtext;
         state = STATE_NAME;
@@ -343,7 +367,8 @@ CConfigurator::CConfigurator(class CConfigurator * parent, char * name, char * v
       }
       break;
     case STATE_IS:
-      if (isalnum((unsigned char)text[curtext]) || text[curtext]=='.' || text[curtext] == '_')
+      if (isalnum ((unsigned char) text[curtext]) || text[curtext] == '.'
+          || text[curtext] == '_')
       {
         value_start = curtext;
         value_len = 1;
@@ -360,16 +385,16 @@ CConfigurator::CConfigurator(class CConfigurator * parent, char * name, char * v
       if (text[curtext] == ';')
       {
         value_len = curtext - value_start;
-        cur_name = (char*)malloc(name_len+1);
-        memcpy(cur_name,&text[name_start],name_len);
+        cur_name = (char *) malloc (name_len + 1);
+        memcpy (cur_name, &text[name_start], name_len);
         cur_name[name_len] = '\0';
-        cur_value = (char*)malloc(value_len+1);
-        memcpy(cur_value,&text[value_start],value_len);
+        cur_value = (char *) malloc (value_len + 1);
+        memcpy (cur_value, &text[value_start], value_len);
         cur_value[value_len] = '\0';
 
 //        printf("Calling strip_string for  <%s>. \n",cur_value);
-        strip_string(cur_value);
-        add_value(cur_name, cur_value);
+        strip_string (cur_value);
+        add_value (cur_name, cur_value);
 
         state = STATE_NONE;
       }
@@ -377,18 +402,20 @@ CConfigurator::CConfigurator(class CConfigurator * parent, char * name, char * v
       {
         value_len = curtext - value_start;
         state = STATE_CHILD;
-        child_start = curtext+1;
+        child_start = curtext + 1;
         child_depth = 1;
       }
       break;
-	case STATE_QUOTE:
-		if ((text[curtext] == '\"') && (text[curtext+1] == '\"')) {
-			curtext++;
-		}
-		else if (text[curtext] == '\"') {
-			state = STATE_VALUE;
-		}
-		break;
+    case STATE_QUOTE:
+      if ((text[curtext] == '\"') && (text[curtext + 1] == '\"'))
+      {
+        curtext++;
+      }
+      else if (text[curtext] == '\"')
+      {
+        state = STATE_VALUE;
+      }
+      break;
     case STATE_CHILD:
       if (text[curtext] == '{')
         child_depth++;
@@ -397,30 +424,32 @@ CConfigurator::CConfigurator(class CConfigurator * parent, char * name, char * v
         child_depth--;
         if (!child_depth)
         {
-          cur_name = (char*)malloc(name_len+1);
-          memcpy(cur_name,&text[name_start],name_len);
+          cur_name = (char *) malloc (name_len + 1);
+          memcpy (cur_name, &text[name_start], name_len);
           cur_name[name_len] = '\0';
-          cur_value = (char*)malloc(value_len+1);
-          memcpy(cur_value,&text[value_start],value_len);
+          cur_value = (char *) malloc (value_len + 1);
+          memcpy (cur_value, &text[value_start], value_len);
           cur_value[value_len] = '\0';
-          child_len = curtext-child_start;
+          child_len = curtext - child_start;
           state = STATE_NONE;
 
-          strip_string(cur_value);
+          strip_string (cur_value);
 
-          pChildren[iNumChildren++] = new CConfigurator(this, cur_name, cur_value, &text[child_start], child_len);
+          pChildren[iNumChildren++] =
+            new CConfigurator (this, cur_name, cur_value, &text[child_start],
+                               child_len);
         }
       }
     }
   }
 
   int i;
-  if (parent==0)
+  if (parent == 0)
   {
     myFlags = 0;
-    for (i=0;i<iNumChildren;i++)
+    for (i = 0; i < iNumChildren; i++)
     {
-      pChildren[i]->initialize();
+      pChildren[i]->initialize ();
     }
   }
 }
@@ -436,7 +465,7 @@ CConfigurator::CConfigurator(class CConfigurator * parent, char * name, char * v
  *       .
  **/
 
-CConfigurator::~CConfigurator(void)
+CConfigurator::~CConfigurator (void)
 {
 }
 
@@ -451,20 +480,20 @@ CConfigurator::~CConfigurator(void)
  *   """c:\program files\putty\putty.exe"" telnet://localhost:8000"
  **/
 
-char * CConfigurator::strip_string(char * c)
+char *CConfigurator::strip_string (char *c)
 {
-  char * pos = c;
-  char * org = c+1;
+  char *pos = c;
+  char *org = c + 1;
   bool end_it = false;
 
-  if (c[0] =='\"')
+  if (c[0] == '\"')
   {
     while (!end_it)
     {
-      if (*org=='\"')
+      if (*org == '\"')
       {
         org++;
-        if (*org=='\"')
+        if (*org == '\"')
           *pos++ = *org++;
         else
           end_it = true;
@@ -482,7 +511,7 @@ char * CConfigurator::strip_string(char * c)
  * Add a value to our list of values.
  **/
 
-void CConfigurator::add_value(char * n, char * v)
+void CConfigurator::add_value (char *n, char *v)
 {
   pValues[iNumValues].name = n;
   pValues[iNumValues].value = v;
@@ -494,12 +523,12 @@ void CConfigurator::add_value(char * n, char * v)
  * our list of values, return def.
  **/
 
-char * CConfigurator::get_text_value(const char * n, char * def)
+char *CConfigurator::get_text_value (const char *n, char *def)
 {
   int i;
-  for (i=0;i<iNumValues;i++)
+  for (i = 0; i < iNumValues; i++)
   {
-    if (!strcmp(pValues[i].name, n))
+    if (!strcmp (pValues[i].name, n))
       return pValues[i].value;
   }
   return def;
@@ -519,12 +548,12 @@ char * CConfigurator::get_text_value(const char * n, char * def)
  *  .
  **/
 
-bool CConfigurator::get_bool_value(const char * n, bool def)
+bool CConfigurator::get_bool_value (const char *n, bool def)
 {
   int i;
-  for (i=0;i<iNumValues;i++)
+  for (i = 0; i < iNumValues; i++)
   {
-    if (!strcmp(pValues[i].name, n))
+    if (!strcmp (pValues[i].name, n))
     {
       switch (pValues[i].value[0])
       {
@@ -541,8 +570,8 @@ bool CConfigurator::get_bool_value(const char * n, bool def)
       case '0':
         return false;
       default:
-        printf("Illegal boolean value: %s   \n", pValues[i].value);
-        FAILURE("Configuration error");
+        printf ("Illegal boolean value: %s   \n", pValues[i].value);
+        FAILURE ("Configuration error");
       }
     }
   }
@@ -554,25 +583,27 @@ bool CConfigurator::get_bool_value(const char * n, bool def)
  * our list of values, return def.
  **/
 
-u64 CConfigurator::get_num_value(const char * n, bool decimal, u64 def)
+u64 CConfigurator::get_num_value (const char *n, bool decimal, u64 def)
 {
   int i;
-  u64 multiplier = decimal?1000:1024;
-  for (i=0;i<iNumValues;i++)
+  u64 multiplier = decimal ? 1000 : 1024;
+  for (i = 0; i < iNumValues; i++)
   {
-    if (!strcmp(pValues[i].name, n))
+    if (!strcmp (pValues[i].name, n))
     {
       u64 retval = 0;
       u64 partval = 0;
-      char * val = pValues[i].value;
+      char *val = pValues[i].value;
       int j = 0;
-      for(;;) {
-        while (val[j] && strchr("0123456789",val[j])) {
-          partval *=10;
-          partval += val[j]-'0';
+      for (;;)
+      {
+        while (val[j] && strchr ("0123456789", val[j]))
+        {
+          partval *= 10;
+          partval += val[j] - '0';
           j++;
         }
-        switch(val[j])
+        switch (val[j])
         {
         case 'T':
           partval *= multiplier;
@@ -581,18 +612,19 @@ u64 CConfigurator::get_num_value(const char * n, bool decimal, u64 def)
         case 'M':
           partval *= multiplier;
         case 'K':
-          retval += partval*multiplier;
-          partval=0;
+          retval += partval * multiplier;
+          partval = 0;
           j++;
           break;
         case '\0':
           retval += partval;
           return retval;
         default:
-          printf("%s: numeric value %s (%s) not in right format!\n",myName, n, val);
-          FAILURE("Configuration error");
+          printf ("%s: numeric value %s (%s) not in right format!\n", myName,
+                  n, val);
+          FAILURE ("Configuration error");
         }
-      } 
+      }
     }
   }
   return def;
@@ -619,35 +651,35 @@ u64 CConfigurator::get_num_value(const char * n, bool decimal, u64 def)
 
 #define IS_NIC  1024
 
-#define N_P     2048 // no parent
+#define N_P     2048            // no parent
 
-typedef struct {
-  char * name;
+typedef struct
+{
+  char *name;
   classid id;
   int flags;
 } classinfo;
 
-classinfo classes[] = 
-{
-  {"tsunami", c_tsunami, N_P | IS_CS  | HAS_PCI                             },
-  {"ev68cb",  c_ev68cb,        ON_CS                                        },
-  {"ali",     c_ali,                    IS_PCI | HAS_ISA                    },
-  {"ali_ide", c_ali_ide,                IS_PCI |           HAS_DISK         },
-  {"ali_usb", c_ali_usb,                IS_PCI                              },
-  {"serial",  c_serial,        ON_CS                                        },
-  {"s3",      c_s3,                     IS_PCI |                    ON_GUI  },
-  {"cirrus",  c_cirrus,                 IS_PCI |                    ON_GUI  },
-  {"radeon",  c_radeon,                 IS_PCI |                    ON_GUI  },
-  {"dec21143",c_dec21143,               IS_PCI |                    IS_NIC  },
-  {"sym53c895", c_sym53c895,            IS_PCI |           HAS_DISK         },
-  {"sym53c810", c_sym53c810,            IS_PCI |           HAS_DISK         },
-  {"file",    c_file,                                      IS_DISK          },
-  {"device",  c_device,                                    IS_DISK          },
-  {"ramdisk", c_ramdisk,                                   IS_DISK          },
-  {"sdl",     c_sdl,     N_P |                                      IS_GUI  },
-  {"win32",   c_win32,   N_P |                                      IS_GUI  },
-  {"X11",     c_x11,     N_P |                                      IS_GUI  },
-  {0,         c_none,    0                                                  }
+classinfo classes[] = {
+  {"tsunami", c_tsunami, N_P | IS_CS | HAS_PCI},
+  {"ev68cb", c_ev68cb, ON_CS},
+  {"ali", c_ali, IS_PCI | HAS_ISA},
+  {"ali_ide", c_ali_ide, IS_PCI | HAS_DISK},
+  {"ali_usb", c_ali_usb, IS_PCI},
+  {"serial", c_serial, ON_CS},
+  {"s3", c_s3, IS_PCI | ON_GUI},
+  {"cirrus", c_cirrus, IS_PCI | ON_GUI},
+  {"radeon", c_radeon, IS_PCI | ON_GUI},
+  {"dec21143", c_dec21143, IS_PCI | IS_NIC},
+  {"sym53c895", c_sym53c895, IS_PCI | HAS_DISK},
+  {"sym53c810", c_sym53c810, IS_PCI | HAS_DISK},
+  {"file", c_file, IS_DISK},
+  {"device", c_device, IS_DISK},
+  {"ramdisk", c_ramdisk, IS_DISK},
+  {"sdl", c_sdl, N_P | IS_GUI},
+  {"win32", c_win32, N_P | IS_GUI},
+  {"X11", c_x11, N_P | IS_GUI},
+  {0, c_none, 0}
 };
 
 /**
@@ -655,7 +687,7 @@ classinfo classes[] =
  * then call initialize for our children.
  **/
 
-void CConfigurator::initialize()
+void CConfigurator::initialize ()
 {
   myClassId = c_none;
   int i = 0;
@@ -664,11 +696,11 @@ void CConfigurator::initialize()
   int idedev = 0;
   int idebus = 0;
   int number;
-  char * pt;
+  char *pt;
 
-  for(i=0;classes[i].id != c_none; i++)
+  for (i = 0; classes[i].id != c_none; i++)
   {
-    if (!strcmp(myValue,classes[i].name))
+    if (!strcmp (myValue, classes[i].name))
     {
       myClassId = classes[i].id;
       myFlags = classes[i].flags;
@@ -678,25 +710,26 @@ void CConfigurator::initialize()
 
   if (myClassId == c_none)
   {
-    printf("Class %s not known!!\n",myValue);
-    throw((int)1);
+    printf ("Class %s not known!!\n", myValue);
+    throw ((int) 1);
   }
 
   if (myFlags & N_P)
   {
-    if (pParent->get_flags())
+    if (pParent->get_flags ())
     {
-      printf("Error: %s(%s) should not have a parent!\n",myName,myValue);
-      throw((int)1);
+      printf ("Error: %s(%s) should not have a parent!\n", myName, myValue);
+      throw ((int) 1);
     }
   }
 
   if (myFlags & ON_CS)
   {
-    if (!(pParent->get_flags() & IS_CS))
+    if (!(pParent->get_flags () & IS_CS))
     {
-      printf("Error: parent of SYSBUS device %s(%s) should be a chipset.\n",myName,myValue);
-      throw((int)1);
+      printf ("Error: parent of SYSBUS device %s(%s) should be a chipset.\n",
+              myName, myValue);
+      throw ((int) 1);
     }
   }
 
@@ -704,8 +737,8 @@ void CConfigurator::initialize()
   {
     if (!bx_gui)
     {
-      printf("Error: %s(%s) needs a GUI.\n",myName,myValue);
-      throw((int)1);
+      printf ("Error: %s(%s) needs a GUI.\n", myName, myValue);
+      throw ((int) 1);
     }
   }
 
@@ -713,153 +746,193 @@ void CConfigurator::initialize()
   {
     if (bx_gui)
     {
-      printf("Error: %s(%s): another GUI was already instantiated.\n",myName,myValue);
-      throw((int)1);
+      printf ("Error: %s(%s): another GUI was already instantiated.\n",
+              myName, myValue);
+      throw ((int) 1);
     }
   }
 
 #if !defined(HAVE_PCAP)
   if (myFlags & IS_NIC)
   {
-    printf("Error: %s(%s): For network support, compilation with libpcap support is required.\n",myName,myValue);
-    throw((int)1);
+    printf
+      ("Error: %s(%s): For network support, compilation with libpcap support is required.\n",
+       myName, myValue);
+    throw ((int) 1);
   }
 #endif
 
   if (myFlags & IS_PCI)
   {
-    if (strncmp(myName,"pci",3))
+    if (strncmp (myName, "pci", 3))
     {
-      printf("Error: name of PCI device %s should be pci<bus>.<device>, %s found.\n",myValue,myName);
-      throw((int)1);
+      printf
+        ("Error: name of PCI device %s should be pci<bus>.<device>, %s found.\n",
+         myValue, myName);
+      throw ((int) 1);
     }
-    if (!(pParent->get_flags() & HAS_PCI))
+    if (!(pParent->get_flags () & HAS_PCI))
     {
-      printf("Error: parent of PCI device %s(%s) should be a pci-bus capable device.\n",myName,myValue);
-      throw((int)1);
+      printf
+        ("Error: parent of PCI device %s(%s) should be a pci-bus capable device.\n",
+         myName, myValue);
+      throw ((int) 1);
     }
 
     pt = &myName[3];
-    pcibus = atoi(pt);
-    pt = strchr(pt,'.');
+    pcibus = atoi (pt);
+    pt = strchr (pt, '.');
     if (!pt)
     {
-      printf("Error: name of PCI device %s should be pci<bus>.<device>, %s found.\n",myValue,myName);
-      throw((int)1);
+      printf
+        ("Error: name of PCI device %s should be pci<bus>.<device>, %s found.\n",
+         myValue, myName);
+      throw ((int) 1);
     }
     pt++;
-    pcidev = atoi(pt);
+    pcidev = atoi (pt);
   }
 
   if (myFlags & IS_DISK)
   {
-    if (strncmp(myName,"disk",4))
+    if (strncmp (myName, "disk", 4))
     {
-      printf("Error: name of Disk device %s should be disk<channel>.<device>, %s found.\n",myValue,myName);
-      throw((int)1);
+      printf
+        ("Error: name of Disk device %s should be disk<channel>.<device>, %s found.\n",
+         myValue, myName);
+      throw ((int) 1);
     }
-    if (!(pParent->get_flags() & HAS_DISK))
+    if (!(pParent->get_flags () & HAS_DISK))
     {
-      printf("Error: parent of disk device %s(%s) should be a disk controller.\n",myName,myValue);
-      throw((int)1);
+      printf
+        ("Error: parent of disk device %s(%s) should be a disk controller.\n",
+         myName, myValue);
+      throw ((int) 1);
     }
 
     pt = &myName[4];
-    idebus = atoi(pt);
-    pt = strchr(pt,'.');
+    idebus = atoi (pt);
+    pt = strchr (pt, '.');
     if (!pt)
     {
-      printf("Error: name of Disk device %s should be disk<controller>.<device>, %s found.\n",myValue,myName);
-      throw((int)1);
+      printf
+        ("Error: name of Disk device %s should be disk<controller>.<device>, %s found.\n",
+         myValue, myName);
+      throw ((int) 1);
     }
     pt++;
-    idedev = atoi(pt);
+    idedev = atoi (pt);
   }
 
-  switch(myClassId)
+  switch (myClassId)
   {
   case c_tsunami:
-    myDevice = new CSystem(this);
-    new CDPR(this,(CSystem *)myDevice);
-    new CFlash(this,(CSystem *)myDevice);
+    myDevice = new CSystem (this);
+    new CDPR (this, (CSystem *) myDevice);
+    new CFlash (this, (CSystem *) myDevice);
     break;
 
   case c_ev68cb:
-    myDevice = new CAlphaCPU(this,(CSystem *)pParent->get_device());
+    myDevice = new CAlphaCPU (this, (CSystem *) pParent->get_device ());
     break;
 
   case c_ali:
-    myDevice = new CAliM1543C(this,(CSystem *)pParent->get_device(),pcibus,pcidev);
-    new CPort80(this,(CSystem *)pParent->get_device());
-    new CKeyboard(this,(CSystem *)pParent->get_device());
-    new CDMA(this,(CSystem *)pParent->get_device());
+    myDevice =
+      new CAliM1543C (this, (CSystem *) pParent->get_device (), pcibus,
+                      pcidev);
+    new CPort80 (this, (CSystem *) pParent->get_device ());
+    new CKeyboard (this, (CSystem *) pParent->get_device ());
+    new CDMA (this, (CSystem *) pParent->get_device ());
     break;
 
   case c_ali_ide:
-    myDevice = new CAliM1543C_ide(this,(CSystem *)pParent->get_device(),pcibus,pcidev);
+    myDevice =
+      new CAliM1543C_ide (this, (CSystem *) pParent->get_device (), pcibus,
+                          pcidev);
     break;
 
   case c_ali_usb:
-    myDevice = new CAliM1543C_usb(this,(CSystem *)pParent->get_device(),pcibus,pcidev);
+    myDevice =
+      new CAliM1543C_usb (this, (CSystem *) pParent->get_device (), pcibus,
+                          pcidev);
     break;
 
   case c_s3:
-    myDevice = new CS3Trio64(this,(CSystem *)pParent->get_device(),pcibus,pcidev);
+    myDevice =
+      new CS3Trio64 (this, (CSystem *) pParent->get_device (), pcibus,
+                     pcidev);
     break;
 
   case c_cirrus:
-    myDevice = new CCirrus(this,(CSystem *)pParent->get_device(),pcibus,pcidev);
+    myDevice =
+      new CCirrus (this, (CSystem *) pParent->get_device (), pcibus, pcidev);
     break;
 
   case c_radeon:
 #if defined(HAVE_RADEON)
-    myDevice = new CRadeon(this,(CSystem *)pParent->get_device(),pcibus,pcidev);
+    myDevice =
+      new CRadeon (this, (CSystem *) pParent->get_device (), pcibus, pcidev);
 #else
-    FAILURE("ES40 was not compiled with Radeon support");
+    FAILURE ("ES40 was not compiled with Radeon support");
 #endif
     break;
 
 #if defined(HAVE_PCAP)
   case c_dec21143:
-    myDevice = new CDEC21143(this,(CSystem *)pParent->get_device(),pcibus,pcidev);
+    myDevice =
+      new CDEC21143 (this, (CSystem *) pParent->get_device (), pcibus,
+                     pcidev);
     break;
 #endif
 
   case c_sym53c895:
-    myDevice = new CSym53C895(this,(CSystem *)pParent->get_device(),pcibus,pcidev);
+    myDevice =
+      new CSym53C895 (this, (CSystem *) pParent->get_device (), pcibus,
+                      pcidev);
     break;
 
   case c_sym53c810:
-    myDevice = new CSym53C810(this,(CSystem *)pParent->get_device(),pcibus,pcidev);
+    myDevice =
+      new CSym53C810 (this, (CSystem *) pParent->get_device (), pcibus,
+                      pcidev);
     break;
 
   case c_file:
-    myDevice = new CDiskFile(this,theSystem,(CDiskController *)pParent->get_device(),idebus,idedev);
+    myDevice =
+      new CDiskFile (this, theSystem,
+                     (CDiskController *) pParent->get_device (), idebus,
+                     idedev);
     break;
 
   case c_device:
-    myDevice = new CDiskDevice(this,theSystem,(CDiskController *)pParent->get_device(),idebus,idedev);
+    myDevice =
+      new CDiskDevice (this, theSystem,
+                       (CDiskController *) pParent->get_device (), idebus,
+                       idedev);
     break;
 
   case c_ramdisk:
-    myDevice = new CDiskRam(this,theSystem,(CDiskController *)pParent->get_device(),idebus,idedev);
+    myDevice =
+      new CDiskRam (this, theSystem,
+                    (CDiskController *) pParent->get_device (), idebus,
+                    idedev);
     break;
 
   case c_serial:
     number = 0;
-    if (!strncmp(myName,"serial",6))
+    if (!strncmp (myName, "serial", 6))
     {
       pt = &myName[6];
-      number = atoi(pt);
+      number = atoi (pt);
     }
-    myDevice = new CSerial(this,(CSystem *)pParent->get_device(),number);
+    myDevice = new CSerial (this, (CSystem *) pParent->get_device (), number);
     break;
 
   case c_sdl:
 #if defined(HAVE_SDL)
     PLUG_load_plugin (this, sdl);
 #else
-    FAILURE("Can't instantiate the SDL GUI without SDL support");
+    FAILURE ("Can't instantiate the SDL GUI without SDL support");
 #endif
     break;
 
@@ -867,7 +940,7 @@ void CConfigurator::initialize()
 #if defined(_WIN32)
     PLUG_load_plugin (this, win32);
 #else
-    FAILURE("Can't instantiate the Win32 GUI on a non-Win32 platform");
+    FAILURE ("Can't instantiate the Win32 GUI on a non-Win32 platform");
 #endif
     break;
 
@@ -875,7 +948,7 @@ void CConfigurator::initialize()
 #if defined(HAVE_X11)
     PLUG_load_plugin (this, x11);
 #else
-    FAILURE("Can't instantiate the X11 GUI on a non-X11 platform");
+    FAILURE ("Can't instantiate the X11 GUI on a non-X11 platform");
 #endif
     break;
 
@@ -883,6 +956,9 @@ void CConfigurator::initialize()
     break;
   }
 
-  for (i=0;i<iNumChildren;i++)
-    pChildren[i]->initialize();
+  for (i = 0; i < iNumChildren; i++)
+    pChildren[i]->initialize ();
+
+  if (myFlags & IS_CS)
+    ((CSystem *) myDevice)->init ();
 }

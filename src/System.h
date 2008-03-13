@@ -27,7 +27,10 @@
  * \file 
  * Contains the definitions for the emulated Typhoon Chipset devices.
  *
- * $Id: System.h,v 1.30 2008/03/11 09:10:41 iamcamiel Exp $
+ * $Id: System.h,v 1.31 2008/03/13 13:19:20 iamcamiel Exp $
+ *
+ * X-1.31       Camiel Vanderhoeven                             13-MAR-2008
+ *      Create init(), start_threads() and stop_threads() functions.
  *
  * X-1.30       Camiel Vanderhoeven                             11-MAR-2008
  *      Named, debuggable mutexes.
@@ -149,7 +152,7 @@
 #define PROFILE_BUCKETS   (PROFILE_INSTS / PROFILE_BUCKSIZE)
 #define PROFILE_YN(a)     ((a >= PROFILE_FROM) && (a < PROFILE_TO) && profile_started)
 #define PROFILE_BUCKET(a) profile_buckets[(a-PROFILE_FROM)/4/PROFILE_BUCKSIZE]
-#define PROFILE_DO(a)     if ((a&(~X64(3)))>=PROFILE_AFTER) profile_started = true; if (PROFILE_YN(a)) { PROFILE_BUCKET(a)++; profiled_insts++; } 
+#define PROFILE_DO(a)     if ((a&(~X64(3)))>=PROFILE_AFTER) profile_started = true; if (PROFILE_YN(a)) { PROFILE_BUCKET(a)++; profiled_insts++; }
 
 extern u64 profile_buckets[PROFILE_BUCKETS];
 extern u64 profiled_insts;
@@ -158,21 +161,23 @@ extern bool profile_started;
 
 
 #if defined(LS_MASTER) || defined(LS_SLAVE)
-extern char * dbg_strptr;
+extern char *dbg_strptr;
 #endif
 
 /// Structure used for mapping memory ranges to devices.
-struct SMemoryUser {
-  CSystemComponent * component;	/**< Device that occupies this range. */
-  int index;			        /**< Index within the device. Used by devices that occupy more than one range. */
-  u64 base;			            /**< Address of first byte. */
-  u64 length;			        /**< Number of bytes in range. */
+struct SMemoryUser
+{
+  CSystemComponent *component;  /**< Device that occupies this range. */
+  int index;                            /**< Index within the device. Used by devices that occupy more than one range. */
+  u64 base;                                 /**< Address of first byte. */
+  u64 length;                           /**< Number of bytes in range. */
 };
 
 /// Structure used for configuration values.
-struct SConfig {
-  char *key;		/**< Name of the value. */
-  char *value;		/**< Value of the value. */
+struct SConfig
+{
+  char *key;            /**< Name of the value. */
+  char *value;          /**< Value of the value. */
 };
 
 /**
@@ -194,70 +199,82 @@ struct SConfig {
  *   .
  **/
 
-class CSystem  
+class CSystem
 {
- public:
-  void DumpMemory(unsigned int filenum);
-  char * PtrToMem(u64 address);
-  unsigned int get_memory_bits();
-  void RestoreState(char * fn);
-  void SaveState(char * fn);
-  u64 PCI_Phys(int pcibus, u32 address);
-  u64 PCI_Phys_direct_mapped(u32 address, u64 wsm, u64 tba);
-  u64 PCI_Phys_scatter_gather(u32 address, u64 wsm, u64 tba);
-  void interrupt(int number, bool assert);
-  int LoadROM();
-  u64 ReadMem(u64 address, int dsize, CSystemComponent * source);
-  void WriteMem(u64 address, int dsize, u64 data, CSystemComponent * source);
-  int Run();
-  int SingleStep();
+public:
+  void DumpMemory (unsigned int filenum);
+  char *PtrToMem (u64 address);
+  unsigned int get_memory_bits ();
+  void RestoreState (char *fn);
+  void SaveState (char *fn);
+  u64 PCI_Phys (int pcibus, u32 address);
+  u64 PCI_Phys_direct_mapped (u32 address, u64 wsm, u64 tba);
+  u64 PCI_Phys_scatter_gather (u32 address, u64 wsm, u64 tba);
+  void interrupt (int number, bool assert);
+  int LoadROM ();
+  u64 ReadMem (u64 address, int dsize, CSystemComponent * source);
+  void WriteMem (u64 address, int dsize, u64 data, CSystemComponent * source);
+  int Run ();
+  int SingleStep ();
 
-  int RegisterMemory(CSystemComponent * component, int index, u64 base, u64 length);
-  int RegisterComponent(CSystemComponent * component);
-  int RegisterCPU(class CAlphaCPU * cpu);
-	
-  CSystem(CConfigurator * cfg);
-  void ResetMem(unsigned int membits);
+  void init ();
+  void start_threads ();
+  void stop_threads ();
 
-  CAlphaCPU * get_cpu(int cpunum) { return acCPUs[cpunum]; };
-  int get_cpu_num() { return iNumCPUs; };
+  int RegisterMemory (CSystemComponent * component, int index, u64 base,
+                      u64 length);
+  int RegisterComponent (CSystemComponent * component);
+  int RegisterCPU (class CAlphaCPU * cpu);
 
-  virtual ~CSystem();
+    CSystem (CConfigurator * cfg);
+  void ResetMem (unsigned int membits);
+
+  CAlphaCPU *get_cpu (int cpunum)
+  {
+    return acCPUs[cpunum];
+  };
+  int get_cpu_num ()
+  {
+    return iNumCPUs;
+  };
+
+  virtual ~ CSystem ();
   unsigned int iNumMemoryBits;
 
-  void panic(char *message, int flags);
+  void panic (char *message, int flags);
 
 #define PANIC_NOSHUTDOWN 0
 #define PANIC_SHUTDOWN 1
 #define PANIC_ASKSHUTDOWN 2
 #define PANIC_LISTING 4
 
-  void clear_clock_int(int ProcNum);
-  u64 get_c_misc();
-  u64 get_c_dir(int ProcNum);
-  u64 get_c_dim(int ProcNum);
-  void set_c_dim(int ProcNum,u64 value);
+  void clear_clock_int (int ProcNum);
+  u64 get_c_misc ();
+  u64 get_c_dir (int ProcNum);
+  u64 get_c_dim (int ProcNum);
+  void set_c_dim (int ProcNum, u64 value);
 
-  void cpu_lock(int cpuid, u64 address);
-  bool cpu_unlock(int cpuid);
-  void cpu_break_lock(int cpuid, CSystemComponent * source);
+  void cpu_lock (int cpuid, u64 address);
+  bool cpu_unlock (int cpuid);
+  void cpu_break_lock (int cpuid, CSystemComponent * source);
 
 private:
 
-  u64 cchip_csr_read(u32 address, CSystemComponent * source);
-  void cchip_csr_write(u32 address, u64 data, CSystemComponent * source);
-  u64 pchip_csr_read(int num, u32 address);
-  void pchip_csr_write(int num, u32 address, u64 data);
-  u8  dchip_csr_read(u32 address);
-  void dchip_csr_write(u32 address, u8 data);
-  u8  tig_read(u32 address);
-  void tig_write(u32 address, u8 data);
+  u64 cchip_csr_read (u32 address, CSystemComponent * source);
+  void cchip_csr_write (u32 address, u64 data, CSystemComponent * source);
+  u64 pchip_csr_read (int num, u32 address);
+  void pchip_csr_write (int num, u32 address, u64 data);
+  u8 dchip_csr_read (u32 address);
+  void dchip_csr_write (u32 address, u8 data);
+  u8 tig_read (u32 address);
+  void tig_write (u32 address, u8 data);
 
   int iNumCPUs;
-  CFastMutex * cpu_lock_mutex;
+  CFastMutex *cpu_lock_mutex;
 
   /// The state structure contains all elements that need to be saved to the statefile.
-  struct SSys_state {
+  struct SSys_state
+  {
 
     int cpu_lock_flags;
     u64 cpu_lock_address[4];
@@ -270,10 +287,11 @@ private:
      * The TIGbus (TTL Integrated Glue Logic) is the interface between the chipset and
      * the interrupt controller, flash ROM, and possibly some other system components.
      **/
-    struct SSys_tig {
-      u8  FwWrite;
-      u8  HaltA;
-      u8  HaltB;
+    struct SSys_tig
+    {
+      u8 FwWrite;
+      u8 HaltA;
+      u8 HaltB;
     } tig;
 
     /**
@@ -287,7 +305,8 @@ private:
      * using the Dchip control ports, and the CAPbus (C-And-P-chip bus). It controls memory
      * using the DRAM command and address ports. It also controls the TIGbus.
      **/
-    struct SSys_cchip {
+    struct SSys_cchip
+    {
       /**
        * DIM: Device Interrupt Mask Registers.
        *
@@ -423,7 +442,8 @@ private:
      * To determine on which addresses to respond, each Pchip contains 4 DMA/PTP windows,
      * that support both direct mapped and scatter-gather DMA/PTP memory access.
      **/
-    struct SSys_pchip {
+    struct SSys_pchip
+    {
       u64 plat;
       u64 perr;
       u64 perrmask;
@@ -431,20 +451,20 @@ private:
       u64 wsba[4];
       u64 wsm[4];
       u64 tba[4];
-    } pchip [2];
+    } pchip[2];
 
-  u32 cf8_address[2];
+    u32 cf8_address[2];
 
   } state;
-  void * memory;
-  //	void * memmap;
+  void *memory;
+  //    void * memmap;
 
   int iNumComponents;
-  CSystemComponent * acComponents[MAX_COMPONENTS];
+  CSystemComponent *acComponents[MAX_COMPONENTS];
   int iNumMemories;
-  struct SMemoryUser * asMemories[MAX_COMPONENTS];
+  struct SMemoryUser *asMemories[MAX_COMPONENTS];
 
-  class CAlphaCPU * acCPUs[4];
+  class CAlphaCPU *acCPUs[4];
 
   CConfigurator *myCfg;
 
@@ -455,46 +475,46 @@ private:
 #endif
 };
 
-inline u64 CSystem::get_c_misc()
+inline u64 CSystem::get_c_misc ()
 {
   return state.cchip.misc;
 }
 
-inline u64 CSystem::get_c_dir(int ProcNum)
+inline u64 CSystem::get_c_dir (int ProcNum)
 {
   return state.cchip.drir & state.cchip.dim[ProcNum];
 }
 
-inline u64 CSystem::get_c_dim(int ProcNum)
+inline u64 CSystem::get_c_dim (int ProcNum)
 {
   return state.cchip.dim[ProcNum];
 }
 
-inline void CSystem::set_c_dim(int ProcNum,u64 value)
+inline void CSystem::set_c_dim (int ProcNum, u64 value)
 {
   state.cchip.dim[ProcNum] = value;
 }
 
-extern CSystem * theSystem;
+extern CSystem *theSystem;
 
 /* constants for P-Chip CSR's */
 
-#define PCI_PCTL_HOLE       X64(0000000000000020) /* <5>     */
+#define PCI_PCTL_HOLE       X64(0000000000000020)       /* <5>     */
 #define PCI_PCTL_HOLE_START 0x00080000
 #define PCI_PCTL_HOLE_END   0x000fffff
 
 /* constants for pci-to-phys-address-mapping */
-#define PCI_WSM_MASK        X64(00000000fff00000) /* <31:20> */
-#define PCI_ADD_MASK        X64(00000000000fffff) /* <19:0>  */
-#define PCI_TBA_MASK        X64(00000007fff00000) /* <34:20> */
-#define PCI_PTE_ADD_MASK    X64(00000000000fe000) /* <19:13> */
+#define PCI_WSM_MASK        X64(00000000fff00000)       /* <31:20> */
+#define PCI_ADD_MASK        X64(00000000000fffff)       /* <19:0>  */
+#define PCI_TBA_MASK        X64(00000007fff00000)       /* <34:20> */
+#define PCI_PTE_ADD_MASK    X64(00000000000fe000)       /* <19:13> */
 #define PCI_PTE_ADD_SHIFT   10
-#define PCI_PTE_TBA_MASK    X64(00000007fffffc00) /* <34:10> */
-#define PCI_PTE_MASK        X64(00000007ffffe000) /* <34:13> */
+#define PCI_PTE_TBA_MASK    X64(00000007fffffc00)       /* <34:10> */
+#define PCI_PTE_MASK        X64(00000007ffffe000)       /* <34:13> */
 #define PCI_PTE_SHIFT       12
-#define PCI_PTE_ADD2_MASK   X64(0000000000001fff) /* <12:0>  */
-#define PCI_PTE_PEER_BIT    X64(0000000090000000) /* <31,28> */
+#define PCI_PTE_ADD2_MASK   X64(0000000000001fff)       /* <12:0>  */
+#define PCI_PTE_PEER_BIT    X64(0000000090000000)       /* <31,28> */
 
-#define PHYS_PIO_ACCESS     X64(0000080000000000) /* <43>    */
+#define PHYS_PIO_ACCESS     X64(0000080000000000)       /* <43>    */
 
 #endif // !defined(INCLUDED_SYSTEM_H)

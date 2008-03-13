@@ -27,7 +27,10 @@
  * \file 
  * Contains the code for the emulated Typhoon Chipset devices.
  *
- * $Id: System.cpp,v 1.70 2008/03/11 09:10:41 iamcamiel Exp $
+ * $Id: System.cpp,v 1.71 2008/03/13 13:19:20 iamcamiel Exp $
+ *
+ * X-1.71       Camiel Vanderhoeven                             13-MAR-2008
+ *      Create init(), start_threads() and stop_threads() functions.
  *
  * X-1.70       Camiel Vanderhoeven                             11-MAR-2008
  *      Named, debuggable mutexes.
@@ -297,26 +300,26 @@
 
 #if defined(LS_MASTER) || defined(LS_SLAVE)
 char debug_string[10000] = "";
-char * dbg_strptr = debug_string;
+char *dbg_strptr = debug_string;
 #endif
- 
+
 /**
  * Constructor.
  **/
 
-CSystem::CSystem(CConfigurator * cfg)
+CSystem::CSystem (CConfigurator * cfg)
 {
   int i;
 
   if (theSystem != 0)
-    FAILURE("More than one system!!");
+    FAILURE ("More than one system!!");
   theSystem = this;
   myCfg = cfg;
 
   iNumComponents = 0;
   iNumMemories = 0;
   iNumCPUs = 0;
-  iNumMemoryBits = (int)myCfg->get_num_value("memory.bits",false,27);
+  iNumMemoryBits = (int) myCfg->get_num_value ("memory.bits", false, 27);
 //  iNumConfig = 0;
 
 #if defined(IDB)
@@ -324,43 +327,45 @@ CSystem::CSystem(CConfigurator * cfg)
   iSSCycles = 0;
 #endif
 
-  for (i=0;i<4;i++)
+  for (i = 0; i < 4; i++)
     state.cchip.dim[i] = 0;
   state.cchip.drir = 0;
-  state.cchip.misc = X64(0000000800000000);
-  state.cchip.csc  = X64(3142444014157803);
+  state.cchip.misc = X64 (0000000800000000);
+  state.cchip.csc = X64 (3142444014157803);
 
   state.dchip.drev = 0x01;
-  state.dchip.dsc  = 0x43;
+  state.dchip.dsc = 0x43;
   state.dchip.dsc2 = 0x03;
-  state.dchip.str  = 0x25;
+  state.dchip.str = 0x25;
 
   // initialize pchip data
-  for (i=0;i<2;i++)
+  for (i = 0; i < 2; i++)
   {
-    memset(&state.pchip[i], 0, sizeof(struct SSys_state::SSys_pchip));
+    memset (&state.pchip[i], 0, sizeof (struct SSys_state::SSys_pchip));
     state.pchip[i].wsba[3] = 2;
   }
-  state.pchip[0].pctl = X64(0000104401440081);
-  state.pchip[1].pctl = X64(0000504401440081);
+  state.pchip[0].pctl = X64 (0000104401440081);
+  state.pchip[1].pctl = X64 (0000504401440081);
 
   state.tig.FwWrite = 0;
-  state.tig.HaltA   = 0;
-  state.tig.HaltB   = 0;
+  state.tig.HaltA = 0;
+  state.tig.HaltB = 0;
 
-  if(iNumMemoryBits > 30)
+  if (iNumMemoryBits > 30)
   {
     // size_t may not be big enough, and makes 2^31 negative, so the
     // alloc fails.  We're going to allocate the memory in 
     //  2^(iNumMemoryBits-10) chunks of 2^10.
-    CHECK_ALLOCATION(memory = calloc(1<<(iNumMemoryBits-10),1<<10));
+    CHECK_ALLOCATION (memory = calloc (1 << (iNumMemoryBits - 10), 1 << 10));
   }
   else
-    CHECK_ALLOCATION(memory = calloc(1<<iNumMemoryBits,1));
+    CHECK_ALLOCATION (memory = calloc (1 << iNumMemoryBits, 1));
 
-  cpu_lock_mutex = new CFastMutex("cpu-locking-lock");
+  cpu_lock_mutex = new CFastMutex ("cpu-locking-lock");
 
-  printf("%s(%s): $Id: System.cpp,v 1.70 2008/03/11 09:10:41 iamcamiel Exp $\n",cfg->get_myName(),cfg->get_myValue());
+  printf
+    ("%s(%s): $Id: System.cpp,v 1.71 2008/03/13 13:19:20 iamcamiel Exp $\n",
+     cfg->get_myName (), cfg->get_myValue ());
 }
 
 /**
@@ -368,36 +373,37 @@ CSystem::CSystem(CConfigurator * cfg)
  * frees used memory.
  **/
 
-CSystem::~CSystem()
+CSystem::~CSystem ()
 {
   int i;
 
-  printf("Freeing memory in use by system...\n");
+  printf ("Freeing memory in use by system...\n");
 
-  for (i=0;i<iNumComponents;i++)
+  for (i = 0; i < iNumComponents; i++)
     delete acComponents[i];
 
-  for (i=0;i<iNumMemories;i++)
-    free(asMemories[i]);
+  for (i = 0; i < iNumMemories; i++)
+    free (asMemories[i]);
 
-  free(memory);
+  free (memory);
 }
 
 /**
  * free memory, and allocate and clear new memory.
  **/
 
-void CSystem::ResetMem(unsigned int membits) {
-  free(memory);
-  iNumMemoryBits=membits;
-  CHECK_ALLOCATION(memory = calloc(1<<iNumMemoryBits,1));
+void CSystem::ResetMem (unsigned int membits)
+{
+  free (memory);
+  iNumMemoryBits = membits;
+  CHECK_ALLOCATION (memory = calloc (1 << iNumMemoryBits, 1));
 }
 
 /**
  * Register a device.
  **/
 
-int CSystem::RegisterComponent(CSystemComponent *component)
+int CSystem::RegisterComponent (CSystemComponent * component)
 {
   acComponents[iNumComponents] = component;
   iNumComponents++;
@@ -409,7 +415,7 @@ int CSystem::RegisterComponent(CSystemComponent *component)
  * (e.g. 28 = 256 MB, 29 = 512 MB, 30 = 1 GB)
  **/
 
-unsigned int CSystem::get_memory_bits()
+unsigned int CSystem::get_memory_bits ()
 {
   return iNumMemoryBits;
 }
@@ -418,21 +424,21 @@ unsigned int CSystem::get_memory_bits()
  * Obtain a pointer to system memory.
  **/
 
-char * CSystem::PtrToMem(u64 address)
+char *CSystem::PtrToMem (u64 address)
 {
-  if (address>>iNumMemoryBits) // Non Memory
+  if (address >> iNumMemoryBits)        // Non Memory
     return 0;
 
-  return &(((char*)memory)[(int)address]);
+  return &(((char *) memory)[(int) address]);
 }
 
 /**
  * Register a device as being a CPU. Return the CPU number.
  **/
 
-int CSystem::RegisterCPU(class CAlphaCPU * cpu)
+int CSystem::RegisterCPU (class CAlphaCPU * cpu)
 {
-  if (iNumCPUs>=4)
+  if (iNumCPUs >= 4)
     return -1;
   acCPUs[iNumCPUs] = cpu;
   iNumCPUs++;
@@ -443,13 +449,16 @@ int CSystem::RegisterCPU(class CAlphaCPU * cpu)
  * Reserve a range of the 64-bit system address space for a device.
  **/
 
-int CSystem::RegisterMemory(CSystemComponent *component, int index, u64 base, u64 length)
+int
+  CSystem::RegisterMemory (CSystemComponent * component, int index, u64 base,
+                           u64 length)
 {
-  struct SMemoryUser * m;
+  struct SMemoryUser *m;
   int i;
-  for (i=0;i<iNumMemories;i++)
+  for (i = 0; i < iNumMemories; i++)
   {
-    if ((asMemories[i]->component == component) && (asMemories[i]->index == index))
+    if ((asMemories[i]->component == component)
+        && (asMemories[i]->index == index))
     {
       asMemories[i]->base = base;
       asMemories[i]->length = length;
@@ -457,7 +466,9 @@ int CSystem::RegisterMemory(CSystemComponent *component, int index, u64 base, u6
     }
   }
 
-  CHECK_ALLOCATION(m = (struct SMemoryUser*) malloc(sizeof(struct SMemoryUser)));
+  CHECK_ALLOCATION (m =
+                    (struct SMemoryUser *)
+                    malloc (sizeof (struct SMemoryUser)));
   m->component = component;
   m->base = base;
   m->length = length;
@@ -474,42 +485,40 @@ int got_sigint = 0;
  * Handle a SIGINT by setting a flag that terminates the emulator.
  **/
 
-void sigint_handler (int signum) 
+void sigint_handler (int signum)
 {
-  got_sigint=1;
+  got_sigint = 1;
 }
 
 /**
  * Run the system by clocking the CPU(s) and devices.
  **/
 
-int CSystem::Run()
+int CSystem::Run ()
 {
-  int i,j,k;
+  int i, k;
 
   /* catch CTRL-C and shutdown gracefully */
-  signal(SIGINT,&sigint_handler);
+  signal (SIGINT, &sigint_handler);
 
-  theDPR->init();
+  start_threads ();
 
-  for(j=0; j<iNumCPUs; j++)
-    acCPUs[j]->start_thread();
-
-  for(k=0;!got_sigint;k++)
+  for (k = 0; !got_sigint; k++)
   {
-    Poco::Thread::sleep(100); // 100ms sleep
-    for (i=0;i<iNumComponents;i++)
-      acComponents[i]->check_state();
+    Poco::Thread::sleep (100);  // 100ms sleep
+    for (i = 0; i < iNumComponents; i++)
+      acComponents[i]->check_state ();
 #if !defined(HIDE_COUNTER)
 #if defined(PROFILE)
-    printf("%d | %016" LL "x | %" LL "d profiled instructions.  \r",k,acCPUs[0]->get_pc(),profiled_insts);
+    printf ("%d | %016" LL "x | %" LL "d profiled instructions.  \r", k,
+            acCPUs[0]->get_pc (), profiled_insts);
 #else
-    printf("%d | %016" LL "x\r",k,acCPUs[0]->get_pc());
+    printf ("%d | %016" LL "x\r", k, acCPUs[0]->get_pc ());
 #endif
 #endif
   }
 
-  printf("%%SYS-W-SHUTDOWN: CTRL-C or Device Failed\n");
+  printf ("%%SYS-W-SHUTDOWN: CTRL-C or Device Failed\n");
   return 1;
 }
 
@@ -518,24 +527,24 @@ int CSystem::Run()
  * some devices may be clocked.
  **/
 
-int CSystem::SingleStep()
+int CSystem::SingleStep ()
 {
   int i;
   int result;
 
-  for (i=0; i<iNumCPUs;i++)
-    acCPUs[i]->execute();
+  for (i = 0; i < iNumCPUs; i++)
+    acCPUs[i]->execute ();
 
 //  iSingleStep++;
 
 #if defined(LS_MASTER) || defined(LS_SLAVE)
   if (!(iSingleStep % 50))
   {
-     lockstep_sync_m2s("sync1");
-     *dbg_strptr='\0';
-     lockstep_compare(debug_string);
-     dbg_strptr = debug_string;
-     *dbg_strptr='\0';
+    lockstep_sync_m2s ("sync1");
+    *dbg_strptr = '\0';
+    lockstep_compare (debug_string);
+    dbg_strptr = debug_string;
+    *dbg_strptr = '\0';
   }
 #endif
 //  if (iSingleStep >= CLOCK_RATIO)
@@ -544,8 +553,8 @@ int CSystem::SingleStep()
 //     for(i=0;i<iNumSlowClocks;i++)
 //     {
 //        result = acSlowClocks[i]->DoClock();
-//	if (result)
-//	  return result;
+//      if (result)
+//        return result;
 //     }
 //#ifdef IDB
 //     iSSCycles++;
@@ -562,30 +571,30 @@ int CSystem::SingleStep()
 u64 lastport;
 #endif
 
-void CSystem::cpu_lock(int cpuid, u64 address)
+void CSystem::cpu_lock (int cpuid, u64 address)
 {
-  SCOPED_FM_LOCK(cpu_lock_mutex);
+  SCOPED_FM_LOCK (cpu_lock_mutex);
 //  printf("cpu%d: lock %" LL "x.   \n",cpuid,address);
-  state.cpu_lock_flags |= (1<<cpuid);
+  state.cpu_lock_flags |= (1 << cpuid);
   state.cpu_lock_address[cpuid] = address;
 }
 
-bool CSystem::cpu_unlock(int cpuid)
+bool CSystem::cpu_unlock (int cpuid)
 {
-  SCOPED_FM_LOCK(cpu_lock_mutex);
+  SCOPED_FM_LOCK (cpu_lock_mutex);
   bool retval;
-  retval = state.cpu_lock_flags & (1<<cpuid);
+  retval = state.cpu_lock_flags & (1 << cpuid);
 //  printf("cpu%d: unlock (%s).   \n",cpuid,retval?"ok":"failed");
-  state.cpu_lock_flags &= ~(1<<cpuid);
+  state.cpu_lock_flags &= ~(1 << cpuid);
   return retval;
 }
 
-void CSystem::cpu_break_lock(int cpuid, CSystemComponent * source)
+void CSystem::cpu_break_lock (int cpuid, CSystemComponent * source)
 {
-  SCOPED_FM_LOCK(cpu_lock_mutex);
-  printf("cpu%d: lock broken by %s.   \n",cpuid,source->devid_string);
-  state.cpu_lock_flags &= ~(1<<cpuid);
- }
+  SCOPED_FM_LOCK (cpu_lock_mutex);
+  printf ("cpu%d: lock broken by %s.   \n", cpuid, source->devid_string);
+  state.cpu_lock_flags &= ~(1 << cpuid);
+}
 
 /**
  * \brief Write 8, 4, 2 or 1 byte(s) to a 64-bit system address. This could be memory,
@@ -670,163 +679,179 @@ void CSystem::cpu_break_lock(int cpuid, CSystemComponent * source)
  * \endcode
  **/
 
-void CSystem::WriteMem(u64 address, int dsize, u64 data,CSystemComponent * source)
+void
+  CSystem::WriteMem (u64 address, int dsize, u64 data,
+                     CSystemComponent * source)
 {
   u64 a;
   int i;
-  u8 * p;
+  u8 *p;
 #if defined(ALIGN_MEM_ACCESS)
   u64 t64;
   u32 t32;
   u16 t16;
 #endif
 
-  if (state.cpu_lock_flags) {
-    for (i=0;i<iNumCPUs;i++) {
-      if ( (state.cpu_lock_flags & (1<<i)) &&
-           (!((state.cpu_lock_address[i] ^address) & X64(00000807ffffff00) )) &&
-           (source != acCPUs[i]))
-        cpu_break_lock(i,source);
+  if (state.cpu_lock_flags)
+  {
+    for (i = 0; i < iNumCPUs; i++)
+    {
+      if ((state.cpu_lock_flags & (1 << i)) &&
+          (!((state.cpu_lock_address[i] ^ address) & X64 (00000807ffffff00)))
+          && (source != acCPUs[i]))
+        cpu_break_lock (i, source);
     }
   }
 
-  a = address & X64(00000807ffffffff);
+  a = address & X64 (00000807ffffffff);
 
-  if (a>>iNumMemoryBits) // non-memory
+  if (a >> iNumMemoryBits)      // non-memory
   {
     // check registered device memory ranges
-    for(i=0;i<iNumMemories;i++) 
+    for (i = 0; i < iNumMemories; i++)
     {
-	  if (   (a >= asMemories[i]->base)
-	       && (a < asMemories[i]->base + asMemories[i]->length) ) 
+      if ((a >= asMemories[i]->base)
+          && (a < asMemories[i]->base + asMemories[i]->length))
       {
-	    asMemories[i]->component->WriteMem(asMemories[i]->index, a-asMemories[i]->base, dsize, data);
-	    return;
-	  }
+        asMemories[i]->component->WriteMem (asMemories[i]->index,
+                                            a - asMemories[i]->base, dsize,
+                                            data);
+        return;
+      }
     }
 
-    if ((a==X64(00000801FC000CF8)) && (dsize==32))
+    if ((a == X64 (00000801FC000CF8)) && (dsize == 32))
     {
-      state.cf8_address[0] = (u32)data & 0x00ffffff;
+      state.cf8_address[0] = (u32) data & 0x00ffffff;
       return;
     }
-    if ((a==X64(00000803FC000CF8)) && (dsize==32))
+    if ((a == X64 (00000803FC000CF8)) && (dsize == 32))
     {
-      state.cf8_address[1] = (u32)data & 0x00ffffff;
+      state.cf8_address[1] = (u32) data & 0x00ffffff;
       return;
     }
-    if ((a==X64(00000801FC000CFC)) && (dsize==32))
+    if ((a == X64 (00000801FC000CFC)) && (dsize == 32))
     {
-      printf("PCI 0 config space write through CF8/CFC mechanism.   \n");
-      getc(stdin);
-      WriteMem(X64(00000801FE000000) | state.cf8_address[0], dsize, data, source);
+      printf ("PCI 0 config space write through CF8/CFC mechanism.   \n");
+      getc (stdin);
+      WriteMem (X64 (00000801FE000000) | state.cf8_address[0], dsize, data,
+                source);
       return;
     }
-    if ((a==X64(00000803FC000CFC)) && (dsize==32))
+    if ((a == X64 (00000803FC000CFC)) && (dsize == 32))
     {
-      printf("PCI 1 config space write through CF8/CFC mechanism.   \n");
-      getc(stdin);
-      WriteMem(X64(00000803FE000000) | state.cf8_address[1], dsize, data, source);
-      return;
-    }
-
-
-    if  (a>=X64(00000801A0000000) && a<=X64(00000801AFFFFFFF))
-    {
-      cchip_csr_write((u32)a&0xFFFFFFF,data, source);
+      printf ("PCI 1 config space write through CF8/CFC mechanism.   \n");
+      getc (stdin);
+      WriteMem (X64 (00000803FE000000) | state.cf8_address[1], dsize, data,
+                source);
       return;
     }
 
-    if (a>=X64(0000080180000000) && a<=X64(000008018FFFFFFF))
+
+    if (a >= X64 (00000801A0000000) && a <= X64 (00000801AFFFFFFF))
     {
-      pchip_csr_write(0,(u32)a&0xFFFFFFF,data);
-      return;
-    }
-  
-    if (a>=X64(0000080380000000) && a<=X64(000008038FFFFFFF))
-    {
-      pchip_csr_write(1,(u32)a&0xFFFFFFF,data);
+      cchip_csr_write ((u32) a & 0xFFFFFFF, data, source);
       return;
     }
 
-    if (a>=X64(00000801B0000000) && a<=X64(00000801BFFFFFFF))
+    if (a >= X64 (0000080180000000) && a <= X64 (000008018FFFFFFF))
     {
-      dchip_csr_write((u32)a&0xFFFFFFF,(u8)data&0xff);
+      pchip_csr_write (0, (u32) a & 0xFFFFFFF, data);
       return;
     }
 
-    if (a>=X64(0000080100000000) && a<=X64(000008013FFFFFFF))
+    if (a >= X64 (0000080380000000) && a <= X64 (000008038FFFFFFF))
     {
-      tig_write((u32)a&0x3FFFFFFF,(u8)data);
+      pchip_csr_write (1, (u32) a & 0xFFFFFFF, data);
       return;
     }
-      if (a>=X64(801fc000000) && a<X64(801fe000000))
-      {
-        // Unused PCI I/O space
+
+    if (a >= X64 (00000801B0000000) && a <= X64 (00000801BFFFFFFF))
+    {
+      dchip_csr_write ((u32) a & 0xFFFFFFF, (u8) data & 0xff);
+      return;
+    }
+
+    if (a >= X64 (0000080100000000) && a <= X64 (000008013FFFFFFF))
+    {
+      tig_write ((u32) a & 0x3FFFFFFF, (u8) data);
+      return;
+    }
+    if (a >= X64 (801fc000000) && a < X64 (801fe000000))
+    {
+      // Unused PCI I/O space
 //      if (source)
 //        printf("Write to unknown IO port %"LL"x on PCI 0 from %s   \n",a & X64(1ffffff),source->devid_string);
 //      else
 //        printf("Write to unknown IO port %"LL"x on PCI 0   \n",a & X64(1ffffff));
-        return;
-      }
+      return;
+    }
 
-      if (a>=X64(803fc000000) && a<X64(803fe000000))
-      {
-        // Unused PCI I/O space
+    if (a >= X64 (803fc000000) && a < X64 (803fe000000))
+    {
+      // Unused PCI I/O space
+      if (source)
+        printf ("Write to unknown IO port %" LL "x on PCI 1 from %s   \n",
+                a & X64 (1ffffff), source->devid_string);
+      else
+        printf ("Write to unknown IO port %" LL "x on PCI 1   \n",
+                a & X64 (1ffffff));
+      return;
+    }
+
+    if (a >= X64 (80000000000) && a < X64 (80100000000))
+    {
+      // Unused PCI memory space
+      u64 paddr = a & X64 (ffffffff);
+      if (paddr > 0xb8fff || paddr < 0xb8000)
+      {                         // skip legacy video
         if (source)
-          printf("Write to unknown IO port %"LL"x on PCI 1 from %s   \n",a & X64(1ffffff),source->devid_string);
+          printf ("Write to unknown memory %" LL "x on PCI 0 from %s   \n",
+                  a & X64 (ffffffff), source->devid_string);
         else
-          printf("Write to unknown IO port %"LL"x on PCI 1   \n",a & X64(1ffffff));
-        return;
+          printf ("Write to unknown memory %" LL "x on PCI 0   \n",
+                  a & X64 (ffffffff));
       }
+    }
 
-      if (a>=X64(80000000000) && a<X64(80100000000))
-      {
-        // Unused PCI memory space
-       u64 paddr = a & X64(ffffffff);
-       if(paddr > 0xb8fff || paddr < 0xb8000) { // skip legacy video
-         if (source)
-           printf("Write to unknown memory %"LL"x on PCI 0 from %s   \n",a & X64(ffffffff),source->devid_string);
-         else
-           printf("Write to unknown memory %"LL"x on PCI 0   \n",a & X64(ffffffff));
-       }
-      }
-
-      if (a>=X64(80200000000) && a<X64(80300000000))
-      {
-        // Unused PCI memory space
-        if (source)
-          printf("Write to unknown memory %"LL"x on PCI 1 from %s   \n",a & X64(ffffffff),source->devid_string);
-        else
-          printf("Write to unknown memory %"LL"x on PCI 1   \n",a & X64(ffffffff));
-        return;
-      }
+    if (a >= X64 (80200000000) && a < X64 (80300000000))
+    {
+      // Unused PCI memory space
+      if (source)
+        printf ("Write to unknown memory %" LL "x on PCI 1 from %s   \n",
+                a & X64 (ffffffff), source->devid_string);
+      else
+        printf ("Write to unknown memory %" LL "x on PCI 1   \n",
+                a & X64 (ffffffff));
+      return;
+    }
 
 #ifdef DEBUG_UNKMEM
     if (source)
-      printf("Write to unknown memory %"LL"x from %s   \n",a,source->devid_string);
+      printf ("Write to unknown memory %" LL "x from %s   \n", a,
+              source->devid_string);
     else
-  	  printf("Write to unknown memory %"LL"x   \n",a);
+      printf ("Write to unknown memory %" LL "x   \n", a);
 #endif
-	  return;
-    }
+    return;
+  }
 
-  p = (u8*)memory + a;
+  p = (u8 *) memory + a;
 
-  switch(dsize)
-    {
-    case 8:
-      *((u8 *) p) = (u8) data;
-      break;
-    case 16:
-      *((u16 *) p) = endian_16( (u16) data );
-      break;
-    case 32:
-      *((u32 *) p) = endian_32( (u32) data );
-      break;
-    default:
-      *((u64 *) p) = endian_64( (u64) data );
-    }
+  switch (dsize)
+  {
+  case 8:
+    *((u8 *) p) = (u8) data;
+    break;
+  case 16:
+    *((u16 *) p) = endian_16 ((u16) data);
+    break;
+  case 32:
+    *((u32 *) p) = endian_32 ((u32) data);
+    break;
+  default:
+    *((u64 *) p) = endian_64 ((u64) data);
+  }
 }
 
 /**
@@ -912,141 +937,153 @@ void CSystem::WriteMem(u64 address, int dsize, u64 data,CSystemComponent * sourc
  * \endcode
  **/
 
-u64 CSystem::ReadMem(u64 address, int dsize, CSystemComponent * source)
+u64 CSystem::ReadMem (u64 address, int dsize, CSystemComponent * source)
 {
   u64 a;
   int i;
-  u8 * p;
+  u8 *p;
 
-  a = address & X64(00000807ffffffff);
-  if (a>>iNumMemoryBits) // Non Memory
+  a = address & X64 (00000807ffffffff);
+  if (a >> iNumMemoryBits)      // Non Memory
   {
     // check registered device memory ranges
-    for(i=0;i<iNumMemories;i++) 
+    for (i = 0; i < iNumMemories; i++)
     {
-      if (   (a >= asMemories[i]->base)
-	      && (a < asMemories[i]->base + asMemories[i]->length) )
-	    return asMemories[i]->component->ReadMem(asMemories[i]->index, a-asMemories[i]->base, dsize);
-	}
-
-    if ((a==X64(00000801FC000CFC)) && (dsize==32))
-    {
-      printf("PCI 0 config space read through CF8/CFC mechanism.   \n");
-      getc(stdin);
-      return ReadMem(X64(00000801FE000000) | state.cf8_address[0], dsize, source);
-    }
-    if ((a==X64(00000803FC000CFC)) && (dsize==32))
-    {
-      printf("PCI 1 config space read through CF8/CFC mechanism.   \n");
-      getc(stdin);
-      return ReadMem(X64(00000803FE000000) | state.cf8_address[1], dsize, source);
+      if ((a >= asMemories[i]->base)
+          && (a < asMemories[i]->base + asMemories[i]->length))
+        return asMemories[i]->component->ReadMem (asMemories[i]->index,
+                                                  a - asMemories[i]->base,
+                                                  dsize);
     }
 
-    if (a>=X64(00000801A0000000) && a<=X64(00000801AFFFFFFF))
-      return cchip_csr_read((u32)a&0xFFFFFFF, source);
+    if ((a == X64 (00000801FC000CFC)) && (dsize == 32))
+    {
+      printf ("PCI 0 config space read through CF8/CFC mechanism.   \n");
+      getc (stdin);
+      return ReadMem (X64 (00000801FE000000) | state.cf8_address[0], dsize,
+                      source);
+    }
+    if ((a == X64 (00000803FC000CFC)) && (dsize == 32))
+    {
+      printf ("PCI 1 config space read through CF8/CFC mechanism.   \n");
+      getc (stdin);
+      return ReadMem (X64 (00000803FE000000) | state.cf8_address[1], dsize,
+                      source);
+    }
 
-    if (a>=X64(0000080180000000) && a<=X64(000008018FFFFFFF))
-      return pchip_csr_read(0,(u32)a&0xFFFFFFF);
-  
-    if (a>=X64(0000080380000000) && a<=X64(000008038FFFFFFF))
-      return pchip_csr_read(1,(u32)a&0xFFFFFFF);
+    if (a >= X64 (00000801A0000000) && a <= X64 (00000801AFFFFFFF))
+      return cchip_csr_read ((u32) a & 0xFFFFFFF, source);
 
-    if (a>=X64(00000801B0000000) && a<=X64(00000801BFFFFFFF))
-      return dchip_csr_read((u32)a&0xFFFFFFF) * X64(0101010101010101);
+    if (a >= X64 (0000080180000000) && a <= X64 (000008018FFFFFFF))
+      return pchip_csr_read (0, (u32) a & 0xFFFFFFF);
 
-    if (a>=X64(0000080100000000) && a<=X64(000008013FFFFFFF))
-      return tig_read((u32)a&0x3FFFFFFF);
+    if (a >= X64 (0000080380000000) && a <= X64 (000008038FFFFFFF))
+      return pchip_csr_read (1, (u32) a & 0xFFFFFFF);
 
-      if (   (a>=X64(801fe000000) && a<X64(801ff000000))
-          || (a>=X64(803fe000000) && a<X64(803ff000000)) )
+    if (a >= X64 (00000801B0000000) && a <= X64 (00000801BFFFFFFF))
+      return dchip_csr_read ((u32) a & 0xFFFFFFF) * X64 (0101010101010101);
+
+    if (a >= X64 (0000080100000000) && a <= X64 (000008013FFFFFFF))
+      return tig_read ((u32) a & 0x3FFFFFFF);
+
+    if ((a >= X64 (801fe000000) && a < X64 (801ff000000))
+        || (a >= X64 (803fe000000) && a < X64 (803ff000000)))
+    {
+      // Unused PCI configuration space
+      switch (dsize)
       {
-        // Unused PCI configuration space
-        switch(dsize)
-        {
-        case 8:
-          return X64_BYTE;
-        case 16:
-          return X64_WORD;
-        case 32:
-          return X64_LONG;
-        case 64:
-          return X64_QUAD;
-        }
+      case 8:
+        return X64_BYTE;
+      case 16:
+        return X64_WORD;
+      case 32:
+        return X64_LONG;
+      case 64:
+        return X64_QUAD;
       }
+    }
 
-      if (a>=X64(800000c0000) && a<X64(801000e0000))
-      {
-        // Unused PCI ROM BIOS space
-        return 0;
-      }
+    if (a >= X64 (800000c0000) && a < X64 (801000e0000))
+    {
+      // Unused PCI ROM BIOS space
+      return 0;
+    }
 
-      if (a>=X64(801fc000000) && a<X64(801fe000000))
-      {
-        // Unused PCI I/O space
-        //if (source)
-        //  printf("Read from unknown IO port %"LL"x on PCI 0 from %s   \n",a & X64(1ffffff),source->devid_string);
-        //else
-        //  printf("Read from unknown IO port %"LL"x on PCI 0   \n",a & X64(1ffffff));
-        return 0;
-      }
+    if (a >= X64 (801fc000000) && a < X64 (801fe000000))
+    {
+      // Unused PCI I/O space
+      //if (source)
+      //  printf("Read from unknown IO port %"LL"x on PCI 0 from %s   \n",a & X64(1ffffff),source->devid_string);
+      //else
+      //  printf("Read from unknown IO port %"LL"x on PCI 0   \n",a & X64(1ffffff));
+      return 0;
+    }
 
-      if (a>=X64(803fc000000) && a<X64(803fe000000))
-      {
-        // Unused PCI I/O space
+    if (a >= X64 (803fc000000) && a < X64 (803fe000000))
+    {
+      // Unused PCI I/O space
+      if (source)
+        printf ("Read from unknown IO port %" LL "x on PCI 1 from %s   \n",
+                a & X64 (1ffffff), source->devid_string);
+      else
+        printf ("Read from unknown IO port %" LL "x on PCI 1   \n",
+                a & X64 (1ffffff));
+      return 0;
+    }
+
+    if (a >= X64 (80000000000) && a < X64 (80100000000))
+    {
+      // Unused PCI memory space
+      u64 paddr = a & X64 (ffffffff);
+      if (paddr > 0xb8fff || paddr < 0xb8000)
+      {                         // skip legacy video
         if (source)
-          printf("Read from unknown IO port %"LL"x on PCI 1 from %s   \n",a & X64(1ffffff),source->devid_string);
+          printf ("Read from unknown memory %" LL "x on PCI 0 from %s   \n",
+                  a & X64 (ffffffff), source->devid_string);
         else
-          printf("Read from unknown IO port %"LL"x on PCI 1   \n",a & X64(1ffffff));
-        return 0;
+          printf ("Read from unknown memory %" LL "x on PCI 0   \n",
+                  a & X64 (ffffffff));
       }
+      return 0;
+    }
 
-      if (a>=X64(80000000000) && a<X64(80100000000))
-      {
-        // Unused PCI memory space
-        u64 paddr = a & X64(ffffffff);
-        if(paddr > 0xb8fff || paddr < 0xb8000) { // skip legacy video
-          if (source)
-            printf("Read from unknown memory %"LL"x on PCI 0 from %s   \n",a & X64(ffffffff),source->devid_string);
-          else
-            printf("Read from unknown memory %"LL"x on PCI 0   \n",a & X64(ffffffff));
-        }
-        return 0;
-      }
-
-      if (a>=X64(80200000000) && a<X64(80300000000))
-      {
-        // Unused PCI memory space
-        if (source)
-          printf("Read from unknown memory %"LL"x on PCI 1 from %s   \n",a & X64(ffffffff),source->devid_string);
-        else
-          printf("Read from unknown memory %"LL"x on PCI 1   \n",a & X64(ffffffff));
-        return 0;
-      }
+    if (a >= X64 (80200000000) && a < X64 (80300000000))
+    {
+      // Unused PCI memory space
+      if (source)
+        printf ("Read from unknown memory %" LL "x on PCI 1 from %s   \n",
+                a & X64 (ffffffff), source->devid_string);
+      else
+        printf ("Read from unknown memory %" LL "x on PCI 1   \n",
+                a & X64 (ffffffff));
+      return 0;
+    }
 
 #ifdef DEBUG_UNKMEM
     if (source)
-      printf("Read from unknown memory %"LL"x from %s   \n",a,source->devid_string);
+      printf ("Read from unknown memory %" LL "x from %s   \n", a,
+              source->devid_string);
     else
-  	  printf("Read from unknown memory %"LL"x   \n",a);
+      printf ("Read from unknown memory %" LL "x   \n", a);
 #endif
-	return 0x00;
+    return 0x00;
 
-	  //			return 0x77; // 7f
-    }
+    //                    return 0x77; // 7f
+  }
 
-  p = (u8*)memory + a;
+  p = (u8 *) memory + a;
 
-  switch(dsize)
-    {
-    case 8:
-      return *((u8 *) p);
-    case 16:
-      return endian_16( *((u16 *) p) );
-    case 32:
-      return endian_32( *((u32 *) p) );
-    default:
-      return endian_64( *((u64 *) p) );
-    }
+  switch (dsize)
+  {
+  case 8:
+    return *((u8 *) p);
+  case 16:
+    return endian_16 (*((u16 *) p));
+  case 32:
+    return endian_32 (*((u32 *) p));
+  default:
+    return endian_64 (*((u64 *) p));
+  }
 }
 
 /**
@@ -1416,7 +1453,7 @@ u64 CSystem::ReadMem(u64 address, int dsize, CSystemComponent * source)
  * A write to this register invalidates the scatter-gather TLB. The value written is ignored.
  **/
 
-u64 CSystem::pchip_csr_read(int num, u32 a)
+u64 CSystem::pchip_csr_read (int num, u32 a)
 {
   switch (a)
   {
@@ -1424,30 +1461,30 @@ u64 CSystem::pchip_csr_read(int num, u32 a)
   case 0x040:
   case 0x080:
   case 0x0c0:
-    return state.pchip[num].wsba[(a>>6)&3];
+    return state.pchip[num].wsba[(a >> 6) & 3];
   case 0x100:
   case 0x140:
   case 0x180:
   case 0x1c0:
-    return state.pchip[num].wsm[(a>>6)&3];
+    return state.pchip[num].wsm[(a >> 6) & 3];
   case 0x200:
   case 0x240:
   case 0x280:
   case 0x2c0:
-    return state.pchip[num].tba[(a>>6)&3];
+    return state.pchip[num].tba[(a >> 6) & 3];
   case 0x300:
     return state.pchip[num].pctl;
   case 0x3c0:
     return state.pchip[num].perr;
   case 0x400:
     return state.pchip[num].perrmask;
-  case 0x480: // TLBIV
-  case 0x4c0: // TLBIA
+  case 0x480:                  // TLBIV
+  case 0x4c0:                  // TLBIA
     return 0;
-  case 0x800: // PCI reset
+  case 0x800:                  // PCI reset
     return 0;
   default:
-    printf("Unknown PCHIP %d CSR %07x read attempted.\n",num,a);
+    printf ("Unknown PCHIP %d CSR %07x read attempted.\n", num, a);
     return 0;
   }
 }
@@ -1458,68 +1495,69 @@ u64 CSystem::pchip_csr_read(int num, u32 a)
  * For a description of the PCHIP registers, see pchip_csr_read.
  **/
 
-void CSystem::pchip_csr_write(int num, u32 a, u64 data)
+void CSystem::pchip_csr_write (int num, u32 a, u64 data)
 {
   switch (a)
   {
   case 0x000:
   case 0x040:
   case 0x080:
-    state.pchip[num].wsba[(a>>6)&3] = data & X64(00000000fff00003);
+    state.pchip[num].wsba[(a >> 6) & 3] = data & X64 (00000000fff00003);
     return;
   case 0x0c0:
-    state.pchip[num].wsba[3] = data & X64(00000080fff00001) | 2;
-	return;
+    state.pchip[num].wsba[3] = data & X64 (00000080fff00001) | 2;
+    return;
   case 0x100:
   case 0x140:
   case 0x180:
   case 0x1c0:
-	state.pchip[num].wsm[(a>>6)&3] = data & X64(00000000fff00000);
-	return;
+    state.pchip[num].wsm[(a >> 6) & 3] = data & X64 (00000000fff00000);
+    return;
   case 0x200:
   case 0x240:
   case 0x280:
   case 0x2c0:
-    state.pchip[num].tba[(a>>6)&3] = data & X64(00000007fffffc00);
+    state.pchip[num].tba[(a >> 6) & 3] = data & X64 (00000007fffffc00);
     return;
   case 0x300:
-	state.pchip[num].pctl &=         X64(ffffe300f0300000);
-    state.pchip[num].pctl |= (data & X64(00001cff0fcfffff));
+    state.pchip[num].pctl &= X64 (ffffe300f0300000);
+    state.pchip[num].pctl |= (data & X64 (00001cff0fcfffff));
     return;
   case 0x340:
     state.pchip[num].plat = data;
     return;
-  case 0x3c0: // PERR
+  case 0x3c0:                  // PERR
     return;
   case 0x400:
     state.pchip[num].perrmask = data;
-	return;
-  case 0x480: // TLBIV
-  case 0x4c0: // TLBIA
     return;
-  case 0x800: // PCI reset
-    for(int i=0;i<iNumComponents;i++)
-      acComponents[i]->ResetPCI();
+  case 0x480:                  // TLBIV
+  case 0x4c0:                  // TLBIA
+    return;
+  case 0x800:                  // PCI reset
+    for (int i = 0; i < iNumComponents; i++)
+      acComponents[i]->ResetPCI ();
     return;
   default:
-    printf("Unknown PCHIP %d CSR %07x write with %016" LL "x attempted.\n",num,a,data);
+    printf ("Unknown PCHIP %d CSR %07x write with %016" LL "x attempted.\n",
+            num, a, data);
   }
 }
 
-u64 CSystem::cchip_csr_read(u32 a, CSystemComponent * source)
+u64 CSystem::cchip_csr_read (u32 a, CSystemComponent * source)
 {
-  CAlphaCPU * cpu = (CAlphaCPU *) source;
-  switch(a)
+  CAlphaCPU *cpu = (CAlphaCPU *) source;
+  switch (a)
   {
   case 0x000:
     return state.cchip.csc;
   case 0x080:
 //    printf("MISC: %016" LL "x from CPU %d (@%" LL "x) (other @ %" LL "x).\n",state.cchip.misc | cpu->get_cpuid(),cpu->get_cpuid(), cpu->get_pc()-4, acCPUs[1-cpu->get_cpuid()]->get_pc());
-    return state.cchip.misc | ((CAlphaCPU*)source)->get_cpuid();
+    return state.cchip.misc | ((CAlphaCPU *) source)->get_cpuid ();
 
   case 0x100:
     // WE PUT ALL OUR MEMORY IN A SINGLE ARRAY FOR NOW...
-    return   ((u64)(iNumMemoryBits-23)<<12); //size
+    return ((u64) (iNumMemoryBits - 23) << 12); //size
   case 0x140:
   case 0x180:
   case 0x1c0:
@@ -1530,120 +1568,126 @@ u64 CSystem::cchip_csr_read(u32 a, CSystemComponent * source)
   case 0x240:
   case 0x600:
   case 0x640:
-    return state.cchip.dim[((a>>10)&2)|((a>>6)&1)];
+    return state.cchip.dim[((a >> 10) & 2) | ((a >> 6) & 1)];
   case 0x280:
   case 0x2c0:
   case 0x680:
   case 0x6c0:
-    return state.cchip.drir & state.cchip.dim[((a>>10)&2)|((a>>6)&1)];
+    return state.cchip.drir & state.cchip.
+      dim[((a >> 10) & 2) | ((a >> 6) & 1)];
   case 0x300:
     return state.cchip.drir;
   default:
-    printf("Unknown CCHIP CSR %07x read attempted.\n",a);
+    printf ("Unknown CCHIP CSR %07x read attempted.\n", a);
     return 0;
   }
 }
 
-void CSystem::cchip_csr_write(u32 a, u64 data, CSystemComponent * source)
+void CSystem::cchip_csr_write (u32 a, u64 data, CSystemComponent * source)
 {
-  CAlphaCPU * cpu = (CAlphaCPU *) source;
-  switch(a)
+  CAlphaCPU *cpu = (CAlphaCPU *) source;
+  switch (a)
   {
-  case 0x000: // CSC
-	state.cchip.csc        &= ~X64(0777777fff3f0000);
-	state.cchip.csc |= (data & X64(0777777fff3f0000));
-	return;
-  case 0x080: // MISC
-	state.cchip.misc |= (data & X64(00000f0000f00000));	// W1S
-	state.cchip.misc &=~(data & X64(0000000010000ff0));	// W1C
-	if                  (data & X64(0000000001000000))
+  case 0x000:                  // CSC
+    state.cchip.csc &= ~X64 (0777777fff3f0000);
+    state.cchip.csc |= (data & X64 (0777777fff3f0000));
+    return;
+  case 0x080:                  // MISC
+    state.cchip.misc |= (data & X64 (00000f0000f00000));      // W1S
+    state.cchip.misc &= ~(data & X64 (0000000010000ff0));      // W1C
+    if (data & X64 (0000000001000000))
     {
-	  state.cchip.misc &=~      X64(0000000000ff0000);	//Arbitration Clear
-      printf("Arbitration clear from CPU %d (@%" LL "x).\n",cpu->get_cpuid(), cpu->get_pc()-4);
+      state.cchip.misc &= ~X64 (0000000000ff0000);     //Arbitration Clear
+      printf ("Arbitration clear from CPU %d (@%" LL "x).\n",
+              cpu->get_cpuid (), cpu->get_pc () - 4);
     }
-    if (data & X64(00000000000f0000))
+    if (data & X64 (00000000000f0000))
     {
-      printf("Arbitration %016" LL "x from CPU %d (@%" LL "x)... ",data,cpu->get_cpuid(), cpu->get_pc()-4);
-	  if    (!(state.cchip.misc & X64(00000000000f0000)))
+      printf ("Arbitration %016" LL "x from CPU %d (@%" LL "x)... ", data,
+              cpu->get_cpuid (), cpu->get_pc () - 4);
+      if (!(state.cchip.misc & X64 (00000000000f0000)))
       {
-   	    state.cchip.misc |= (data & X64(00000000000f0000));	//Arbitration won
-        printf("won  %016" LL "x\n",state.cchip.misc);
+        state.cchip.misc |= (data & X64 (00000000000f0000));   //Arbitration won
+        printf ("won  %016" LL "x\n", state.cchip.misc);
       }
       else
-        printf("lost %016" LL "x\n",state.cchip.misc);
+        printf ("lost %016" LL "x\n", state.cchip.misc);
     }
     // stop interval timer interrupt
-    if        (data & X64(00000000000000f0))
+    if (data & X64 (00000000000000f0))
     {
-      for (int i=0;i<iNumCPUs;i++)
+      for (int i = 0; i < iNumCPUs; i++)
       {
-	    if (data & (X64(10)<<i))
+        if (data & (X64 (10) << i))
         {
-	      acCPUs[i]->irq_h(2,false,0);
-	      //printf("*** TIMER interrupt cleared for CPU %d\n",i);
+          acCPUs[i]->irq_h (2, false, 0);
+          //printf("*** TIMER interrupt cleared for CPU %d\n",i);
         }
-   	  }
-	}			
+      }
+    }
     // stop inter processor interrupt
-    if (data & X64(0000000000000f00))
+    if (data & X64 (0000000000000f00))
     {
-      for (int i=0;i<iNumCPUs;i++)
+      for (int i = 0; i < iNumCPUs; i++)
       {
-	    if (data & (X64(100)<<i))
+        if (data & (X64 (100) << i))
         {
-	      acCPUs[i]->irq_h(3,false,0);
-	      printf("*** IP interrupt cleared for CPU %d from CPU %d(@ %" LL "x).\n",i,cpu->get_cpuid(), cpu->get_pc()-4);
+          acCPUs[i]->irq_h (3, false, 0);
+          printf ("*** IP interrupt cleared for CPU %d from CPU %d(@ %" LL
+                  "x).\n", i, cpu->get_cpuid (), cpu->get_pc () - 4);
         }
-   	  }
-	}			
+      }
+    }
     // set inter processor interrupt
-    if (data & X64(000000000000f000))
+    if (data & X64 (000000000000f000))
     {
-      for (int i=0;i<iNumCPUs;i++)
+      for (int i = 0; i < iNumCPUs; i++)
       {
-	    if (data & (X64(1000)<<i))
+        if (data & (X64 (1000) << i))
         {
-          state.cchip.misc |= X64(100)<<i;
-	      acCPUs[i]->irq_h(3,true,0);
-	      printf("*** IP interrupt set for CPU %d from CPU %d(@ %" LL "x)\n",i,cpu->get_cpuid(), cpu->get_pc()-4);
+          state.cchip.misc |= X64 (100) << i;
+          acCPUs[i]->irq_h (3, true, 0);
+          printf ("*** IP interrupt set for CPU %d from CPU %d(@ %" LL "x)\n",
+                  i, cpu->get_cpuid (), cpu->get_pc () - 4);
 //          Poco::Thread::sleep(10);
         }
-   	  }
-	}			
-	return;
+      }
+    }
+    return;
 
   case 0x200:
   case 0x240:
   case 0x600:
   case 0x640:
-	state.cchip.dim[((a>>10)&2)|((a>>6)&1)] = data;
-	return;
+    state.cchip.dim[((a >> 10) & 2) | ((a >> 6) & 1)] = data;
+    return;
   default:
-    printf("Unknown CCHIP CSR %07x write with %016" LL "x attempted.\n",a,data);
+    printf ("Unknown CCHIP CSR %07x write with %016" LL "x attempted.\n", a,
+            data);
   }
 }
 
-u8 CSystem::dchip_csr_read(u32 a)
+u8 CSystem::dchip_csr_read (u32 a)
 {
-  switch(a)
+  switch (a)
   {
-  case 0x800: // DSC
+  case 0x800:                  // DSC
     return state.dchip.dsc;
-  case 0x840: // STR
+  case 0x840:                  // STR
     return state.dchip.str;
-  case 0x880: // DREV
+  case 0x880:                  // DREV
     return state.dchip.drev;
-  case 0x8c0: // DSC2
+  case 0x8c0:                  // DSC2
     return state.dchip.dsc2;
   default:
-    printf("Unknown DCHIP CSR %07x read attempted.\n",a);
+    printf ("Unknown DCHIP CSR %07x read attempted.\n", a);
     return 0;
   }
 }
 
-void CSystem::dchip_csr_write(u32 a, u8 data)
+void CSystem::dchip_csr_write (u32 a, u8 data)
 {
-  printf("Unknown DCHIP CSR %07x write with %02x attempted.\n",a,data);
+  printf ("Unknown DCHIP CSR %07x write with %02x attempted.\n", a, data);
 }
 
 /**
@@ -1693,52 +1737,52 @@ void CSystem::dchip_csr_write(u32 a, u8 data)
  * \endcode
  **/
 
-u8 CSystem::tig_read(u32 a)
+u8 CSystem::tig_read (u32 a)
 {
-  switch(a)
+  switch (a)
   {
-  case 0x30000000: // trr
+  case 0x30000000:             // trr
     return 0;
-  case 0x30000040: // smir
+  case 0x30000040:             // smir
     return state.tig.FwWrite;
-  case 0x30000100: // mod_info
+  case 0x30000100:             // mod_info
     return 0;
-  case 0x300003c0: // ttcr
-	return state.tig.HaltA;
-  case 0x30000480: // clr_pwr_flt_det
+  case 0x300003c0:             // ttcr
+    return state.tig.HaltA;
+  case 0x30000480:             // clr_pwr_flt_det
     return 0;
-  case 0x300005c0: // ev6_halt
+  case 0x300005c0:             // ev6_halt
     return state.tig.HaltB;
-  case 0x38000180: // Arbiter revision
+  case 0x38000180:             // Arbiter revision
     return 0xfe;
   default:
-    printf("Unknown TIG %08x read attempted.\n",a);
+    printf ("Unknown TIG %08x read attempted.\n", a);
     return 0;
   }
 }
 
-void CSystem::tig_write(u32 a, u8 data)
+void CSystem::tig_write (u32 a, u8 data)
 {
-  switch(a)
+  switch (a)
   {
-  case 0x30000000: // trr
+  case 0x30000000:             // trr
     return;
-  case 0x30000040: // smir
-	state.tig.FwWrite = data;
-	return;
-  case 0x30000100: // mod_info
-	printf("Soft reset: %02x\n",data);
-	return;
-  case 0x300003c0: // ttcr
+  case 0x30000040:             // smir
+    state.tig.FwWrite = data;
+    return;
+  case 0x30000100:             // mod_info
+    printf ("Soft reset: %02x\n", data);
+    return;
+  case 0x300003c0:             // ttcr
     state.tig.HaltA = data;
     return;
-  case 0x30000480: // clr_pwr_flt_det
-      return;
-  case 0x300005c0: // ev6_halt
+  case 0x30000480:             // clr_pwr_flt_det
+    return;
+  case 0x300005c0:             // ev6_halt
     state.tig.HaltB = data;
-	return;
+    return;
   default:
-    printf("Unknown TIG %07x write with %02x attempted.\n",a,data);
+    printf ("Unknown TIG %07x write with %02x attempted.\n", a, data);
   }
 }
 
@@ -1747,113 +1791,123 @@ void CSystem::tig_write(u32 a, u8 data)
  * is available, otherwise create it first.
  **/
 
-int CSystem::LoadROM()
+int CSystem::LoadROM ()
 {
-  FILE * f;
-  char * buffer;
+  FILE *f;
+  char *buffer;
   int i;
   int j;
   u64 temp;
   u32 scratch;
 
-  f = fopen(myCfg->get_text_value("rom.decompressed","decompressed.rom"),"rb");
+  f =
+    fopen (myCfg->get_text_value ("rom.decompressed", "decompressed.rom"),
+           "rb");
   if (!f)
   {
-    f = fopen(myCfg->get_text_value("rom.srm","cl67srmrom.exe"),"rb");
+    f = fopen (myCfg->get_text_value ("rom.srm", "cl67srmrom.exe"), "rb");
     if (!f)
-      FAILURE("No original or decompressed SRM ROM image found");
-    printf("%%SYS-I-READROM: Reading original ROM image from %s.\n", myCfg->get_text_value("rom.srm","cl67srmrom.exe"));
-    for(i=0;i<0x240;i++)
+      FAILURE ("No original or decompressed SRM ROM image found");
+    printf ("%%SYS-I-READROM: Reading original ROM image from %s.\n",
+            myCfg->get_text_value ("rom.srm", "cl67srmrom.exe"));
+    for (i = 0; i < 0x240; i++)
     {
-      if (feof(f)) break;
-      fread(&scratch,1,1,f);
+      if (feof (f))
+        break;
+      fread (&scratch, 1, 1, f);
     }
-    if (feof(f))
-      FAILURE("File is too short to be a SRM ROM image");
-    buffer = PtrToMem(0x900000);
-    while (!feof(f))
-      fread(buffer++,1,1,f);
-    fclose(f);
+    if (feof (f))
+      FAILURE ("File is too short to be a SRM ROM image");
+    buffer = PtrToMem (0x900000);
+    while (!feof (f))
+      fread (buffer++, 1, 1, f);
+    fclose (f);
 
-    printf("%%SYS-I-DECOMP: Decompressing ROM image.\n0%%");
-    acCPUs[0]->set_pc(0x900001);
-    acCPUs[0]->set_PAL_BASE(0x900000);
-    acCPUs[0]->enable_icache();
-    acCPUs[1]->set_pc(0x900001);
-    acCPUs[1]->set_PAL_BASE(0x900000);
-    acCPUs[1]->enable_icache();
+    printf ("%%SYS-I-DECOMP: Decompressing ROM image.\n0%%");
+    acCPUs[0]->set_pc (0x900001);
+    acCPUs[0]->set_PAL_BASE (0x900000);
+    acCPUs[0]->enable_icache ();
+    acCPUs[1]->set_pc (0x900001);
+    acCPUs[1]->set_PAL_BASE (0x900000);
+    acCPUs[1]->enable_icache ();
 
     j = 0;
-    while (acCPUs[0]->get_clean_pc() > 0x200000)
+    while (acCPUs[0]->get_clean_pc () > 0x200000)
     {
-      for(i=0;i<1800000;i++)
+      for (i = 0; i < 1800000; i++)
       {
-        SingleStep();
-        if (acCPUs[0]->get_clean_pc() < 0x200000)
+        SingleStep ();
+        if (acCPUs[0]->get_clean_pc () < 0x200000)
           break;
       }
       j++;
-      if (((j%5)==0) && (j<50))
-        printf("%d%%",j*2);
+      if (((j % 5) == 0) && (j < 50))
+        printf ("%d%%", j * 2);
       else
-        printf(".");
-      fflush(stdout);
+        printf (".");
+      fflush (stdout);
     }
-    printf("100%%\n");
-    acCPUs[0]->restore_icache();
-    acCPUs[1]->restore_icache();
-    printf("PC %" LL "x, %" LL "x.   \n",acCPUs[0]->get_pc(),acCPUs[1]->get_pc());
+    printf ("100%%\n");
+    acCPUs[0]->restore_icache ();
+    acCPUs[1]->restore_icache ();
+    printf ("PC %" LL "x, %" LL "x.   \n", acCPUs[0]->get_pc (),
+            acCPUs[1]->get_pc ());
 
-    f = fopen(myCfg->get_text_value("rom.decompressed","decompressed.rom"),"wb");
+    f =
+      fopen (myCfg->get_text_value ("rom.decompressed", "decompressed.rom"),
+             "wb");
     if (!f)
     {
-      printf("%%SYS-W-NOWRITE: Couldn't write decompressed rom to %s.\n", myCfg->get_text_value("rom.decompressed","decompressed.rom"));
+      printf ("%%SYS-W-NOWRITE: Couldn't write decompressed rom to %s.\n",
+              myCfg->get_text_value ("rom.decompressed", "decompressed.rom"));
     }
     else
     {
-      printf("%%SYS-I-ROMWRT: Writing decompressed rom to %s.\n", myCfg->get_text_value("rom.decompressed","decompressed.rom"));
-      temp = endian_64(acCPUs[0]->get_pc());
-      fwrite(&temp,1,sizeof(u64),f);
-      temp = endian_64(acCPUs[0]->get_pal_base());
-      fwrite(&temp,1,sizeof(u64),f);
-      buffer = PtrToMem(0);
-      fwrite(buffer,1,0x200000,f);
-      fclose(f);
+      printf ("%%SYS-I-ROMWRT: Writing decompressed rom to %s.\n",
+              myCfg->get_text_value ("rom.decompressed", "decompressed.rom"));
+      temp = endian_64 (acCPUs[0]->get_pc ());
+      fwrite (&temp, 1, sizeof (u64), f);
+      temp = endian_64 (acCPUs[0]->get_pal_base ());
+      fwrite (&temp, 1, sizeof (u64), f);
+      buffer = PtrToMem (0);
+      fwrite (buffer, 1, 0x200000, f);
+      fclose (f);
     }
   }
   else
   {
-    printf("%%SYS-I-READROM: Reading decompressed ROM image from %s.\n", myCfg->get_text_value("rom.decompressed","decompressed.rom"));
-    fread(&temp,1,sizeof(u64),f);
-    for (int i = 0; i<iNumCPUs; i++)
-      acCPUs[i]->set_pc(endian_64(temp));
-    fread(&temp,1,sizeof(u64),f);
-    for (int i = 0; i<iNumCPUs; i++)
-      acCPUs[i]->set_PAL_BASE(endian_64(temp));
-    buffer = PtrToMem(0);
-    fread(buffer,1,0x200000,f);
-    fclose(f);
+    printf ("%%SYS-I-READROM: Reading decompressed ROM image from %s.\n",
+            myCfg->get_text_value ("rom.decompressed", "decompressed.rom"));
+    fread (&temp, 1, sizeof (u64), f);
+    for (int i = 0; i < iNumCPUs; i++)
+      acCPUs[i]->set_pc (endian_64 (temp));
+    fread (&temp, 1, sizeof (u64), f);
+    for (int i = 0; i < iNumCPUs; i++)
+      acCPUs[i]->set_PAL_BASE (endian_64 (temp));
+    buffer = PtrToMem (0);
+    fread (buffer, 1, 0x200000, f);
+    fclose (f);
   }
 #if !defined(SRM_NO_SPEEDUPS) || !defined(SRM_NO_IDE)
-  printf("%%SYM-I-PATCHROM: Patching ROM for speed.\n");
+  printf ("%%SYM-I-PATCHROM: Patching ROM for speed.\n");
 #endif
 
 #if !defined(SRM_NO_SPEEDUPS)
-  WriteMem(X64(14248),32,0xe7e00000,0);       // e7e00000 = BEQ r31, +0
-  WriteMem(X64(14288),32,0xe7e00000,0);       
-  WriteMem(X64(142c8),32,0xe7e00000,0);       
-  WriteMem(X64(68320),32,0xe7e00000,0);       
-  WriteMem(X64(8bb78),32,0xe7e00000,0);       // memory test (aa)
-  WriteMem(X64(8bc0c),32,0xe7e00000,0);       // memory test (bb)
-  WriteMem(X64(8bc94),32,0xe7e00000,0);       // memory test (00)
+  WriteMem (X64 (14248), 32, 0xe7e00000, 0);    // e7e00000 = BEQ r31, +0
+  WriteMem (X64 (14288), 32, 0xe7e00000, 0);
+  WriteMem (X64 (142c8), 32, 0xe7e00000, 0);
+  WriteMem (X64 (68320), 32, 0xe7e00000, 0);
+  WriteMem (X64 (8bb78), 32, 0xe7e00000, 0);   // memory test (aa)
+  WriteMem (X64 (8bc0c), 32, 0xe7e00000, 0);   // memory test (bb)
+  WriteMem (X64 (8bc94), 32, 0xe7e00000, 0);   // memory test (00)
 
   //WriteMem(X64(b1158),32,0xe7e00000,0);   // CPU sync?
 #endif
 
-  printf("%%SYS-I-ROMLOADED: ROM Image loaded successfully!\n");
+  printf ("%%SYS-I-ROMLOADED: ROM Image loaded successfully!\n");
   return 0;
 }
- 
+
 /**
  * \brief Assert or deassert one of 64 possible interrupt lines on the Tsunami chipset.
  *
@@ -1938,41 +1992,41 @@ int CSystem::LoadROM()
  *
  **/
 
-void CSystem::interrupt(int number, bool assert)
+void CSystem::interrupt (int number, bool assert)
 {
   int i;
 
-  if (number==-1)
-    {
-      // timer int...
-      state.cchip.misc |= 0xf0;
-      for(i=0;i<iNumCPUs;i++)
-  	    acCPUs[i]->irq_h(2,true,0); // timer interrupt is immediate
-    }
+  if (number == -1)
+  {
+    // timer int...
+    state.cchip.misc |= 0xf0;
+    for (i = 0; i < iNumCPUs; i++)
+      acCPUs[i]->irq_h (2, true, 0);    // timer interrupt is immediate
+  }
   else if (assert)
-    {
+  {
 //    if (!(state.cchip.drir & (1i64<<number)))
 //      printf("%%TYP-I-INTERRUPT: Interrupt %d asserted.\n",number);
-      state.cchip.drir |= (X64(1)<<number);
-    }
+    state.cchip.drir |= (X64 (1) << number);
+  }
   else
-    {
+  {
 //    if (state.cchip.drir & (1i64<<number))
 //      printf("%%TYP-I-INTERRUPT: Interrupt %d deasserted.\n",number);
-      state.cchip.drir &= ~(X64(1)<<number);
-    }
-  for (i=0;i<iNumCPUs;i++)
-    {
-      if (state.cchip.drir & state.cchip.dim[i] & X64(00ffffffffffffff))
-	    acCPUs[i]->irq_h(1,true, 100); // device interrupts delayed by 100 clocks
-      else
-	    acCPUs[i]->irq_h(1,false, 0);
+    state.cchip.drir &= ~(X64 (1) << number);
+  }
+  for (i = 0; i < iNumCPUs; i++)
+  {
+    if (state.cchip.drir & state.cchip.dim[i] & X64 (00ffffffffffffff))
+      acCPUs[i]->irq_h (1, true, 100);  // device interrupts delayed by 100 clocks
+    else
+      acCPUs[i]->irq_h (1, false, 0);
 
-      if (state.cchip.drir & state.cchip.dim[i] & X64(fc00000000000000))
-	    acCPUs[i]->irq_h(0, true, 100); // device interrupts delayed by 100 clocks
-      else
-	    acCPUs[i]->irq_h(0, false, 0);
-    }
+    if (state.cchip.drir & state.cchip.dim[i] & X64 (fc00000000000000))
+      acCPUs[i]->irq_h (0, true, 100);  // device interrupts delayed by 100 clocks
+    else
+      acCPUs[i]->irq_h (0, false, 0);
+  }
 }
 
 /**
@@ -2064,57 +2118,66 @@ void CSystem::interrupt(int number, bool assert)
  *       added that uses this, we should probably support it.
  **/
 
-u64 CSystem::PCI_Phys(int pcibus, u32 address)
+u64 CSystem::PCI_Phys (int pcibus, u32 address)
 {
   u64 a;
   int j;
 
 #if defined(DEBUG_PCI)
-  printf("-------------- PCI MEMORY ACCESS FOR PCI HOSE %d --------------\n", pcibus);
+  printf ("-------------- PCI MEMORY ACCESS FOR PCI HOSE %d --------------\n",
+          pcibus);
   //Step through windows
-  for(j=0;j<4;j++)
+  for (j = 0; j < 4; j++)
   {
-    printf("WSBA%d: %016" LL "x WSM: %016" LL "x TBA: %016" LL "x\n",
-    j,state.pctl[pcibus].wsba[j], state.pchip[pcibus].wsm[j], state.pchip[pcibus].tba[j]);
+    printf ("WSBA%d: %016" LL "x WSM: %016" LL "x TBA: %016" LL "x\n",
+            j, state.pctl[pcibus].wsba[j], state.pchip[pcibus].wsm[j],
+            state.pchip[pcibus].tba[j]);
   }
-  printf("HOLE: %s\n", test_bit_64(state.pchip[pcibus].pctl, 5)?"enabled":"disabled");
-  printf("--------------------------------------------------------------\n");
+  printf ("HOLE: %s\n",
+          test_bit_64 (state.pchip[pcibus].pctl, 5) ? "enabled" : "disabled");
+  printf ("--------------------------------------------------------------\n");
 #endif
 
-  if (   !(state.pchip[pcibus].pctl & PCI_PCTL_HOLE) // hole disabled
-      || (address < PCI_PCTL_HOLE_START) || (address > PCI_PCTL_HOLE_END)) // or address outside hole
+  if (!(state.pchip[pcibus].pctl & PCI_PCTL_HOLE)       // hole disabled
+      || (address < PCI_PCTL_HOLE_START) || (address > PCI_PCTL_HOLE_END))      // or address outside hole
   {
-   
+
     //Step through windows
-    for(j=0;j<4;j++)
+    for (j = 0; j < 4; j++)
     {
-      if (      (state.pchip[pcibus].wsba[j] & 1)									// window enabled...
-        && ! ((address ^ state.pchip[pcibus].wsba[j]) & 0xfff00000 & ~state.pchip[pcibus].wsm[j]))	// address in range...
-	  {
+      if ((state.pchip[pcibus].wsba[j] & 1)     // window enabled...
+          && !((address ^ state.pchip[pcibus].wsba[j]) & 0xfff00000 & ~state.pchip[pcibus].wsm[j]))     // address in range...
+      {
         if (state.pchip[pcibus].wsba[j] & 2)
         {
           try
           {
-            a = PCI_Phys_scatter_gather(address, state.pchip[pcibus].wsm[j], state.pchip[pcibus].tba[j]);
+            a =
+              PCI_Phys_scatter_gather (address, state.pchip[pcibus].wsm[j],
+                                       state.pchip[pcibus].tba[j]);
           }
           catch (char)
           {
             // window disabled...
             // not matched; treat as local PCI bus address
-            return X64(80000000000) | (pcibus * X64(200000000)) | (u64)address;
+            return X64 (80000000000) | (pcibus *
+                                        X64 (200000000)) | (u64) address;
           }
         }
         else
-          a = PCI_Phys_direct_mapped(address, state.pchip[pcibus].wsm[j], state.pchip[pcibus].tba[j]);
+          a =
+            PCI_Phys_direct_mapped (address, state.pchip[pcibus].wsm[j],
+                                    state.pchip[pcibus].tba[j]);
 #if defined(DEBUG_PCI)
-	    printf("PCI memory address %08x translated to %016"LL "x\n",address, a);
+        printf ("PCI memory address %08x translated to %016" LL "x\n",
+                address, a);
 #endif
         return a;
-	  }
+      }
     }
   }
   // not matched; treat as local PCI bus address
-  return X64(80000000000) | (pcibus * X64(200000000)) | (u64)address;
+  return X64 (80000000000) | (pcibus * X64 (200000000)) | (u64) address;
 }
 
 /**
@@ -2151,14 +2214,13 @@ u64 CSystem::PCI_Phys(int pcibus, u32 address)
  * \endcode
  **/
 
-u64 CSystem::PCI_Phys_direct_mapped(u32 address, u64 wsm, u64 tba)
+u64 CSystem::PCI_Phys_direct_mapped (u32 address, u64 wsm, u64 tba)
 {
   u64 a;
 
   wsm &= PCI_WSM_MASK;
 
-  a = (address & (wsm | PCI_ADD_MASK) )
-    | (tba & ~wsm & PCI_TBA_MASK);
+  a = (address & (wsm | PCI_ADD_MASK)) | (tba & ~wsm & PCI_TBA_MASK);
 
   return a;
 }
@@ -2232,136 +2294,166 @@ u64 CSystem::PCI_Phys_direct_mapped(u32 address, u64 wsm, u64 tba)
  * \endcode
  **/
 
-u64 CSystem::PCI_Phys_scatter_gather(u32 address, u64 wsm, u64 tba)
+u64 CSystem::PCI_Phys_scatter_gather (u32 address, u64 wsm, u64 tba)
 {
   u64 pte_a, pte, a;
 
   wsm &= PCI_WSM_MASK;
 
-  pte_a = ((   address & (wsm | PCI_PTE_ADD_MASK) ) >> PCI_PTE_ADD_SHIFT) // ad part of pte address
-        | (  tba & PCI_PTE_TBA_MASK & ~(wsm>>PCI_PTE_ADD_SHIFT));         // tba part of pte address
+  pte_a = ((address & (wsm | PCI_PTE_ADD_MASK)) >> PCI_PTE_ADD_SHIFT)   // ad part of pte address
+    | (tba & PCI_PTE_TBA_MASK & ~(wsm >> PCI_PTE_ADD_SHIFT));   // tba part of pte address
 
-  pte = ReadMem(pte_a,64,0);
+  pte = ReadMem (pte_a, 64, 0);
   if (pte & 1)
   {
-    a = ((pte<<PCI_PTE_SHIFT) & PCI_PTE_MASK)
-      | (address   & PCI_PTE_ADD2_MASK);
+    a = ((pte << PCI_PTE_SHIFT) & PCI_PTE_MASK)
+      | (address & PCI_PTE_ADD2_MASK);
 
     if (pte & PCI_PTE_PEER_BIT) // peer-to-peer
-      a |= (PHYS_PIO_ACCESS); // PIO access.
-      
+      a |= (PHYS_PIO_ACCESS);   // PIO access.
+
     return a;
   }
   else
   {
-    throw((char)'0');
+    throw ((char) '0');
   }
+}
+
+/**
+ * Initialize all devices.
+ **/
+void CSystem::init ()
+{
+  for (int i = 0; i < iNumComponents; i++)
+    acComponents[i]->init ();
+}
+
+void CSystem::start_threads ()
+{
+  int i;
+
+  printf ("Start threads:");
+  for (i = 0; i < iNumComponents; i++)
+    acComponents[i]->start_threads ();
+  printf ("\n");
+
+  for (i = 0; i < iNumCPUs; i++)
+    acCPUs[i]->release_threads ();
+}
+
+void CSystem::stop_threads ()
+{
+  printf ("Stop threads:");
+  for (int i = 0; i < iNumComponents; i++)
+    acComponents[i]->stop_threads ();
+  printf ("\n");
 }
 
 /**
  * Save system state to a state file.
  **/
 
-void CSystem::SaveState(char *fn)
+void CSystem::SaveState (char *fn)
 {
-  FILE * f;
+  FILE *f;
   int i;
   unsigned int m;
   unsigned int j;
-  int * mem = (int*) memory;
+  int *mem = (int *) memory;
   int int0 = 0;
-  unsigned int memints = (1<<iNumMemoryBits)/(unsigned int)sizeof(int);
+  unsigned int memints = (1 << iNumMemoryBits) / (unsigned int) sizeof (int);
   u32 temp_32;
 
-  f = fopen(fn,"wb");
+  f = fopen (fn, "wb");
   if (f)
+  {
+    temp_32 = 0xa1fae540;       // MAGIC NUMBER (ALFAES40 ==> A1FAE540 )
+    fwrite (&temp_32, sizeof (u32), 1, f);
+    temp_32 = 0x00020001;       // File Format Version 2.1
+    fwrite (&temp_32, sizeof (u32), 1, f);
+
+    // memory
+    for (m = 0; m < memints; m++)
     {
-      temp_32 = 0xa1fae540;     // MAGIC NUMBER (ALFAES40 ==> A1FAE540 )
-      fwrite(&temp_32,sizeof(u32),1,f);
-      temp_32 = 0x00020001;     // File Format Version 2.1
-      fwrite(&temp_32,sizeof(u32),1,f);
-
-      // memory
-      for (m=0 ; m<memints ;m++)
-	{
-	  if (mem[m])
-	    {
-	      fwrite(&(mem[m]),1,sizeof(int),f);
-	    }
-	  else
-	    {
-	      j = 0;
-	      m++;
-	      while (!mem[m] && (m<memints))
-		{
-		  m++;
-		  j++;
-		  if ((int)j == -1)
-		    break;
-		}
-	      if (mem[m]) 
-		m--;
-	      fwrite(&int0,1,sizeof(int),f);
-	      fwrite(&j,1,sizeof(int),f);
-	    }
-	}
-
-      fwrite(&state, sizeof(state), 1, f);
-      
-      // components
-      //
-      //  Components should also save any non-initial memory-registrations and re-register upon restore!
-      //
-
-      for (i=0;i<iNumComponents;i++)
-	    acComponents[i]->SaveState(f);
-      fclose(f);
+      if (mem[m])
+      {
+        fwrite (&(mem[m]), 1, sizeof (int), f);
+      }
+      else
+      {
+        j = 0;
+        m++;
+        while (!mem[m] && (m < memints))
+        {
+          m++;
+          j++;
+          if ((int) j == -1)
+            break;
+        }
+        if (mem[m])
+          m--;
+        fwrite (&int0, 1, sizeof (int), f);
+        fwrite (&j, 1, sizeof (int), f);
+      }
     }
+
+    fwrite (&state, sizeof (state), 1, f);
+
+    // components
+    //
+    //  Components should also save any non-initial memory-registrations and re-register upon restore!
+    //
+
+    for (i = 0; i < iNumComponents; i++)
+      acComponents[i]->SaveState (f);
+    fclose (f);
+  }
 }
 
 /**
  * Restore system state from a state file.
  **/
 
-void CSystem::RestoreState(char *fn)
+void CSystem::RestoreState (char *fn)
 {
-  FILE * f;
+  FILE *f;
   int i;
   unsigned int m;
   unsigned int j;
-  int * mem = (int*) memory;
-  unsigned int memints = (1<<iNumMemoryBits)/(unsigned int)sizeof(int);
+  int *mem = (int *) memory;
+  unsigned int memints = (1 << iNumMemoryBits) / (unsigned int) sizeof (int);
   u32 temp_32;
 
-  f = fopen(fn,"rb");
+  f = fopen (fn, "rb");
   if (!f)
   {
-    printf("%%SYS-F-NOFILE: Can't open restore file %s\n",fn);
+    printf ("%%SYS-F-NOFILE: Can't open restore file %s\n", fn);
     return;
   }
 
-  fread(&temp_32,sizeof(u32),1,f);
+  fread (&temp_32, sizeof (u32), 1, f);
   if (temp_32 != 0xa1fae540)    // MAGIC NUMBER (ALFAES40 ==> A1FAE540 )
   {
-    printf("%%SYS-F-FORMAT: %s does not appear to be a state file.\n",fn);
+    printf ("%%SYS-F-FORMAT: %s does not appear to be a state file.\n", fn);
     return;
   }
 
-  fread(&temp_32,sizeof(u32),1,f);
-  
-  if (temp_32 != 0x00020001)     // File Format Version 2.1
+  fread (&temp_32, sizeof (u32), 1, f);
+
+  if (temp_32 != 0x00020001)    // File Format Version 2.1
   {
-    printf("%%SYS-I-VERSION: State file %s is a different version.\n",fn);
+    printf ("%%SYS-I-VERSION: State file %s is a different version.\n", fn);
     return;
   }
 
   // memory
-  for (m=0;m<memints;m++)
+  for (m = 0; m < memints; m++)
   {
-    fread(&(mem[m]),1,sizeof(int),f);
+    fread (&(mem[m]), 1, sizeof (int), f);
     if (!mem[m])
     {
-      fread(&j,1,sizeof(int),f);
+      fread (&j, 1, sizeof (int), f);
       while (j--)
       {
         mem[++m] = 0;
@@ -2369,114 +2461,135 @@ void CSystem::RestoreState(char *fn)
     }
   }
 
-  fread(&state, sizeof(state), 1, f);
-  
+  fread (&state, sizeof (state), 1, f);
+
   // components
   //
   //  Components should also save any non-initial memory-registrations and re-register upon restore!
   //
 
-  for (i=0;i<iNumComponents;i++)
+  for (i = 0; i < iNumComponents; i++)
   {
-   if (acComponents[i]->RestoreState(f))
-    throw((int)1);
+    if (acComponents[i]->RestoreState (f))
+      throw ((int) 1);
   }
-  fclose(f);
+  fclose (f);
 }
 
 /**
  * Dump memory contents to a file.
  **/
 
-void CSystem::DumpMemory(unsigned int filenum)
+void CSystem::DumpMemory (unsigned int filenum)
 {
 
   char file[100];
   int x;
-  int * mem = (int*) memory;
-  FILE * f;
+  int *mem = (int *) memory;
+  FILE *f;
 
-  sprintf(file,"memory_%012d.dmp",filenum);
-  f = fopen(file,"wb");
+  sprintf (file, "memory_%012d.dmp", filenum);
+  f = fopen (file, "wb");
 
-  x = (1<<iNumMemoryBits)/(unsigned int)sizeof(int)/2;
+  x = (1 << iNumMemoryBits) / (unsigned int) sizeof (int) / 2;
 
-  while (!mem[x-1])
+  while (!mem[x - 1])
     x--;
 
-  fwrite(mem,1,x*sizeof(int),f);
-  fclose(f);
+  fwrite (mem, 1, x * sizeof (int), f);
+  fclose (f);
 }
 
 /**
  *  Dump system state to stdout for debugging purposes.
  **/
 
-void CSystem::panic(char *message, int flags) 
+void CSystem::panic (char *message, int flags)
 {
-  int cpunum,i;
+  int cpunum, i;
   CAlphaCPU *cpu;
-  printf("\n******** SYSTEM PANIC *********\n");
-  printf("* %s\n",message);
-  printf("*******************************\n");
-  for(cpunum=0;cpunum<iNumCPUs;cpunum++) {
+  printf ("\n******** SYSTEM PANIC *********\n");
+  printf ("* %s\n", message);
+  printf ("*******************************\n");
+  for (cpunum = 0; cpunum < iNumCPUs; cpunum++)
+  {
     cpu = acCPUs[cpunum];
-    printf("\n==================== STATE OF CPU %d ====================\n",cpunum);
+    printf ("\n==================== STATE OF CPU %d ====================\n",
+            cpunum);
 
-    printf("PC: %016" LL "x\n", cpu->get_pc());
+    printf ("PC: %016" LL "x\n", cpu->get_pc ());
 #ifdef IDB
-    printf("Physical PC: %016" LL "x\n", cpu->get_current_pc_physical());
-    printf("Instruction Count: %" LL "d\n", cpu->get_instruction_count());
+    printf ("Physical PC: %016" LL "x\n", cpu->get_current_pc_physical ());
+    printf ("Instruction Count: %" LL "d\n", cpu->get_instruction_count ());
 #endif
-    printf("\n");
+    printf ("\n");
 
 
-    for(i=0;i<32;i++)
-      {
-	if (i<10) printf("R");
-	printf("%d:%016" LL "x", i, cpu->get_r(i,false));
-	if (i%4==3) printf("\n"); else printf(" ");
-      }
-    printf("\n");
-    for(i=4;i<8;i++)
-      {
-	if (i<10) printf("S");
-	printf("%d:%016" LL "x", i, cpu->get_r(i+32,false));
-	if (i%4==3) printf("\n"); else printf(" ");
-      }
-    for(i=20;i<24;i++)
-      {
-	if (i<10) printf("S");
-	printf("%d:%016" LL "x", i, cpu->get_r(i+32,false));
-	if (i%4==3) printf("\n"); else printf(" ");
-      }
-    printf("\n");
-    for(i=0;i<32;i++)
-      {
-	if (i<10) printf("F");
-        printf("%d:%016" LL "x", i, cpu->get_f(i));
-        if (i%4==3) printf("\n"); else printf(" ");
-      }
+    for (i = 0; i < 32; i++)
+    {
+      if (i < 10)
+        printf ("R");
+      printf ("%d:%016" LL "x", i, cpu->get_r (i, false));
+      if (i % 4 == 3)
+        printf ("\n");
+      else
+        printf (" ");
+    }
+    printf ("\n");
+    for (i = 4; i < 8; i++)
+    {
+      if (i < 10)
+        printf ("S");
+      printf ("%d:%016" LL "x", i, cpu->get_r (i + 32, false));
+      if (i % 4 == 3)
+        printf ("\n");
+      else
+        printf (" ");
+    }
+    for (i = 20; i < 24; i++)
+    {
+      if (i < 10)
+        printf ("S");
+      printf ("%d:%016" LL "x", i, cpu->get_r (i + 32, false));
+      if (i % 4 == 3)
+        printf ("\n");
+      else
+        printf (" ");
+    }
+    printf ("\n");
+    for (i = 0; i < 32; i++)
+    {
+      if (i < 10)
+        printf ("F");
+      printf ("%d:%016" LL "x", i, cpu->get_f (i));
+      if (i % 4 == 3)
+        printf ("\n");
+      else
+        printf (" ");
+    }
   }
-  printf("\n");
+  printf ("\n");
 #ifdef IDB
-  if(flags & PANIC_LISTING) {
-    u64 start,end;
-    start = cpu->get_pc() - 64;
+  if (flags & PANIC_LISTING)
+  {
+    u64 start, end;
+    start = cpu->get_pc () - 64;
     end = start + 128;
-    cpu->listing(start,end,cpu->get_pc());
+    cpu->listing (start, end, cpu->get_pc ());
   }
 #endif
 
-  if(flags & PANIC_ASKSHUTDOWN) {
-    printf("Stop Emulation? ");
-    int c = getc(stdin);
-    if(c == 'y' || c=='Y')
+  if (flags & PANIC_ASKSHUTDOWN)
+  {
+    printf ("Stop Emulation? ");
+    int c = getc (stdin);
+    if (c == 'y' || c == 'Y')
       flags |= PANIC_SHUTDOWN;
   }
 
-  if(flags & PANIC_SHUTDOWN) {
-    throw((int)1);
+  if (flags & PANIC_SHUTDOWN)
+  {
+    throw ((int) 1);
   }
 
   return;
@@ -2486,10 +2599,10 @@ void CSystem::panic(char *message, int flags)
  * Clear the clock interrupt for a specific CPU. Used by the CPU to acknowledge the interrupt.
  **/
 
-void CSystem::clear_clock_int(int ProcNum)
+void CSystem::clear_clock_int (int ProcNum)
 {
-  state.cchip.misc &=~(X64(10)<<ProcNum);
-  acCPUs[ProcNum]->irq_h(2, false, 0);
+  state.cchip.misc &= ~(X64 (10) << ProcNum);
+  acCPUs[ProcNum]->irq_h (2, false, 0);
 }
 
 #if defined(PROFILE)
@@ -2498,4 +2611,4 @@ u64 profiled_insts;
 bool profile_started = false;
 #endif
 
-CSystem * theSystem = 0;
+CSystem *theSystem = 0;

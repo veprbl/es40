@@ -27,7 +27,10 @@
  * \file 
  * Contains the definitions for the ISA part of the emulated Ali M1543C chipset.
  *
- * $Id: AliM1543C.h,v 1.31 2008/03/11 09:10:40 iamcamiel Exp $
+ * $Id: AliM1543C.h,v 1.32 2008/03/13 13:19:16 iamcamiel Exp $
+ *
+ * X-1.32       Camiel Vanderhoeven                             13-MAR-2008
+ *      Create init(), start_threads() and stop_threads() functions.
  *
  * X-1.31       Camiel Vanderhoeven                             11-MAR-2008
  *      Named, debuggable mutexes.
@@ -144,62 +147,67 @@
  *  .
  **/
 
-class CAliM1543C : public CPCIDevice, public Poco::Runnable
+class CAliM1543C:public CPCIDevice, public Poco::Runnable
 {
- public:
-  virtual int SaveState(FILE * f);
-  virtual int RestoreState(FILE * f);
+public:
+  virtual int SaveState (FILE * f);
+  virtual int RestoreState (FILE * f);
   //    void instant_tick();
-  //	void interrupt(int number);
-  virtual void run();
-  virtual void check_state();
-  virtual void WriteMem_Legacy(int index, u32 address, int dsize, u32 data);
-  virtual u32 ReadMem_Legacy(int index, u32 address, int dsize);
+  //    void interrupt(int number);
+  virtual void run ();
+  virtual void check_state ();
+  virtual void WriteMem_Legacy (int index, u32 address, int dsize, u32 data);
+  virtual u32 ReadMem_Legacy (int index, u32 address, int dsize);
 
-  void do_pit_clock();
+  void do_pit_clock ();
 
-  CAliM1543C(CConfigurator * cfg, class CSystem * c, int pcibus, int pcidev);
-  virtual ~CAliM1543C();
-  void pic_interrupt(int index, int intno);
-  void pic_deassert(int index, int intno);
+  CAliM1543C (CConfigurator * cfg, class CSystem * c, int pcibus, int pcidev);
+  virtual ~ CAliM1543C ();
+  void pic_interrupt (int index, int intno);
+  void pic_deassert (int index, int intno);
 
- private:
+  void init ();
+  void start_threads ();
+  void stop_threads ();
 
-  Poco::Thread myThread;
-  CMutex * myRegLock;
+private:
+
+  Poco::Thread * myThread;
+  CMutex *myRegLock;
   bool StopThread;
 
   // REGISTER 61 (NMI)
-  u8 reg_61_read();
-  void reg_61_write(u8 data);
+  u8 reg_61_read ();
+  void reg_61_write (u8 data);
 
   // REGISTERS 70 - 73: TOY
-  u8 toy_read(u32 address);
-  void toy_write(u32 address, u8 data);
+  u8 toy_read (u32 address);
+  void toy_write (u32 address, u8 data);
 
   // Timer/Counter
-  u8 pit_read(u32 address);
-  void pit_write(u32 address, u8 data);
-  void pit_clock();
+  u8 pit_read (u32 address);
+  void pit_write (u32 address, u8 data);
+  void pit_clock ();
 
   // interrupt controller
-  u8 pic_read(int index, u32 address);
-  void pic_write(int index, u32 address, u8 data);
-  u8 pic_read_vector();
-  u8 pic_read_edge_level(int index);
-  void pic_write_edge_level(int index, u8 data);
+  u8 pic_read (int index, u32 address);
+  void pic_write (int index, u32 address, u8 data);
+  u8 pic_read_vector ();
+  u8 pic_read_edge_level (int index);
+  void pic_write_edge_level (int index, u8 data);
 
   // LPT controller
-  u8 lpt_read(u32 address);
-  void lpt_write(u32 address, u8 data);
-  void lpt_reset();
+  u8 lpt_read (u32 address);
+  void lpt_write (u32 address, u8 data);
+  void lpt_reset ();
 
   /// The state structure contains all elements that need to be saved to the statefile.
-  struct SAli_state {
+  struct SAli_state
+  {
 
     // REGISTER 61 (NMI)
     u8 reg_61;
-    
+
     // REGISTERS 70 - 73: TOY
     u8 toy_stored_data[256];
     u8 toy_access_ports[4];
@@ -227,5 +235,5 @@ class CAliM1543C : public CPCIDevice, public Poco::Runnable
   FILE *lpt;
 };
 
-extern CAliM1543C * theAli;
+extern CAliM1543C *theAli;
 #endif // !defined(INCLUDED_ALIM1543C_H)

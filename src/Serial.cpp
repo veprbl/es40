@@ -27,7 +27,10 @@
  * \file
  * Contains the code for the emulated Serial Port devices.
  *
- * $Id: Serial.cpp,v 1.41 2008/03/11 08:45:34 iamcamiel Exp $
+ * $Id: Serial.cpp,v 1.42 2008/03/13 13:19:19 iamcamiel Exp $
+ *
+ * X-1.41       Camiel Vanderhoeven                             13-MAR-2008
+ *      Create init(), start_threads() and stop_threads() functions.
  *
  * X-1.40       Camiel Vanderhoeven                             05-MAR-2008
  *      Multi-threading version.
@@ -172,7 +175,7 @@
 
 #define RECV_TICKS 10
 
-int  iCounter  = 0;
+int iCounter = 0;
 
 #define FIFO_SIZE 1024
 
@@ -182,414 +185,497 @@ int  iCounter  = 0;
  * Constructor.
  **/
 
-CSerial::CSerial(CConfigurator * cfg, CSystem * c, u16 number) : CSystemComponent(cfg,c), myThread("Serial")
+CSerial::CSerial (CConfigurator * cfg, CSystem * c, u16 number):CSystemComponent (cfg,
+                  c)
 {
-  listenPort = (int)myCfg->get_num_value("port",false,8000+number);
+  state.iNumber = number;
+}
+
+/**
+ * Initialize the Serial port device.
+ **/
+void CSerial::init ()
+{
+  listenPort =
+    (int) myCfg->get_num_value ("port", false, 8000 + state.iNumber);
   char s[1000];
-  char * nargv = s;
+  char *nargv = s;
   int i = 0;
 
-  c->RegisterMemory (this, 0, X64(00000801fc0003f8) - (0x100*number), 8);
+  cSystem->RegisterMemory (this, 0,
+                           X64 (00000801fc0003f8) - (0x100 * state.iNumber),
+                           8);
 
 // Start Telnet server
 
 #if defined(_WIN32)
   // Windows Sockets only work after calling WSAStartup.
   WSADATA wsa;
-  WSAStartup(0x0101, &wsa);
+  WSAStartup (0x0101, &wsa);
 #endif // defined (_WIN32)
 
   struct sockaddr_in Address;
 
-  socklen_t nAddressSize=sizeof(struct sockaddr_in);
+  socklen_t nAddressSize = sizeof (struct sockaddr_in);
 
-  listenSocket = (int)socket(AF_INET,SOCK_STREAM,0);
+  listenSocket = (int) socket (AF_INET, SOCK_STREAM, 0);
   if (listenSocket == INVALID_SOCKET)
   {
-    printf("Could not open socket to listen on!\n");
+    printf ("Could not open socket to listen on!\n");
   }
-  
-  Address.sin_addr.s_addr=INADDR_ANY;
-  Address.sin_port=htons((u16)(listenPort));
-  Address.sin_family=AF_INET;
+
+  Address.sin_addr.s_addr = INADDR_ANY;
+  Address.sin_port = htons ((u16) (listenPort));
+  Address.sin_family = AF_INET;
 
   int optval = 1;
-  setsockopt(listenSocket,SOL_SOCKET,SO_REUSEADDR, (char*)&optval,sizeof(optval));
-  bind(listenSocket,(struct sockaddr *)&Address,sizeof(Address));
-  listen(listenSocket, 1);
+  setsockopt (listenSocket, SOL_SOCKET, SO_REUSEADDR, (char *) &optval,
+              sizeof (optval));
+  bind (listenSocket, (struct sockaddr *) &Address, sizeof (Address));
+  listen (listenSocket, 1);
 
-  printf("%s: Waiting for connection on port %d.\n",devid_string,listenPort);
+  printf ("%s: Waiting for connection on port %d.\n", devid_string,
+          listenPort);
 
-  WaitForConnection();
+  WaitForConnection ();
 
 #if defined(IDB) && defined(LS_MASTER)
   struct sockaddr_in dest_addr;
   int result = -1;
 
-  throughSocket = socket(AF_INET, SOCK_STREAM, 0);
+  throughSocket = socket (AF_INET, SOCK_STREAM, 0);
 
   dest_addr.sin_family = AF_INET;
-  dest_addr.sin_port = htons((u16)(base + number));
-  dest_addr.sin_addr.s_addr = inet_addr(ls_IP);
+  dest_addr.sin_port = htons ((u16) (base + number));
+  dest_addr.sin_addr.s_addr = inet_addr (ls_IP);
 
-  printf("%s: Waiting to initiate remote connection to %s.\n",devid_string,ls_IP);
+  printf ("%s: Waiting to initiate remote connection to %s.\n", devid_string,
+          ls_IP);
 
   while (result == -1)
   {
-    result = connect(throughSocket, (struct sockaddr *)&dest_addr, sizeof(struct sockaddr));
+    result =
+      connect (throughSocket, (struct sockaddr *) &dest_addr,
+               sizeof (struct sockaddr));
   }
 #endif
-
-  state.iNumber = number;
 
   state.rcvW = 0;
   state.rcvR = 0;
 
   state.bLCR = 0x00;
-  state.bLSR = 0x60; // THRE, TSRE
-  state.bMSR = 0x30; // CTS, DSR
-  state.bIIR = 0x01; // no interrupt
+  state.bLSR = 0x60;            // THRE, TSRE
+  state.bMSR = 0x30;            // CTS, DSR
+  state.bIIR = 0x01;            // no interrupt
 
   state.irq_active = false;
+  myThread = 0;
 
-  StopThread = false;
-  myThread.start(*this);
+  printf ("%s: $Id: Serial.cpp,v 1.42 2008/03/13 13:19:19 iamcamiel Exp $\n",
+          devid_string);
+}
 
-  printf("%s: $Id: Serial.cpp,v 1.41 2008/03/11 08:45:34 iamcamiel Exp $\n",devid_string);
+void CSerial::start_threads ()
+{
+  char buffer[5];
+  if (!myThread)
+  {
+    sprintf (buffer, "srl%d", state.iNumber);
+    myThread = new Poco::Thread (buffer);
+    printf (" %s", myThread->getName ().c_str ());
+    StopThread = false;
+    myThread->start (*this);
+  }
+}
+
+void CSerial::stop_threads ()
+{
+  StopThread = true;
+  if (myThread)
+  {
+    printf (" %s", myThread->getName ().c_str ());
+    myThread->join ();
+    delete myThread;
+    myThread = 0;
+  }
 }
 
 /**
  * Destructor.
  **/
 
-CSerial::~CSerial()
+CSerial::~CSerial ()
 {
-  StopThread = true;
-  myThread.join();
+  stop_threads ();
 }
 
-u64 CSerial::ReadMem(int index, u64 address, int dsize)
+u64 CSerial::ReadMem (int index, u64 address, int dsize)
 {
   u8 d;
 
   switch (address)
+  {
+  case 0:                      // data buffer
+    if (state.bLCR & 0x80)
     {
-    case 0:						// data buffer
-      if (state.bLCR & 0x80)
-        {
-	  return state.bBRB_LSB;
-        }
-      else
-        {
-	  if (state.rcvR != state.rcvW)
-	    {   
-	      state.bRDR = state.rcvBuffer[state.rcvR];
-	      state.rcvR++;
-	      if (state.rcvR == FIFO_SIZE)
-		    state.rcvR = 0;
-		  TRC_DEV4("Read character %02x (%c) on serial port %d\n",state.bRDR,printable(state.bRDR),state.iNumber);
-#if defined(DEBUG_SERIAL)
-		  printf("Read character %02x (%c) on serial port %d\n",state.bRDR,printable(state.bRDR),state.iNumber);
-#endif
-	    }
-	  else
-            {
-	      TRC_DEV2("Read past FIFO on serial port %d\n",state.iNumber);
-#if defined(DEBUG_SERIAL)
-		  printf("Read past FIFO on serial port %d\n",state.iNumber);
-#endif
-            }
-	  return state.bRDR;
-        }
-    case 1:
-      if (state.bLCR & 0x80)
-        {
-	  return state.bBRB_MSB;
-        }
-      else
-        {
-	  return state.bIER;
-        }
-    case 2:						//interrupt cause
-      d = state.bIIR;
-      state.bIIR = 0x01;
-      return d;
-    case 3:
-      return state.bLCR;
-    case 4:
-      return state.bMCR;
-    case 5:						//serialization state
-      if (state.rcvR != state.rcvW)
-	state.bLSR = 0x61; // THRE, TSRE, RxRD
-      else
-	state.bLSR = 0x60; // THRE, TSRE
-      return state.bLSR;
-    case 6:
-      return state.bMSR;
-    default:
-      return state.bSPR;
+      return state.bBRB_LSB;
     }
+    else
+    {
+      if (state.rcvR != state.rcvW)
+      {
+        state.bRDR = state.rcvBuffer[state.rcvR];
+        state.rcvR++;
+        if (state.rcvR == FIFO_SIZE)
+          state.rcvR = 0;
+        TRC_DEV4 ("Read character %02x (%c) on serial port %d\n", state.bRDR,
+                  printable (state.bRDR), state.iNumber);
+#if defined(DEBUG_SERIAL)
+        printf ("Read character %02x (%c) on serial port %d\n", state.bRDR,
+                printable (state.bRDR), state.iNumber);
+#endif
+      }
+      else
+      {
+        TRC_DEV2 ("Read past FIFO on serial port %d\n", state.iNumber);
+#if defined(DEBUG_SERIAL)
+        printf ("Read past FIFO on serial port %d\n", state.iNumber);
+#endif
+      }
+      return state.bRDR;
+    }
+  case 1:
+    if (state.bLCR & 0x80)
+    {
+      return state.bBRB_MSB;
+    }
+    else
+    {
+      return state.bIER;
+    }
+  case 2:                      //interrupt cause
+    d = state.bIIR;
+    state.bIIR = 0x01;
+    return d;
+  case 3:
+    return state.bLCR;
+  case 4:
+    return state.bMCR;
+  case 5:                      //serialization state
+    if (state.rcvR != state.rcvW)
+      state.bLSR = 0x61;        // THRE, TSRE, RxRD
+    else
+      state.bLSR = 0x60;        // THRE, TSRE
+    return state.bLSR;
+  case 6:
+    return state.bMSR;
+  default:
+    return state.bSPR;
+  }
 }
 
-void CSerial::WriteMem(int index, u64 address, int dsize, u64 data)
+void CSerial::WriteMem (int index, u64 address, int dsize, u64 data)
 {
   u8 d;
   char s[5];
-  d = (u8)data;
+  d = (u8) data;
 
   switch (address)
+  {
+  case 0:
+    if (state.bLCR & 0x80)      // divisor latch access bit set
     {
-    case 0:
-      if (state.bLCR & 0x80) // divisor latch access bit set
-      {
-        // LSB of divisor latch
-	    state.bBRB_LSB = d;
-      }
-      else
-      {
-        // Transmit Hold Register
-	    sprintf(s,"%c",d);
-	    write(s);
-	    TRC_DEV4("Write character %02x (%c) on serial port %d\n",d,printable(d),state.iNumber);
-#if defined(DEBUG_SERIAL)
-        printf("Write character %02x (%c) on serial port %d\n",d,printable(d),state.iNumber);
-#endif
-        eval_interrupts();
-      }
-      break;
-    case 1:
-      if (state.bLCR & 0x80) // divisor latch access bit set
-      {
-        // MSB of divisor latch
-	    state.bBRB_MSB = d;
-      }
-      else
-      {
-        // Interrupt Enable Register
-	    state.bIER = d;
-        eval_interrupts();
-      }
-      break;
-    case 2:			
-      state.bFCR = d;
-      break;
-    case 3:
-      state.bLCR = d;
-      break;
-    case 4:
-      state.bMCR = d;
-      break;
-    default:
-      state.bSPR = d;
+      // LSB of divisor latch
+      state.bBRB_LSB = d;
     }
+    else
+    {
+      // Transmit Hold Register
+      sprintf (s, "%c", d);
+      write (s);
+      TRC_DEV4 ("Write character %02x (%c) on serial port %d\n", d,
+                printable (d), state.iNumber);
+#if defined(DEBUG_SERIAL)
+      printf ("Write character %02x (%c) on serial port %d\n", d,
+              printable (d), state.iNumber);
+#endif
+      eval_interrupts ();
+    }
+    break;
+  case 1:
+    if (state.bLCR & 0x80)      // divisor latch access bit set
+    {
+      // MSB of divisor latch
+      state.bBRB_MSB = d;
+    }
+    else
+    {
+      // Interrupt Enable Register
+      state.bIER = d;
+      eval_interrupts ();
+    }
+    break;
+  case 2:
+    state.bFCR = d;
+    break;
+  case 3:
+    state.bLCR = d;
+    break;
+  case 4:
+    state.bMCR = d;
+    break;
+  default:
+    state.bSPR = d;
+  }
 }
 
-void CSerial::eval_interrupts()
+void CSerial::eval_interrupts ()
 {
-  state.bIIR = 0x01; // no interrupt
+  state.bIIR = 0x01;            // no interrupt
   if ((state.bIER & 0x01) && (state.rcvR != state.rcvW))
     state.bIIR = 0x04;
-  else if (state.bIER & 0x2) //transmitter buffer empty enabled?
-    state.bIIR = 0x02; //transmitter buffer empty
+  else if (state.bIER & 0x2)    //transmitter buffer empty enabled?
+    state.bIIR = 0x02;          //transmitter buffer empty
   else
-    state.bIIR = 0x01; // no interrupt
+    state.bIIR = 0x01;          // no interrupt
 
-  if (state.bIIR>0x01)
+  if (state.bIIR > 0x01)
   {
     if (!state.irq_active)
-      theAli->pic_interrupt(0, 4 - state.iNumber);
+      theAli->pic_interrupt (0, 4 - state.iNumber);
   }
   else
   {
     if (state.irq_active)
-      theAli->pic_deassert(0, 4 - state.iNumber);
+      theAli->pic_deassert (0, 4 - state.iNumber);
   }
 }
 
-void CSerial::write(char *s)
+void CSerial::write (char *s)
 {
-  int val = send(connectSocket,s,(int)strlen(s)+1,0);
+  int val = send (connectSocket, s, (int) strlen (s) + 1, 0);
 }
 
-void CSerial::receive(const char* data)
+void CSerial::receive (const char *data)
 {
-  char * x;
+  char *x;
 
   x = (char *) data;
 
-	while (*x)
-	{
-	  state.rcvBuffer[state.rcvW++] = *x;
-	  if (state.rcvW == FIFO_SIZE)
-	    state.rcvW = 0;
-	  x++;
-      eval_interrupts();
-    }
+  while (*x)
+  {
+    state.rcvBuffer[state.rcvW++] = *x;
+    if (state.rcvW == FIFO_SIZE)
+      state.rcvW = 0;
+    x++;
+    eval_interrupts ();
+  }
 }
 
-void CSerial::run()
+/**
+ * Thread entry point.
+ **/
+void CSerial::run ()
 {
   try
   {
     for (;;)
     {
-//      mySemaphore.wait();
       if (StopThread)
-      {
-        printf("Serial: exit thread.\n");
         return;
-      }
-      execute();
-      Poco::Thread::sleep(20); 
+      execute ();
+      Poco::Thread::sleep (20);
     }
+  }
+  catch (Poco::Exception & e)
+  {
+    printf ("Serial: exception in thread.\n");
+    FAILURE (e.message ());
   }
   catch (...)
   {
-    printf("Serial: exception in thread.\n");
+    printf ("Serial: exception in thread.\n");
     // Let the thread die...
   }
 }
 
-void CSerial::check_state()
+/**
+ * Check if threads are still running.
+ *
+ * Enter serial port menu if <break> was received.
+ **/
+void CSerial::check_state ()
 {
-  if(!myThread.isRunning())
-    FAILURE("Serial: thread has died");
+  if (breakHit)
+    serial_menu ();
 
+  if (myThread && !myThread->isRunning ())
+    FAILURE ("Serial: thread has died");
 }
 
-void CSerial::execute() 
+void CSerial::serial_menu ()
 {
   fd_set readset;
-  unsigned char buffer[FIFO_SIZE+1];
-  unsigned char cbuffer[FIFO_SIZE+1];  // cooked buffer
+  unsigned char buffer[FIFO_SIZE + 1];
+  ssize_t size;
+  struct timeval tv;
+  bool exitLoop = false;
+
+  cSystem->stop_threads ();
+
+  write ("\r\n<BREAK> received. What do you want to do?\r\n");
+  write ("     0. Continue\r\n");
+#if defined(IDB)
+  write ("     1. End run\r\n");
+#else
+  write ("     1. Exit emulator gracefully\r\n");
+  write ("     2. Abort emulator (no changes saved)\r\n");
+  write ("     3. Save state to autosave.axp and continue\r\n");
+  write ("     4. Load state from autosave.axp and continue\r\n");
+#endif
+  while (!exitLoop)
+  {
+    FD_ZERO (&readset);
+    FD_SET (connectSocket, &readset);
+    tv.tv_sec = 60;
+    tv.tv_usec = 0;
+    if (select (connectSocket + 1, &readset, NULL, NULL, &tv) <= 0)
+    {
+      write
+        ("%SRL-I-TIMEOUT: no timely answer received. Continuing emulation.\r\n");
+      break;                    // leave loop
+    }
+#if defined(_WIN32)
+    size = recv (connectSocket, (char *) buffer, FIFO_SIZE, 0);
+#else
+    size = read (connectSocket, &buffer, FIFO_SIZE);
+#endif
+    switch (buffer[0])
+    {
+    case '0':
+      write ("%SRL-I-CONTINUE: continuing emulation.\r\n");
+      exitLoop = true;
+      break;
+    case '1':
+      write ("%SRL-I-EXIT: exiting emulation gracefully.\r\n");
+      FAILURE ("Should be graceful exit");
+      exitLoop = true;
+      break;
+    case '2':
+      write ("%SRL-I-ABORT: aborting emulation.\r\n");
+      FAILURE ("Aborting");
+      exitLoop = true;
+      break;
+    case '3':
+      write ("%SRL-I-SAVESTATE: Saving state to autosave.axp.\r\n");
+      cSystem->SaveState ("autosave.axp");
+      write ("%SRL-I-CONTINUE: continuing emulation.\r\n");
+      exitLoop = true;
+      break;
+    case '4':
+      write ("%SRL-I-LOADSTATE: Loading state from autosave.axp.\r\n");
+      cSystem->RestoreState ("autosave.axp");
+      write ("%SRL-I-CONTINUE: continuing emulation.\r\n");
+      exitLoop = true;
+      break;
+    default:
+      write ("%SRL-W-INVALID: Not a valid answer.\r\n");
+    }
+  }
+  breakHit = false;
+  cSystem->start_threads ();
+}
+
+void CSerial::execute ()
+{
+  fd_set readset;
+  unsigned char buffer[FIFO_SIZE + 1];
+  unsigned char cbuffer[FIFO_SIZE + 1]; // cooked buffer
   unsigned char *b, *c;
   ssize_t size;
   struct timeval tv;
 
   state.serial_cycles++;
-  if(state.serial_cycles >= RECV_TICKS) 
+  if (state.serial_cycles >= RECV_TICKS)
   {
-    FD_ZERO(&readset);
-    FD_SET(connectSocket,&readset);
-    tv.tv_sec=0;
-    tv.tv_usec=0;
-    if(select(connectSocket+1,&readset,NULL,NULL,&tv) > 0) 
+    FD_ZERO (&readset);
+    FD_SET (connectSocket, &readset);
+    tv.tv_sec = 0;
+    tv.tv_usec = 0;
+    if (select (connectSocket + 1, &readset, NULL, NULL, &tv) > 0)
     {
 #if defined(_WIN32)
       // Windows Sockets has no direct equivalent of BSD's read
-      size = recv(connectSocket,(char*)buffer,FIFO_SIZE, 0);
+      size = recv (connectSocket, (char *) buffer, FIFO_SIZE, 0);
 #else
-      size = read(connectSocket,&buffer,FIFO_SIZE);
+      size = read (connectSocket, &buffer, FIFO_SIZE);
 #endif
       extern int got_sigint;
-      if(size == 0 && !got_sigint) {
-	printf("%%SRL-W-DISCONNECT: Write socket closed on other end for serial port %d.\n",state.iNumber);
-	printf("-SRL-I-WAITFOR: Waiting for a new connection on port %d.\n",listenPort);
-	WaitForConnection();
-	return;
-      }
-      buffer[size+1]=0; // force null termination.
-      b=buffer;
-      c=cbuffer;
-      while((ssize_t)(b - buffer) < size) 
+      if (size == 0 && !got_sigint)
       {
-		if (*b == 0x0a)
-		{
-		  b++;	// skip LF
-		  continue;
-		}
-	    if(*b == IAC) 
-        {
-	      if(*(b+1) == IAC) 
-          { // escaped IAC.
-	        b++;
-	      } 
-          else if(*(b+1) >= WILL) 
-          { // will/won't/do/don't
-	        b+=3;  // skip this byte, and following two. (telnet escape)
-	        continue;
-	      } 
-          else if(*(b+1) == SB) 
-          { // skip until IAC SE
-	        b+=2; // now we're at start of subnegotiation.
-	        while(*b!=IAC && *(b+1)!=SE) b++;
-	        b+=2;
-	        continue;
-	      } 
-          else if(*(b+1) == BREAK) 
-          { // break (== halt button?)
-	        b+=2;
-	        write("\r\n<BREAK> received. What do you want to do?\r\n");
-	        write("     0. Continue\r\n");
-#if defined(IDB)
-	        write("     1. End run\r\n");
-#else
-	        write("     1. Exit emulator gracefully\r\n");
-	        write("     2. Abort emulator (no changes saved)\r\n");
-            write("     3. Save state to autosave.axp and continue\r\n");
-            write("     4. Load state from autosave.axp and continue\r\n");
-#endif
-	        for (;;)
-	        {
-	          FD_ZERO(&readset);
-	          FD_SET(connectSocket,&readset);
-	          tv.tv_sec = 60;
-	          tv.tv_usec = 0;
-	          if (select(connectSocket+1,&readset,NULL,NULL,&tv) <= 0) 
-	          {
-		        write("%SRL-I-TIMEOUT: no timely answer received. Continuing emulation.\r\n");
-		        return;
-	          }
-#if defined(_WIN32)
-	          size = recv(connectSocket,(char*)buffer,FIFO_SIZE, 0);
-#else
-              size = read(connectSocket,&buffer,FIFO_SIZE);
-#endif
- 	          switch (buffer[0])
-	          {
-	          case '0':
-	            write("%SRL-I-CONTINUE: continuing emulation.\r\n");
-	            return;
-	          case '1':
-	            write("%SRL-I-EXIT: exiting emulation gracefully.\r\n");
-	            return;
-	          case '2':
-	            write("%SRL-I-ABORT: aborting emulation.\r\n");
-	            FAILURE("Aborting");
-              case '3':
-                write("%SRL-I-SAVESTATE: Saving state to autosave.axp.\r\n");
-                cSystem->SaveState("autosave.axp");
-	            write("%SRL-I-CONTINUE: continuing emulation.\r\n");
-	            return;
-              case '4':
-                write("%SRL-I-LOADSTATE: Loading state from autosave.axp.\r\n");
-                cSystem->RestoreState("autosave.axp");
-	            write("%SRL-I-CONTINUE: continuing emulation.\r\n");
-	            return;
-	          }
-	          write("%SRL-W-INVALID: Not a valid answer.\r\n");
-	        }
-	      } 
-          else if(*(b+1) == AYT) 
-          { // are you there?
-    	    
-	      } 
-          else 
-          { // misc single byte command.
-	        b+=2;
-	        continue;
-	      }
-	    }
-	    *c=*b;
-	    c++; b++;
+        printf
+          ("%%SRL-W-DISCONNECT: Write socket closed on other end for serial port %d.\n",
+           state.iNumber);
+        printf ("-SRL-I-WAITFOR: Waiting for a new connection on port %d.\n",
+                listenPort);
+        WaitForConnection ();
+        return;
       }
-      *c=0; // null terminate it.
-      this->receive((const char*)&cbuffer);
+      buffer[size + 1] = 0;     // force null termination.
+      b = buffer;
+      c = cbuffer;
+      while ((ssize_t) (b - buffer) < size)
+      {
+        if (*b == 0x0a)
+        {
+          b++;                  // skip LF
+          continue;
+        }
+        if (*b == IAC)
+        {
+          if (*(b + 1) == IAC)
+          {                     // escaped IAC.
+            b++;
+          }
+          else if (*(b + 1) >= WILL)
+          {                     // will/won't/do/don't
+            b += 3;             // skip this byte, and following two. (telnet escape)
+            continue;
+          }
+          else if (*(b + 1) == SB)
+          {                     // skip until IAC SE
+            b += 2;             // now we're at start of subnegotiation.
+            while (*b != IAC && *(b + 1) != SE)
+              b++;
+            b += 2;
+            continue;
+          }
+          else if (*(b + 1) == BREAK)
+          {                     // break (== halt button?)
+            b += 2;
+            breakHit = true;
+          }
+          else if (*(b + 1) == AYT)
+          {                     // are you there?
+
+          }
+          else
+          {                     // misc single byte command.
+            b += 2;
+            continue;
+          }
+        }
+        *c = *b;
+        c++;
+        b++;
+      }
+      *c = 0;                   // null terminate it.
+      this->receive ((const char *) &cbuffer);
     }
-    state.serial_cycles=0;
+    state.serial_cycles = 0;
   }
 
-  eval_interrupts();
+  eval_interrupts ();
 }
 
 static u32 srl_magic1 = 0x5A15A15A;
@@ -599,15 +685,15 @@ static u32 srl_magic2 = 0x1A51A51A;
  * Save state to a Virtual Machine State file.
  **/
 
-int CSerial::SaveState(FILE *f)
+int CSerial::SaveState (FILE * f)
 {
-  long ss = sizeof(state);
+  long ss = sizeof (state);
 
-  fwrite(&srl_magic1,sizeof(u32),1,f);
-  fwrite(&ss,sizeof(long),1,f);
-  fwrite(&state,sizeof(state),1,f);
-  fwrite(&srl_magic2,sizeof(u32),1,f);
-  printf("%s: %d bytes saved.\n",devid_string,(int)ss);
+  fwrite (&srl_magic1, sizeof (u32), 1, f);
+  fwrite (&ss, sizeof (long), 1, f);
+  fwrite (&state, sizeof (state), 1, f);
+  fwrite (&srl_magic2, sizeof (u32), 1, f);
+  printf ("%s: %d bytes saved.\n", devid_string, (int) ss);
   return 0;
 }
 
@@ -615,118 +701,122 @@ int CSerial::SaveState(FILE *f)
  * Restore state from a Virtual Machine State file.
  **/
 
-int CSerial::RestoreState(FILE *f)
+int CSerial::RestoreState (FILE * f)
 {
   long ss;
   u32 m1;
   u32 m2;
   size_t r;
 
-  r = fread(&m1,sizeof(u32),1,f);
-  if (r!=1)
+  r = fread (&m1, sizeof (u32), 1, f);
+  if (r != 1)
   {
-    printf("%s: unexpected end of file!\n",devid_string);
+    printf ("%s: unexpected end of file!\n", devid_string);
     return -1;
   }
   if (m1 != srl_magic1)
   {
-    printf("%s: MAGIC 1 does not match!\n",devid_string);
+    printf ("%s: MAGIC 1 does not match!\n", devid_string);
     return -1;
   }
 
-  fread(&ss,sizeof(long),1,f);
-  if (r!=1)
+  fread (&ss, sizeof (long), 1, f);
+  if (r != 1)
   {
-    printf("%s: unexpected end of file!\n",devid_string);
+    printf ("%s: unexpected end of file!\n", devid_string);
     return -1;
   }
-  if (ss != sizeof(state))
+  if (ss != sizeof (state))
   {
-    printf("%s: STRUCT SIZE does not match!\n",devid_string);
-    return -1;
-  }
-
-  fread(&state,sizeof(state),1,f);
-  if (r!=1)
-  {
-    printf("%s: unexpected end of file!\n",devid_string);
+    printf ("%s: STRUCT SIZE does not match!\n", devid_string);
     return -1;
   }
 
-  r = fread(&m2,sizeof(u32),1,f);
-  if (r!=1)
+  fread (&state, sizeof (state), 1, f);
+  if (r != 1)
   {
-    printf("%s: unexpected end of file!\n",devid_string);
+    printf ("%s: unexpected end of file!\n", devid_string);
+    return -1;
+  }
+
+  r = fread (&m2, sizeof (u32), 1, f);
+  if (r != 1)
+  {
+    printf ("%s: unexpected end of file!\n", devid_string);
     return -1;
   }
   if (m2 != srl_magic2)
   {
-    printf("%s: MAGIC 1 does not match!\n",devid_string);
+    printf ("%s: MAGIC 1 does not match!\n", devid_string);
     return -1;
   }
 
-  printf("%s: %d bytes restored.\n",devid_string,(int)ss);
+  printf ("%s: %d bytes restored.\n", devid_string, (int) ss);
   return 0;
 }
 
-void CSerial::WaitForConnection() 
+void CSerial::WaitForConnection ()
 {
   struct sockaddr_in Address;
-  socklen_t nAddressSize=sizeof(struct sockaddr_in);
-  char *telnet_options="%c%c%c";
+  socklen_t nAddressSize = sizeof (struct sockaddr_in);
+  char *telnet_options = "%c%c%c";
   char buffer[8];
   char s[1000];
-  char * nargv = s;
+  char *nargv = s;
   int i = 0;
 
 #if !defined(LS_SLAVE)
   char s2[200];
-  char * argv[20];
+  char *argv[20];
 
-  strncpy(s, myCfg->get_text_value("action",""),999);
+  strncpy (s, myCfg->get_text_value ("action", ""), 999);
   s[999] = '\0';
   //printf("%s: Specified : %s\n",devid_string,s);
 
-  if (strcmp(s,""))
+  if (strcmp (s, ""))
   {
     // spawn external program (telnet client)...
     while (*nargv)
     {
       argv[i] = nargv;
       if (nargv[0] == '\"')
-        nargv = strchr(nargv+1,'\"');
+        nargv = strchr (nargv + 1, '\"');
       if (nargv)
-        nargv = strchr(nargv,' ');
+        nargv = strchr (nargv, ' ');
       if (!nargv)
         break;
       *nargv++ = '\0';
       i++;
       argv[i] = NULL;
     }
-    argv[i+1] = NULL;
-    strcpy(s2,argv[0]);
+    argv[i + 1] = NULL;
+    strcpy (s2, argv[0]);
     nargv = s2;
     if (nargv[0] == '\"')
     {
       nargv++;
-      *(strchr(nargv,'\"')) = '\0';
+      *(strchr (nargv, '\"')) = '\0';
     }
     //printf("%s: Starting %s\n", devid_string,nargv);
 #if defined(_WIN32)
-    _spawnvp(_P_NOWAIT, nargv, argv);
+    _spawnvp (_P_NOWAIT, nargv, argv);
 #else
     pid_t child;
-    int  status;
-    if (!(child=fork())){
-      execvp(argv[0], argv);
-      printf("Exec of '%s' failed.\n",argv[0]);
-      throw((int)1);
-    } else {
-      sleep(1);  // give it a chance to start up.
-      waitpid(child,&status,WNOHANG); // reap it, if needed.
-      if(kill(child,0) < 0) { // uh oh, no kiddo.
-	    printf("%%SRL-F-EXEC: Exec of '%s' has failed.\n",argv[0]);
-        throw((int)1);
+    int status;
+    if (!(child = fork ()))
+    {
+      execvp (argv[0], argv);
+      printf ("Exec of '%s' failed.\n", argv[0]);
+      throw ((int) 1);
+    }
+    else
+    {
+      sleep (1);                // give it a chance to start up.
+      waitpid (child, &status, WNOHANG);        // reap it, if needed.
+      if (kill (child, 0) < 0)
+      {                         // uh oh, no kiddo.
+        printf ("%%SRL-F-EXEC: Exec of '%s' has failed.\n", argv[0]);
+        throw ((int) 1);
       }
     }
 #endif
@@ -734,37 +824,39 @@ void CSerial::WaitForConnection()
 
 #endif
 
-  Address.sin_addr.s_addr=INADDR_ANY;
-  Address.sin_port=htons((u16)listenPort);
-  Address.sin_family=AF_INET;
+  Address.sin_addr.s_addr = INADDR_ANY;
+  Address.sin_port = htons ((u16) listenPort);
+  Address.sin_family = AF_INET;
 
 //  Wait until we have a connection
 
   connectSocket = INVALID_SOCKET;
   while (connectSocket == INVALID_SOCKET)
   {
-    connectSocket = (int)accept(listenSocket,(struct sockaddr*)&Address,&nAddressSize);
+    connectSocket =
+      (int) accept (listenSocket, (struct sockaddr *) &Address,
+                    &nAddressSize);
   }
 
   state.serial_cycles = 0;
 
   // Send some control characters to the telnet client to handle 
   // character-at-a-time mode.  
-  sprintf(buffer,telnet_options,IAC,DO,TELOPT_ECHO);
-  this->write(buffer);
+  sprintf (buffer, telnet_options, IAC, DO, TELOPT_ECHO);
+  this->write (buffer);
 
-  sprintf(buffer,telnet_options,IAC,DO,TELOPT_NAWS);
-  write(buffer);
+  sprintf (buffer, telnet_options, IAC, DO, TELOPT_NAWS);
+  write (buffer);
 
-  sprintf(buffer,telnet_options,IAC,DO,TELOPT_LFLOW);
-  this->write(buffer);
+  sprintf (buffer, telnet_options, IAC, DO, TELOPT_LFLOW);
+  this->write (buffer);
 
-  sprintf(buffer,telnet_options,IAC,WILL,TELOPT_ECHO);
-  this->write(buffer);
+  sprintf (buffer, telnet_options, IAC, WILL, TELOPT_ECHO);
+  this->write (buffer);
 
-  sprintf(buffer,telnet_options,IAC,WILL,TELOPT_SGA);
-  this->write(buffer);
+  sprintf (buffer, telnet_options, IAC, WILL, TELOPT_SGA);
+  this->write (buffer);
 
-  sprintf(s,"This is serial port #%d on AlphaSim\r\n",state.iNumber);
-  this->write(s);
+  sprintf (s, "This is serial port #%d on AlphaSim\r\n", state.iNumber);
+  this->write (s);
 }
