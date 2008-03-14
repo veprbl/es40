@@ -30,7 +30,7 @@
  * or project specific include files that are used frequently, but
  * are changed infrequently.
  *
- * $Id: StdAfx.h,v 1.29 2008/03/14 14:50:22 iamcamiel Exp $
+ * $Id: StdAfx.h,v 1.30 2008/03/14 15:30:52 iamcamiel Exp $
  *
  * X-1.29       Camiel Vanderhoeven                             14-MAR-2008
  *   1. More meaningful exceptions replace throwing (int) 1.
@@ -125,29 +125,25 @@
  *
  * \author Camiel Vanderhoeven (camiel@camicom.com / http://www.camicom.com)
  **/
-
 #if !defined(INCLUDED_STDAFX_H)
 #define INCLUDED_STDAFX_H
 
 #include "datatypes.h"
 
 #if defined(_WIN32)
-
 #ifndef _WIN32_WINNT
-#   define _WIN32_WINNT 0x400
+#define _WIN32_WINNT  0x400
 #endif
-
-#define WIN32_LEAN_AND_MEAN		// Exclude rarely-used stuff from Windows headers
-#define _CRT_SECURE_NO_DEPRECATE 1
+#define WIN32_LEAN_AND_MEAN // Exclude rarely-used stuff from Windows headers
+#define _CRT_SECURE_NO_DEPRECATE  1
 #if _MSC_VER < 1400
-#define WINVER 0x0400
+#define WINVER  0x0400
 #else
-#define WINVER 0x0501
+#define WINVER  0x0501
 #endif
 #include <windows.h>
-#define strcasecmp(a,b) _stricmp(a,b)
-#define strncasecmp(a,b,c) _strnicmp (a,b,c)
-
+#define strcasecmp(a, b)      _stricmp(a, b)
+#define strncasecmp(a, b, c)  _strnicmp(a, b, c)
 #include <process.h>
 #else // not windows
 #define _strdup strdup
@@ -158,49 +154,49 @@
 #include "signal.h"
 #include <sys/wait.h>
 #endif
-
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#if !defined(__APPLE__)  && !defined(__FreeBSD__)
+#if !defined(__APPLE__) && !defined(__FreeBSD__)
 #include <malloc.h>
 #endif
 #include <time.h>
 #include <ctype.h>
 
-#if (defined(_MSC_VER) && (_MSC_VER < 1400)) || !defined(_WIN32) || defined(__GNUWIN32__)
-inline void gmtime_s(struct tm * t1, time_t * t2)
+#if (defined(_MSC_VER) && (_MSC_VER < 1400)) || !defined(_WIN32) || defined \
+    (__GNUWIN32__)
+inline void gmtime_s(struct tm* t1, time_t* t2)
 {
-  struct tm * t3;
+  struct tm*  t3;
   t3 = gmtime(t2);
-  memcpy(t1,t3,sizeof(struct tm));
+  memcpy(t1, t3, sizeof(struct tm));
 }
 #endif
-
 #if defined(_WIN32) || defined(__DECCXX)
 inline bool isblank(char c)
 {
-  if ( c == ' ' || c == '\t' || c == '\n' || c == '\r' )
+  if(c == ' ' || c == '\t' || c == '\n' || c == '\r')
     return true;
   return false;
 }
 #endif
-
 inline char printable(char c)
 {
-  if (isprint((unsigned char)c))
-	  return c;
+  if(isprint((unsigned char) c))
+    return c;
   return '.';
 }
 
 // Different OS'es define different functions to access 64-bit files
 #if defined(_WIN32)
+
 // Windows obviously does things differently...
 #define fopen_large fopen
 #define fseek_large _fseeki64
 #define ftell_large _ftelli64
 #define off_t_large __int64
 #elif defined(__APPLE__) || defined(__FreeBSD__)
+
 // OS X and FreeBSD do 64-bit access by default, and don't have the 64-bit versions
 #define fopen_large fopen
 #define fseek_large fseeko
@@ -212,7 +208,6 @@ inline char printable(char c)
 #define ftell_large ftello64
 #define off_t_large off64_t
 #endif
-
 #define POCO_NO_UNWINDOWS
 #include <Poco/Thread.h>
 #include <Poco/Runnable.h>
@@ -226,5 +221,4 @@ inline char printable(char c)
 #include "Lock.h"
 
 #include "es40_endian.h"
-
 #endif // !defined(INCLUDED_STDAFX_H)

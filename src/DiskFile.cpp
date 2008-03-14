@@ -27,7 +27,7 @@
  * \file
  * Contains code to use a file as a disk image.
  *
- * $Id: DiskFile.cpp,v 1.19 2008/03/14 14:50:21 iamcamiel Exp $
+ * $Id: DiskFile.cpp,v 1.20 2008/03/14 15:30:51 iamcamiel Exp $
  *
  * X-1.19       Camiel Vanderhoeven                             14-MAR-2008
  *   1. More meaningful exceptions replace throwing (int) 1.
@@ -87,63 +87,73 @@
  * X-1.1        Camiel Vanderhoeven                             12-DEC-2007
  *      Initial version in CVS.
  **/
-
-#include "StdAfx.h" 
+#include "StdAfx.h"
 #include "DiskFile.h"
 
-CDiskFile::CDiskFile(CConfigurator * cfg, CSystem * sys, CDiskController * c, int idebus, int idedev) : CDisk(cfg,sys,c,idebus,idedev)
+CDiskFile::CDiskFile(CConfigurator*  cfg, CSystem*  sys, CDiskController*  c,
+                     int idebus, int idedev) : CDisk(cfg, sys, c, idebus, idedev)
 {
-
   filename = myCfg->get_text_value("file");
-  if (!filename)
+  if(!filename)
   {
-    FAILURE_1(Configuration,"%s: Disk has no file attached!\n",devid_string);
+    FAILURE_1(Configuration, "%s: Disk has no file attached!\n", devid_string);
   }
-  
-  if (read_only)
-    handle = fopen(filename,"rb");
+
+  if(read_only)
+    handle = fopen(filename, "rb");
   else
-    handle = fopen(filename,"rb+");
-  if (!handle)
+    handle = fopen(filename, "rb+");
+  if(!handle)
   {
-    printf("%s: Could not open file %s!\n",devid_string,filename);
-    int sz = myCfg->get_num_value("autocreate_size",false,0)/1024/1024;
-    if (!sz)
-      FAILURE(Runtime,"%s: File does not exist and no autocreate_size set",devid_string);
-    void * crt_buf;
-    handle = fopen(filename,"wb");
-    if (!handle)
-      FAILURE_1(Runtime,"%s: File does not exist and could not be created",devid_string);
-    crt_buf = calloc(1024,1024);
+    printf("%s: Could not open file %s!\n", devid_string, filename);
+
+    int sz = myCfg->get_num_value("autocreate_size", false, 0) / 1024 / 1024;
+    if(!sz)
+      FAILURE_1(Runtime, "%s: File does not exist and no autocreate_size set",
+                devid_string);
+
+    void*   crt_buf;
+    handle = fopen(filename, "wb");
+    if(!handle)
+      FAILURE_1(Runtime, "%s: File does not exist and could not be created",
+                devid_string);
+    crt_buf = calloc(1024, 1024);
     printf("%s: writing %d 1kB blocks:   0%%\b\b\b\b", devid_string, sz);
+
     int lastpc = 0;
-    for (int a = 0; a<sz; a++) {
-      fwrite(crt_buf,1024,1024,handle);
+    for(int a = 0; a < sz; a++)
+    {
+      fwrite(crt_buf, 1024, 1024, handle);
+
       int pc = a * 100 / sz;
-      if (pc != lastpc) {
- 	    printf("%3d\b\b\b", pc);
-	    lastpc = pc;
+      if(pc != lastpc)
+      {
+        printf("%3d\b\b\b", pc);
+        lastpc = pc;
       }
+
       fflush(stdout);
     }
+
     printf("100%%\n");
     fclose(handle);
     free(crt_buf);
-    if (read_only)
-      handle = fopen(filename,"rb");
+    if(read_only)
+      handle = fopen(filename, "rb");
     else
-      handle = fopen(filename,"rb+");
-    if (!handle)
+      handle = fopen(filename, "rb+");
+    if(!handle)
     {
-      FAILURE_1(Runtime,"%s: File created could not be opened",devid_string);
+      FAILURE_1(Runtime, "%s: File created could not be opened", devid_string);
     }
-    printf("%s: %d MB file %s created.\n",devid_string,sz,filename);
+
+    printf("%s: %d MB file %s created.\n", devid_string, sz, filename);
   }
 
   // determine size...
-  fseek_large(handle,0,SEEK_END);
-  byte_size=ftell_large(handle);
-  fseek_large(handle,0,SEEK_SET);
+  fseek_large(handle, 0, SEEK_END);
+  byte_size = ftell_large(handle);
+  fseek_large(handle, 0, SEEK_SET);
   state.byte_pos = ftell_large(handle);
 
   sectors = 32;
@@ -152,57 +162,61 @@ CDiskFile::CDiskFile(CConfigurator * cfg, CSystem * sys, CDiskController * c, in
   //calc_cylinders();
   determine_layout();
 
-  model_number=myCfg->get_text_value("model_number",filename);
+  model_number = myCfg->get_text_value("model_number", filename);
 
   // skip to the filename portion of the path.
-  char *p = model_number;
+  char*   p = model_number;
 #ifdef _WIN32
-  char x = '\\';
+  char    x = '\\';
 #else
-  char x = '/';
+  char    x = '/';
 #endif
-  while(*p) {
-    if(*p==x) model_number=p+1;
+  while(*p)
+  {
+    if(*p == x)
+      model_number = p + 1;
     p++;
   }
-  
-  printf("%s: Mounted file %s, %" LL "d %d-byte blocks, %" LL "d/%d/%d.\n",devid_string,filename,byte_size/state.block_size,state.block_size,cylinders,heads,sectors);
+
+  printf("%s: Mounted file %s, %"LL "d %d-byte blocks, %"LL "d/%d/%d.\n",
+         devid_string, filename, byte_size / state.block_size, state.block_size,
+         cylinders, heads, sectors);
 }
 
 CDiskFile::~CDiskFile(void)
 {
-  printf("%s: Closing file.\n",devid_string);
+  printf("%s: Closing file.\n", devid_string);
   fclose(handle);
 }
 
 bool CDiskFile::seek_byte(off_t_large byte)
 {
-  if (byte >=byte_size)
+  if(byte >= byte_size)
   {
-    FAILURE_1(InvalidArgument,"%s: Seek beyond end of file!\n",devid_string);
+    FAILURE_1(InvalidArgument, "%s: Seek beyond end of file!\n", devid_string);
   }
 
-  fseek_large(handle,byte,SEEK_SET);
+  fseek_large(handle, byte, SEEK_SET);
   state.byte_pos = ftell_large(handle);
 
   return true;
 }
 
-size_t CDiskFile::read_bytes(void *dest, size_t bytes)
+size_t CDiskFile::read_bytes(void* dest, size_t bytes)
 {
-  size_t r;
-  r = fread(dest,1,bytes,handle);
+  size_t  r;
+  r = fread(dest, 1, bytes, handle);
   state.byte_pos = ftell_large(handle);
   return r;
 }
 
-size_t CDiskFile::write_bytes(void * src, size_t bytes)
+size_t CDiskFile::write_bytes(void* src, size_t bytes)
 {
-  if (read_only)
+  if(read_only)
     return 0;
 
-  size_t r;
-  r = fwrite(src,1,bytes,handle);
+  size_t  r;
+  r = fwrite(src, 1, bytes, handle);
   state.byte_pos = ftell_large(handle);
   return r;
 }

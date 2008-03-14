@@ -27,7 +27,7 @@
  * \file
  * Contains definitions to use a raw device as a disk image.
  *
- * $Id: DiskDevice.h,v 1.3 2008/01/09 10:13:58 iamcamiel Exp $
+ * $Id: DiskDevice.h,v 1.4 2008/03/14 15:30:51 iamcamiel Exp $
  *
  * X-1.3        Camiel Vanderhoeven                             09-JAN-2008
  *      Save disk state to state file.
@@ -38,7 +38,6 @@
  * X-1.1        Camiel Vanderhoeven                             05-JAN-2008
  *      Initial version in CVS.
  **/
-
 #if !defined(__DISKDEV_H__)
 #define __DISKDEV_H__
 
@@ -47,29 +46,25 @@
 /**
  * \brief Emulated disk that uses a raw device.
  **/
-
 class CDiskDevice : public CDisk
 {
-public:
-  CDiskDevice(CConfigurator * cfg, CSystem * sys, CDiskController * c, int idebus, int idedev);
-  virtual ~CDiskDevice(void);
+  public:
+    CDiskDevice(CConfigurator*  cfg, CSystem*  sys, CDiskController*  c,
+                int idebus, int idedev);
+    virtual         ~CDiskDevice(void);
 
-  virtual bool seek_byte(off_t_large byte);
-  virtual size_t read_bytes(void * dest, size_t bytes);
-  virtual size_t write_bytes(void * src, size_t bytes);
-
-protected:
+    virtual bool    seek_byte(off_t_large byte);
+    virtual size_t  read_bytes(void* dest, size_t bytes);
+    virtual size_t  write_bytes(void* src, size_t bytes);
+  protected:
 #if defined(_WIN32)
-  HANDLE handle;
-  char * buffer;
-  size_t buffer_size;
-  size_t dev_block_size;
+    HANDLE  handle;
+    char*   buffer;
+    size_t  buffer_size;
+    size_t  dev_block_size;
 #else
-  FILE * handle;
+    FILE*   handle;
 #endif
-  char * filename;
-
-
+    char*   filename;
 };
-
 #endif //!defined(__DISKFILE_H__)

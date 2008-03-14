@@ -27,7 +27,7 @@
  * \file
  * Contains the code for the VGA base class.
  *
- * $Id: VGA.cpp,v 1.4 2008/03/14 14:50:22 iamcamiel Exp $
+ * $Id: VGA.cpp,v 1.5 2008/03/14 15:30:52 iamcamiel Exp $
  *
  * X-1.4        Camiel Vanderhoeven                             14-MAR-2008
  *   1. More meaningful exceptions replace throwing (int) 1.
@@ -42,19 +42,16 @@
  * X-1.1        Camiel Vanderhoeven                             10-DEC-2007
  *      Initial version in CVS.
  **/
-
 #include "StdAfx.h"
 #include "VGA.h"
 
-CVGA::CVGA(class CConfigurator * cfg, class CSystem * c, int pcibus, int pcidev) : CPCIDevice(cfg,c,pcibus,pcidev)
+CVGA::CVGA(class CConfigurator* cfg, class CSystem* c, int pcibus, int pcidev) : CPCIDevice(cfg, c, pcibus, pcidev)
 {
-  if (theVGA != 0)
-    FAILURE(Configuration,"More than one VGA");
+  if(theVGA != 0)
+    FAILURE(Configuration, "More than one VGA");
   theVGA = this;
 }
 
 CVGA::~CVGA(void)
-{
-}
-
-CVGA * theVGA = 0;
+{ }
+CVGA*   theVGA = 0;

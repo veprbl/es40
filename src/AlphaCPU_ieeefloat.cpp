@@ -27,7 +27,7 @@
  * \file 
  * Contains IEEE floating point code for the Alpha CPU.
  *
- * $Id: AlphaCPU_ieeefloat.cpp,v 1.7 2008/03/14 14:50:20 iamcamiel Exp $
+ * $Id: AlphaCPU_ieeefloat.cpp,v 1.8 2008/03/14 15:30:50 iamcamiel Exp $
  *
  * X-1.7        Camiel Vanderhoeven                             14-MAR-2008
  *   1. More meaningful exceptions replace throwing (int) 1.
@@ -52,12 +52,13 @@
  *      File created. Contains code based upon the SIMH Alpha pre-
  *      implementation, which is Copyright (c) 2003, Robert M Supnik.
  **/
-
 #include "StdAfx.h"
 #include "AlphaCPU.h"
 #include "cpu_debug.h"
 
-/***************************************************************************//**
+/***************************************************************************/
+
+/**
  * \page IEEE IEEE floating point arithmetic
  *
  * \section IEEE_fmt IEEE Floating-point formats
@@ -138,29 +139,30 @@
  ******************************************************************************/
 
 /* Register format constants */
-
-#define QNAN		U64(0x0008000000000000)		/* quiet NaN flag */
-#define CQNAN		U64(0xFFF8000000000000)		/* canonical quiet NaN */
-#define FPZERO		U64(0x0000000000000000)		/* plus zero (fp) */
-#define FMZERO		U64(0x8000000000000000)		/* minus zero (fp) */
-#define FPINF		U64(0x7FF0000000000000)		/* plus infinity (fp) */
-#define FMINF		U64(0xFFF0000000000000)		/* minus infinity (fp) */
-#define FPMAX		U64(0x7FFFFFFFFFFFFFFF)		/* plus MAX (fp) */
-#define FMMAX		U64(0xFFFFFFFFFFFFFFFF)		/* minus MAX (fp) */
-#define IPMAX		U64(0x7FFFFFFFFFFFFFFF)		/* plus MAX (int) */
-#define IMMAX		U64(0x8000000000000000)		/* minus MAX (int) */
+#define QNAN    U64(0x0008000000000000) /* quiet NaN flag */
+#define CQNAN   U64(0xFFF8000000000000) /* canonical quiet NaN */
+#define FPZERO  U64(0x0000000000000000) /* plus zero (fp) */
+#define FMZERO  U64(0x8000000000000000) /* minus zero (fp) */
+#define FPINF   U64(0x7FF0000000000000) /* plus infinity (fp) */
+#define FMINF   U64(0xFFF0000000000000) /* minus infinity (fp) */
+#define FPMAX   U64(0x7FFFFFFFFFFFFFFF) /* plus MAX (fp) */
+#define FMMAX   U64(0xFFFFFFFFFFFFFFFF) /* minus MAX (fp) */
+#define IPMAX   U64(0x7FFFFFFFFFFFFFFF) /* plus MAX (int) */
+#define IMMAX   U64(0x8000000000000000) /* minus MAX (int) */
 
 /* Unpacked rounding constants */
+#define UF_SRND U64(0x0000008000000000) /* S normal round */
+#define UF_SINF U64(0x000000FFFFFFFFFF) /* S infinity round */
+#define UF_TRND U64(0x0000000000000400) /* T normal round */
+#define UF_TINF U64(0x00000000000007FF) /* T infinity round */
 
-#define UF_SRND		U64(0x0000008000000000)		/* S normal round */
-#define UF_SINF		U64(0x000000FFFFFFFFFF)		/* S infinity round */
-#define UF_TRND		U64(0x0000000000000400)		/* T normal round */
-#define UF_TINF		U64(0x00000000000007FF)		/* T infinity round */
+/***************************************************************************/
 
-/***************************************************************************//**
+/**
  * \name IEEE_fp_load_store
  * IEEE floating point load and store functions.
  ******************************************************************************/
+
 //\{
 
 /**
@@ -171,15 +173,16 @@
  * \param op	IEEE S-floating value in memory format.
  * \return		IEEE S-floating value in register format.
  **/
-u64 CAlphaCPU::ieee_lds (u32 op)
+u64 CAlphaCPU::ieee_lds(u32 op)
 {
-  u32 exp = S_GETEXP (op);				/* get exponent */
+  u32 exp = S_GETEXP(op);         /* get exponent */
 
-  if (exp == S_NAN) exp = FPR_NAN;			/* inf or NaN? */
-  else if (exp != 0) exp = exp + T_BIAS - S_BIAS;		/* zero or denorm? */
-  return (((u64) (op & S_SIGN))? FPR_SIGN: 0) |	/* reg format */
-	  (((u64) exp) << FPR_V_EXP) |
-	  (((u64) (op & ~(S_SIGN|S_EXP))) << S_V_FRAC);
+  if(exp == S_NAN)
+    exp = FPR_NAN;                /* inf or NaN? */
+  else if(exp != 0)
+    exp = exp + T_BIAS - S_BIAS;  /* zero or denorm? */
+  return(((u64) (op & S_SIGN)) ? FPR_SIGN : 0) |  /* reg format */
+  (((u64) exp) << FPR_V_EXP) | (((u64) (op &~(S_SIGN | S_EXP))) << S_V_FRAC);
 }
 
 /**
@@ -190,25 +193,31 @@ u64 CAlphaCPU::ieee_lds (u32 op)
  * \param op  IEEE S-floating value in register format.
  * \return    IEEE S-floating value in memory format.
  **/
-u32 CAlphaCPU::ieee_sts (u64 op)
+u32 CAlphaCPU::ieee_sts(u64 op)
 {
-  u32 sign = FPR_GETSIGN (op)? S_SIGN: 0;
+  u32 sign = FPR_GETSIGN(op) ? S_SIGN : 0;
   u32 exp = FPR_GETEXP(op);
-  if (exp == FPR_NAN) exp = S_NAN;			/* inf or NaN? */
-  else if (exp != 0) exp = exp + S_BIAS - T_BIAS;		/* zero or denorm? */
+  if(exp == FPR_NAN)
+    exp = S_NAN;  /* inf or NaN? */
+  else if(exp != 0)
+    exp = exp + S_BIAS - T_BIAS;  /* zero or denorm? */
   exp = (exp << S_V_EXP) & S_EXP;
+
   u32 frac = ((u32) (op >> S_V_FRAC)) & X64_LONG;
 
-  return sign | exp | (frac & ~(S_SIGN|S_EXP));
+  return sign | exp | (frac &~(S_SIGN | S_EXP));
 }
+
 //\}
 
-/***************************************************************************//**
+/***************************************************************************/
+
+/**
  * \name IEEE_fp_conversion
  * IEEE floating point conversion routines
  ******************************************************************************/
-//\{
 
+//\{
 
 /**
  * \brief Convert an IEEE S-floating to an IEEE T-floating.
@@ -220,19 +229,21 @@ u32 CAlphaCPU::ieee_sts (u64 op)
  *            handle exceptions.
  * \return	  IEEE T-floating value.
  **/
-u64 CAlphaCPU::ieee_cvtst (u64 op, u32 ins)
+u64 CAlphaCPU::ieee_cvtst(u64 op, u32 ins)
 {
   UFP b;
   u32 ftpb;
 
-  ftpb = ieee_unpack (op, &b, ins);			/* unpack; norm dnorm */
-  if (ftpb == UFT_DENORM)				/* denormal? */
+  ftpb = ieee_unpack(op, &b, ins);    /* unpack; norm dnorm */
+  if(ftpb == UFT_DENORM)              /* denormal? */
   {
+
     // i'm not completely sure this is correct...
-	b.exp = b.exp + T_BIAS - S_BIAS;		/* change 0 exp to T */
-	return ieee_rpack (&b, ins, DT_T);		/* round, pack */
+    b.exp = b.exp + T_BIAS - S_BIAS;  /* change 0 exp to T */
+    return ieee_rpack(&b, ins, DT_T); /* round, pack */
   }
-  else return op;						/* identity */
+  else
+    return op;  /* identity */
 }
 
 /**
@@ -243,23 +254,30 @@ u64 CAlphaCPU::ieee_cvtst (u64 op, u32 ins)
  *            handle exceptions and to determine the rounding mode.
  * \return	  IEEE S-floating.
  **/
-u64 CAlphaCPU::ieee_cvtts (u64 op, u32 ins)
+u64 CAlphaCPU::ieee_cvtts(u64 op, u32 ins)
 {
   UFP b;
   u32 ftpb;
 
-  ftpb = ieee_unpack (op, &b, ins);			/* unpack */
-  if (Q_FINITE (ftpb)) return ieee_rpack (&b, ins, DT_S);	/* finite? round, pack */
-  if (ftpb == UFT_NAN) return (op | QNAN);		/* nan? cvt to quiet */
-  if (ftpb == UFT_INF) return op;				/* inf? unchanged */
-  return 0;						/* denorm? 0 */
+  ftpb = ieee_unpack(op, &b, ins);    /* unpack */
+  if(Q_FINITE(ftpb))
+    return ieee_rpack(&b, ins, DT_S); /* finite? round, pack */
+  if(ftpb == UFT_NAN)
+    return(op | QNAN);  /* nan? cvt to quiet */
+  if(ftpb == UFT_INF)
+    return op;          /* inf? unchanged */
+  return 0; /* denorm? 0 */
 }
+
 //\}
 
-/***************************************************************************//**
+/***************************************************************************/
+
+/**
  * \name IEEE_fp_operations
  * IEEE floating point operations
  ******************************************************************************/
+
 //\{
 
 /**
@@ -277,21 +295,33 @@ u64 CAlphaCPU::ieee_cvtts (u64 op, u32 ins)
  *            handle exceptions.
  * \return    0 if s1==s2, 1 if s1>s2, -1 if s1<s2.
  **/
-s32 CAlphaCPU::ieee_fcmp (u64 s1, u64 s2, u32 ins, u32 trap_nan)
+s32 CAlphaCPU::ieee_fcmp(u64 s1, u64 s2, u32 ins, u32 trap_nan)
 {
-  UFP a, b;
-  u32 ftpa, ftpb;
+  UFP a;
 
-  ftpa = ieee_unpack (s1, &a, ins);
-  ftpb = ieee_unpack (s2, &b, ins);
-  if ((ftpa == UFT_NAN) || (ftpb == UFT_NAN)) {		/* NaN involved? */
-	  if (trap_nan) ieee_trap (TRAP_INV, 1, FPCR_INVD, ins);
-	  return +1;  }					/* force failure */
-  if (ftpa == UFT_ZERO) a.sign = 0;			/* only +0 allowed */
-  if (ftpb == UFT_ZERO) b.sign = 0;
-  if (a.sign != b.sign) return (a.sign? -1: +1);		/* unequal signs? */
-  if (a.exp != b.exp) return ((a.sign ^ (a.exp < b.exp))? -1: +1);
-  if (a.frac != b.frac) return ((a.sign ^ (a.frac < b.frac))? -1: +1);
+  UFP b;
+  u32 ftpa;
+  u32 ftpb;
+
+  ftpa = ieee_unpack(s1, &a, ins);
+  ftpb = ieee_unpack(s2, &b, ins);
+  if((ftpa == UFT_NAN) || (ftpb == UFT_NAN))
+  { /* NaN involved? */
+    if(trap_nan)
+      ieee_trap(TRAP_INV, 1, FPCR_INVD, ins);
+    return +1;
+  } /* force failure */
+
+  if(ftpa == UFT_ZERO)
+    a.sign = 0; /* only +0 allowed */
+  if(ftpb == UFT_ZERO)
+    b.sign = 0;
+  if(a.sign != b.sign)
+    return(a.sign ? -1 : +1); /* unequal signs? */
+  if(a.exp != b.exp)
+    return((a.sign ^ (a.exp < b.exp)) ? -1 : +1);
+  if(a.frac != b.frac)
+    return((a.sign ^ (a.frac < b.frac)) ? -1 : +1);
   return 0;
 }
 
@@ -304,19 +334,23 @@ s32 CAlphaCPU::ieee_fcmp (u64 s1, u64 s2, u32 ins, u32 trap_nan)
  * \param dp  DT_S for S-floating or DT_T for T-floating.  
  * \return    IEEE floating.
  **/
-u64 CAlphaCPU::ieee_cvtif (u64 val, u32 ins, u32 dp)
+u64 CAlphaCPU::ieee_cvtif(u64 val, u32 ins, u32 dp)
 {
   UFP a;
 
-  if (val == 0) return 0;					/* 0? return +0 */
-  if (val < 0) {						/* < 0? */
-	  a.sign = 1;					/* set sign */
-	  val = NEG_Q (val);  }				/* |val| */
-  else a.sign = 0;
-  a.exp = 63 + T_BIAS;					/* set exp */
-  a.frac = val;						/* set frac */
-  ieee_norm (&a);						/* normalize */
-  return ieee_rpack (&a, ins, dp);				/* round and pack */
+  if(val == 0)
+    return 0;   /* 0? return +0 */
+  if(val < 0)
+  {             /* < 0? */
+    a.sign = 1; /* set sign */
+    val = NEG_Q(val);
+  } /* |val| */
+  else
+    a.sign = 0;
+  a.exp = 63 + T_BIAS;            /* set exp */
+  a.frac = val;                   /* set frac */
+  ieee_norm(&a);                  /* normalize */
+  return ieee_rpack(&a, ins, dp); /* round and pack */
 }
 
 /**
@@ -333,62 +367,68 @@ u64 CAlphaCPU::ieee_cvtif (u64 val, u32 ins, u32 dp)
  *            handle exceptions.
  * \return    64-bit signed integer.
  **/
-u64 CAlphaCPU::ieee_cvtfi (u64 op, u32 ins)
+u64 CAlphaCPU::ieee_cvtfi(u64 op, u32 ins)
 {
   UFP a;
   u64 sticky;
-  u32 rndm, ftpa, ovf = 0;
+  u32 rndm;
+  u32 ftpa;
+  u32 ovf = 0;
   s32 ubexp;
 
-  ftpa = ieee_unpack (op, &a, ins);			/* unpack */
-  if (!Q_FINITE (ftpa))					/* inf, NaN, dnorm? */
+  ftpa = ieee_unpack(op, &a, ins);  /* unpack */
+  if(!Q_FINITE(ftpa)) /* inf, NaN, dnorm? */
   {
-    ieee_trap (TRAP_INV, 1, FPCR_INVD, ins);		/* inv operation */
-	return 0;  
+    ieee_trap(TRAP_INV, 1, FPCR_INVD, ins); /* inv operation */
+    return 0;
   }
-  if (ftpa == UFT_ZERO) 
-    return 0;				/* zero? */
-  ubexp = a.exp - T_BIAS;					/* unbiased exp */
-  if (ubexp < 0) 					/* < 1? */
+
+  if(ftpa == UFT_ZERO)
+    return 0; /* zero? */
+  ubexp = a.exp - T_BIAS;   /* unbiased exp */
+  if(ubexp < 0)             /* < 1? */
   {
-	if (ubexp == -1) 
-      sticky = a.frac;		/* [.5,1)? */
-	else sticky = 1;				/* (0,.5) */
-	a.frac = 0;  
+    if(ubexp == -1)
+      sticky = a.frac;      /* [.5,1)? */
+    else
+      sticky = 1;           /* (0,.5) */
+    a.frac = 0;
   }
-  else if (ubexp <= UF_V_NM)				/* in range? */
+  else if(ubexp <= UF_V_NM) /* in range? */
   {
-    sticky = (a.frac << (64 - (UF_V_NM - ubexp))) & X64_QUAD;  
-    a.frac = a.frac >> (UF_V_NM - ubexp);		/* result */
+    sticky = (a.frac << (64 - (UF_V_NM - ubexp))) & X64_QUAD;
+    a.frac = a.frac >> (UF_V_NM - ubexp); /* result */
   }
-  else 
-  {	
-    if ((ubexp - UF_V_NM) > 63) 
-      a.frac = 0;		/* out of range */
-	else 
+  else
+  {
+    if((ubexp - UF_V_NM) > 63)
+      a.frac = 0;         /* out of range */
+    else
       a.frac = (a.frac << (ubexp - UF_V_NM)) & X64_QUAD;
-	ovf = 1;					/* overflow */
-	sticky = 0;  					/* no rounding */
+    ovf = 1;              /* overflow */
+    sticky = 0;           /* no rounding */
   }
-  rndm = I_GETFRND (ins);					/* get round mode */
-  if (((rndm == I_FRND_N) && (sticky & Q_SIGN)) ||	/* nearest? */
-      ((rndm == I_FRND_P) && !a.sign && sticky) ||	/* +inf and +? */
-      ((rndm == I_FRND_M) && a.sign && sticky)) 		/* -inf and -? */
+
+  rndm = I_GETFRND(ins);  /* get round mode */
+  if(((rndm == I_FRND_N) && (sticky & Q_SIGN))  /* nearest? */
+   || ((rndm == I_FRND_P) && !a.sign && sticky) /* +inf and +? */
+   || ((rndm == I_FRND_M) && a.sign && sticky)) /* -inf and -? */
   {
     a.frac = (a.frac + 1) & X64_QUAD;
-    if (a.frac == 0) 
-      ovf = 1;			/* overflow? */
-	if ((rndm == I_FRND_N) && (sticky == Q_SIGN))	/* round nearest hack */
-	  a.frac = a.frac & ~1;  
+    if(a.frac == 0)
+      ovf = 1;  /* overflow? */
+    if((rndm == I_FRND_N) && (sticky == Q_SIGN))  /* round nearest hack */
+      a.frac = a.frac &~1;
   }
-  if (a.frac > (a.sign? IMMAX: IPMAX)) 
-    ovf = 1;		/* overflow? */
 
-  if (ovf)
-    ieee_trap (TRAP_IOV, ins & I_FTRP_V, 0, 0);		/* overflow trap */
-  if (ovf || sticky)					/* ovflo or round? */
-	ieee_trap (TRAP_INE, Q_SUI (ins), FPCR_INED, ins);
-  return (a.sign? NEG_Q (a.frac): a.frac);
+  if(a.frac > (a.sign ? IMMAX : IPMAX))
+    ovf = 1;  /* overflow? */
+
+  if(ovf)
+    ieee_trap(TRAP_IOV, ins & I_FTRP_V, 0, 0);  /* overflow trap */
+  if(ovf || sticky) /* ovflo or round? */
+    ieee_trap(TRAP_INE, Q_SUI(ins), FPCR_INED, ins);
+  return(a.sign ? NEG_Q(a.frac) : a.frac);
 }
 
 /**
@@ -419,47 +459,78 @@ u64 CAlphaCPU::ieee_cvtfi (u64 op, u32 ins)
  * \param sub subtract if true, add if false.
  * \return    IEEE floating.
  **/
-u64 CAlphaCPU::ieee_fadd (u64 s1, u64 s2, u32 ins, u32 dp, bool sub)
+u64 CAlphaCPU::ieee_fadd(u64 s1, u64 s2, u32 ins, u32 dp, bool sub)
 {
-  UFP a, b, t;
-  u32 ftpa, ftpb;
+  UFP a;
+
+  UFP b;
+
+  UFP t;
+  u32 ftpa;
+  u32 ftpb;
   u32 sticky;
   s32 ediff;
 
-  ftpa = ieee_unpack (s1, &a, ins);			/* unpack operands */
-  ftpb = ieee_unpack (s2, &b, ins);
-  if (ftpb == UFT_NAN) return s2 | QNAN;			/* B = NaN? quiet B */
-  if (ftpa == UFT_NAN) return s1 | QNAN;			/* A = NaN? quiet A */
-  if (sub) b.sign = b.sign ^ 1;				/* sign of B */
-  if (ftpb == UFT_INF) {					/* B = inf? */
-	  if ((ftpa == UFT_INF) && (a.sign ^ b.sign)) {	/* eff sub of inf? */
-	      ieee_trap (TRAP_INV, 1, FPCR_INVD, ins);	/* inv op trap */
-	      return CQNAN;  }				/* canonical NaN */
-	  return (sub? (s2 ^ FPR_SIGN): s2);  }		/* return B */
-  if (ftpa == UFT_INF) return s1;				/* A = inf? ret A */
-  if (ftpa == UFT_ZERO) a = b;				/* s1 = 0? */
-  else if (ftpb != UFT_ZERO) {				/* s2 != 0? */
-	  if ((a.exp < b.exp) ||				/* s1 < s2? swap */
-	     ((a.exp == b.exp) && (a.frac < b.frac))) {
-	      t = a;
-	      a = b;
-	      b = t;  }
-	  ediff = a.exp - b.exp;				/* exp diff */
-	  if (ediff > 63) b.frac = 1;			/* >63? retain sticky */
-	  else if (ediff) {				/* [1,63]? shift */
-	      sticky = ((b.frac << (64 - ediff)) & X64_QUAD)? 1: 0;	/* lost bits */
-	      b.frac = ((b.frac >> ediff) & X64_QUAD) | sticky;  }
-	  if (a.sign ^ b.sign) {				/* eff sub? */
-	      a.frac = (a.frac - b.frac) & X64_QUAD;		/* subtract fractions */
-	      ieee_norm (&a);  }				/* normalize */
-	  else {						/* eff add */
-	      a.frac = (a.frac + b.frac) & X64_QUAD;		/* add frac */
-	      if (a.frac < b.frac) {			/* chk for carry */
-		  a.frac = UF_NM | (a.frac >> 1) |	/* shift in carry */
-		      (a.frac & 1);			/* retain sticky */
-		  a.exp = a.exp + 1;  }  }		/* skip norm */
-	  }						/* end else if */
-  return ieee_rpack (&a, ins, dp);				/* round and pack */
+  ftpa = ieee_unpack(s1, &a, ins);  /* unpack operands */
+  ftpb = ieee_unpack(s2, &b, ins);
+  if(ftpb == UFT_NAN)
+    return s2 | QNAN;     /* B = NaN? quiet B */
+  if(ftpa == UFT_NAN)
+    return s1 | QNAN;     /* A = NaN? quiet A */
+  if(sub)
+    b.sign = b.sign ^ 1;  /* sign of B */
+  if(ftpb == UFT_INF)
+  {   /* B = inf? */
+    if((ftpa == UFT_INF) && (a.sign ^ b.sign))
+    { /* eff sub of inf? */
+      ieee_trap(TRAP_INV, 1, FPCR_INVD, ins); /* inv op trap */
+      return CQNAN;
+    }           /* canonical NaN */
+
+    return(sub ? (s2 ^ FPR_SIGN) : s2);
+  }             /* return B */
+
+  if(ftpa == UFT_INF)
+    return s1;  /* A = inf? ret A */
+  if(ftpa == UFT_ZERO)
+    a = b;      /* s1 = 0? */
+  else if(ftpb != UFT_ZERO)
+  { /* s2 != 0? */
+    if((a.exp < b.exp)      /* s1 < s2? swap */
+     || ((a.exp == b.exp) && (a.frac < b.frac)))
+    {
+      t = a;
+      a = b;
+      b = t;
+    }
+
+    ediff = a.exp - b.exp;  /* exp diff */
+    if(ediff > 63)
+      b.frac = 1;           /* >63? retain sticky */
+    else if(ediff)
+    { /* [1,63]? shift */
+      sticky = ((b.frac << (64 - ediff)) & X64_QUAD) ? 1 : 0; /* lost bits */
+      b.frac = ((b.frac >> ediff) & X64_QUAD) | sticky;
+    }
+
+    if(a.sign ^ b.sign)
+    { /* eff sub? */
+      a.frac = (a.frac - b.frac) & X64_QUAD;  /* subtract fractions */
+      ieee_norm(&a);
+    } /* normalize */
+    else
+    { /* eff add */
+      a.frac = (a.frac + b.frac) & X64_QUAD;  /* add frac */
+      if(a.frac < b.frac)
+      { /* chk for carry */
+        a.frac = UF_NM | (a.frac >> 1) |  /* shift in carry */
+        (a.frac & 1); /* retain sticky */
+        a.exp = a.exp + 1;
+      }
+    } /* skip norm */
+  }   /* end else if */
+
+  return ieee_rpack(&a, ins, dp); /* round and pack */
 }
 
 /**
@@ -486,29 +557,42 @@ u64 CAlphaCPU::ieee_fadd (u64 s1, u64 s2, u32 ins, u32 dp, bool sub)
  * \param dp  DT_S for S-floating or DT_T for T-floating.  
  * \return    IEEE floating.
  **/
-u64 CAlphaCPU::ieee_fmul (u64 s1, u64 s2, u32 ins, u32 dp)
+u64 CAlphaCPU::ieee_fmul(u64 s1, u64 s2, u32 ins, u32 dp)
 {
-  UFP a, b;
-  u32 ftpa, ftpb;
+  UFP a;
+
+  UFP b;
+  u32 ftpa;
+  u32 ftpb;
   u64 resl;
 
-  ftpa = ieee_unpack (s1, &a, ins);			/* unpack operands */
-  ftpb = ieee_unpack (s2, &b, ins);
-  if (ftpb == UFT_NAN) return s2 | QNAN;			/* B = NaN? quiet B */
-  if (ftpa == UFT_NAN) return s1 | QNAN;			/* A = NaN? quiet A */
-  a.sign = a.sign ^ b.sign;				/* sign of result */
-  if ((ftpa == UFT_ZERO) || (ftpb == UFT_ZERO)) {		/* zero operand? */
-	  if ((ftpa == UFT_INF) || (ftpb == UFT_INF)) {	/* 0 * inf? */
-	      ieee_trap (TRAP_INV, 1, FPCR_INVD, ins);	/* inv op trap */
-	      return CQNAN;  }				/* canonical NaN */
-	  return (a.sign? FMZERO: FPZERO);  }		/* return signed 0 */
-  if (ftpb == UFT_INF) return (a.sign? FMINF: FPINF);	/* B = inf? */
-  if (ftpa == UFT_INF) return (a.sign? FMINF: FPINF);	/* A = inf? */
-  a.exp = a.exp + b.exp + 1 - T_BIAS;			/* add exponents */
-  resl = uemul64 (a.frac, b.frac, &a.frac);		/* multiply fracs */
-  ieee_norm (&a);						/* normalize */
-  a.frac = a.frac | (resl? 1: 0);				/* sticky bit */
-  return ieee_rpack (&a, ins, dp);				/* round and pack */
+  ftpa = ieee_unpack(s1, &a, ins);  /* unpack operands */
+  ftpb = ieee_unpack(s2, &b, ins);
+  if(ftpb == UFT_NAN)
+    return s2 | QNAN;       /* B = NaN? quiet B */
+  if(ftpa == UFT_NAN)
+    return s1 | QNAN;       /* A = NaN? quiet A */
+  a.sign = a.sign ^ b.sign; /* sign of result */
+  if((ftpa == UFT_ZERO) || (ftpb == UFT_ZERO))
+  {   /* zero operand? */
+    if((ftpa == UFT_INF) || (ftpb == UFT_INF))
+    { /* 0 * inf? */
+      ieee_trap(TRAP_INV, 1, FPCR_INVD, ins); /* inv op trap */
+      return CQNAN;
+    } /* canonical NaN */
+
+    return(a.sign ? FMZERO : FPZERO);
+  }   /* return signed 0 */
+
+  if(ftpb == UFT_INF)
+    return(a.sign ? FMINF : FPINF);         /* B = inf? */
+  if(ftpa == UFT_INF)
+    return(a.sign ? FMINF : FPINF);         /* A = inf? */
+  a.exp = a.exp + b.exp + 1 - T_BIAS;       /* add exponents */
+  resl = uemul64(a.frac, b.frac, &a.frac);  /* multiply fracs */
+  ieee_norm(&a);  /* normalize */
+  a.frac = a.frac | (resl ? 1 : 0); /* sticky bit */
+  return ieee_rpack(&a, ins, dp);   /* round and pack */
 }
 
 /**
@@ -532,39 +616,61 @@ u64 CAlphaCPU::ieee_fmul (u64 s1, u64 s2, u32 ins, u32 dp)
  * \param dp  DT_S for S-floating or DT_T for T-floating.  
  * \return    IEEE floating.
  **/
-u64 CAlphaCPU::ieee_fdiv (u64 s1, u64 s2, u32 ins, u32 dp)
+u64 CAlphaCPU::ieee_fdiv(u64 s1, u64 s2, u32 ins, u32 dp)
 {
-  UFP a, b;
-  u32 ftpa, ftpb, sticky;
+  UFP a;
 
-  ftpa = ieee_unpack (s1, &a, ins);
-  ftpb = ieee_unpack (s2, &b, ins);
-  if (ftpb == UFT_NAN) return s2 | QNAN;			/* B = NaN? quiet B */
-  if (ftpa == UFT_NAN) return s1 | QNAN;			/* A = NaN? quiet A */
-  a.sign = a.sign ^ b.sign;				/* sign of result */
-  if (ftpb == UFT_INF) {					/* B = inf? */
-	  if (ftpa == UFT_INF) {				/* inf/inf? */
-	      ieee_trap (TRAP_INV, 1, FPCR_INVD, ins);	/* inv op trap */
-	      return CQNAN;  }				/* canonical NaN */
-	  return (a.sign? FMZERO: FPZERO);  }		/* !inf/inf, ret 0 */
-  if (ftpa == UFT_INF) {					/* A = inf? */
-	  if (ftpb == UFT_ZERO)				/* inf/0? */
-	      ieee_trap (TRAP_DZE, 1, FPCR_DZED, ins);	/* div by 0 trap */
-	  return (a.sign? FMINF: FPINF);  }		/* return inf */
-  if (ftpb == UFT_ZERO) {					/* B = 0? */
-	  if (ftpa == UFT_ZERO) {				/* 0/0? */
-	      ieee_trap (TRAP_INV, 1, FPCR_INVD, ins);	/* inv op trap */
-	      return CQNAN;  }				/* canonical NaN */
-	  ieee_trap (TRAP_DZE, 1, FPCR_DZED, ins);		/* div by 0 trap */
-	  return (a.sign? FMINF: FPINF);  }		/* return inf */
-  if (ftpa == UFT_ZERO) return (a.sign? FMZERO: FPZERO);	/* A = 0? */
-  a.exp = a.exp - b.exp + T_BIAS;				/* unbiased exp */
-  a.frac = a.frac >> 1;					/* allow 1 bit left */
+  UFP b;
+  u32 ftpa;
+  u32 ftpb;
+  u32 sticky;
+
+  ftpa = ieee_unpack(s1, &a, ins);
+  ftpb = ieee_unpack(s2, &b, ins);
+  if(ftpb == UFT_NAN)
+    return s2 | QNAN;       /* B = NaN? quiet B */
+  if(ftpa == UFT_NAN)
+    return s1 | QNAN;       /* A = NaN? quiet A */
+  a.sign = a.sign ^ b.sign; /* sign of result */
+  if(ftpb == UFT_INF)
+  {   /* B = inf? */
+    if(ftpa == UFT_INF)
+    { /* inf/inf? */
+      ieee_trap(TRAP_INV, 1, FPCR_INVD, ins); /* inv op trap */
+      return CQNAN;
+    } /* canonical NaN */
+
+    return(a.sign ? FMZERO : FPZERO);
+  }   /* !inf/inf, ret 0 */
+
+  if(ftpa == UFT_INF)
+  {   /* A = inf? */
+    if(ftpb == UFT_ZERO)  /* inf/0? */
+      ieee_trap(TRAP_DZE, 1, FPCR_DZED, ins); /* div by 0 trap */
+    return(a.sign ? FMINF : FPINF);
+  }   /* return inf */
+
+  if(ftpb == UFT_ZERO)
+  {   /* B = 0? */
+    if(ftpa == UFT_ZERO)
+    { /* 0/0? */
+      ieee_trap(TRAP_INV, 1, FPCR_INVD, ins); /* inv op trap */
+      return CQNAN;
+    } /* canonical NaN */
+
+    ieee_trap(TRAP_DZE, 1, FPCR_DZED, ins); /* div by 0 trap */
+    return(a.sign ? FMINF : FPINF);
+  } /* return inf */
+
+  if(ftpa == UFT_ZERO)
+    return(a.sign ? FMZERO : FPZERO); /* A = 0? */
+  a.exp = a.exp - b.exp + T_BIAS;     /* unbiased exp */
+  a.frac = a.frac >> 1; /* allow 1 bit left */
   b.frac = b.frac >> 1;
-  a.frac = ufdiv64 (a.frac, b.frac, 55, &sticky);		/* divide */
-  ieee_norm (&a);						/* normalize */
-  a.frac = a.frac | sticky;				/* insert sticky */
-  return ieee_rpack (&a, ins, dp);				/* round and pack */
+  a.frac = ufdiv64(a.frac, b.frac, 55, &sticky);  /* divide */
+  ieee_norm(&a);            /* normalize */
+  a.frac = a.frac | sticky; /* insert sticky */
+  return ieee_rpack(&a, ins, dp); /* round and pack */
 }
 
 /**
@@ -583,28 +689,36 @@ u64 CAlphaCPU::ieee_fdiv (u64 s1, u64 s2, u32 ins, u32 dp)
  * \param dp  DT_S for S-floating or DT_T for T-floating.  
  * \return    IEEE floating.
  **/
-u64 CAlphaCPU::ieee_sqrt (u64 op, u32 ins, u32 dp)
+u64 CAlphaCPU::ieee_sqrt(u64 op, u32 ins, u32 dp)
 {
   u32 ftpb;
   UFP b;
 
-  ftpb = ieee_unpack (op, &b, ins);			/* unpack */
-  if (ftpb == UFT_NAN) return op | QNAN;			/* NaN? */
-  if ((ftpb == UFT_ZERO) ||				/* zero? */
-      ((ftpb == UFT_INF) && !b.sign)) return op;		/* +infinity? */
-  if (b.sign) {						/* minus? */
-	  ieee_trap (TRAP_INV, 1, FPCR_INVD, ins);		/* signal inv op */
-	  return CQNAN;  }
-  b.exp = ((b.exp - T_BIAS) >> 1) + T_BIAS;		/* result exponent */
-  b.frac = fsqrt64 (b.frac, b.exp);			/* result fraction */
-  return ieee_rpack (&b, ins, dp);				/* round and pack */
+  ftpb = ieee_unpack(op, &b, ins);  /* unpack */
+  if(ftpb == UFT_NAN)
+    return op | QNAN; /* NaN? */
+  if((ftpb == UFT_ZERO) || /* zero? */ ((ftpb == UFT_INF) && !b.sign))
+    return op;        /* +infinity? */
+  if(b.sign)
+  { /* minus? */
+    ieee_trap(TRAP_INV, 1, FPCR_INVD, ins); /* signal inv op */
+    return CQNAN;
+  }
+
+  b.exp = ((b.exp - T_BIAS) >> 1) + T_BIAS; /* result exponent */
+  b.frac = fsqrt64(b.frac, b.exp);          /* result fraction */
+  return ieee_rpack(&b, ins, dp);           /* round and pack */
 }
+
 //\}
 
-/***************************************************************************//**
+/***************************************************************************/
+
+/**
  * \name IEEE_fp_support
  * IEEE floating point support functions
  ******************************************************************************/
+
 //\{
 
 /**
@@ -620,34 +734,38 @@ u64 CAlphaCPU::ieee_sqrt (u64 op, u32 ins, u32 dp)
  *            handle exceptions.
  * \return    Returns the type of value (UFT_ZERO, UFT_FIN, etc.). 
  **/
-int CAlphaCPU::ieee_unpack (u64 op, UFP *r, u32 ins)
+int CAlphaCPU::ieee_unpack(u64 op, UFP* r, u32 ins)
 {
-  r->sign = FPR_GETSIGN (op);				/* get sign */
-  r->exp = FPR_GETEXP (op);				/* get exponent */
-  r->frac = FPR_GETFRAC (op);				/* get fraction */
-  if (r->exp == 0)					/* exponent = 0? */
+  r->sign = FPR_GETSIGN(op);  /* get sign */
+  r->exp = FPR_GETEXP(op);    /* get exponent */
+  r->frac = FPR_GETFRAC(op);  /* get fraction */
+  if(r->exp == 0)       /* exponent = 0? */
   {
-    if (r->frac == 0) return UFT_ZERO;		/* frac = 0? then true 0 */
-    if (state.fpcr & FPCR_DNZ) 				/* denorms to 0? */
+    if(r->frac == 0)
+      return UFT_ZERO;  /* frac = 0? then true 0 */
+    if(state.fpcr & FPCR_DNZ)       /* denorms to 0? */
     {
-	  r->frac = 0;				/* clear fraction */
-	  return UFT_ZERO;  
+      r->frac = 0;                  /* clear fraction */
+      return UFT_ZERO;
     }
-	r->frac = r->frac << FPR_GUARD;			/* guard fraction */
-	ieee_norm (r);					/* normalize dnorm */
-	ieee_trap (TRAP_INV, 1, FPCR_INVD, ins);		/* signal inv op */
-    return UFT_DENORM;  
+
+    r->frac = r->frac << FPR_GUARD; /* guard fraction */
+    ieee_norm(r); /* normalize dnorm */
+    ieee_trap(TRAP_INV, 1, FPCR_INVD, ins); /* signal inv op */
+    return UFT_DENORM;
   }
-  if (r->exp == FPR_NAN) 				/* exponent = max? */
+
+  if(r->exp == FPR_NAN)   /* exponent = max? */
   {
-    if (r->frac == 0) 
-      return UFT_INF;		/* frac = 0? then inf */
-	if (!(r->frac & QNAN))				/* signaling NaN? */
-	  ieee_trap (TRAP_INV, 1, FPCR_INVD, ins);	/* signal inv op */
-    return UFT_NAN;  
+    if(r->frac == 0)
+      return UFT_INF;     /* frac = 0? then inf */
+    if(!(r->frac & QNAN)) /* signaling NaN? */
+      ieee_trap(TRAP_INV, 1, FPCR_INVD, ins); /* signal inv op */
+    return UFT_NAN;
   }
-  r->frac = (r->frac | FPR_HB) << FPR_GUARD;		/* ins hidden bit, guard */
-  return UFT_FIN;						/* finite */
+
+  r->frac = (r->frac | FPR_HB) << FPR_GUARD;  /* ins hidden bit, guard */
+  return UFT_FIN; /* finite */
 }
 
 /**
@@ -659,23 +777,33 @@ int CAlphaCPU::ieee_unpack (u64 op, UFP *r, u32 ins)
  *            containing the value to be normalized, and where the
  *            results are to be returned.
  **/
-void CAlphaCPU::ieee_norm (UFP *r)
+void CAlphaCPU::ieee_norm(UFP* r)
 {
-  s32 i;
-  static u64 normmask[5] = {
-   U64(0xc000000000000000), U64(0xf000000000000000), U64(0xff00000000000000),
-   U64(0xffff000000000000), U64(0xffffffff00000000) };
-  static s32 normtab[6] = { 1, 2, 4, 8, 16, 32};
+  s32         i;
+  static u64  normmask[5] = {
+    U64(0xc000000000000000), U64(0xf000000000000000), U64(0xff00000000000000),
+    U64(0xffff000000000000), U64(0xffffffff00000000) };
+  static s32  normtab[6] = { 1, 2, 4, 8, 16, 32};
 
   r->frac = r->frac & X64_QUAD;
-  if (r->frac == 0) {					/* if fraction = 0 */
-	  r->exp = 0;					/* result is signed 0 */
-	  return;  }
-  while ((r->frac & UF_NM) == 0) {			/* normalized? */
-	  for (i = 0; i < 5; i++) {			/* find first 1 */
-	      if (r->frac & normmask[i]) break;  }
-	  r->frac = r->frac << normtab[i];		/* shift frac */
-	  r->exp = r->exp - normtab[i];  }		/* decr exp */
+  if(r->frac == 0)
+  { /* if fraction = 0 */
+    r->exp = 0; /* result is signed 0 */
+    return;
+  }
+
+  while((r->frac & UF_NM) == 0)
+  {   /* normalized? */
+    for(i = 0; i < 5; i++)
+    { /* find first 1 */
+      if(r->frac & normmask[i])
+        break;
+    }
+
+    r->frac = r->frac << normtab[i];  /* shift frac */
+    r->exp = r->exp - normtab[i];
+  } /* decr exp */
+
   return;
 }
 
@@ -711,46 +839,60 @@ void CAlphaCPU::ieee_norm (UFP *r)
  * \param dp  DT_S for S-floating or DT_T for T-floating.  
  * \return    IEEE floating.
  **/
-u64 CAlphaCPU::ieee_rpack (UFP *r, u32 ins, u32 dp)
+u64 CAlphaCPU::ieee_rpack(UFP* r, u32 ins, u32 dp)
 {
-  static const u64 stdrnd[2] = { UF_SRND, UF_TRND };
-  static const u64 infrnd[2] = { UF_SINF, UF_TINF };
-  static const s32 expmax[2] = { T_BIAS - S_BIAS + S_M_EXP - 1, T_M_EXP - 1 };
-  static const s32 expmin[2] = { T_BIAS - S_BIAS, 0 };
-  u64 rndadd, rndbits, res;
-  u64 rndm;
+  static const u64  stdrnd[2] = { UF_SRND, UF_TRND };
+  static const u64  infrnd[2] = { UF_SINF, UF_TINF };
+  static const s32  expmax[2] = { T_BIAS - S_BIAS + S_M_EXP - 1, T_M_EXP - 1};
+  static const s32  expmin[2] = { T_BIAS - S_BIAS, 0};
+  u64               rndadd;
+  u64               rndbits;
+  u64               res;
+  u64               rndm;
 
-  if (r->frac == 0) return (((u64)r->sign) << FPR_V_SIGN);	/* result 0? */
-  rndm = I_GETFRND (ins);					/* inst round mode */
-  if (rndm == I_FRND_D) rndm = FPCR_GETFRND (state.fpcr);	/* dynamic? use FPCR */
-  rndbits = r->frac & infrnd[dp];				/* isolate round bits */
-  if (rndm == I_FRND_N) rndadd = stdrnd[dp];		/* round to nearest? */
-  else if (((rndm == I_FRND_P) && !r->sign) ||		/* round to inf and */
-	  ((rndm == I_FRND_M) && r->sign))		/* right sign? */
-	  rndadd = infrnd[dp];
-  else rndadd = 0;
-  r->frac = (r->frac + rndadd) & X64_QUAD;			/* round */
-  if ((r->frac & UF_NM) == 0) {				/* carry out? */
-	  r->frac = (r->frac >> 1) | UF_NM;		/* renormalize */
-	  r->exp = r->exp + 1;  }
-  if (rndbits)						/* inexact? */
-	  ieee_trap (TRAP_INE, Q_SUI (ins), FPCR_INED, ins);/* set inexact */
-  if (r->exp > expmax[dp]) {				/* ovflo? */
-	  ieee_trap (TRAP_OVF, 1, FPCR_OVFD, ins);		/* set overflow trap */
-	  ieee_trap (TRAP_INE, Q_SUI (ins), FPCR_INED, ins);/* set inexact */
-	  if (rndadd)					/* did we round? */
-	      return (r->sign? FMINF: FPINF);		/* return infinity */
-	  return (r->sign? FMMAX: FPMAX);  }		/* no, return max */
-  if (r->exp <= expmin[dp]) {				/* underflow? */
-	  ieee_trap (TRAP_UNF, ins & I_FTRP_U,		/* set underflow trap */
-	      (state.fpcr & FPCR_UNDZ)? FPCR_UNFD: 0, ins);	/* (dsbl only if UNFZ set) */
-	  ieee_trap (TRAP_INE, Q_SUI (ins), FPCR_INED, ins);/* set inexact */
-	  return 0;  }					/* underflow to +0 */
-  res = (((u64) r->sign) << FPR_V_SIGN) |		/* form result */
-	  (((u64) r->exp) << FPR_V_EXP) |
-	  ((r->frac >> FPR_GUARD) & FPR_FRAC);
-  if ((rndm == I_FRND_N) && (rndbits == stdrnd[dp]))	/* nearest and halfway? */
-	  res = res & ~1;					/* clear lo bit */
+  if(r->frac == 0)
+    return(((u64) r->sign) << FPR_V_SIGN);  /* result 0? */
+  rndm = I_GETFRND(ins);  /* inst round mode */
+  if(rndm == I_FRND_D)
+    rndm = FPCR_GETFRND(state.fpcr);  /* dynamic? use FPCR */
+  rndbits = r->frac & infrnd[dp];     /* isolate round bits */
+  if(rndm == I_FRND_N)
+    rndadd = stdrnd[dp];  /* round to nearest? */
+  else if(((rndm == I_FRND_P) && !r->sign)  /* round to inf and */
+        || ((rndm == I_FRND_M) && r->sign)) /* right sign? */
+    rndadd = infrnd[dp];
+  else
+    rndadd = 0;
+  r->frac = (r->frac + rndadd) & X64_QUAD;  /* round */
+  if((r->frac & UF_NM) == 0)
+  { /* carry out? */
+    r->frac = (r->frac >> 1) | UF_NM; /* renormalize */
+    r->exp = r->exp + 1;
+  }
+
+  if(rndbits) /* inexact? */
+    ieee_trap(TRAP_INE, Q_SUI(ins), FPCR_INED, ins);  /* set inexact */
+  if(r->exp > expmax[dp])
+  { /* ovflo? */
+    ieee_trap(TRAP_OVF, 1, FPCR_OVFD, ins);           /* set overflow trap */
+    ieee_trap(TRAP_INE, Q_SUI(ins), FPCR_INED, ins);  /* set inexact */
+    if(rndadd)  /* did we round? */
+      return(r->sign ? FMINF : FPINF);  /* return infinity */
+    return(r->sign ? FMMAX : FPMAX);
+  } /* no, return max */
+
+  if(r->exp <= expmin[dp])
+  { /* underflow? */
+    ieee_trap(TRAP_UNF, ins & I_FTRP_U, /* set underflow trap */
+              (state.fpcr & FPCR_UNDZ) ? FPCR_UNFD : 0, ins); /* (dsbl only if UNFZ set) */
+    ieee_trap(TRAP_INE, Q_SUI(ins), FPCR_INED, ins);          /* set inexact */
+    return 0;
+  } /* underflow to +0 */
+
+  res = (((u64) r->sign) << FPR_V_SIGN) |           /* form result */
+  (((u64) r->exp) << FPR_V_EXP) | ((r->frac >> FPR_GUARD) & FPR_FRAC);
+  if((rndm == I_FRND_N) && (rndbits == stdrnd[dp])) /* nearest and halfway? */
+    res = res &~1;  /* clear lo bit */
   return res;
 }
 
@@ -767,20 +909,17 @@ u64 CAlphaCPU::ieee_rpack (UFP *r, u32 ins, u32 dp)
  * \param ins     The instruction currently being executed. Used to properly
  *                set some registers for the trap to be handled.
  **/
-void CAlphaCPU::ieee_trap (u64 trap, u32 instenb, u64 fpcrdsb, u32 ins)
+void CAlphaCPU::ieee_trap(u64 trap, u32 instenb, u64 fpcrdsb, u32 ins)
 {
   u64 real_trap = U64(0x0);
 
-  if (!state.fpcr & (trap<<51))     // trap bit not set in FPCR
-    real_trap |= trap<<41;          // SET trap bit in EXC_SUM
-
-  if ((instenb != 0) &&					/* not enabled in inst? ignore */
-      !((ins & I_FTRP_S) && (state.fpcr & fpcrdsb)))	/* /S and disabled? ignore */
-    real_trap |= trap;              // trap bit in EXC_SUM
-
-  if (real_trap)
-    ARITH_TRAP(real_trap | ((ins & I_FTRP_S) ? TRAP_SWC : 0)
-               , I_GETRC(ins));
+  if(!state.fpcr & (trap << 51))  // trap bit not set in FPCR
+    real_trap |= trap << 41;      // SET trap bit in EXC_SUM
+  if((instenb != 0) /* not enabled in inst? ignore */
+   && !((ins & I_FTRP_S) && (state.fpcr & fpcrdsb)))  /* /S and disabled? ignore */real_trap |= trap; // trap bit in EXC_SUM
+  if(real_trap)
+    ARITH_TRAP(real_trap | ((ins & I_FTRP_S) ? TRAP_SWC : 0), I_GETRC(ins));
   return;
 }
+
 //\}

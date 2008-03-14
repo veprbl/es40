@@ -35,29 +35,24 @@
  *
  * \author Camiel Vanderhoeven (camiel@camicom.com / http://www.camicom.com)
  **/
-
 #if !defined(INCLUDED_LOCKSTEP_H)
 #define INCLUDED_LOCKSTEP_H
 
 #include "telnet.h"
 
 #if defined(IDB) && (defined(LS_MASTER) || defined(LS_SLAVE))
-
-extern int ls_Socket;
+extern int  ls_Socket;
 
 #if defined(LS_MASTER)
 extern char ls_IP[30];
 #else
-extern int ls_listenSocket;
+extern int  ls_listenSocket;
 #endif
-
-void lockstep_init();
-void lockstep_sync_m2s(char *s);
-void lockstep_sync_s2m(char *s);
-void lockstep_compare(char * s);
-void lockstep_send(char *s);
-void lockstep_receive(char * s, int sz);
-
+void        lockstep_init();
+void        lockstep_sync_m2s(char* s);
+void        lockstep_sync_s2m(char* s);
+void        lockstep_compare(char* s);
+void        lockstep_send(char* s);
+void        lockstep_receive(char* s, int sz);
 #endif // defined(IDB) && (defined(LS_MASTER) || defined(LS_SLAVE))
-
 #endif // !defined(INCLUDED_LOCKSTEP_H)

@@ -27,7 +27,7 @@
  * \file 
  * Contains the code for the emulated Ali M1543C chipset devices.
  *
- * $Id: AliM1543C.cpp,v 1.64 2008/03/14 14:50:20 iamcamiel Exp $
+ * $Id: AliM1543C.cpp,v 1.65 2008/03/14 15:30:50 iamcamiel Exp $
  *
  * X-1.64       Camiel Vanderhoeven                             14-MAR-2008
  *   1. More meaningful exceptions replace throwing (int) 1.
@@ -259,30 +259,29 @@
  * X-1.1        Camiel Vanderhoeven                             19-JAN-2007
  *      Initial version in CVS.
  **/
-
 #include "StdAfx.h"
 #include "AliM1543C.h"
 #include "System.h"
 #include "VGA.h"
 
 #ifdef DEBUG_PIC
-bool pic_messages = false;
+bool  pic_messages = false;
 #endif
 
 /* Timer Calibration: Instructions per Microsecond (assuming 1 clock = 1 instruction) */
-#define IPus 847
+#define IPus  847
 
-u32 ali_cfg_data[64] = {
+u32   ali_cfg_data[64] = {
   /*00*/ 0x153310b9,  // CFID: vendor + device
   /*04*/ 0x0200000f,  // CFCS: command + status
   /*08*/ 0x060100c3,  // CFRV: class + revision
   /*0c*/ 0x00000000,  // CFLT: latency timer + cache line size
-  /*10*/ 0x00000000,  // BAR0: 
-  /*14*/ 0x00000000,  // BAR1: 
-  /*18*/ 0x00000000,  // BAR2: 
-  /*1c*/ 0x00000000,  // BAR3: 
-  /*20*/ 0x00000000,  // BAR4: 
-  /*24*/ 0x00000000,  // BAR5: 
+  /*10*/ 0x00000000,  // BAR0:
+  /*14*/ 0x00000000,  // BAR1:
+  /*18*/ 0x00000000,  // BAR2:
+  /*1c*/ 0x00000000,  // BAR3:
+  /*20*/ 0x00000000,  // BAR4:
+  /*24*/ 0x00000000,  // BAR5:
   /*28*/ 0x00000000,  // CCIC: CardBus
   /*2c*/ 0x00000000,  // CSID: subsystem + vendor
   /*30*/ 0x00000000,  // BAR6: expansion rom base
@@ -290,23 +289,23 @@ u32 ali_cfg_data[64] = {
   /*38*/ 0x00000000,
   /*3c*/ 0x00000000,  // CFIT: interrupt configuration
   0, 0, 0, 0, 0,
-  /*54*/ 0x00000200,  //                             
+  /*54*/ 0x00000200,  //
   0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
 };
 
-u32 ali_cfg_mask[64] = {
+u32   ali_cfg_mask[64] = {
   /*00*/ 0x00000000,  // CFID: vendor + device
   /*04*/ 0x00000000,  // CFCS: command + status
   /*08*/ 0x00000000,  // CFRV: class + revision
   /*0c*/ 0x00000000,  // CFLT: latency timer + cache line size
   /*10*/ 0x00000000,  // BAR0
   /*14*/ 0x00000000,  // BAR1: CBMA
-  /*18*/ 0x00000000,  // BAR2: 
-  /*1c*/ 0x00000000,  // BAR3: 
-  /*20*/ 0x00000000,  // BAR4: 
-  /*24*/ 0x00000000,  // BAR5: 
+  /*18*/ 0x00000000,  // BAR2:
+  /*1c*/ 0x00000000,  // BAR3:
+  /*20*/ 0x00000000,  // BAR4:
+  /*24*/ 0x00000000,  // BAR5:
   /*28*/ 0x00000000,  // CCIC: CardBus
   /*2c*/ 0x00000000,  // CSID: subsystem + vendor
   /*30*/ 0x00000000,  // BAR6: expansion rom base
@@ -328,63 +327,59 @@ u32 ali_cfg_mask[64] = {
 /**
  * Constructor.
  **/
-
-CAliM1543C::CAliM1543C (CConfigurator * cfg, CSystem * c, int pcibus,
-                        int pcidev):CPCIDevice (cfg, c, pcibus, pcidev)
+CAliM1543C::CAliM1543C(CConfigurator* cfg, CSystem* c, int pcibus, int pcidev) : CPCIDevice(cfg, c, pcibus, pcidev)
 {
-  if (theAli != 0)
-    FAILURE(Configuration,"More than one Ali");
+  if(theAli != 0)
+    FAILURE(Configuration, "More than one Ali");
   theAli = this;
 }
 
 /**
  * Initialize the Ali device.
  **/
-void CAliM1543C::init ()
+void CAliM1543C::init()
 {
-  add_function (0, ali_cfg_data, ali_cfg_mask);
+  add_function(0, ali_cfg_data, ali_cfg_mask);
 
-  int i;
-  char *filename;
+  int     i;
+  char*   filename;
 
-  add_legacy_io (1, 0x61, 1);
+  add_legacy_io(1, 0x61, 1);
 
   state.reg_61 = 0;
 
-  add_legacy_io (2, 0x70, 4);
-  cSystem->RegisterMemory (this, 2, U64(0x00000801fc000070), 4);
-  for (i = 0; i < 4; i++)
+  add_legacy_io(2, 0x70, 4);
+  cSystem->RegisterMemory(this, 2, U64(0x00000801fc000070), 4);
+  for(i = 0; i < 4; i++)
     state.toy_access_ports[i] = 0;
-  for (i = 0; i < 256; i++)
+  for(i = 0; i < 256; i++)
     state.toy_stored_data[i] = 0;
 
-  state.toy_stored_data[0x17] = myCfg->get_bool_value ("vga_console") ? 1 : 0;
+  state.toy_stored_data[0x17] = myCfg->get_bool_value("vga_console") ? 1 : 0;
 
-  if (state.toy_stored_data[0x17] && !theVGA)
+  if(state.toy_stored_data[0x17] && !theVGA)
   {
-    printf
-      ("! CONFIGURATION WARNING ! vga_console set to true, but no VGA card installed.\n");
+    printf("! CONFIGURATION WARNING ! vga_console set to true, but no VGA card installed.\n");
     state.toy_stored_data[0x17] = 0;
   }
 
-  ResetPCI ();
+  ResetPCI();
 
   // PIT Setup
-  add_legacy_io (6, 0x40, 4);
-  for (i = 0; i < 3; i++)
+  add_legacy_io(6, 0x40, 4);
+  for(i = 0; i < 3; i++)
     state.pit_status[i] = 0x40; // invalid/null counter
-
-  for (i = 0; i < 9; i++)
+  for(i = 0; i < 9; i++)
     state.pit_counter[i] = 0;
 
-  add_legacy_io (7, 0x20, 2);
-  add_legacy_io (8, 0xa0, 2);
-  add_legacy_io (30, 0x4d0, 2);
+  add_legacy_io(7, 0x20, 2);
+  add_legacy_io(8, 0xa0, 2);
+  add_legacy_io(30, 0x4d0, 2);
 
   // odd one, byte read in PCI IACK (interrupt acknowledge) cycle. Interrupt vector.
-  cSystem->RegisterMemory (this, 20, U64(0x00000801f8000000), 1);
+  cSystem->RegisterMemory(this, 20, U64(0x00000801f8000000), 1);
 
-  for (i = 0; i < 2; i++)
+  for(i = 0; i < 2; i++)
   {
     state.pic_mode[i] = 0;
     state.pic_intvec[i] = 0;
@@ -393,45 +388,45 @@ void CAliM1543C::init ()
   }
 
   // Initialize parallel port
-  add_legacy_io (27, 0x3bc, 4);
-  filename = myCfg->get_text_value ("lpt.outfile");
-  if (filename)
+  add_legacy_io(27, 0x3bc, 4);
+  filename = myCfg->get_text_value("lpt.outfile");
+  if(filename)
   {
-    lpt = fopen (filename, "ab");
+    lpt = fopen(filename, "ab");
   }
   else
   {
     lpt = NULL;
   }
-  lpt_reset ();
 
-  myRegLock = new CMutex ("ali-reg");
+  lpt_reset();
+
+  myRegLock = new CMutex("ali-reg");
 
   myThread = 0;
 
-  printf
-    ("%s: $Id: AliM1543C.cpp,v 1.64 2008/03/14 14:50:20 iamcamiel Exp $\n",
-     devid_string);
+  printf("%s: $Id: AliM1543C.cpp,v 1.65 2008/03/14 15:30:50 iamcamiel Exp $\n",
+         devid_string);
 }
 
-void CAliM1543C::start_threads ()
+void CAliM1543C::start_threads()
 {
-  if (!myThread)
+  if(!myThread)
   {
-    myThread = new Poco::Thread ("ali");
-    printf (" %s", myThread->getName ().c_str ());
+    myThread = new Poco::Thread("ali");
+    printf(" %s", myThread->getName().c_str());
     StopThread = false;
-    myThread->start (*this);
+    myThread->start(*this);
   }
 }
 
-void CAliM1543C::stop_threads ()
+void CAliM1543C::stop_threads()
 {
   StopThread = true;
-  if (myThread)
+  if(myThread)
   {
-    printf (" %s", myThread->getName ().c_str ());
-    myThread->join ();
+    printf(" %s", myThread->getName().c_str());
+    myThread->join();
     delete myThread;
     myThread = 0;
   }
@@ -440,13 +435,12 @@ void CAliM1543C::stop_threads ()
 /**
  * Destructor.
  **/
-
-CAliM1543C::~CAliM1543C ()
+CAliM1543C::~CAliM1543C()
 {
-  stop_threads ();
+  stop_threads();
 
-  if (lpt)
-    fclose (lpt);
+  if(lpt)
+    fclose(lpt);
 }
 
 /**
@@ -463,33 +457,26 @@ CAliM1543C::~CAliM1543C ()
  *  - 30. I/O ports 4d0h-4d1h (edge/level register of programmable interrupt controller)
  *  .
  **/
-
-u32 CAliM1543C::ReadMem_Legacy (int index, u32 address, int dsize)
+u32 CAliM1543C::ReadMem_Legacy(int index, u32 address, int dsize)
 {
-  if (dsize != 8 && index != 20)        // when interrupt vector is read, dsize doesn't matter.
+  if(dsize != 8 && index != 20) // when interrupt vector is read, dsize doesn't matter.
   {
-    FAILURE_4(InvalidArgument,"%s: DSize %d reading from legacy memory range # %d at address %02x\n",
-       devid_string, dsize, index, address);
+    FAILURE_4(InvalidArgument,
+              "%s: DSize %d reading from legacy memory range # %d at address %02x\n",
+              devid_string, dsize, index, address);
   }
+
   int channel = 0;
-  switch (index)
+  switch(index)
   {
-  case 1:
-    return reg_61_read ();
-  case 2:
-    return toy_read (address);
-  case 6:
-    return pit_read (address);
-  case 8:
-    channel = 1;
-  case 7:
-    return pic_read (channel, address);
-  case 20:
-    return pic_read_vector ();
-  case 30:
-    return pic_read_edge_level (address);
-  case 27:
-    return lpt_read (address);
+  case 1:   return reg_61_read();
+  case 2:   return toy_read(address);
+  case 6:   return pit_read(address);
+  case 8:   channel = 1;
+  case 7:   return pic_read(channel, address);
+  case 20:  return pic_read_vector();
+  case 30:  return pic_read_edge_level(address);
+  case 27:  return lpt_read(address);
   }
 
   return 0;
@@ -513,37 +500,25 @@ u32 CAliM1543C::ReadMem_Legacy (int index, u32 address, int dsize)
  *  - 34. I/O ports 480h-48fh (DMA controller memory base high page register)
  *  .
  **/
-
-void CAliM1543C::WriteMem_Legacy (int index, u32 address, int dsize, u32 data)
+void CAliM1543C::WriteMem_Legacy(int index, u32 address, int dsize, u32 data)
 {
-  if (dsize != 8)
+  if(dsize != 8)
   {
-    FAILURE_4(InvalidArgument,"%s: DSize %d writing to legacy memory range # %d at address %02x\n",
-       devid_string, dsize, index, address);
+    FAILURE_4(InvalidArgument,
+              "%s: DSize %d writing to legacy memory range # %d at address %02x\n",
+              devid_string, dsize, index, address);
   }
+
   int channel = 0;
-  switch (index)
+  switch(index)
   {
-  case 1:
-    reg_61_write ((u8) data);
-    return;
-  case 2:
-    toy_write (address, (u8) data);
-    return;
-  case 6:
-    pit_write (address, (u8) data);
-    return;
-  case 8:
-    channel = 1;
-  case 7:
-    pic_write (channel, address, (u8) data);
-    return;
-  case 30:
-    pic_write_edge_level (address, (u8) data);
-    return;
-  case 27:
-    lpt_write (address, (u8) data);
-    return;
+  case 1:   reg_61_write((u8) data); return;
+  case 2:   toy_write(address, (u8) data); return;
+  case 6:   pit_write(address, (u8) data); return;
+  case 8:   channel = 1;
+  case 7:   pic_write(channel, address, (u8) data); return;
+  case 30:  pic_write_edge_level(address, (u8) data); return;
+  case 27:  lpt_write(address, (u8) data); return;
   }
 }
 
@@ -561,20 +536,20 @@ void CAliM1543C::WriteMem_Legacy (int index, u32 address, int dsize, u32 data)
  * Every 1500 reads the bit gets flipped so maybe the timing will
  * seem reasonable to the OS.
  */
-
-u8 CAliM1543C::reg_61_read ()
+u8 CAliM1543C::reg_61_read()
 {
 #if 0
   static long read_count = 0;
-  if (!(state.reg_61 & 0x20))
+  if(!(state.reg_61 & 0x20))
   {
-    if (read_count % 1500 == 0)
+    if(read_count % 1500 == 0)
       state.reg_61 |= 0x20;
   }
   else
   {
     state.reg_61 &= ~0x20;
   }
+
   read_count++;
 #else
   state.reg_61 &= ~0x20;
@@ -586,8 +561,7 @@ u8 CAliM1543C::reg_61_read ()
 /**
  * Write port 61h (speaker/ miscellaneous).
  **/
-
-void CAliM1543C::reg_61_write (u8 data)
+void CAliM1543C::reg_61_write(u8 data)
 {
   state.reg_61 = (state.reg_61 & 0xf0) | (((u8) data) & 0x0f);
 }
@@ -595,47 +569,47 @@ void CAliM1543C::reg_61_write (u8 data)
 /**
  * Read time-of-year clock ports (70h-73h).
  **/
-
-u8 CAliM1543C::toy_read (u32 address)
+u8 CAliM1543C::toy_read(u32 address)
 {
+
   //printf("%%ALI-I-READTOY: read port %02x: 0x%02x\n", (u32)(0x70 + address), state.toy_access_ports[address]);
-  return (u8) state.toy_access_ports[address];
+  return(u8) state.toy_access_ports[address];
 }
 
 /**
  * Write time-of-year clock ports (70h-73h). On a write to port 0, recalculate clock values.
  **/
-
-void CAliM1543C::toy_write (u32 address, u8 data)
+void CAliM1543C::toy_write(u32 address, u8 data)
 {
-  time_t ltime;
-  struct tm stime;
+  time_t      ltime;
+  struct tm   stime;
   static long read_count = 0;
   static long hold_count = 0;
 
   //printf("%%ALI-I-WRITETOY: write port %02x: 0x%02x\n", (u32)(0x70 + address), data);
-
   state.toy_access_ports[address] = (u8) data;
 
-  switch (address)
+  switch(address)
   {
   case 0:
-    if ((data & 0x7f) < 14)
+    if((data & 0x7f) < 14)
     {
-      state.toy_stored_data[0x0d] = 0x80;       // data is geldig!
+      state.toy_stored_data[0x0d] = 0x80;   // data is geldig!
+
       // update clock.......
-      time (&ltime);
-      gmtime_s (&stime, &ltime);
-      if (state.toy_stored_data[0x0b] & 4)
+      time(&ltime);
+      gmtime_s(&stime, &ltime);
+      if(state.toy_stored_data[0x0b] & 4)
       {
+
         // binary
         state.toy_stored_data[0] = (u8) (stime.tm_sec);
         state.toy_stored_data[2] = (u8) (stime.tm_min);
-        if (state.toy_stored_data[0x0b] & 2)    // 24-hour
+        if(state.toy_stored_data[0x0b] & 2) // 24-hour
           state.toy_stored_data[4] = (u8) (stime.tm_hour);
-        else                    // 12-hour
-          state.toy_stored_data[4] =
-            (u8) (((stime.tm_hour / 12) ? 0x80 : 0) | (stime.tm_hour % 12));
+        else
+          // 12-hour
+          state.toy_stored_data[4] = (u8) (((stime.tm_hour / 12) ? 0x80 : 0) | (stime.tm_hour % 12));
         state.toy_stored_data[6] = (u8) (stime.tm_wday + 1);
         state.toy_stored_data[7] = (u8) (stime.tm_mday);
         state.toy_stored_data[8] = (u8) (stime.tm_mon + 1);
@@ -643,29 +617,25 @@ void CAliM1543C::toy_write (u32 address, u8 data)
       }
       else
       {
+
         // BCD
-        state.toy_stored_data[0] =
-          (u8) (((stime.tm_sec / 10) << 4) | (stime.tm_sec % 10));
-        state.toy_stored_data[2] =
-          (u8) (((stime.tm_min / 10) << 4) | (stime.tm_min % 10));
-        if (state.toy_stored_data[0x0b] & 2)    // 24-hour
-          state.toy_stored_data[4] =
-            (u8) (((stime.tm_hour / 10) << 4) | (stime.tm_hour % 10));
-        else                    // 12-hour
-          state.toy_stored_data[4] =
-            (u8) (((stime.tm_hour / 12) ? 0x80 : 0) | (((stime.tm_hour % 12) /
-                                                        10) << 4) | ((stime.
-                                                                      tm_hour
-                                                                      % 12) %
-                                                                     10));
+        state.toy_stored_data[0] = (u8) (((stime.tm_sec / 10) << 4) | (stime.tm_sec % 10));
+        state.toy_stored_data[2] = (u8) (((stime.tm_min / 10) << 4) | (stime.tm_min % 10));
+        if(state.toy_stored_data[0x0b] & 2) // 24-hour
+          state.toy_stored_data[4] = (u8) (((stime.tm_hour / 10) << 4) | (stime.tm_hour % 10));
+        else
+        { // 12-hour
+          state.toy_stored_data[4] = (u8)
+            (
+              ((stime.tm_hour / 12) ? 0x80 : 0) |
+                (((stime.tm_hour % 12) / 10) << 4) | ((stime.tm_hour % 12) % 10)
+            );
+        }
+
         state.toy_stored_data[6] = (u8) (stime.tm_wday + 1);
-        state.toy_stored_data[7] =
-          (u8) (((stime.tm_mday / 10) << 4) | (stime.tm_mday % 10));
-        state.toy_stored_data[8] =
-          (u8) ((((stime.tm_mon + 1) / 10) << 4) | ((stime.tm_mon + 1) % 10));
-        state.toy_stored_data[9] =
-          (u8) ((((stime.tm_year % 100) / 10) << 4) | ((stime.tm_year % 100) %
-                                                       10));
+        state.toy_stored_data[7] = (u8) (((stime.tm_mday / 10) << 4) | (stime.tm_mday % 10));
+        state.toy_stored_data[8] = (u8) ((((stime.tm_mon + 1) / 10) << 4) | ((stime.tm_mon + 1) % 10));
+        state.toy_stored_data[9] = (u8) ((((stime.tm_year % 100) / 10) << 4) | ((stime.tm_year % 100) % 10));
       }
 
       // Debian Linux wants something out of 0x0a.  It gets initialized
@@ -692,16 +662,15 @@ void CAliM1543C::toy_write (u32 address, u8 data)
       //# /* Periodic intr. / Square wave rate select. 0=none, 1=32.8kHz,... 15=2Hz */
       //# # define RTC_RATE_SELECT 0x0F
       //#
-
       // The SRM-init value of 0x26 means:
       //  xtal speed 32.768KHz  (standard)
       //  periodic interrupt rate divisor of 32 = interrupt every 976.562 ms (1024Hz clock)
-
-      if (state.toy_stored_data[0x0a] & 0x80)
+      if(state.toy_stored_data[0x0a] & 0x80)
       {
+
         // Once the UIP line goes high, we have to stay high for 2228us.
         hold_count--;
-        if (hold_count == 0)
+        if(hold_count == 0)
         {
           state.toy_stored_data[0x0a] &= ~0x80;
           read_count = 0;
@@ -709,12 +678,13 @@ void CAliM1543C::toy_write (u32 address, u8 data)
       }
       else
       {
+
         // UIP isn't high, so if we're looping and waiting for it to go, it
         // will take 1,000,000/(IPus*3) reads for a 3 instruction loop.
         // If it happens to be a one time read, it'll only throw our calculations
         // off a tiny bit, and they'll be re-synced on the next read-loop.
         read_count++;
-        if (read_count > 1000000 / (IPus * 3))  // 3541 @ 847IPus
+        if(read_count > 1000000 / (IPus * 3))   // 3541 @ 847IPus
         {
           state.toy_stored_data[0x0a] |= 0x80;
           hold_count = (2228 / (IPus * 3)) + 1; // .876 @ 847IPus, so we add one.
@@ -734,7 +704,6 @@ void CAliM1543C::toy_write (u32 address, u8 data)
       //#
       // this is set (by the srm?) to 0x0e = SQWE | DM_BINARY | 24H
       // linux sets the PIE bit later.
-
       //# /***********************************************************/
       //# #define RTC_INTR_FLAGS RTC_REG_C
       //# /* caution - cleared by read */
@@ -744,23 +713,26 @@ void CAliM1543C::toy_write (u32 address, u8 data)
       //# # define RTC_UF 0x10
       //#
     }
+
     state.toy_access_ports[1] = state.toy_stored_data[data & 0x7f];
 
     // register C is cleared after a read, and we don't care if its a write
-    if (data == 0x0c)
+    if(data == 0x0c)
       state.toy_stored_data[data & 0x7f] = 0;
     break;
+
   case 1:
-    if (state.toy_access_ports[0] == 0x0b && data & 0x040)      // If we're writing to register B, we make register C look like it fired.
+    if(state.toy_access_ports[0] == 0x0b && data & 0x040) // If we're writing to register B, we make register C look like it fired.
       state.toy_stored_data[0x0c] = 0xf0;
     state.toy_stored_data[state.toy_access_ports[0] & 0x7f] = (u8) data;
     break;
+
   case 2:
     state.toy_access_ports[3] = state.toy_stored_data[0x80 + (data & 0x7f)];
     break;
+
   case 3:
-    state.toy_stored_data[0x80 + (state.toy_access_ports[2] & 0x7f)] =
-      (u8) data;
+    state.toy_stored_data[0x80 + (state.toy_access_ports[2] & 0x7f)] = (u8) data;
     break;
   }
 }
@@ -793,11 +765,11 @@ void CAliM1543C::toy_write (u32 address, u8 data)
  * PIT Write:  2, 31  
  * PIT Write:  2, 13  = 1331
  **/
-
-u8 CAliM1543C::pit_read (u32 address)
+u8 CAliM1543C::pit_read(u32 address)
 {
+
   //printf("PIT Read: %02" LL "x \n",address);
-  u8 data;
+  u8  data;
   data = 0;
   return data;
 }
@@ -805,65 +777,66 @@ u8 CAliM1543C::pit_read (u32 address)
 /**
  * Write to the programmable interrupt timer ports (40h-43h)
  **/
-
-void CAliM1543C::pit_write (u32 address, u8 data)
+void CAliM1543C::pit_write(u32 address, u8 data)
 {
+
   //printf("PIT Write: %02" LL "x, %02x \n",address,data);
-  if (address == 3)
-  {                             // control
-    if (data != 0)
+  if(address == 3)
+  { // control
+    if(data != 0)
     {
       state.pit_status[address] = data; // last command seen.
-      if ((data & 0xc0) >> 6 != 3)
+      if((data & 0xc0) >> 6 != 3)
       {
         state.pit_status[(data & 0xc0) >> 6] = data & 0x3f;
         state.pit_mode[(data & 0xc0) >> 6] = (data & 0x30) >> 4;
       }
       else
-      {                         // readback command 8254 only
-        state.pit_status[address] = 0xc0;       // bogus :)
+      { // readback command 8254 only
+        state.pit_status[address] = 0xc0; // bogus :)
       }
     }
   }
   else
-  {                             // a counter
-    switch (state.pit_mode[address])
+  { // a counter
+    switch(state.pit_mode[address])
     {
     case 0:
       break;
+
     case 1:
     case 3:
-      state.pit_counter[address] =
-        (state.pit_counter[address] & 0xff) | data << 8;
-      state.pit_counter[address + PIT_OFFSET_MAX] =
-        state.pit_counter[address];
-      if (state.pit_mode[address] == 3)
+      state.pit_counter[address] = (state.pit_counter[address] & 0xff) |
+        data <<
+        8;
+      state.pit_counter[address + PIT_OFFSET_MAX] = state.pit_counter[address];
+      if(state.pit_mode[address] == 3)
       {
         state.pit_mode[address] = 2;
       }
       else
-        state.pit_status[address] &= ~0xc0;     // no longer high, counter valid.
+        state.pit_status[address] &= ~0xc0; // no longer high, counter valid.
       break;
+
     case 2:
-      state.pit_counter[address] =
-        (state.pit_counter[address] & 0xff00) | data;
+      state.pit_counter[address] = (state.pit_counter[address] & 0xff00) | data;
 
       // two bytes were written with 0x00, so its really 0x10000
-      if ((state.pit_status[address] & 0x30) >> 4 == 3
-          && state.pit_counter[address] == 0)
+      if((state.pit_status[address] & 0x30) >> 4 == 3
+       && state.pit_counter[address] == 0)
       {
         state.pit_counter[address] = 65536;
       }
-      state.pit_counter[address + PIT_OFFSET_MAX] =
-        state.pit_counter[address];
-      state.pit_status[address] &= ~0xc0;       // no longer high, counter valid.
+
+      state.pit_counter[address + PIT_OFFSET_MAX] = state.pit_counter[address];
+      state.pit_status[address] &= ~0xc0;   // no longer high, counter valid.
       break;
     }
   }
 }
 
-#define PIT_FACTOR 5000
-#define PIT_DEC(p) p=(p<PIT_FACTOR?0:p-PIT_FACTOR);
+#define PIT_FACTOR  5000
+#define PIT_DEC(p)  p = (p < PIT_FACTOR ? 0 : p - PIT_FACTOR);
 
 /**
  * Handle the PIT interrupt.
@@ -873,47 +846,51 @@ void CAliM1543C::pit_write (u32 address, u8 data)
  *  - counter 2 is the speaker and/or generic timer
  *  .
  **/
-
-void CAliM1543C::pit_clock ()
+void CAliM1543C::pit_clock()
 {
   int i;
-  for (i = 0; i < 3; i++)
+  for(i = 0; i < 3; i++)
   {
+
     // decrement the counter.
-    if (state.pit_status[i] & 0x40)
+    if(state.pit_status[i] & 0x40)
       continue;
-    PIT_DEC (state.pit_counter[i]);
-    switch ((state.pit_status[i] & 0x0e) >> 1)
+    PIT_DEC(state.pit_counter[i]);
+    switch((state.pit_status[i] & 0x0e) >> 1)
     {
-    case 0:                    // interrupt at terminal
-      if (!state.pit_counter[i])
+    case 0: // interrupt at terminal
+      if(!state.pit_counter[i])
       {
-        state.pit_status[i] |= 0xc0;    // out pin high, no count set.
+        state.pit_status[i] |= 0xc0;  // out pin high, no count set.
       }
       break;
-    case 3:                    // square wave generator
-      if (!state.pit_counter[i])
+
+    case 3: // square wave generator
+      if(!state.pit_counter[i])
       {
-        if (state.pit_status[i] & 0x80)
+        if(state.pit_status[i] & 0x80)
         {
           state.pit_status[i] &= ~0x80; // lower output;
         }
         else
         {
           state.pit_status[i] |= 0x80;  // raise output
-          if (i == 0)
+          if(i == 0)
           {
-            pic_interrupt (0, 0);       // counter 0 is tied to irq 0.
+            pic_interrupt(0, 0);        // counter 0 is tied to irq 0.
             //printf("Generating timer interrupt.\n");
           }
         }
+
         state.pit_counter[i] = state.pit_counter[i + PIT_OFFSET_MAX];
       }
+
       // decrement again, since we want a half-wide square wave.
-      PIT_DEC (state.pit_counter[i]);
+      PIT_DEC(state.pit_counter[i]);
       break;
+
     default:
-      break;                    // we don't care to handle it.
+      break;  // we don't care to handle it.
     }
   }
 }
@@ -921,21 +898,23 @@ void CAliM1543C::pit_clock ()
 /**
  * Thread entry point.
  **/
-void CAliM1543C::run ()
+void CAliM1543C::run()
 {
   try
   {
-    for (;;)
+    for(;;)
     {
-      Poco::Thread::sleep (1);
-      if (StopThread)
+      Poco::Thread::sleep(1);
+      if(StopThread)
         return;
-      do_pit_clock ();
+      do_pit_clock();
     }
   }
-  catch (Poco::Exception & e)
+
+  catch(Poco::Exception & e)
   {
-    printf ("Exception in Ali thread: %s.\n",e.displayText().c_str());
+    printf("Exception in Ali thread: %s.\n", e.displayText().c_str());
+
     // Let the thread die...
   }
 }
@@ -950,49 +929,45 @@ void CAliM1543C::run ()
  *  - Handle PIT clock.
  *  .
  **/
-
-void CAliM1543C::do_pit_clock ()
+void CAliM1543C::do_pit_clock()
 {
-  static int pit_counter = 0;
-  if (pit_counter++ >= PIT_RATIO)
+  static int  pit_counter = 0;
+  if(pit_counter++ >= PIT_RATIO)
   {
     pit_counter = 0;
-    pit_clock ();
+    pit_clock();
   }
 }
 
-#define PIC_STD 0
-#define PIC_INIT_0 1
-#define PIC_INIT_1 2
-#define PIC_INIT_2 3
+#define PIC_STD     0
+#define PIC_INIT_0  1
+#define PIC_INIT_1  2
+#define PIC_INIT_2  3
 
 /**
  * Read a byte from one of the programmable interrupt controller's registers.
  **/
-
-u8 CAliM1543C::pic_read (int index, u32 address)
+u8 CAliM1543C::pic_read(int index, u32 address)
 {
-  u8 data;
+  u8  data;
 
   data = 0;
 
-  if (address == 1)
+  if(address == 1)
     data = state.pic_mask[index];
 
 #ifdef DEBUG_PIC
-  if (pic_messages)
-    printf ("%%PIC-I-READ: read %02x from port %" LL "d on PIC %d\n", data,
-            address, index);
+  if(pic_messages)
+    printf("%%PIC-I-READ: read %02x from port %"LL "d on PIC %d\n", data,
+           address, index);
 #endif
-
   return data;
 }
 
 /**
  * Read a byte from the edge/level register of one of the programmable interrupt controllers.
  **/
-
-u8 CAliM1543C::pic_read_edge_level (int index)
+u8 CAliM1543C::pic_read_edge_level(int index)
 {
   return state.pic_edge_level[index];
 }
@@ -1000,41 +975,41 @@ u8 CAliM1543C::pic_read_edge_level (int index)
 /**
  * Read the interrupt vector during a PCI IACK cycle.
  **/
-
-u8 CAliM1543C::pic_read_vector ()
+u8 CAliM1543C::pic_read_vector()
 {
-  if (state.pic_asserted[0] & 1)
+  if(state.pic_asserted[0] & 1)
     return state.pic_intvec[0];
-  if (state.pic_asserted[0] & 2)
+  if(state.pic_asserted[0] & 2)
     return state.pic_intvec[0] + 1;
-  if (state.pic_asserted[0] & 4)
+  if(state.pic_asserted[0] & 4)
   {
-    if (state.pic_asserted[1] & 1)
+    if(state.pic_asserted[1] & 1)
       return state.pic_intvec[1];
-    if (state.pic_asserted[1] & 2)
+    if(state.pic_asserted[1] & 2)
       return state.pic_intvec[1] + 1;
-    if (state.pic_asserted[1] & 4)
+    if(state.pic_asserted[1] & 4)
       return state.pic_intvec[1] + 2;
-    if (state.pic_asserted[1] & 8)
+    if(state.pic_asserted[1] & 8)
       return state.pic_intvec[1] + 3;
-    if (state.pic_asserted[1] & 16)
+    if(state.pic_asserted[1] & 16)
       return state.pic_intvec[1] + 4;
-    if (state.pic_asserted[1] & 32)
+    if(state.pic_asserted[1] & 32)
       return state.pic_intvec[1] + 5;
-    if (state.pic_asserted[1] & 64)
+    if(state.pic_asserted[1] & 64)
       return state.pic_intvec[1] + 6;
-    if (state.pic_asserted[1] & 128)
+    if(state.pic_asserted[1] & 128)
       return state.pic_intvec[1] + 7;
   }
-  if (state.pic_asserted[0] & 8)
+
+  if(state.pic_asserted[0] & 8)
     return state.pic_intvec[0] + 3;
-  if (state.pic_asserted[0] & 16)
+  if(state.pic_asserted[0] & 16)
     return state.pic_intvec[0] + 4;
-  if (state.pic_asserted[0] & 32)
+  if(state.pic_asserted[0] & 32)
     return state.pic_intvec[0] + 5;
-  if (state.pic_asserted[0] & 64)
+  if(state.pic_asserted[0] & 64)
     return state.pic_intvec[0] + 6;
-  if (state.pic_asserted[0] & 128)
+  if(state.pic_asserted[0] & 128)
     return state.pic_intvec[0] + 7;
   return 0;
 }
@@ -1042,77 +1017,89 @@ u8 CAliM1543C::pic_read_vector ()
 /**
  * Write a byte to one of the programmable interrupt controller's registers.
  **/
-
-void CAliM1543C::pic_write (int index, u32 address, u8 data)
+void CAliM1543C::pic_write(int index, u32 address, u8 data)
 {
   int level;
   int op;
 #ifdef DEBUG_PIC
-  if (pic_messages)
-    printf ("%%PIC-I-WRITE: write %02x to port %" LL "d on PIC %d\n", data,
-            address, index);
+  if(pic_messages)
+    printf("%%PIC-I-WRITE: write %02x to port %"LL "d on PIC %d\n", data,
+           address, index);
 #endif
-
-  switch (address)
+  switch(address)
   {
   case 0:
-    if (data & 0x10)
+    if(data & 0x10)
       state.pic_mode[index] = PIC_INIT_0;
     else
       state.pic_mode[index] = PIC_STD;
-    if (data & 0x08)
+    if(data & 0x08)
     {
+
       // OCW3
     }
     else
     {
+
       // OCW2
       op = (data >> 5) & 7;
       level = data & 7;
-      switch (op)
+      switch(op)
       {
       case 1:
+
         //non-specific EOI
         state.pic_asserted[index] = 0;
+
         //
-        if (index == 1)
+        if(index == 1)
           state.pic_asserted[0] &= ~(1 << 2);
+
         //
-        if (!state.pic_asserted[0])
-          cSystem->interrupt (55, false);
+        if(!state.pic_asserted[0])
+          cSystem->interrupt(55, false);
 #ifdef DEBUG_PIC
         pic_messages = false;
 #endif
         break;
+
       case 3:
+
         // specific EOI
         state.pic_asserted[index] &= ~(1 << level);
+
         //
-        if ((index == 1) && (!state.pic_asserted[1]))
+        if((index == 1) && (!state.pic_asserted[1]))
           state.pic_asserted[0] &= ~(1 << 2);
+
         //
-        if (!state.pic_asserted[0])
-          cSystem->interrupt (55, false);
+        if(!state.pic_asserted[0])
+          cSystem->interrupt(55, false);
 #ifdef DEBUG_PIC
         pic_messages = false;
 #endif
         break;
       }
     }
+
     return;
+
   case 1:
-    switch (state.pic_mode[index])
+    switch(state.pic_mode[index])
     {
     case PIC_INIT_0:
       state.pic_intvec[index] = (u8) data & 0xf8;
       state.pic_mode[index] = PIC_INIT_1;
       return;
+
     case PIC_INIT_1:
       state.pic_mode[index] = PIC_INIT_2;
       return;
+
     case PIC_INIT_2:
       state.pic_mode[index] = PIC_STD;
       return;
+
     case PIC_STD:
       state.pic_mask[index] = data;
       state.pic_asserted[index] &= ~data;
@@ -1124,167 +1111,161 @@ void CAliM1543C::pic_write (int index, u32 address, u8 data)
 /**
  * Write a byte to the edge/level register of one of the programmable interrupt controllers.
  **/
-
-void CAliM1543C::pic_write_edge_level (int index, u8 data)
+void CAliM1543C::pic_write_edge_level(int index, u8 data)
 {
   state.pic_edge_level[index] = data;
 }
 
-#define DEBUG_EXPR (index!=0 || (intno != 0 && intno > 4))
+#define DEBUG_EXPR  (index != 0 || (intno != 0 && intno > 4))
 
 /**
  * Assert an interrupt on one of the programmable interrupt controllers.
  **/
-
-void CAliM1543C::pic_interrupt (int index, int intno)
+void CAliM1543C::pic_interrupt(int index, int intno)
 {
 #ifdef DEBUG_PIC
-  if (DEBUG_EXPR)
+  if(DEBUG_EXPR)
   {
-    printf ("%%PIC-I-INCOMING: Interrupt %d incomming on PIC %d", intno,
-            index);
+    printf("%%PIC-I-INCOMING: Interrupt %d incomming on PIC %d", intno, index);
     pic_messages = true;
   }
 #endif
 
   // do we have this interrupt enabled?
-  if (state.pic_mask[index] & (1 << intno))
+  if(state.pic_mask[index] & (1 << intno))
   {
 #ifdef DEBUG_PIC
-    if (DEBUG_EXPR)
-      printf (" (masked)\n");
+    if(DEBUG_EXPR)
+      printf(" (masked)\n");
     pic_messages = false;
 #endif
     return;
   }
 
-  if (state.pic_asserted[index] & (1 << intno))
+  if(state.pic_asserted[index] & (1 << intno))
   {
 #ifdef DEBUG_PIC
-    if (DEBUG_EXPR)
-      printf (" (already asserted)\n");
+    if(DEBUG_EXPR)
+      printf(" (already asserted)\n");
 #endif
     return;
   }
 
 #ifdef DEBUG_PIC
-  if (DEBUG_EXPR)
-    printf ("\n");
+  if(DEBUG_EXPR)
+    printf("\n");
 #endif
-
   state.pic_asserted[index] |= (1 << intno);
 
-  if (index == 1)
-    pic_interrupt (0, 2);       // cascade
-
-  if (index == 0)
-    cSystem->interrupt (55, true);
+  if(index == 1)
+    pic_interrupt(0, 2);  // cascade
+  if(index == 0)
+    cSystem->interrupt(55, true);
 }
 
 /**
  * De-assert an interrupt on one of the programmable interrupt controllers.
  **/
-
-void CAliM1543C::pic_deassert (int index, int intno)
+void CAliM1543C::pic_deassert(int index, int intno)
 {
-  if (!(state.pic_asserted[index] & (1 << intno)))
+  if(!(state.pic_asserted[index] & (1 << intno)))
     return;
 
-//  printf("De-asserting %d,%d\n",index,intno);
+  //  printf("De-asserting %d,%d\n",index,intno);
   state.pic_asserted[index] &= !(1 << intno);
-  if (index == 1 && state.pic_asserted[1] == 0)
-    pic_deassert (0, 2);        // cascade
-
-  if (index == 0 && state.pic_asserted[0] == 0)
-    cSystem->interrupt (55, false);
+  if(index == 1 && state.pic_asserted[1] == 0)
+    pic_deassert(0, 2); // cascade
+  if(index == 0 && state.pic_asserted[0] == 0)
+    cSystem->interrupt(55, false);
 }
 
-static u32 ali_magic1 = 0xA111543C;
-static u32 ali_magic2 = 0xC345111A;
+static u32  ali_magic1 = 0xA111543C;
+static u32  ali_magic2 = 0xC345111A;
 
 /**
  * Save state to a Virtual Machine State file.
  **/
-
-int CAliM1543C::SaveState (FILE * f)
+int CAliM1543C::SaveState(FILE* f)
 {
-  long ss = sizeof (state);
-  int res;
+  long  ss = sizeof(state);
+  int   res;
 
-  if (res = CPCIDevice::SaveState (f))
+  if(res = CPCIDevice::SaveState(f))
     return res;
 
-  fwrite (&ali_magic1, sizeof (u32), 1, f);
-  fwrite (&ss, sizeof (long), 1, f);
-  fwrite (&state, sizeof (state), 1, f);
-  fwrite (&ali_magic2, sizeof (u32), 1, f);
-  printf ("%s: %d bytes saved.\n", devid_string, (int) ss);
+  fwrite(&ali_magic1, sizeof(u32), 1, f);
+  fwrite(&ss, sizeof(long), 1, f);
+  fwrite(&state, sizeof(state), 1, f);
+  fwrite(&ali_magic2, sizeof(u32), 1, f);
+  printf("%s: %d bytes saved.\n", devid_string, (int) ss);
   return 0;
 }
 
 /**
  * Restore state from a Virtual Machine State file.
  **/
-
-int CAliM1543C::RestoreState (FILE * f)
+int CAliM1543C::RestoreState(FILE* f)
 {
-  long ss;
-  u32 m1;
-  u32 m2;
-  int res;
-  size_t r;
+  long    ss;
+  u32     m1;
+  u32     m2;
+  int     res;
+  size_t  r;
 
-  if (res = CPCIDevice::RestoreState (f))
+  if(res = CPCIDevice::RestoreState(f))
     return res;
 
-  r = fread (&m1, sizeof (u32), 1, f);
-  if (r != 1)
+  r = fread(&m1, sizeof(u32), 1, f);
+  if(r != 1)
   {
-    printf ("%s: unexpected end of file!\n", devid_string);
-    return -1;
-  }
-  if (m1 != ali_magic1)
-  {
-    printf ("%s: MAGIC 1 does not match!\n", devid_string);
+    printf("%s: unexpected end of file!\n", devid_string);
     return -1;
   }
 
-  fread (&ss, sizeof (long), 1, f);
-  if (r != 1)
+  if(m1 != ali_magic1)
   {
-    printf ("%s: unexpected end of file!\n", devid_string);
-    return -1;
-  }
-  if (ss != sizeof (state))
-  {
-    printf ("%s: STRUCT SIZE does not match!\n", devid_string);
+    printf("%s: MAGIC 1 does not match!\n", devid_string);
     return -1;
   }
 
-  fread (&state, sizeof (state), 1, f);
-  if (r != 1)
+  fread(&ss, sizeof(long), 1, f);
+  if(r != 1)
   {
-    printf ("%s: unexpected end of file!\n", devid_string);
+    printf("%s: unexpected end of file!\n", devid_string);
     return -1;
   }
 
-  r = fread (&m2, sizeof (u32), 1, f);
-  if (r != 1)
+  if(ss != sizeof(state))
   {
-    printf ("%s: unexpected end of file!\n", devid_string);
-    return -1;
-  }
-  if (m2 != ali_magic2)
-  {
-    printf ("%s: MAGIC 1 does not match!\n", devid_string);
+    printf("%s: STRUCT SIZE does not match!\n", devid_string);
     return -1;
   }
 
-  printf ("%s: %d bytes restored.\n", devid_string, (int) ss);
+  fread(&state, sizeof(state), 1, f);
+  if(r != 1)
+  {
+    printf("%s: unexpected end of file!\n", devid_string);
+    return -1;
+  }
+
+  r = fread(&m2, sizeof(u32), 1, f);
+  if(r != 1)
+  {
+    printf("%s: unexpected end of file!\n", devid_string);
+    return -1;
+  }
+
+  if(m2 != ali_magic2)
+  {
+    printf("%s: MAGIC 1 does not match!\n", devid_string);
+    return -1;
+  }
+
+  printf("%s: %d bytes restored.\n", devid_string, (int) ss);
   return 0;
 }
 
- /**
+/**
  * Parallel Port information:
  * address 0 (R/W):  data pins.  On read, the last byte written is returned.
  *
@@ -1315,95 +1296,99 @@ int CAliM1543C::RestoreState (FILE * f)
  *   +--------------- Unused
  * \endcode
  **/
-
-void CAliM1543C::lpt_reset ()
+void CAliM1543C::lpt_reset()
 {
   state.lpt_data = ~0;
-  state.lpt_status = 0xd8;      // busy, ack, online, error
-  state.lpt_control = 0x0c;     // select, init
+  state.lpt_status = 0xd8;  // busy, ack, online, error
+  state.lpt_control = 0x0c; // select, init
   state.lpt_init = false;
 }
 
 /**
  * Read a byte from one of the parallel port controller's registers.
  **/
-
-u8 CAliM1543C::lpt_read (u32 address)
+u8 CAliM1543C::lpt_read(u32 address)
 {
-  u8 data = 0;
-  switch (address)
+  u8  data = 0;
+  switch(address)
   {
   case 0:
     data = state.lpt_data;
     break;
+
   case 1:
     data = state.lpt_status;
-    if ((state.lpt_status & 0x80) == 0 && (state.lpt_control & 0x01) == 0)
+    if((state.lpt_status & 0x80) == 0 && (state.lpt_control & 0x01) == 0)
     {
-      if (state.lpt_status & 0x40)
-      {                         // test ack
-        state.lpt_status &= ~0x40;      // turn off ack
+      if(state.lpt_status & 0x40)
+      { // test ack
+        state.lpt_status &= ~0x40;  // turn off ack
       }
       else
       {
-        state.lpt_status |= 0x40;       // set ack.
-        state.lpt_status |= 0x80;       // set (not) busy.
+        state.lpt_status |= 0x40;   // set ack.
+        state.lpt_status |= 0x80;   // set (not) busy.
       }
     }
     break;
+
   case 2:
     data = state.lpt_control;
   }
-#ifdef DEBUG_LPT
-  printf ("%%LPT-I-READ: port %d = %x\n", address, data);
-#endif
 
+#ifdef DEBUG_LPT
+  printf("%%LPT-I-READ: port %d = %x\n", address, data);
+#endif
   return data;
 }
 
 /**
  * Write a byte to one of the parallel port controller's registers.
  **/
-
-void CAliM1543C::lpt_write (u32 address, u8 data)
+void CAliM1543C::lpt_write(u32 address, u8 data)
 {
 #ifdef DEBUG_LPT
-  printf ("%%LPT-I-WRITE: port %d = %x\n", address, data);
+  printf("%%LPT-I-WRITE: port %d = %x\n", address, data);
 #endif
-  switch (address)
+  switch(address)
   {
   case 0:
     state.lpt_data = data;
     break;
+
   case 1:
     break;
+
   case 2:
-    if ((data & 0x04) == 0)
+    if((data & 0x04) == 0)
     {
       state.lpt_init = true;
       state.lpt_status = 0xd8;
     }
     else
     {
-      if (data & 0x08)
-      {                         // select bit
-        if (data & 0x01)
-        {                       // strobe?
-          state.lpt_status &= ~0x80;    // we're busy
+      if(data & 0x08)
+      {   // select bit
+        if(data & 0x01)
+        { // strobe?
+          state.lpt_status &= ~0x80;  // we're busy
+
           // do the write!
-          if (lpt && state.lpt_init)
-            fputc (state.lpt_data, lpt);
-          if (state.lpt_control & 0x10)
+          if(lpt && state.lpt_init)
+            fputc(state.lpt_data, lpt);
+          if(state.lpt_control & 0x10)
           {
-            pic_interrupt (0, 7);
+            pic_interrupt(0, 7);
           }
         }
         else
         {
+
           // ?
         }
       }
     }
+
     state.lpt_control = data;
   }
 }
@@ -1411,10 +1396,10 @@ void CAliM1543C::lpt_write (u32 address, u8 data)
 /**
  * Check if threads are still running.
  **/
-void CAliM1543C::check_state ()
+void CAliM1543C::check_state()
 {
-  if (myThread && !myThread->isRunning ())
-    FAILURE (Thread,"ALi thread has died");
+  if(myThread && !myThread->isRunning())
+    FAILURE(Thread, "ALi thread has died");
 }
 
-CAliM1543C *theAli = 0;
+CAliM1543C*   theAli = 0;

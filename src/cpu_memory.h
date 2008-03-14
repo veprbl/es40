@@ -28,7 +28,7 @@
  * Contains code macros for the processor memory load/store instructions.
  * Based on ARM chapter 4.2.
  *
- * $Id: cpu_memory.h,v 1.10 2008/03/14 14:50:24 iamcamiel Exp $
+ * $Id: cpu_memory.h,v 1.11 2008/03/14 15:30:52 iamcamiel Exp $
  *
  * X-1.9        Camiel Vanderhoeven                             14-MAR-2008
  *   1. More meaningful exceptions replace throwing (int) 1.
@@ -62,78 +62,70 @@
  * X-1.1        Camiel Vanderhoeven                             18-FEB-2007
  *      File created. Contains code previously found in AlphaCPU.h
  **/
+#define DO_LDA    state.r[REG_1] = state.r[REG_2] + DISP_16;
 
-#define DO_LDA state.r[REG_1] = state.r[REG_2] + DISP_16;
+#define DO_LDAH   state.r[REG_1] = state.r[REG_2] + (DISP_16 << 16);
 
-#define DO_LDAH state.r[REG_1] = state.r[REG_2] + (DISP_16<<16);
+#define DO_LDBU   DATA_PHYS_NT(state.r[REG_2] + DISP_16, ACCESS_READ); \
+  state.r[REG_1] = READ_PHYS(8);
 
-#define DO_LDBU									\
-	  DATA_PHYS_NT(state.r[REG_2] + DISP_16, ACCESS_READ);	\
-	  state.r[REG_1] = READ_PHYS(8);
+#define DO_LDL    if(FREG_1 != 31)                       \
+  {                                                      \
+    DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_READ, 3); \
+    state.r[REG_1] = sext_u64_32(READ_PHYS(32));         \
+  }
 
-#define DO_LDL									\
-	if (FREG_1 != 31) {							\
-	  DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_READ, 3);	\
-	  state.r[REG_1] = sext_u64_32(READ_PHYS(32)); }
+#define DO_LDL_L  DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_READ, 3); \
+  cSystem->cpu_lock(state.iProcNum, phys_address);                     \
+  state.r[REG_1] = sext_u64_32(READ_PHYS(32));
 
-#define DO_LDL_L								            \
-	  DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_READ, 3);	\
-      cSystem->cpu_lock(state.iProcNum,phys_address);       \
-	  state.r[REG_1] = sext_u64_32(READ_PHYS(32));
+#define DO_LDQ    if(FREG_1 != 31)                       \
+  {                                                      \
+    DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_READ, 7); \
+    state.r[REG_1] = READ_PHYS(64);                      \
+  }
 
-#define DO_LDQ									\
-	if (FREG_1 != 31) {							\
-	  DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_READ, 7);	\
-	  state.r[REG_1] = READ_PHYS(64); }
+#define DO_LDQ_L  DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_READ, 7); \
+  cSystem->cpu_lock(state.iProcNum, phys_address);                     \
+  state.r[REG_1] = READ_PHYS(64);
 
-#define DO_LDQ_L								\
-	  DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_READ, 7);	\
-      cSystem->cpu_lock(state.iProcNum,phys_address);       \
-	  state.r[REG_1] = READ_PHYS(64);
+#define DO_LDQ_U  DATA_PHYS_NT((state.r[REG_2] + DISP_16) &~U64(0x7), \
+                               ACCESS_READ);                          \
+  state.r[REG_1] = READ_PHYS(64);
 
-#define DO_LDQ_U									\
-	  DATA_PHYS_NT((state.r[REG_2] + DISP_16)& ~U64(0x7), ACCESS_READ);	\
-	  state.r[REG_1] = READ_PHYS(64);
+#define DO_LDWU   DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_READ, 1); \
+  state.r[REG_1] = READ_PHYS(16);
 
-#define DO_LDWU									\
-	  DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_READ, 1);	\
-	  state.r[REG_1] = READ_PHYS(16);
+#define DO_STB    DATA_PHYS_NT(state.r[REG_2] + DISP_16, ACCESS_WRITE); \
+  WRITE_PHYS(state.r[REG_1], 8);
 
-#define DO_STB									\
-	  DATA_PHYS_NT(state.r[REG_2] + DISP_16, ACCESS_WRITE);	\
-	  WRITE_PHYS(state.r[REG_1],8);
+#define DO_STL    DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_WRITE, 3); \
+  WRITE_PHYS(state.r[REG_1], 32);
 
-#define DO_STL									\
-	  DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_WRITE, 3);	\
-	  WRITE_PHYS(state.r[REG_1],32);
+#define DO_STL_C  if(cSystem->cpu_unlock(state.iProcNum)) \
+  {                                                       \
+    DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_WRITE, 3); \
+    WRITE_PHYS(state.r[REG_1], 32);                       \
+    state.r[REG_1] = 1;                                   \
+  }                                                       \
+  else                                                    \
+    state.r[REG_1] = 0;
 
-#define DO_STL_C								\
-	  if (cSystem->cpu_unlock(state.iProcNum)) {				\
-	      DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_WRITE, 3);	\
-	      WRITE_PHYS(state.r[REG_1],32);						\
-          state.r[REG_1] = 1;       \
-	  }								\
-        else                                                  \
-          state.r[REG_1] = 0;
+#define DO_STQ    DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_WRITE, 7); \
+  WRITE_PHYS(state.r[REG_1], 64);
 
-#define DO_STQ									\
-	  DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_WRITE, 7);	\
-	  WRITE_PHYS(state.r[REG_1],64);
+#define DO_STQ_C  if(cSystem->cpu_unlock(state.iProcNum)) \
+  {                                                       \
+    DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_WRITE, 7); \
+    WRITE_PHYS(state.r[REG_1], 64);                       \
+    state.r[REG_1] = 1;                                   \
+  }                                                       \
+  else                                                    \
+    state.r[REG_1] = 0;
 
-#define DO_STQ_C								\
-	  if (cSystem->cpu_unlock(state.iProcNum)) {				\
-	      DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_WRITE, 7);	\
-	      WRITE_PHYS(state.r[REG_1],64);						\
-          state.r[REG_1] = 1;       \
-	  }								\
-        else                                                  \
-          state.r[REG_1] = 0;
+#define DO_STQ_U  DATA_PHYS_NT((state.r[REG_2] + DISP_16) &~U64(0x7), \
+                               ACCESS_WRITE);                         \
+  WRITE_PHYS(state.r[REG_1], 64);
 
-#define DO_STQ_U									\
-	  DATA_PHYS_NT((state.r[REG_2] + DISP_16)& ~U64(0x7), ACCESS_WRITE);	\
-	  WRITE_PHYS(state.r[REG_1],64);
-
-#define DO_STW									\
-	  DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_WRITE, 1);	\
-	  WRITE_PHYS(state.r[REG_1],16);
-
+#define DO_STW    DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_WRITE, 1); \
+  WRITE_PHYS(state.r[REG_1], 16);

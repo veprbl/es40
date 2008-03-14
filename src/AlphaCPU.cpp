@@ -27,7 +27,7 @@
  * \file 
  * Contains the code for the emulated DecChip 21264CB EV68 Alpha processor.
  *
- * $Id: AlphaCPU.cpp,v 1.75 2008/03/14 14:50:20 iamcamiel Exp $
+ * $Id: AlphaCPU.cpp,v 1.76 2008/03/14 15:30:50 iamcamiel Exp $
  *
  * X-1.75       Camiel Vanderhoeven                             14-MAR-2008
  *   1. More meaningful exceptions replace throwing (int) 1.
@@ -307,7 +307,6 @@
  * X-1.1        Camiel Vanderhoeven                             19-JAN-2007
  *      Initial version in CVS.
  **/
-
 #include "StdAfx.h"
 #include "AlphaCPU.h"
 #include "TraceEngine.h"
@@ -329,31 +328,32 @@
 #if !defined(HAVE_NEW_FP)
 #include "es40_float.h"
 #endif
-
-void CAlphaCPU::release_threads ()
+void CAlphaCPU::release_threads()
 {
-  mySemaphore.set ();
+  mySemaphore.set();
 }
 
-void CAlphaCPU::run ()
+void CAlphaCPU::run()
 {
   try
   {
-    for (;;)
+    for(;;)
     {
-      mySemaphore.wait ();
-      for (;;)
+      mySemaphore.wait();
+      for(;;)
       {
-        if (StopThread)
+        if(StopThread)
           return;
-        for (int i = 0; i < 1000000; i++)
-          execute ();
+        for(int i = 0; i < 1000000; i++)
+          execute();
       }
     }
   }
-  catch (Poco::Exception & e)
+
+  catch(Poco::Exception & e)
   {
-    printf ("Exception in CPU thread: %s.\n",e.displayText().c_str());
+    printf("Exception in CPU thread: %s.\n", e.displayText().c_str());
+
     // Let the thread die...
   }
 }
@@ -361,41 +361,38 @@ void CAlphaCPU::run ()
 /**
  * Constructor.
  **/
-CAlphaCPU::CAlphaCPU (CConfigurator * cfg, CSystem * system):CSystemComponent (cfg, system), mySemaphore (0,
-                                             1)
-{
-}
+CAlphaCPU::CAlphaCPU(CConfigurator* cfg, CSystem* system) : CSystemComponent(cfg, system), mySemaphore(0, 1)
+{ }
 
 /**
  * Initialize the CPU.
  **/
-void CAlphaCPU::init ()
+void CAlphaCPU::init()
 {
-  memset (&state, 0, sizeof (state));
+  memset(&state, 0, sizeof(state));
 
-  cpu_hz = myCfg->get_num_value ("speed", true, 500000000);
+  cpu_hz = myCfg->get_num_value("speed", true, 500000000);
 
-  state.iProcNum = cSystem->RegisterCPU (this);
+  state.iProcNum = cSystem->RegisterCPU(this);
 
   icache_enabled = true;
-  flush_icache ();
-  icache_enabled = myCfg->get_bool_value ("icache", false);
+  flush_icache();
+  icache_enabled = myCfg->get_bool_value("icache", false);
 
-  tbia (ACCESS_READ);
-  tbia (ACCESS_EXEC);
+  tbia(ACCESS_READ);
+  tbia(ACCESS_EXEC);
 
-//  state.fpcr = U64(0x8ff0000000000000);
+  //  state.fpcr = U64(0x8ff0000000000000);
   state.fpen = true;
   state.i_ctl_other = U64(0x502086);
   state.smc = 1;
 
   // SROM imitation...
-  add_tb (0, 0, U64(0xff61), ACCESS_READ);
+  add_tb(0, 0, U64(0xff61), ACCESS_READ);
 
 #if defined(IDB)
   bListing = false;
 #endif
-
   myThread = 0;
 
   cc_large = 0;
@@ -407,56 +404,55 @@ void CAlphaCPU::init ()
 
   cc_per_instruction = 70;
   ins_per_timer_int = cpu_hz / 1024;
-  next_timer_int = state.iProcNum ? U64(0xFFFFFFFFFFFFFFFF) : ins_per_timer_int; /* only on CPU 0 */
+  next_timer_int = state.iProcNum ? U64(0xFFFFFFFFFFFFFFFF) : ins_per_timer_int;  /* only on CPU 0 */
 
   state.r[22] = state.r[22 + 32] = state.iProcNum;
 
-  printf
-    ("%s(%d): $Id: AlphaCPU.cpp,v 1.75 2008/03/14 14:50:20 iamcamiel Exp $\n",
-     devid_string, state.iProcNum);
+  printf("%s(%d): $Id: AlphaCPU.cpp,v 1.76 2008/03/14 15:30:50 iamcamiel Exp $\n",
+         devid_string, state.iProcNum);
 }
 
-void CAlphaCPU::start_threads ()
+void CAlphaCPU::start_threads()
 {
-  char buffer[5];
-  mySemaphore.tryWait (1);
-  if (!myThread)
+  char  buffer[5];
+  mySemaphore.tryWait(1);
+  if(!myThread)
   {
-    sprintf (buffer, "cpu%d", state.iProcNum);
-    myThread = new Poco::Thread (buffer);
-    printf (" %s", myThread->getName ().c_str ());
+    sprintf(buffer, "cpu%d", state.iProcNum);
+    myThread = new Poco::Thread(buffer);
+    printf(" %s", myThread->getName().c_str());
     StopThread = false;
-    myThread->start (*this);
+    myThread->start(*this);
   }
 }
 
-void CAlphaCPU::stop_threads ()
+void CAlphaCPU::stop_threads()
 {
   StopThread = true;
-  if (myThread)
+  if(myThread)
   {
-    mySemaphore.set ();
-    printf (" %s", myThread->getName ().c_str ());
-    myThread->join ();
+    mySemaphore.set();
+    printf(" %s", myThread->getName().c_str());
+    myThread->join();
     delete myThread;
     myThread = 0;
   }
-  mySemaphore.tryWait (1);
+
+  mySemaphore.tryWait(1);
 }
 
 /**
  * Destructor.
  **/
-CAlphaCPU::~CAlphaCPU ()
+CAlphaCPU::~CAlphaCPU()
 {
-  stop_threads ();
+  stop_threads();
 }
 
-
 #if defined(IDB)
-char dbg_string[1000];
+char    dbg_string[1000];
 #if !defined(LS_MASTER) && !defined(LS_SLAVE)
-char *dbg_strptr;
+char*   dbg_strptr;
 #endif
 
 /**
@@ -467,26 +463,26 @@ char *dbg_strptr;
  *
  * \param s       Pointer to the debug string.
  **/
-void handle_debug_string (char *s)
+void handle_debug_string(char* s)
 {
 #if defined(LS_SLAVE) || defined(LS_MASTER)
-//    lockstep_compare(s);
-  *dbg_strptr++ = '\n';
+
+  //    lockstep_compare(s);
+  * dbg_strptr++ = '\n';
   *dbg_strptr = '\0';
 #else
-  if (*s)
-    printf ("%s\n", s);
+  if(*s)
+    printf("%s\n", s);
 #endif
 }
-
 #endif
-
 #if defined(MIPS_ESTIMATE)
+
 // MIPS_INTERVAL must take longer than 1 second to execute
 // or estimate will generate a divide-by-zero error
 #define MIPS_INTERVAL 0xfffffff
 static time_t saved = 0;
-static u64 count;
+static u64    count;
 static double min_mips = 999999999999999.0;
 static double max_mips = 0.0;
 #endif
@@ -496,16 +492,15 @@ static double max_mips = 0.0;
  *
  * Calibrate the CPU timing loop.
  **/
-void CAlphaCPU::check_state ()
+void CAlphaCPU::check_state()
 {
-  if (myThread && !myThread->isRunning ())
-    FAILURE (Thread,"CPU thread has died");
+  if(myThread && !myThread->isRunning())
+    FAILURE(Thread, "CPU thread has died");
 
   // correct CPU timing loop...
-
   u64 icount = state.instruction_count;
   u64 cc = cc_large;
-  u64 time = start_time.elapsed ();
+  u64 time = start_time.elapsed();
   s64 ce = cc_per_instruction;
 
   u64 cc_aim = time * cpu_hz / 1000000; // microsecond resolution
@@ -516,20 +511,22 @@ void CAlphaCPU::check_state ()
   s64 ce_diff = (u64) ((float) cc_diff / (float) icount_lapse);
 
   s64 ce_new = ce_aim + ce_diff;
-  if (ce_new < 0)
+  if(ce_new < 0)
     ce_new = 0;
-  if (ce_new > 200)
+  if(ce_new > 200)
     ce_new = 200;
 
-  if (ce_new != ce)
+  if(ce_new != ce)
   {
-//    printf("                                     time %12" LL "d | prev %12" LL "d  \n",time,prev_time);
-//    printf("          count lapse %12" LL "d | curr %12" LL "d | prev %12" LL "d  \n",icount_lapse,icount,prev_icount);
-//    printf("cc %12" LL "d | aim %12" LL "d | diff %12" LL "d | prev %12" LL "d  \n",cc,cc_aim,cc_diff,prev_cc);
-//    printf("ce %12" LL "d | aim %12" LL "d | diff %12" LL "d | new  %12" LL "d  \n",ce,ce_aim,ce_diff,ce_new);
-//    printf("==========================================================================  \n");
+
+    //    printf("                                     time %12" LL "d | prev %12" LL "d  \n",time,prev_time);
+    //    printf("          count lapse %12" LL "d | curr %12" LL "d | prev %12" LL "d  \n",icount_lapse,icount,prev_icount);
+    //    printf("cc %12" LL "d | aim %12" LL "d | diff %12" LL "d | prev %12" LL "d  \n",cc,cc_aim,cc_diff,prev_cc);
+    //    printf("ce %12" LL "d | aim %12" LL "d | diff %12" LL "d | new  %12" LL "d  \n",ce,ce_aim,ce_diff,ce_new);
+    //    printf("==========================================================================  \n");
     cc_per_instruction = ce_new;
   }
+
   prev_cc = cc;
   prev_icount = icount;
   prev_time = time;
@@ -545,7 +542,7 @@ void CAlphaCPU::check_state ()
  * implemented, to accomodate self-modifying code. The instruction cache can be disabled
  * if self-modifying code is not expected.
  **/
-void CAlphaCPU::execute ()
+void CAlphaCPU::execute()
 {
   u32 ins;
   int i;
@@ -553,87 +550,90 @@ void CAlphaCPU::execute ()
   u64 temp_64;
   u64 temp_64_1;
   u64 temp_64_2;
-  UFP ufp1, ufp2;
+  UFP ufp1;
+  UFP ufp2;
 
   int opcode;
   int function;
 
 #if defined(MIPS_ESTIMATE)
+
   // Calculate simulated performance statistics
-  if (++count >= MIPS_INTERVAL)
+  if(++count >= MIPS_INTERVAL)
   {
-    time_t current;
-    time (&current);
-    if (saved > 0)
+    time_t  current;
+    time(&current);
+    if(saved > 0)
     {
-      double secs = difftime (current, saved);
-      double ips = MIPS_INTERVAL / secs;
-      double mips = ips / 1000000.0;
-      if (max_mips < mips)
+      double  secs = difftime(current, saved);
+      double  ips = MIPS_INTERVAL / secs;
+      double  mips = ips / 1000000.0;
+      if(max_mips < mips)
         max_mips = mips;
-      if (min_mips > mips)
+      if(min_mips > mips)
         min_mips = mips;
-      printf
-        ("ES40 MIPS (%3.1f sec):: current: %5.3f, min: %5.3f, max: %5.3f\n",
-         secs, mips, min_mips, max_mips);
+      printf("ES40 MIPS (%3.1f sec):: current: %5.3f, min: %5.3f, max: %5.3f\n",
+             secs, mips, min_mips, max_mips);
     }
+
     saved = current;
     count = 0;
   }
 #endif
-
 #if defined(IDB)
-  char *funcname = 0;
+  char*   funcname = 0;
   dbg_string[0] = '\0';
 #if !defined(LS_MASTER) && !defined(LS_SLAVE)
   dbg_strptr = dbg_string;
 #endif
 #endif
-
   state.current_pc = state.pc;
 
   // Service interrupts
-  if (DO_ACTION)
+  if(DO_ACTION)
   {
+
     // We're actually executing code. Cycle counter should be updated, interrupt and interrupt
     // timer status needs to be checked, and the next instruction should be fetched from the
     // instruction cache.
-
     // Increase the cycle counter if it is currently enabled.
-
     state.instruction_count++;
     cc_large += cc_per_instruction;
 
-    if (cc_large > next_timer_int)
+    if(cc_large > next_timer_int)
     {
       next_timer_int += ins_per_timer_int;
-      cSystem->interrupt (-1, true);
+      cSystem->interrupt(-1, true);
     }
 
-    if (state.cc_ena)
+    if(state.cc_ena)
     {
       state.cc += cc_per_instruction;
     }
 
-    if (state.check_timers)
+    if(state.check_timers)
     {
+
       // There are one or more active delayed irq_h interrupts. Go through the 6
       // irq_h timers, decrease them as needed, and set the interrupt if the timer
       // reaches 0.
       state.check_timers = false;
-      for (int i = 0; i < 6; i++)
+      for(int i = 0; i < 6; i++)
       {
-        if (state.irq_h_timer[i])
+        if(state.irq_h_timer[i])
         {
+
           // This timer is active. Decrease it, and check if it reached 0.
           state.irq_h_timer[i]--;
-          if (state.irq_h_timer[i])
+          if(state.irq_h_timer[i])
           {
+
             // The timer hasn't reached 0 yet; check on the timers again next clock tick.
             state.check_timers = true;
           }
           else
           {
+
             // The timer has reached 0. Set the interrupt status, and set the flag that we
             // need to check the interrupt status
             state.eir |= (U64(0x1) << i);
@@ -643,12 +643,14 @@ void CAlphaCPU::execute ()
       }
     }
 
-    if (state.check_int && !(state.pc & 1))
+    if(state.check_int && !(state.pc & 1))
     {
+
       // One or more of the variables that affect interrupt status have changed, and we are not
       // currently inside PALmode. It is not certain that this means we hava an interrupt to
       // service, but we might have. This needs to be checked.
-/*      
+
+      /*      
       if (state.pal_vms) {
         // PALcode base is set to 0x8000; meaning OpenVMS PALcode is currently active. In this
         // case, our VMS PALcode replacement routines are valid, and should be used as it is
@@ -672,20 +674,17 @@ void CAlphaCPU::execute ()
       } else 
 */
       {
+
         // PALcode base is set to an unsupported value. We have no choice but to transfer control
         // to PALmode at the PALcode interrupt entry point.
-
-//        if (state.eir & 8)
-//        {
-//          printf("%s: IP interrupt received%s...\n",devid_string, (state.eien&8)?"(enabled)":"(masked)");
-//        }
-
-        if ((state.eien & state.eir) ||
-            (state.sien & state.sir) ||
-            (state.asten
-             && (state.aster & state.astrr & ((1 << (state.cm + 1)) - 1))))
+        //        if (state.eir & 8)
+        //        {
+        //          printf("%s: IP interrupt received%s...\n",devid_string, (state.eien&8)?"(enabled)":"(masked)");
+        //        }
+        if((state.eien & state.eir) || (state.sien & state.sir) || (state.asten
+         && (state.aster & state.astrr & ((1 << (state.cm + 1)) - 1))))
         {
-          GO_PAL (INTERRUPT);
+          GO_PAL(INTERRUPT);
           return;
         }
       }
@@ -697,24 +696,24 @@ void CAlphaCPU::execute ()
 
     // If profiling is enabled, increase the profiling counter for the current block of addresses.
 #if defined(PROFILE)
-    PROFILE_DO (state.pc);
+    PROFILE_DO(state.pc);
 #endif
 
     // Get the next instruction from the instruction cache.
-    if (get_icache (state.pc, &ins))
+    if(get_icache(state.pc, &ins))
       return;
-
-  }                             // if (DO_ACTION) 
+  }           // if (DO_ACTION)
   else
   {
+
     // We're not really executing any code (DO_ACTION is false); that means that we're
     // in a debugging session, and just listing instructions at a particular address.
     // In this case, we treat the program counter as a physical address.
-    ins = (u32) (cSystem->ReadMem (state.pc, 32, this));
+    ins = (u32) (cSystem->ReadMem(state.pc, 32, this));
   }
 
   // Increase the program counter. The current value is retained in state.current_pc.
-  next_pc ();
+  next_pc();
 
   // Clear "always zero" registers. The last instruction might have written something to
   // one of these registers.
@@ -730,214 +729,149 @@ void CAlphaCPU::execute ()
   last_instruction = ins;
 #endif
   opcode = ins >> 26;
-  switch (opcode)
+  switch(opcode)
   {
-  case 0x00:                   // CALL_PAL
+  case 0x00:  // CALL_PAL
     function = ins & 0x1fffffff;
-    OP (CALL_PAL, PAL);
-//    switch (function)
-//    {
-//      case 0x123401: OP_FNC(vmspal_int_read_ide, NOP);
-//      default: OP(CALL_PAL,PAL);
-//    }
+    OP(CALL_PAL, PAL);
 
+  //    switch (function)
+  //    {
+  //      case 0x123401: OP_FNC(vmspal_int_read_ide, NOP);
+  //      default: OP(CALL_PAL,PAL);
+  //    }
   case 0x08:
-    OP (LDA, MEM);
+    OP(LDA, MEM);
+
   case 0x09:
-    OP (LDAH, MEM);
+    OP(LDAH, MEM);
+
   case 0x0a:
-    OP (LDBU, MEM);
+    OP(LDBU, MEM);
+
   case 0x0b:
-    OP (LDQ_U, MEM);
+    OP(LDQ_U, MEM);
+
   case 0x0c:
-    OP (LDWU, MEM);
+    OP(LDWU, MEM);
+
   case 0x0d:
-    OP (STW, MEM);
+    OP(STW, MEM);
+
   case 0x0e:
-    OP (STB, MEM);
+    OP(STB, MEM);
+
   case 0x0f:
-    OP (STQ_U, MEM);
+    OP(STQ_U, MEM);
 
-  case 0x10:                   // INTA* instructions
+  case 0x10:  // INTA* instructions
     function = (ins >> 5) & 0x7f;
-    switch (function)
+    switch(function)
     {
-    case 0x40:
-      OP (ADDL_V, R12_R3);
-    case 0x00:
-      OP (ADDL, R12_R3);
-    case 0x02:
-      OP (S4ADDL, R12_R3);
-    case 0x49:
-      OP (SUBL_V, R12_R3);
-    case 0x09:
-      OP (SUBL, R12_R3);
-    case 0x0b:
-      OP (S4SUBL, R12_R3);
-    case 0x0f:
-      OP (CMPBGE, R12_R3);
-    case 0x12:
-      OP (S8ADDL, R12_R3);
-    case 0x1b:
-      OP (S8SUBL, R12_R3);
-    case 0x1d:
-      OP (CMPULT, R12_R3);
-    case 0x60:
-      OP (ADDQ_V, R12_R3);
-    case 0x20:
-      OP (ADDQ, R12_R3);
-    case 0x22:
-      OP (S4ADDQ, R12_R3);
-    case 0x69:
-      OP (SUBQ_V, R12_R3);
-    case 0x29:
-      OP (SUBQ, R12_R3);
-    case 0x2b:
-      OP (S4SUBQ, R12_R3);
-    case 0x2d:
-      OP (CMPEQ, R12_R3);
-    case 0x32:
-      OP (S8ADDQ, R12_R3);
-    case 0x3b:
-      OP (S8SUBQ, R12_R3);
-    case 0x3d:
-      OP (CMPULE, R12_R3);
-    case 0x4d:
-      OP (CMPLT, R12_R3);
-    case 0x6d:
-      OP (CMPLE, R12_R3);
-    default:
-      UNKNOWN2;
+    case 0x40:  OP(ADDL_V, R12_R3);
+    case 0x00:  OP(ADDL, R12_R3);
+    case 0x02:  OP(S4ADDL, R12_R3);
+    case 0x49:  OP(SUBL_V, R12_R3);
+    case 0x09:  OP(SUBL, R12_R3);
+    case 0x0b:  OP(S4SUBL, R12_R3);
+    case 0x0f:  OP(CMPBGE, R12_R3);
+    case 0x12:  OP(S8ADDL, R12_R3);
+    case 0x1b:  OP(S8SUBL, R12_R3);
+    case 0x1d:  OP(CMPULT, R12_R3);
+    case 0x60:  OP(ADDQ_V, R12_R3);
+    case 0x20:  OP(ADDQ, R12_R3);
+    case 0x22:  OP(S4ADDQ, R12_R3);
+    case 0x69:  OP(SUBQ_V, R12_R3);
+    case 0x29:  OP(SUBQ, R12_R3);
+    case 0x2b:  OP(S4SUBQ, R12_R3);
+    case 0x2d:  OP(CMPEQ, R12_R3);
+    case 0x32:  OP(S8ADDQ, R12_R3);
+    case 0x3b:  OP(S8SUBQ, R12_R3);
+    case 0x3d:  OP(CMPULE, R12_R3);
+    case 0x4d:  OP(CMPLT, R12_R3);
+    case 0x6d:  OP(CMPLE, R12_R3);
+    default:    UNKNOWN2;
     }
     break;
 
-  case 0x11:                   // INTL* instructions
+  case 0x11:  // INTL* instructions
     function = (ins >> 5) & 0x7f;
-    switch (function)
+    switch(function)
     {
-    case 0x00:
-      OP (AND, R12_R3);
-    case 0x08:
-      OP (BIC, R12_R3);
-    case 0x14:
-      OP (CMOVLBS, R12_R3);
-    case 0x16:
-      OP (CMOVLBC, R12_R3);
-    case 0x20:
-      OP (BIS, R12_R3);
-    case 0x24:
-      OP (CMOVEQ, R12_R3);
-    case 0x26:
-      OP (CMOVNE, R12_R3);
-    case 0x28:
-      OP (ORNOT, R12_R3);
-    case 0x40:
-      OP (XOR, R12_R3);
-    case 0x44:
-      OP (CMOVLT, R12_R3);
-    case 0x46:
-      OP (CMOVGE, R12_R3);
-    case 0x48:
-      OP (EQV, R12_R3);
-    case 0x61:
-      OP (AMASK, R2_R3);
-    case 0x64:
-      OP (CMOVLE, R12_R3);
-    case 0x66:
-      OP (CMOVGT, R12_R3);
-    case 0x6c:
-      OP (IMPLVER, X_R3);
-    default:
-      UNKNOWN2;
+    case 0x00:  OP(AND, R12_R3);
+    case 0x08:  OP(BIC, R12_R3);
+    case 0x14:  OP(CMOVLBS, R12_R3);
+    case 0x16:  OP(CMOVLBC, R12_R3);
+    case 0x20:  OP(BIS, R12_R3);
+    case 0x24:  OP(CMOVEQ, R12_R3);
+    case 0x26:  OP(CMOVNE, R12_R3);
+    case 0x28:  OP(ORNOT, R12_R3);
+    case 0x40:  OP(XOR, R12_R3);
+    case 0x44:  OP(CMOVLT, R12_R3);
+    case 0x46:  OP(CMOVGE, R12_R3);
+    case 0x48:  OP(EQV, R12_R3);
+    case 0x61:  OP(AMASK, R2_R3);
+    case 0x64:  OP(CMOVLE, R12_R3);
+    case 0x66:  OP(CMOVGT, R12_R3);
+    case 0x6c:  OP(IMPLVER, X_R3);
+    default:    UNKNOWN2;
     }
     break;
 
-  case 0x12:                   // INTS* instructions
+  case 0x12:  // INTS* instructions
     function = (ins >> 5) & 0x7f;
-    switch (function)
+    switch(function)
     {
-    case 0x02:
-      OP (MSKBL, R12_R3);
-    case 0x06:
-      OP (EXTBL, R12_R3);
-    case 0x0b:
-      OP (INSBL, R12_R3);
-    case 0x12:
-      OP (MSKWL, R12_R3);
-    case 0x16:
-      OP (EXTWL, R12_R3);
-    case 0x1b:
-      OP (INSWL, R12_R3);
-    case 0x22:
-      OP (MSKLL, R12_R3);
-    case 0x26:
-      OP (EXTLL, R12_R3);
-    case 0x2b:
-      OP (INSLL, R12_R3);
-    case 0x30:
-      OP (ZAP, R12_R3);
-    case 0x31:
-      OP (ZAPNOT, R12_R3);
-    case 0x32:
-      OP (MSKQL, R12_R3);
-    case 0x34:
-      OP (SRL, R12_R3);
-    case 0x36:
-      OP (EXTQL, R12_R3);
-    case 0x39:
-      OP (SLL, R12_R3);
-    case 0x3b:
-      OP (INSQL, R12_R3);
-    case 0x3c:
-      OP (SRA, R12_R3);
-    case 0x52:
-      OP (MSKWH, R12_R3);
-    case 0x57:
-      OP (INSWH, R12_R3);
-    case 0x5a:
-      OP (EXTWH, R12_R3);
-    case 0x62:
-      OP (MSKLH, R12_R3);
-    case 0x67:
-      OP (INSLH, R12_R3);
-    case 0x6a:
-      OP (EXTLH, R12_R3);
-    case 0x72:
-      OP (MSKQH, R12_R3);
-    case 0x77:
-      OP (INSQH, R12_R3);
-    case 0x7a:
-      OP (EXTQH, R12_R3);
-    default:
-      UNKNOWN2;
+    case 0x02:  OP(MSKBL, R12_R3);
+    case 0x06:  OP(EXTBL, R12_R3);
+    case 0x0b:  OP(INSBL, R12_R3);
+    case 0x12:  OP(MSKWL, R12_R3);
+    case 0x16:  OP(EXTWL, R12_R3);
+    case 0x1b:  OP(INSWL, R12_R3);
+    case 0x22:  OP(MSKLL, R12_R3);
+    case 0x26:  OP(EXTLL, R12_R3);
+    case 0x2b:  OP(INSLL, R12_R3);
+    case 0x30:  OP(ZAP, R12_R3);
+    case 0x31:  OP(ZAPNOT, R12_R3);
+    case 0x32:  OP(MSKQL, R12_R3);
+    case 0x34:  OP(SRL, R12_R3);
+    case 0x36:  OP(EXTQL, R12_R3);
+    case 0x39:  OP(SLL, R12_R3);
+    case 0x3b:  OP(INSQL, R12_R3);
+    case 0x3c:  OP(SRA, R12_R3);
+    case 0x52:  OP(MSKWH, R12_R3);
+    case 0x57:  OP(INSWH, R12_R3);
+    case 0x5a:  OP(EXTWH, R12_R3);
+    case 0x62:  OP(MSKLH, R12_R3);
+    case 0x67:  OP(INSLH, R12_R3);
+    case 0x6a:  OP(EXTLH, R12_R3);
+    case 0x72:  OP(MSKQH, R12_R3);
+    case 0x77:  OP(INSQH, R12_R3);
+    case 0x7a:  OP(EXTQH, R12_R3);
+    default:    UNKNOWN2;
     }
     break;
 
-  case 0x13:                   // INTM* instructions
+  case 0x13:  // INTM* instructions
     function = (ins >> 5) & 0x7f;
-    switch (function)           // ignore /V for now
+    switch(function)  // ignore /V for now
     {
-    case 0x40:
-      OP (MULL_V, R12_R3);
-    case 0x00:
-      OP (MULL, R12_R3);
-    case 0x60:
-      OP (MULQ_V, R12_R3);
-    case 0x20:
-      OP (MULQ, R12_R3);
-    case 0x30:
-      OP (UMULH, R12_R3);
-    default:
-      UNKNOWN2;
+    case 0x40:  OP(MULL_V, R12_R3);
+    case 0x00:  OP(MULL, R12_R3);
+    case 0x60:  OP(MULQ_V, R12_R3);
+    case 0x20:  OP(MULQ, R12_R3);
+    case 0x30:  OP(UMULH, R12_R3);
+    default:    UNKNOWN2;
     }
     break;
 
-  case 0x14:                   // ITFP* instructions
+  case 0x14:          // ITFP* instructions
     function = (ins >> 5) & 0x7ff;
-    switch (function)
+    switch(function)
     {
     case 0x004:
-      OP (ITOFS, R1_F3);
+      OP(ITOFS, R1_F3);
+
     case 0x00a:
     case 0x08a:
     case 0x10a:
@@ -946,7 +880,8 @@ void CAlphaCPU::execute ()
     case 0x48a:
     case 0x50a:
     case 0x58a:
-      OP (SQRTF, F2_F3);
+      OP(SQRTF, F2_F3);
+
     case 0x00b:
     case 0x04b:
     case 0x08b:
@@ -963,11 +898,14 @@ void CAlphaCPU::execute ()
     case 0x74b:
     case 0x78b:
     case 0x7cb:
-      OP (SQRTS, F2_F3);
+      OP(SQRTS, F2_F3);
+
     case 0x014:
-      OP (ITOFF, R1_F3);
+      OP(ITOFF, R1_F3);
+
     case 0x024:
-      OP (ITOFT, R1_F3);
+      OP(ITOFT, R1_F3);
+
     case 0x02a:
     case 0x0aa:
     case 0x12a:
@@ -976,7 +914,8 @@ void CAlphaCPU::execute ()
     case 0x4aa:
     case 0x52a:
     case 0x5aa:
-      OP (SQRTG, F2_F3);
+      OP(SQRTG, F2_F3);
+
     case 0x02b:
     case 0x06b:
     case 0x0ab:
@@ -993,357 +932,347 @@ void CAlphaCPU::execute ()
     case 0x76b:
     case 0x7ab:
     case 0x7eb:
-      OP (SQRTT, F2_F3);
+      OP(SQRTT, F2_F3);
+
     default:
       UNKNOWN2;
     }
     break;
 
-  case 0x15:                   // FLTV* instructions
+  case 0x15:          // FLTV* instructions
     function = (ins >> 5) & 0x7ff;
-    switch (function)
+    switch(function)
     {
     case 0x0a5:
     case 0x4a5:
-      OP (CMPGEQ, F12_F3);
+      OP(CMPGEQ, F12_F3);
+
     case 0x0a6:
     case 0x4a6:
-      OP (CMPGLT, F12_F3);
+      OP(CMPGLT, F12_F3);
+
     case 0x0a7:
     case 0x4a7:
-      OP (CMPGLE, F12_F3);
+      OP(CMPGLE, F12_F3);
+
     case 0x03c:
     case 0x0bc:
-      OP (CVTQF, F2_F3);
+      OP(CVTQF, F2_F3);
+
     case 0x03e:
     case 0x0be:
-      OP (CVTQG, F2_F3);
+      OP(CVTQG, F2_F3);
+
     default:
-      if (function & 0x200)
+      if(function & 0x200)
       {
         UNKNOWN2;
       }
-      switch (function & 0x7f)
+
+      switch(function & 0x7f)
       {
-      case 0x000:
-        OP (ADDF, F12_F3);
-      case 0x001:
-        OP (SUBF, F12_F3);
-      case 0x002:
-        OP (MULF, F12_F3);
-      case 0x003:
-        OP (DIVF, F12_F3);
-      case 0x01e:
-        OP (CVTDG, F2_F3);
-      case 0x020:
-        OP (ADDG, F12_F3);
-      case 0x021:
-        OP (SUBG, F12_F3);
-      case 0x022:
-        OP (MULG, F12_F3);
-      case 0x023:
-        OP (DIVG, F12_F3);
-      case 0x02c:
-        OP (CVTGF, F12_F3);
-      case 0x02d:
-        OP (CVTGD, F2_F3);
-      case 0x02f:
-        OP (CVTGQ, F2_F3);
-      default:
-        UNKNOWN2;
+      case 0x000: OP(ADDF, F12_F3);
+      case 0x001: OP(SUBF, F12_F3);
+      case 0x002: OP(MULF, F12_F3);
+      case 0x003: OP(DIVF, F12_F3);
+      case 0x01e: OP(CVTDG, F2_F3);
+      case 0x020: OP(ADDG, F12_F3);
+      case 0x021: OP(SUBG, F12_F3);
+      case 0x022: OP(MULG, F12_F3);
+      case 0x023: OP(DIVG, F12_F3);
+      case 0x02c: OP(CVTGF, F12_F3);
+      case 0x02d: OP(CVTGD, F2_F3);
+      case 0x02f: OP(CVTGQ, F2_F3);
+      default:    UNKNOWN2;
       }
       break;
     }
     break;
 
-  case 0x16:                   // FLTI* instructions
+  case 0x16:          // FLTI* instructions
     function = (ins >> 5) & 0x7ff;
-    switch (function)
+    switch(function)
     {
     case 0x0a4:
     case 0x5a4:
-      OP (CMPTUN, F12_F3);
+      OP(CMPTUN, F12_F3);
+
     case 0x0a5:
     case 0x5a5:
-      OP (CMPTEQ, F12_F3);
+      OP(CMPTEQ, F12_F3);
+
     case 0x0a6:
     case 0x5a6:
-      OP (CMPTLT, F12_F3);
+      OP(CMPTLT, F12_F3);
+
     case 0x0a7:
     case 0x5a7:
-      OP (CMPTLE, F12_F3);
+      OP(CMPTLE, F12_F3);
+
     case 0x2ac:
     case 0x6ac:
-      OP (CVTST, F2_F3);
+      OP(CVTST, F2_F3);
+
     default:
-      if (((function & 0x600) == 0x200) || ((function & 0x500) == 0x400))
+      if(((function & 0x600) == 0x200) || ((function & 0x500) == 0x400))
       {
         UNKNOWN2;
       }
-      switch (function & 0x3f)
+
+      switch(function & 0x3f)
       {
-      case 0x00:
-        OP (ADDS, F12_F3);
-      case 0x01:
-        OP (SUBS, F12_F3);
-      case 0x02:
-        OP (MULS, F12_F3);
-      case 0x03:
-        OP (DIVS, F12_F3);
-      case 0x20:
-        OP (ADDT, F12_F3);
-      case 0x21:
-        OP (SUBT, F12_F3);
-      case 0x22:
-        OP (MULT, F12_F3);
-      case 0x23:
-        OP (DIVT, F12_F3);
-      case 0x2c:
-        OP (CVTTS, F2_F3);
-      case 0x2f:
-        OP (CVTTQ, F2_F3);
-      case 0x3c:
-        if ((function & 0x300) == 0x100)
-        {
-          UNKNOWN2;
-        }
-        OP (CVTQS, F2_F3);
-      case 0x3e:
-        if ((function & 0x300) == 0x100)
-        {
-          UNKNOWN2;
-        }
-        OP (CVTQT, F2_F3);
-      default:
-        UNKNOWN2;
+      case 0x00:  OP(ADDS, F12_F3);
+      case 0x01:  OP(SUBS, F12_F3);
+      case 0x02:  OP(MULS, F12_F3);
+      case 0x03:  OP(DIVS, F12_F3);
+      case 0x20:  OP(ADDT, F12_F3);
+      case 0x21:  OP(SUBT, F12_F3);
+      case 0x22:  OP(MULT, F12_F3);
+      case 0x23:  OP(DIVT, F12_F3);
+      case 0x2c:  OP(CVTTS, F2_F3);
+      case 0x2f:  OP(CVTTQ, F2_F3);
+      case 0x3c:  if((function & 0x300) == 0x100){ UNKNOWN2; }OP(CVTQS, F2_F3);
+      case 0x3e:  if((function & 0x300) == 0x100){ UNKNOWN2; }OP(CVTQT, F2_F3);
+      default:    UNKNOWN2;
       }
       break;
     }
     break;
 
-  case 0x17:                   // FLTL* instructions
+  case 0x17:          // FLTL* instructions
     function = (ins >> 5) & 0x7ff;
-    switch (function)
+    switch(function)
     {
     case 0x010:
-      OP (CVTLQ, F2_F3);
+      OP(CVTLQ, F2_F3);
+
     case 0x020:
-      OP (CPYS, F12_F3);
+      OP(CPYS, F12_F3);
+
     case 0x021:
-      OP (CPYSN, F12_F3);
+      OP(CPYSN, F12_F3);
+
     case 0x022:
-      OP (CPYSE, F12_F3);
+      OP(CPYSE, F12_F3);
+
     case 0x024:
-      OP (MT_FPCR, X_F1);
+      OP(MT_FPCR, X_F1);
+
     case 0x025:
-      OP (MF_FPCR, X_F1);
+      OP(MF_FPCR, X_F1);
+
     case 0x02a:
-      OP (FCMOVEQ, F12_F3);
+      OP(FCMOVEQ, F12_F3);
+
     case 0x02b:
-      OP (FCMOVNE, F12_F3);
+      OP(FCMOVNE, F12_F3);
+
     case 0x02c:
-      OP (FCMOVLT, F12_F3);
+      OP(FCMOVLT, F12_F3);
+
     case 0x02d:
-      OP (FCMOVGE, F12_F3);
+      OP(FCMOVGE, F12_F3);
+
     case 0x02e:
-      OP (FCMOVLE, F12_F3);
+      OP(FCMOVLE, F12_F3);
+
     case 0x02f:
-      OP (FCMOVGT, F12_F3);
+      OP(FCMOVGT, F12_F3);
+
     case 0x030:
     case 0x130:
     case 0x530:
-      OP (CVTQL, F12_F3);
+      OP(CVTQL, F12_F3);
+
     default:
       UNKNOWN2;
     }
     break;
 
-  case 0x18:                   // MISC* instructions
+  case 0x18:          // MISC* instructions
     function = (ins & 0xffff);
-    switch (function)
+    switch(function)
     {
-    case 0x0000:
-      OP (TRAPB, NOP);
-    case 0x0400:
-      OP (EXCB, NOP);
-    case 0x4000:
-      OP (MB, NOP);
-    case 0x4400:
-      OP (WMB, NOP);
-    case 0x8000:
-      OP (FETCH, NOP);
-    case 0xA000:
-      OP (FETCH_M, NOP);
-    case 0xC000:
-      OP (RPCC, X_R1);
-    case 0xE000:
-      OP (RC, X_R1);
-    case 0xE800:
-      OP (ECB, NOP);
-    case 0xF000:
-      OP (RS, X_R1);
-    case 0xF800:
-      OP (WH64, NOP);
-    case 0xFC00:
-      OP (WH64EN, NOP);
-    default:
-      UNKNOWN2;
+    case 0x0000:  OP(TRAPB, NOP);
+    case 0x0400:  OP(EXCB, NOP);
+    case 0x4000:  OP(MB, NOP);
+    case 0x4400:  OP(WMB, NOP);
+    case 0x8000:  OP(FETCH, NOP);
+    case 0xA000:  OP(FETCH_M, NOP);
+    case 0xC000:  OP(RPCC, X_R1);
+    case 0xE000:  OP(RC, X_R1);
+    case 0xE800:  OP(ECB, NOP);
+    case 0xF000:  OP(RS, X_R1);
+    case 0xF800:  OP(WH64, NOP);
+    case 0xFC00:  OP(WH64EN, NOP);
+    default:      UNKNOWN2;
     }
     break;
 
-  case 0x19:                   // HW_MFPR
+  case 0x19:          // HW_MFPR
     function = (ins >> 8) & 0xff;
-    OP (HW_MFPR, MFPR);
+    OP(HW_MFPR, MFPR);
 
-  case 0x1a:                   // JSR* instructions
-    OP (JMP, JMP);
+  case 0x1a:          // JSR* instructions
+    OP(JMP, JMP);
 
-  case 0x1b:                   // PAL reserved - HW_LD
+  case 0x1b:          // PAL reserved - HW_LD
     function = (ins >> 12) & 0xf;
-    if (function & 1)
+    if(function & 1)
     {
-      OP (HW_LDQ, HW_LD);
+      OP(HW_LDQ, HW_LD);
     }
     else
     {
-      OP (HW_LDL, HW_LD);
+      OP(HW_LDL, HW_LD);
     }
 
-  case 0x1c:                   // FPTI* instructions
+  case 0x1c:          // FPTI* instructions
     function = (ins >> 5) & 0x7f;
-    switch (function)
+    switch(function)
     {
-    case 0x00:
-      OP (SEXTB, R2_R3);
-    case 0x01:
-      OP (SEXTW, R2_R3);
-    case 0x30:
-      OP (CTPOP, R2_R3);
-    case 0x31:
-      OP (PERR, R2_R3);
-    case 0x32:
-      OP (CTLZ, R2_R3);
-    case 0x33:
-      OP (CTTZ, R2_R3);
-    case 0x34:
-      OP (UNPKBW, R2_R3);
-    case 0x35:
-      OP (UNPKBL, R2_R3);
-    case 0x36:
-      OP (PKWB, R2_R3);
-    case 0x37:
-      OP (PKLB, R2_R3);
-    case 0x38:
-      OP (MINSB8, R12_R3);
-    case 0x39:
-      OP (MINSW4, R12_R3);
-    case 0x3a:
-      OP (MINUB8, R12_R3);
-    case 0x3b:
-      OP (MINUW4, R12_R3);
-    case 0x3c:
-      OP (MAXUB8, R12_R3);
-    case 0x3d:
-      OP (MAXUW4, R12_R3);
-    case 0x3e:
-      OP (MAXSB8, R12_R3);
-    case 0x3f:
-      OP (MAXSW4, R12_R3);
-    case 0x70:
-      OP (FTOIT, F1_R3);
-    case 0x78:
-      OP (FTOIS, F1_R3);
-    default:
-      UNKNOWN2;
+    case 0x00:  OP(SEXTB, R2_R3);
+    case 0x01:  OP(SEXTW, R2_R3);
+    case 0x30:  OP(CTPOP, R2_R3);
+    case 0x31:  OP(PERR, R2_R3);
+    case 0x32:  OP(CTLZ, R2_R3);
+    case 0x33:  OP(CTTZ, R2_R3);
+    case 0x34:  OP(UNPKBW, R2_R3);
+    case 0x35:  OP(UNPKBL, R2_R3);
+    case 0x36:  OP(PKWB, R2_R3);
+    case 0x37:  OP(PKLB, R2_R3);
+    case 0x38:  OP(MINSB8, R12_R3);
+    case 0x39:  OP(MINSW4, R12_R3);
+    case 0x3a:  OP(MINUB8, R12_R3);
+    case 0x3b:  OP(MINUW4, R12_R3);
+    case 0x3c:  OP(MAXUB8, R12_R3);
+    case 0x3d:  OP(MAXUW4, R12_R3);
+    case 0x3e:  OP(MAXSB8, R12_R3);
+    case 0x3f:  OP(MAXSW4, R12_R3);
+    case 0x70:  OP(FTOIT, F1_R3);
+    case 0x78:  OP(FTOIS, F1_R3);
+    default:    UNKNOWN2;
     }
     break;
 
-  case 0x1d:                   // HW_MTPR
+  case 0x1d:          // HW_MTPR
     function = (ins >> 8) & 0xff;
-    OP (HW_MTPR, MTPR);
+    OP(HW_MTPR, MTPR);
 
   case 0x1e:
-    OP (HW_RET, RET);
+    OP(HW_RET, RET);
 
-  case 0x1f:                   // HW_ST
+  case 0x1f:          // HW_ST
     function = (ins >> 12) & 0xf;
-    if (function & 1)
+    if(function & 1)
     {
-      OP (HW_STQ, HW_ST);
+      OP(HW_STQ, HW_ST);
     }
     else
     {
-      OP (HW_STL, HW_ST);
+      OP(HW_STL, HW_ST);
     }
 
   case 0x20:
-    OP (LDF, FMEM);
+    OP(LDF, FMEM);
+
   case 0x21:
-    OP (LDG, FMEM);
+    OP(LDG, FMEM);
+
   case 0x22:
-    OP (LDS, FMEM);
+    OP(LDS, FMEM);
+
   case 0x23:
-    OP (LDT, FMEM);
+    OP(LDT, FMEM);
+
   case 0x24:
-    OP (STF, FMEM);
+    OP(STF, FMEM);
+
   case 0x25:
-    OP (STG, FMEM);
+    OP(STG, FMEM);
+
   case 0x26:
-    OP (STS, FMEM);
+    OP(STS, FMEM);
+
   case 0x27:
-    OP (STT, FMEM);
+    OP(STT, FMEM);
+
   case 0x28:
-    OP (LDL, MEM);
+    OP(LDL, MEM);
+
   case 0x29:
-    OP (LDQ, MEM);
+    OP(LDQ, MEM);
+
   case 0x2a:
-    OP (LDL_L, MEM);
+    OP(LDL_L, MEM);
+
   case 0x2b:
-    OP (LDQ_L, MEM);
+    OP(LDQ_L, MEM);
+
   case 0x2c:
-    OP (STL, MEM);
+    OP(STL, MEM);
+
   case 0x2d:
-    OP (STQ, MEM);
+    OP(STQ, MEM);
+
   case 0x2e:
-    OP (STL_C, MEM);
+    OP(STL_C, MEM);
+
   case 0x2f:
-    OP (STQ_C, MEM);
+    OP(STQ_C, MEM);
+
   case 0x30:
-    OP (BR, BR);
+    OP(BR, BR);
+
   case 0x31:
-    OP (FBEQ, FCOND);
+    OP(FBEQ, FCOND);
+
   case 0x32:
-    OP (FBLT, FCOND);
+    OP(FBLT, FCOND);
+
   case 0x33:
-    OP (FBLE, FCOND);
+    OP(FBLE, FCOND);
+
   case 0x34:
-    OP (BSR, BSR);
+    OP(BSR, BSR);
+
   case 0x35:
-    OP (FBNE, FCOND);
+    OP(FBNE, FCOND);
+
   case 0x36:
-    OP (FBGE, FCOND);
+    OP(FBGE, FCOND);
+
   case 0x37:
-    OP (FBGT, FCOND);
+    OP(FBGT, FCOND);
+
   case 0x38:
-    OP (BLBC, COND);
+    OP(BLBC, COND);
+
   case 0x39:
-    OP (BEQ, COND);
+    OP(BEQ, COND);
+
   case 0x3a:
-    OP (BLT, COND);
+    OP(BLT, COND);
+
   case 0x3b:
-    OP (BLE, COND);
+    OP(BLE, COND);
+
   case 0x3c:
-    OP (BLBS, COND);
+    OP(BLBS, COND);
+
   case 0x3d:
-    OP (BNE, COND);
+    OP(BNE, COND);
+
   case 0x3e:
-    OP (BGE, COND);
+    OP(BGE, COND);
+
   case 0x3f:
-    OP (BGT, COND);
+    OP(BGT, COND);
 
   default:
     UNKNOWN1;
   }
+
   return;
 }
 
@@ -1356,9 +1285,9 @@ void CAlphaCPU::execute ()
  * \param to      Address of instruction following the last instruction to
  *                be disassembled.
  **/
-void CAlphaCPU::listing (u64 from, u64 to)
+void CAlphaCPU::listing(u64 from, u64 to)
 {
-  listing (from, to, 0);
+  listing(from, to, 0);
 }
 
 /**
@@ -1369,112 +1298,118 @@ void CAlphaCPU::listing (u64 from, u64 to)
  *                be disassembled.
  * \param mark    Address of instruction to be underlined with a marker line.
  **/
-void CAlphaCPU::listing (u64 from, u64 to, u64 mark)
+void CAlphaCPU::listing(u64 from, u64 to, u64 mark)
 {
-  printf ("%%CPU-I-LISTNG: Listing from %016" LL "x to %016" LL "x\n", from,
-          to);
-  u64 iSavedPC;
-  bool bSavedDebug;
+  printf("%%CPU-I-LISTNG: Listing from %016"LL "x to %016"LL "x\n", from, to);
+
+  u64   iSavedPC;
+  bool  bSavedDebug;
   iSavedPC = state.pc;
   bSavedDebug = bDisassemble;
   bDisassemble = true;
   bListing = true;
-  for (state.pc = from; state.pc <= to;)
+  for(state.pc = from; state.pc <= to;)
   {
-    DoClock ();
-    if (state.pc == mark)
-      printf ("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n");
+    DoClock();
+    if(state.pc == mark)
+      printf("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n");
   }
+
   bListing = false;
   state.pc = iSavedPC;
   bDisassemble = bSavedDebug;
 }
 
-u64 CAlphaCPU::get_instruction_count ()
+u64 CAlphaCPU::get_instruction_count()
 {
   return state.instruction_count;
 }
 #endif
-
-static u32 cpu_magic1 = 0x2126468C;
-static u32 cpu_magic2 = 0xC8646212;
+static u32  cpu_magic1 = 0x2126468C;
+static u32  cpu_magic2 = 0xC8646212;
 
 /**
  * Save state to a Virtual Machine State file.
  **/
-int CAlphaCPU::SaveState (FILE * f)
+int CAlphaCPU::SaveState(FILE* f)
 {
-  long ss = sizeof (state);
+  long  ss = sizeof(state);
 
-  fwrite (&cpu_magic1, sizeof (u32), 1, f);
-  fwrite (&ss, sizeof (long), 1, f);
-  fwrite (&state, sizeof (state), 1, f);
-  fwrite (&cpu_magic2, sizeof (u32), 1, f);
-  printf ("%s: %d bytes saved.\n", devid_string, (int) ss);
+  fwrite(&cpu_magic1, sizeof(u32), 1, f);
+  fwrite(&ss, sizeof(long), 1, f);
+  fwrite(&state, sizeof(state), 1, f);
+  fwrite(&cpu_magic2, sizeof(u32), 1, f);
+  printf("%s: %d bytes saved.\n", devid_string, (int) ss);
   return 0;
 }
 
 /**
  * Restore state from a Virtual Machine State file.
  **/
-int CAlphaCPU::RestoreState (FILE * f)
+int CAlphaCPU::RestoreState(FILE* f)
 {
-  long ss;
-  u32 m1;
-  u32 m2;
-  size_t r;
+  long    ss;
+  u32     m1;
+  u32     m2;
+  size_t  r;
 
-  r = fread (&m1, sizeof (u32), 1, f);
-  if (r != 1)
+  r = fread(&m1, sizeof(u32), 1, f);
+  if(r != 1)
   {
-    printf ("%s: unexpected end of file!\n", devid_string);
-    return -1;
-  }
-  if (m1 != cpu_magic1)
-  {
-    printf ("%s: MAGIC 1 does not match!\n", devid_string);
+    printf("%s: unexpected end of file!\n", devid_string);
     return -1;
   }
 
-  fread (&ss, sizeof (long), 1, f);
-  if (r != 1)
+  if(m1 != cpu_magic1)
   {
-    printf ("%s: unexpected end of file!\n", devid_string);
-    return -1;
-  }
-  if (ss != sizeof (state))
-  {
-    printf ("%s: STRUCT SIZE does not match!\n", devid_string);
+    printf("%s: MAGIC 1 does not match!\n", devid_string);
     return -1;
   }
 
-  fread (&state, sizeof (state), 1, f);
-  if (r != 1)
+  fread(&ss, sizeof(long), 1, f);
+  if(r != 1)
   {
-    printf ("%s: unexpected end of file!\n", devid_string);
+    printf("%s: unexpected end of file!\n", devid_string);
     return -1;
   }
 
-  r = fread (&m2, sizeof (u32), 1, f);
-  if (r != 1)
+  if(ss != sizeof(state))
   {
-    printf ("%s: unexpected end of file!\n", devid_string);
-    return -1;
-  }
-  if (m2 != cpu_magic2)
-  {
-    printf ("%s: MAGIC 1 does not match!\n", devid_string);
+    printf("%s: STRUCT SIZE does not match!\n", devid_string);
     return -1;
   }
 
-  printf ("%s: %d bytes restored.\n", devid_string, (int) ss);
+  fread(&state, sizeof(state), 1, f);
+  if(r != 1)
+  {
+    printf("%s: unexpected end of file!\n", devid_string);
+    return -1;
+  }
+
+  r = fread(&m2, sizeof(u32), 1, f);
+  if(r != 1)
+  {
+    printf("%s: unexpected end of file!\n", devid_string);
+    return -1;
+  }
+
+  if(m2 != cpu_magic2)
+  {
+    printf("%s: MAGIC 1 does not match!\n", devid_string);
+    return -1;
+  }
+
+  printf("%s: %d bytes restored.\n", devid_string, (int) ss);
   return 0;
 }
 
-                                                                                                                                                          /***************************************************************************//**
+/***************************************************************************/
+
+/**
  * \name TB
  * Translation Buffer related functions
  ******************************************************************************/
+
 //\{
 
 /**
@@ -1487,8 +1422,9 @@ int CAlphaCPU::RestoreState (FILE * f)
  * \param flags   ACCESS_EXEC determines which translation buffer to use.
  * \return        Number of matching entry, or -1 if no match found.
  **/
-int CAlphaCPU::FindTBEntry (u64 virt, int flags)
+int CAlphaCPU::FindTBEntry(u64 virt, int flags)
 {
+
   // Use ITB (tb[1]) if ACCESS_EXEC is set, otherwise use DTB (tb[0])
   int t = (flags & ACCESS_EXEC) ? 1 : 0;
   int asn = (flags & ACCESS_EXEC) ? state.asn : state.asn0;
@@ -1497,22 +1433,22 @@ int CAlphaCPU::FindTBEntry (u64 virt, int flags)
 
   // Try last match first; this is a good quess, especially in the ITB
   int i = state.last_found_tb[t][rw];
-  if (state.tb[t][i].valid
-      && !((state.tb[t][i].virt ^ virt) & state.tb[t][i].match_mask)
-      && (state.tb[t][i].asm_bit || (state.tb[t][i].asn == asn)))
-    return i;
+  if(state.tb[t][i].valid
+   && !((state.tb[t][i].virt ^ virt) & state.tb[t][i].match_mask)
+   && (state.tb[t][i].asm_bit || (state.tb[t][i].asn == asn))) return i;
 
   // Otherwise, loop through the TB entries to find a match.
-  for (i = 0; i < TB_ENTRIES; i++)
+  for(i = 0; i < TB_ENTRIES; i++)
   {
-    if (state.tb[t][i].valid
-        && !((state.tb[t][i].virt ^ virt) & state.tb[t][i].match_mask)
-        && (state.tb[t][i].asm_bit || (state.tb[t][i].asn == asn)))
+    if(state.tb[t][i].valid
+     && !((state.tb[t][i].virt ^ virt) & state.tb[t][i].match_mask)
+     && (state.tb[t][i].asm_bit || (state.tb[t][i].asn == asn)))
     {
       state.last_found_tb[t][rw] = i;
       return i;
     }
   }
+
   return -1;
 }
 
@@ -1558,175 +1494,190 @@ int CAlphaCPU::FindTBEntry (u64 virt, int flags)
  *                help (in this case state.pc contains the address of the
  *                next instruction to execute (PALcode or OS entry point).
  **/
-int
-  CAlphaCPU::virt2phys (u64 virt, u64 * phys, int flags, bool * asm_bit,
-                        u32 ins)
+int CAlphaCPU::virt2phys(u64 virt, u64* phys, int flags, bool* asm_bit, u32 ins)
 {
-  int t = (flags & ACCESS_EXEC) ? 1 : 0;
-  int i;
-  int res;
+  int   t = (flags & ACCESS_EXEC) ? 1 : 0;
+  int   i;
+  int   res;
 
-  int spe = (flags & ACCESS_EXEC) ? state.i_ctl_spe : state.m_ctl_spe;
-  int asn = (flags & ACCESS_EXEC) ? state.asn : state.asn0;
-  int cm = (flags & ALT) ? state.alt_cm : state.cm;
-  bool forreal = !(flags & FAKE);
+  int   spe = (flags & ACCESS_EXEC) ? state.i_ctl_spe : state.m_ctl_spe;
+  int   asn = (flags & ACCESS_EXEC) ? state.asn : state.asn0;
+  int   cm = (flags & ALT) ? state.alt_cm : state.cm;
+  bool  forreal = !(flags & FAKE);
 
 #if defined IDB
-  if (bListing)
+  if(bListing)
   {
     *phys = virt;
     return 0;
   }
 #endif
-
 #if defined(DEBUG_TB)
-  if (forreal)
+  if(forreal)
 #if defined(IDB)
-    if (bTB_Debug)
+    if(bTB_Debug)
 #endif
-      printf ("TB %" LL "x,%x: ", virt, flags);
+      printf("TB %"LL "x,%x: ", virt, flags);
 #endif
 
   // try superpage first.
-  if (spe && !cm)
+  if(spe && !cm)
   {
 #if defined(DEBUG_TB)
-    if (forreal)
+    if(forreal)
 #if defined(IDB)
-      if (bTB_Debug)
+      if(bTB_Debug)
 #endif
-        printf ("try spe...");
+        printf("try spe...");
 #endif
 
     // HRM 5.3.9: SPE[2], when set, enables superpage mapping when VA[47:46] = 2.
     // In this mode, VA[43:13] are mapped directly to PA[43:13] and VA[45:44] are
     // ignored.
-    if (((virt & SPE_2_MASK) == SPE_2_MATCH) && (spe & 4))
+    if(((virt & SPE_2_MASK) == SPE_2_MATCH) && (spe & 4))
     {
       *phys = virt & SPE_2_MAP;
-      if (asm_bit)
+      if(asm_bit)
         *asm_bit = false;
 #if defined(DEBUG_TB)
-      if (forreal)
+      if(forreal)
 #if defined(IDB)
-        if (bTB_Debug)
+        if(bTB_Debug)
 #endif
-          printf ("SPE\n");
+          printf("SPE\n");
 #endif
       return 0;
     }
+
     // SPE[1], when set, enables superpage mapping when VA[47:41] = 7E. In
     // this mode, VA[40:13] are mapped directly to PA[40:13] and PA[43:41] are
     // copies of PA[40] (sign extension).
-    else if (((virt & SPE_1_MASK) == SPE_1_MATCH) && (spe & 2))
+    else if(((virt & SPE_1_MASK) == SPE_1_MATCH) && (spe & 2))
     {
       *phys = (virt & SPE_1_MAP) | ((virt & SPE_1_TEST) ? SPE_1_ADD : 0);
-      if (asm_bit)
+      if(asm_bit)
         *asm_bit = false;
 #if defined(DEBUG_TB)
-      if (forreal)
+      if(forreal)
 #if defined(IDB)
-        if (bTB_Debug)
+        if(bTB_Debug)
 #endif
-          printf ("SPE\n");
+          printf("SPE\n");
 #endif
       return 0;
     }
+
     // SPE[0], when set, enables superpage mapping when VA[47:30] = 3FFFE.
     // In this mode, VA[29:13] are mapped directly to PA[29:13] and PA[43:30] are
     // cleared.
-    else if (((virt & SPE_0_MASK) == SPE_0_MATCH) && (spe & 4))
+    else if(((virt & SPE_0_MASK) == SPE_0_MATCH) && (spe & 4))
     {
       *phys = virt & SPE_0_MAP;
-      if (asm_bit)
+      if(asm_bit)
         *asm_bit = false;
 #if defined(DEBUG_TB)
-      if (forreal)
+      if(forreal)
 #if defined(IDB)
-        if (bTB_Debug)
+        if(bTB_Debug)
 #endif
-          printf ("SPE\n");
+          printf("SPE\n");
 #endif
       return 0;
     }
   }
 
   // try to find it in the translation buffer
-  i = FindTBEntry (virt, flags);
+  i = FindTBEntry(virt, flags);
 
-  if (i < 0)                    // not found, either trap to PALcode, or try to load the TB entry and try again.
+  if(i < 0)       // not found, either trap to PALcode, or try to load the TB entry and try again.
   {
-    if (!forreal)               // debugger-lookup of the address 
-      return -1;                // report failure, and don't look any further
-    if (!state.pal_vms)         // unknown PALcode
+    if(!forreal)  // debugger-lookup of the address
+      return -1;  // report failure, and don't look any further
+    if(!state.pal_vms)  // unknown PALcode
     {
+
       // transfer execution to PALcode
       state.exc_addr = state.current_pc;
-      if (flags & VPTE)
+      if(flags & VPTE)
       {
         state.fault_va = virt;
         state.exc_sum = (u64) REG_1 << 8;
-        set_pc (state.pal_base + DTBM_DOUBLE_3 + 1);
+        set_pc(state.pal_base + DTBM_DOUBLE_3 + 1);
       }
-      else if (flags & ACCESS_EXEC)
+      else if(flags & ACCESS_EXEC)
       {
-        set_pc (state.pal_base + ITB_MISS + 1);
+        set_pc(state.pal_base + ITB_MISS + 1);
       }
       else
       {
         state.fault_va = virt;
         state.exc_sum = (u64) REG_1 << 8;
-        u32 opcode = I_GETOP (ins);
+
+        u32 opcode = I_GETOP(ins);
         state.mm_stat =
-          ((opcode == 0x1b
-            || opcode ==
-            0x1f) ? opcode - 0x18 : opcode) << 4 | (flags & ACCESS_WRITE);
-        set_pc (state.pal_base + DTBM_SINGLE + 1);
+          (
+            (opcode == 0x1b || opcode == 0x1f) ? opcode -
+            0x18 : opcode
+          ) <<
+          4 |
+          (flags & ACCESS_WRITE);
+        set_pc(state.pal_base + DTBM_SINGLE + 1);
       }
+
       return -1;
     }
-    else                        // VMS PALcode
+    else  // VMS PALcode
     {
-      if (flags & RECUR)        // we already tried this
+      if(flags & RECUR) // we already tried this
       {
-        printf ("Translationbuffer RECUR lookup failed!\n");
+        printf("Translationbuffer RECUR lookup failed!\n");
         return -1;
       }
 
       state.exc_addr = state.current_pc;
-      if (flags & VPTE)
+      if(flags & VPTE)
       {
+
         // try to handle the double miss. If this needs to transfer control
         // to the OS, it will return non-zero value.
-        if (res = vmspal_ent_dtbm_double_3 (flags))
+        if(res = vmspal_ent_dtbm_double_3(flags))
           return res;
+
         // Double miss succesfully handled. Try to get the physical address again.
-        return virt2phys (virt, phys, flags | RECUR, asm_bit, ins);
+        return virt2phys(virt, phys, flags | RECUR, asm_bit, ins);
       }
-      else if (flags & ACCESS_EXEC)
+      else if(flags & ACCESS_EXEC)
       {
+
         // try to handle the ITB miss. If this needs to transfer control
         // to the OS, it will return non-zero value.
-        if (res = vmspal_ent_itbm (flags))
+        if(res = vmspal_ent_itbm(flags))
           return res;
+
         // ITB miss succesfully handled. Try to get the physical address again.
-        return virt2phys (virt, phys, flags | RECUR, asm_bit, ins);
+        return virt2phys(virt, phys, flags | RECUR, asm_bit, ins);
       }
       else
       {
         state.fault_va = virt;
         state.exc_sum = (u64) REG_1 << 8;
-        u32 opcode = I_GETOP (ins);
+
+        u32 opcode = I_GETOP(ins);
         state.mm_stat =
-          ((opcode == 0x1b
-            || opcode ==
-            0x1f) ? opcode - 0x18 : opcode) << 4 | (flags & ACCESS_WRITE);
+          (
+            (opcode == 0x1b || opcode == 0x1f) ? opcode -
+            0x18 : opcode
+          ) <<
+          4 |
+          (flags & ACCESS_WRITE);
+
         // try to handle the single miss. If this needs to transfer control
         // to the OS, it will return non-zero value.
-        if (res = vmspal_ent_dtbm_single (flags))
+        if(res = vmspal_ent_dtbm_single(flags))
           return res;
+
         // Single miss succesfully handled. Try to get the physical address again.
-        return virt2phys (virt, phys, flags | RECUR, asm_bit, ins);
+        return virt2phys(virt, phys, flags | RECUR, asm_bit, ins);
       }
     }
   }
@@ -1735,114 +1686,125 @@ int
 #if defined(DEBUG_TB)
   else
   {
-    if (forreal)
+    if(forreal)
 #if defined(IDB)
-      if (bTB_Debug)
+      if(bTB_Debug)
 #endif
-        printf ("entry %d - ", i);
+        printf("entry %d - ", i);
   }
 #endif
-
-  if (!(flags & NO_CHECK))
+  if(!(flags & NO_CHECK))
   {
+
     // check if requested access is allowed
-    if (!state.tb[t][i].access[flags & ACCESS_WRITE][cm])
+    if(!state.tb[t][i].access[flags & ACCESS_WRITE][cm])
     {
 #if defined(DEBUG_TB)
-      if (forreal)
+      if(forreal)
 #if defined(IDB)
-        if (bTB_Debug)
+        if(bTB_Debug)
 #endif
-          printf ("acv\n");
+          printf("acv\n");
 #endif
-      if (flags & ACCESS_EXEC)
+      if(flags & ACCESS_EXEC)
       {
+
         // handle I-stream access violation
         state.exc_addr = state.current_pc;
         state.exc_sum = 0;
-        if (state.pal_vms)
+        if(state.pal_vms)
         {
-          if (res = vmspal_ent_iacv (flags))
+          if(res = vmspal_ent_iacv(flags))
             return res;
         }
         else
         {
-          set_pc (state.pal_base + IACV + 1);
+          set_pc(state.pal_base + IACV + 1);
           return -1;
         }
       }
       else
       {
+
         // Handle D-stream access violation
         state.exc_addr = state.current_pc;
         state.fault_va = virt;
         state.exc_sum = (u64) REG_1 << 8;
-        u32 opcode = I_GETOP (ins);
+
+        u32 opcode = I_GETOP(ins);
         state.mm_stat =
-          ((opcode == 0x1b
-            || opcode ==
-            0x1f) ? opcode - 0x18 : opcode) << 4 | (flags & ACCESS_WRITE) | 2;
-        if (state.pal_vms)
+          (
+            (opcode == 0x1b || opcode == 0x1f) ? opcode -
+            0x18 : opcode
+          ) <<
+          4 |
+          (flags & ACCESS_WRITE) |
+          2;
+        if(state.pal_vms)
         {
-          if (res = vmspal_ent_dfault (flags))
+          if(res = vmspal_ent_dfault(flags))
             return res;
         }
         else
         {
-          set_pc (state.pal_base + DFAULT + 1);
+          set_pc(state.pal_base + DFAULT + 1);
           return -1;
         }
       }
     }
 
     // check if requested access doesn't fault
-    if (state.tb[t][i].fault[flags & ACCESS_MODE])
+    if(state.tb[t][i].fault[flags & ACCESS_MODE])
     {
 #if defined(DEBUG_TB)
-      if (forreal)
+      if(forreal)
 #if defined(IDB)
-        if (bTB_Debug)
+        if(bTB_Debug)
 #endif
-          printf ("fault\n");
+          printf("fault\n");
 #endif
-      if (flags & ACCESS_EXEC)
+      if(flags & ACCESS_EXEC)
       {
+
         // handle I-stream access fault
         state.exc_addr = state.current_pc;
         state.exc_sum = 0;
-        if (state.pal_vms)
+        if(state.pal_vms)
         {
-          if (res = vmspal_ent_iacv (flags))
+          if(res = vmspal_ent_iacv(flags))
             return res;
         }
         else
         {
-          set_pc (state.pal_base + IACV + 1);
+          set_pc(state.pal_base + IACV + 1);
           return -1;
         }
       }
       else
       {
+
         // handle D-stream access fault
         state.exc_addr = state.current_pc;
         state.fault_va = virt;
         state.exc_sum = (u64) REG_1 << 8;
-        u32 opcode = I_GETOP (ins);
+
+        u32 opcode = I_GETOP(ins);
         state.mm_stat =
-          ((opcode == 0x1b
-            || opcode ==
-            0x1f) ? opcode -
-           0x18 : opcode) << 4 | (flags & ACCESS_WRITE) | ((flags &
-                                                            ACCESS_WRITE) ? 8
-                                                           : 4);
-        if (state.pal_vms)
+          (
+            (opcode == 0x1b || opcode == 0x1f) ? opcode -
+            0x18 : opcode
+          ) <<
+          4 |
+          (flags & ACCESS_WRITE) |
+          ((flags & ACCESS_WRITE) ? 8 : 4);
+        if(state.pal_vms)
         {
-          if (res = vmspal_ent_dfault (flags))
+          if(res = vmspal_ent_dfault(flags))
             return res;
         }
         else
         {
-          set_pc (state.pal_base + DFAULT + 1);
+          set_pc(state.pal_base + DFAULT + 1);
           return -1;
         }
       }
@@ -1850,22 +1812,34 @@ int
   }
 
   // No access violations or faults
-
   // Return the converted address
   *phys = state.tb[t][i].phys | (virt & state.tb[t][i].keep_mask);
-  if (asm_bit)
+  if(asm_bit)
     *asm_bit = state.tb[t][i].asm_bit ? true : false;
 
 #if defined(DEBUG_TB)
-  if (forreal)
+  if(forreal)
 #if defined(IDB)
-    if (bTB_Debug)
+    if(bTB_Debug)
 #endif
-      printf ("phys: %" LL "x - OK\n", *phys);
+      printf("phys: %"LL "x - OK\n", *phys);
 #endif
-
   return 0;
 }
+
+#define GH_0_MATCH  U64(0x000007ffffffe000) /* <42:13> */
+#define GH_0_PHYS   U64(0x00000fffffffe000) /* <43:13> */
+#define GH_0_KEEP   U64(0x0000000000001fff) /* <12:0>  */
+
+#define GH_1_MATCH  U64(0x000007ffffff0000)
+#define GH_1_PHYS   U64(0x00000fffffff0000)
+#define GH_1_KEEP   U64(0x000000000000ffff)
+#define GH_2_MATCH  U64(0x000007fffff80000)
+#define GH_2_PHYS   U64(0x00000ffffff80000)
+#define GH_2_KEEP   U64(0x000000000007ffff)
+#define GH_3_MATCH  U64(0x000007ffffc00000)
+#define GH_3_PHYS   U64(0x00000fffffc00000)
+#define GH_3_KEEP   U64(0x00000000003fffff)
 
 /**
  * \brief Add translation-buffer entry
@@ -1876,7 +1850,7 @@ int
  * \param pte     Translation in DTB_PTE format (see add_tb_d).
  * \param flags   ACCESS_EXEC determines which translation buffer to use.
  **/
-void CAlphaCPU::add_tb (u64 virt, u64 pte_phys, u64 pte_flags, int flags)
+void CAlphaCPU::add_tb(u64 virt, u64 pte_phys, u64 pte_flags, int flags)
 {
   int t = (flags & ACCESS_EXEC) ? 1 : 0;
   int rw = (flags & ACCESS_WRITE) ? 1 : 0;
@@ -1886,50 +1860,43 @@ void CAlphaCPU::add_tb (u64 virt, u64 pte_phys, u64 pte_flags, int flags)
   int i;
   int asn = (flags & ACCESS_EXEC) ? state.asn : state.asn0;
 
-  switch (pte_flags & 0x60)     // granularity hint
+  switch(pte_flags & 0x60)  // granularity hint
   {
   case 0:
-#define GH_0_MATCH  U64(0x000007ffffffe000)       /* <42:13> */
-#define GH_0_PHYS   U64(0x00000fffffffe000)       /* <43:13> */
-#define GH_0_KEEP   U64(0x0000000000001fff)       /* <12:0>  */
     match_mask = GH_0_MATCH;
     phys_mask = GH_0_PHYS;
     keep_mask = GH_0_KEEP;
     break;
+
   case 0x20:
-#define GH_1_MATCH  U64(0x000007ffffff0000)
-#define GH_1_PHYS   U64(0x00000fffffff0000)
-#define GH_1_KEEP   U64(0x000000000000ffff)
     match_mask = GH_1_MATCH;
     phys_mask = GH_1_PHYS;
     keep_mask = GH_1_KEEP;
     break;
+
   case 0x40:
-#define GH_2_MATCH  U64(0x000007fffff80000)
-#define GH_2_PHYS   U64(0x00000ffffff80000)
-#define GH_2_KEEP   U64(0x000000000007ffff)
     match_mask = GH_2_MATCH;
     phys_mask = GH_2_PHYS;
     keep_mask = GH_2_KEEP;
     break;
+
   case 0x60:
-#define GH_3_MATCH  U64(0x000007ffffc00000)
-#define GH_3_PHYS   U64(0x00000fffffc00000)
-#define GH_3_KEEP   U64(0x00000000003fffff)
     match_mask = GH_3_MATCH;
     phys_mask = GH_3_PHYS;
     keep_mask = GH_3_KEEP;
     break;
   }
-  i = FindTBEntry (virt, flags);
 
-  if (i < 0)
+  i = FindTBEntry(virt, flags);
+
+  if(i < 0)
   {
     i = state.next_tb[t];
     state.next_tb[t]++;
-    if (state.next_tb[t] == TB_ENTRIES)
+    if(state.next_tb[t] == TB_ENTRIES)
       state.next_tb[t] = 0;
   }
+
   state.tb[t][i].match_mask = match_mask;
   state.tb[t][i].keep_mask = keep_mask;
   state.tb[t][i].virt = virt & match_mask;
@@ -1952,32 +1919,28 @@ void CAlphaCPU::add_tb (u64 virt, u64 pte_phys, u64 pte_flags, int flags)
 
 #if defined(DEBUG_TB_)
 #if defined(IDB)
-  if (bTB_Debug)
+  if(bTB_Debug)
 #endif
   {
-    printf ("Add TB---------------------------------------\n");
-    printf ("Map VIRT    %016" LL "x\n", state.tb[i].virt);
-    printf ("Matching    %016" LL "x\n", state.tb[i].match_mask);
-    printf ("And keeping %016" LL "x\n", state.tb[i].keep_mask);
-    printf ("To PHYS     %016" LL "x\n", state.tb[i].phys);
-    printf ("Read : %c%c%c%c %c\n", state.tb[i].access[0][0] ? 'K' : '-',
-            state.tb[i].access[0][1] ? 'E' : '-',
-            state.tb[i].access[0][2] ? 'S' : '-',
-            state.tb[i].access[0][3] ? 'U' : '-',
-            state.tb[i].fault[0] ? 'F' : '-');
-    printf ("Write: %c%c%c%c %c\n", state.tb[i].access[1][0] ? 'K' : '-',
-            state.tb[i].access[1][1] ? 'E' : '-',
-            state.tb[i].access[1][2] ? 'S' : '-',
-            state.tb[i].access[1][3] ? 'U' : '-',
-            state.tb[i].fault[1] ? 'F' : '-');
-    printf ("Exec : %c%c%c%c %c\n", state.tb[i].access[1][0] ? 'K' : '-',
-            state.tb[i].access[1][1] ? 'E' : '-',
-            state.tb[i].access[1][2] ? 'S' : '-',
-            state.tb[i].access[1][3] ? 'U' : '-',
-            state.tb[i].fault[1] ? 'F' : '-');
+    printf("Add TB---------------------------------------\n");
+    printf("Map VIRT    %016"LL "x\n", state.tb[i].virt);
+    printf("Matching    %016"LL "x\n", state.tb[i].match_mask);
+    printf("And keeping %016"LL "x\n", state.tb[i].keep_mask);
+    printf("To PHYS     %016"LL "x\n", state.tb[i].phys);
+    printf("Read : %c%c%c%c %c\n", state.tb[i].access[0][0] ? 'K' : '-',
+           state.tb[i].access[0][1] ? 'E' : '-',
+           state.tb[i].access[0][2] ? 'S' : '-',
+           state.tb[i].access[0][3] ? 'U' : '-', state.tb[i].fault[0] ? 'F' : '-');
+    printf("Write: %c%c%c%c %c\n", state.tb[i].access[1][0] ? 'K' : '-',
+           state.tb[i].access[1][1] ? 'E' : '-',
+           state.tb[i].access[1][2] ? 'S' : '-',
+           state.tb[i].access[1][3] ? 'U' : '-', state.tb[i].fault[1] ? 'F' : '-');
+    printf("Exec : %c%c%c%c %c\n", state.tb[i].access[1][0] ? 'K' : '-',
+           state.tb[i].access[1][1] ? 'E' : '-',
+           state.tb[i].access[1][2] ? 'S' : '-',
+           state.tb[i].access[1][3] ? 'U' : '-', state.tb[i].fault[1] ? 'F' : '-');
   }
 #endif
-
 }
 
 /**
@@ -2000,9 +1963,9 @@ void CAlphaCPU::add_tb (u64 virt, u64 pte_phys, u64 pte_flags, int flags)
  * \param virt    Virtual address.
  * \param pte     Translation in DTB_PTE format.
  **/
-void CAlphaCPU::add_tb_d (u64 virt, u64 pte)
+void CAlphaCPU::add_tb_d(u64 virt, u64 pte)
 {
-  add_tb (virt, pte >> (32 - 13), pte, ACCESS_READ);
+  add_tb(virt, pte >> (32 - 13), pte, ACCESS_READ);
 }
 
 /**
@@ -2025,9 +1988,9 @@ void CAlphaCPU::add_tb_d (u64 virt, u64 pte)
  * \param virt    Virtual address.
  * \param pte     Translation in ITB_PTE format.
  **/
-void CAlphaCPU::add_tb_i (u64 virt, u64 pte)
+void CAlphaCPU::add_tb_i(u64 virt, u64 pte)
 {
-  add_tb (virt, pte, pte & 0xf70, ACCESS_EXEC);
+  add_tb(virt, pte, pte & 0xf70, ACCESS_EXEC);
 }
 
 /**
@@ -2037,11 +2000,11 @@ void CAlphaCPU::add_tb_i (u64 virt, u64 pte)
  *
  * \param flags   ACCESS_EXEC determines which translation buffer to use.
  **/
-void CAlphaCPU::tbia (int flags)
+void CAlphaCPU::tbia(int flags)
 {
   int t = (flags & ACCESS_EXEC) ? 1 : 0;
   int i;
-  for (i = 0; i < TB_ENTRIES; i++)
+  for(i = 0; i < TB_ENTRIES; i++)
     state.tb[t][i].valid = false;
   state.last_found_tb[t][0] = 0;
   state.last_found_tb[t][1] = 0;
@@ -2056,12 +2019,12 @@ void CAlphaCPU::tbia (int flags)
  *
  * \param flags   ACCESS_EXEC determines which translation buffer to use.
  **/
-void CAlphaCPU::tbiap (int flags)
+void CAlphaCPU::tbiap(int flags)
 {
   int t = (flags & ACCESS_EXEC) ? 1 : 0;
   int i;
-  for (i = 0; i < TB_ENTRIES; i++)
-    if (!state.tb[t][i].asm_bit)
+  for(i = 0; i < TB_ENTRIES; i++)
+    if(!state.tb[t][i].asm_bit)
       state.tb[t][i].valid = false;
 }
 
@@ -2071,11 +2034,11 @@ void CAlphaCPU::tbiap (int flags)
  * \param virt    Virtual address for which the entry should be invalidated.
  * \param flags   ACCESS_EXEC determines which translation buffer to use.
  **/
-void CAlphaCPU::tbis (u64 virt, int flags)
+void CAlphaCPU::tbis(u64 virt, int flags)
 {
   int t = (flags & ACCESS_EXEC) ? 1 : 0;
-  int i = FindTBEntry (virt, flags);
-  if (i >= 0)
+  int i = FindTBEntry(virt, flags);
+  if(i >= 0)
     state.tb[t][i].valid = false;
 }
 
@@ -2086,7 +2049,7 @@ void CAlphaCPU::tbis (u64 virt, int flags)
  *
  * Required for SRM-ROM decompression.
  **/
-void CAlphaCPU::enable_icache ()
+void CAlphaCPU::enable_icache()
 {
   icache_enabled = true;
 }
@@ -2094,21 +2057,20 @@ void CAlphaCPU::enable_icache ()
 /**
  * \brief Enable or disable i-cache depending on config file.
  **/
-void CAlphaCPU::restore_icache ()
+void CAlphaCPU::restore_icache()
 {
-  bool newval;
+  bool  newval;
 
-  newval = myCfg->get_bool_value ("icache", false);
+  newval = myCfg->get_bool_value("icache", false);
 
-  if (!newval)
-    flush_icache ();
+  if(!newval)
+    flush_icache();
 
   icache_enabled = newval;
 }
 
 #if defined(IDB)
-
-char *PAL_NAME[] = {
+char*   PAL_NAME[] = {
   "HALT", "CFLUSH", "DRAINA", "LDQP", "STQP", "SWPCTX", "MFPR_ASN",
   "MTPR_ASTEN",
   "MTPR_ASTSR", "CSERVE", "SWPPAL", "MFPR_FEN", "MTPR_FEN", "MTPR_IPIR",
@@ -2145,7 +2107,7 @@ char *PAL_NAME[] = {
   "BC", "BD", "BE", "BF"
 };
 
-char *IPR_NAME[] = {
+char*   IPR_NAME[] = {
   "ITB_TAG", "ITB_PTE", "ITB_IAP", "ITB_IA", "ITB_IS", "PMPC", "EXC_ADDR",
   "IVA_FORM",
   "IER_CM", "CM", "IER", "IER_CM", "SIRR", "ISUM", "HW_INT_CLR", "EXC_SUM",
@@ -2210,5 +2172,4 @@ char *IPR_NAME[] = {
   "?1111.1000?", "?1111.1001?", "?1111.1010?", "?1111.1011?", "?1111.1100?",
   "?1111.1101?", "?1111.1110?", "?1111.1111?",
 };
-
 #endif

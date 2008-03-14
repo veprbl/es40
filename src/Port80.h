@@ -27,7 +27,7 @@
  * \file 
  * Contains the definitions for the emulated Port 80 device.
  *
- * $Id: Port80.h,v 1.9 2008/01/02 09:30:20 iamcamiel Exp $
+ * $Id: Port80.h,v 1.10 2008/03/14 15:30:51 iamcamiel Exp $
  *
  * X-1.9        Camiel Vanderhoeven                             02-JAN-2008
  *      Comments.
@@ -58,7 +58,6 @@
  *
  * \author Camiel Vanderhoeven (camiel@camicom.com / http://www.camicom.com)
  **/
-
 #if !defined(INCLUDED_PORT80_H)
 #define INCLUDED_PORT80_H
 
@@ -72,22 +71,21 @@
  * all, but it needs to be there to avoid error messages about non-existing
  * hardware.
  **/
-
-class CPort80 : public CSystemComponent  
+class CPort80 : public CSystemComponent
 {
- public:
-  CPort80(CConfigurator * cfg, class CSystem * c);
-  virtual ~CPort80();
-  virtual u64 ReadMem(int index, u64 address, int dsize);
-  virtual void WriteMem(int index, u64 address, int dsize, u64 data);
-  virtual int SaveState(FILE * f);
-  virtual int RestoreState(FILE * f);
+  public:
+    CPort80(CConfigurator* cfg, class CSystem* c);
+    virtual       ~CPort80();
+    virtual u64   ReadMem(int index, u64 address, int dsize);
+    virtual void  WriteMem(int index, u64 address, int dsize, u64 data);
+    virtual int   SaveState(FILE* f);
+    virtual int   RestoreState(FILE* f);
+  protected:
 
- protected:
-  /// The state structure contains all elements that need to be saved to the statefile.
-  struct SPort80_state {
-    u8 p80;	/**< Last value written.*/
-  } state;
+    /// The state structure contains all elements that need to be saved to the statefile.
+    struct SPort80_state
+    {
+      u8  p80;  /**< Last value written.*/
+    } state;
 };
-
 #endif // !defined(INCLUDED_PORT80_H)

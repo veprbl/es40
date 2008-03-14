@@ -27,7 +27,7 @@
  * \file
  * Contains definitions for the SCSI bus class.
  *
- * $Id: SCSIBus.cpp,v 1.4 2008/03/14 14:50:22 iamcamiel Exp $
+ * $Id: SCSIBus.cpp,v 1.5 2008/03/14 15:30:51 iamcamiel Exp $
  *
  * X-1.4        Camiel Vanderhoeven                             14-MAR-2008
  *   1. More meaningful exceptions replace throwing (int) 1.
@@ -42,7 +42,6 @@
  * X-1.1        Camiel Vanderhoeven                             12-JAN-2008
  *      Initial version in CVS.
  **/
-
 #include "StdAfx.h"
 #include "SCSIBus.h"
 
@@ -51,10 +50,10 @@
  *
  * Initialize all disks to non-existing.
  **/
-CSCSIBus::CSCSIBus(CConfigurator * cfg, CSystem * c) : CSystemComponent(cfg,c)
+CSCSIBus::CSCSIBus(CConfigurator* cfg, CSystem* c) : CSystemComponent(cfg, c)
 {
   int i;
-  for (i=0;i<16;i++)
+  for(i = 0; i < 16; i++)
     targets[i] = 0;
 
   state.phase = SCSI_PHASE_FREE;
@@ -66,18 +65,17 @@ CSCSIBus::CSCSIBus(CConfigurator * cfg, CSystem * c) : CSystemComponent(cfg,c)
  * \brief Destructor.
  **/
 CSCSIBus::~CSCSIBus(void)
-{
-}
+{ }
 
 /**
  * \brief Register a SCSI device.
  *
  * Register a SCSI device as responding to a specific SCSI id.
  **/
-void CSCSIBus::scsi_register(CSCSIDevice * dev, int bus, int target)
+void CSCSIBus::scsi_register(CSCSIDevice* dev, int bus, int target)
 {
-  if (targets[target] && targets[target] != dev)
-    FAILURE(IllegalState,"More than one SCSI device at the same ID");
+  if(targets[target] && targets[target] != dev)
+    FAILURE(IllegalState, "More than one SCSI device at the same ID");
   targets[target] = dev;
   target_bus_no[target] = bus;
 }
@@ -88,10 +86,10 @@ void CSCSIBus::scsi_register(CSCSIDevice * dev, int bus, int target)
  * Unregister a SCSI device as responding to a specific SCSI id. Needed
  * for some controllers if software changes it's SCSI id.
  **/
-void CSCSIBus::scsi_unregister(CSCSIDevice * dev, int target)
+void CSCSIBus::scsi_unregister(CSCSIDevice* dev, int target)
 {
-  if (targets[target] != dev)
-    FAILURE(IllegalState,"Attempt to unregister other SCSI device");
+  if(targets[target] != dev)
+    FAILURE(IllegalState, "Attempt to unregister other SCSI device");
   targets[target] = 0;
 }
 
@@ -103,11 +101,12 @@ void CSCSIBus::scsi_unregister(CSCSIDevice * dev, int target)
  **/
 bool CSCSIBus::arbitrate(int initiator)
 {
-  if (state.phase != SCSI_PHASE_FREE && state.initiator != initiator)
+  if(state.phase != SCSI_PHASE_FREE && state.initiator != initiator)
   {
     printf("Could not arbitrate for the SCSI bus.\n");
     return false;
   }
+
   state.initiator = initiator;
   state.phase = SCSI_PHASE_ARBITRATION;
   return true;
@@ -123,15 +122,16 @@ bool CSCSIBus::arbitrate(int initiator)
  **/
 bool CSCSIBus::select(int initiator, int target)
 {
-  if (state.phase != SCSI_PHASE_ARBITRATION || state.initiator != initiator) 
-    FAILURE(IllegalState,"Attempt to select while the device has not won SCSI arbitration");
+  if(state.phase != SCSI_PHASE_ARBITRATION || state.initiator != initiator)
+    FAILURE(IllegalState,
+            "Attempt to select while the device has not won SCSI arbitration");
 
-  if (!targets[target])
+  if(!targets[target])
     return false;
 
   state.target = target;
   targets[target]->scsi_select_me(target_bus_no[target]);
-  return (state.phase>=0);
+  return(state.phase >= 0);
 }
 
 /**
@@ -141,8 +141,9 @@ bool CSCSIBus::select(int initiator, int target)
  **/
 void CSCSIBus::set_phase(int target, int phase)
 {
-  if (targets[target]!=targets[state.target])
-    FAILURE(IllegalState,"Attempt to set phase while the device has not been selected");
+  if(targets[target] != targets[state.target])
+    FAILURE(IllegalState,
+            "Attempt to set phase while the device has not been selected");
 
   state.phase = phase;
 }
@@ -155,97 +156,99 @@ void CSCSIBus::set_phase(int target, int phase)
  **/
 void CSCSIBus::free_bus(int initiator)
 {
+
   // nothing to do
-  if (state.phase == SCSI_PHASE_FREE)
+  if(state.phase == SCSI_PHASE_FREE)
     return;
 
-  if (state.phase == SCSI_PHASE_ARBITRATION)
+  if(state.phase == SCSI_PHASE_ARBITRATION)
   {
-    if (initiator != state.initiator)
-      FAILURE(IllegalState,"Attempt to free the scsi bus");
+    if(initiator != state.initiator)
+      FAILURE(IllegalState, "Attempt to free the scsi bus");
   }
   else
   {
-    if (targets[initiator]!=targets[state.target])
-      FAILURE(IllegalState,"Attempt to free the scsi bus");
+    if(targets[initiator] != targets[state.target])
+      FAILURE(IllegalState, "Attempt to free the scsi bus");
   }
 
   state.phase = SCSI_PHASE_FREE;
 }
 
-static u32 scsi_magic1 = 0x5C510123;
-static u32 scsi_magic2 = 0x32105c51;
+static u32  scsi_magic1 = 0x5C510123;
+static u32  scsi_magic2 = 0x32105c51;
 
 /**
  * Save state to a Virtual Machine State file.
  **/
-
-int CSCSIBus::SaveState(FILE *f)
+int CSCSIBus::SaveState(FILE* f)
 {
-  long ss = sizeof(state);
+  long  ss = sizeof(state);
 
-  fwrite(&scsi_magic1,sizeof(u32),1,f);
-  fwrite(&ss,sizeof(long),1,f);
-  fwrite(&state,sizeof(state),1,f);
-  fwrite(&scsi_magic2,sizeof(u32),1,f);
-  printf("%s: %d bytes saved.\n",devid_string,(int)ss);
+  fwrite(&scsi_magic1, sizeof(u32), 1, f);
+  fwrite(&ss, sizeof(long), 1, f);
+  fwrite(&state, sizeof(state), 1, f);
+  fwrite(&scsi_magic2, sizeof(u32), 1, f);
+  printf("%s: %d bytes saved.\n", devid_string, (int) ss);
   return 0;
 }
 
 /**
  * Restore state from a Virtual Machine State file.
  **/
-
-int CSCSIBus::RestoreState(FILE *f)
+int CSCSIBus::RestoreState(FILE* f)
 {
-  long ss;
-  u32 m1;
-  u32 m2;
-  size_t r;
+  long    ss;
+  u32     m1;
+  u32     m2;
+  size_t  r;
 
-  r = fread(&m1,sizeof(u32),1,f);
-  if (r!=1)
+  r = fread(&m1, sizeof(u32), 1, f);
+  if(r != 1)
   {
-    printf("%s: unexpected end of file!\n",devid_string);
-    return -1;
-  }
-  if (m1 != scsi_magic1)
-  {
-    printf("%s: MAGIC 1 does not match!\n",devid_string);
+    printf("%s: unexpected end of file!\n", devid_string);
     return -1;
   }
 
-  fread(&ss,sizeof(long),1,f);
-  if (r!=1)
+  if(m1 != scsi_magic1)
   {
-    printf("%s: unexpected end of file!\n",devid_string);
-    return -1;
-  }
-  if (ss != sizeof(state))
-  {
-    printf("%s: STRUCT SIZE does not match!\n",devid_string);
+    printf("%s: MAGIC 1 does not match!\n", devid_string);
     return -1;
   }
 
-  fread(&state,sizeof(state),1,f);
-  if (r!=1)
+  fread(&ss, sizeof(long), 1, f);
+  if(r != 1)
   {
-    printf("%s: unexpected end of file!\n",devid_string);
+    printf("%s: unexpected end of file!\n", devid_string);
     return -1;
   }
 
-  r = fread(&m2,sizeof(u32),1,f);
-  if (r!=1)
+  if(ss != sizeof(state))
   {
-    printf("%s: unexpected end of file!\n",devid_string);
-    return -1;
-  }
-  if (m2 != scsi_magic2)
-  {
-    printf("%s: MAGIC 1 does not match!\n",devid_string);
+    printf("%s: STRUCT SIZE does not match!\n", devid_string);
     return -1;
   }
 
-  printf("%s: %d bytes restored.\n",devid_string,(int)ss);
+  fread(&state, sizeof(state), 1, f);
+  if(r != 1)
+  {
+    printf("%s: unexpected end of file!\n", devid_string);
+    return -1;
+  }
+
+  r = fread(&m2, sizeof(u32), 1, f);
+  if(r != 1)
+  {
+    printf("%s: unexpected end of file!\n", devid_string);
+    return -1;
+  }
+
+  if(m2 != scsi_magic2)
+  {
+    printf("%s: MAGIC 1 does not match!\n", devid_string);
+    return -1;
+  }
+
+  printf("%s: %d bytes restored.\n", devid_string, (int) ss);
   return 0;
 }

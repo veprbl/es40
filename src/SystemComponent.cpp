@@ -65,7 +65,6 @@
  *
  * \author Camiel Vanderhoeven (camiel@camicom.com / http://www.camicom.com)
  **/
-
 #include "StdAfx.h"
 #include "SystemComponent.h"
 #include "System.h"
@@ -73,29 +72,26 @@
 /**
  * Constructor.
  **/
-
-CSystemComponent::CSystemComponent (CConfigurator * cfg, CSystem * system)
+CSystemComponent::CSystemComponent(CConfigurator* cfg, CSystem* system)
 {
-  char *a;
-  char *b;
+  char*   a;
+  char*   b;
 
-  system->RegisterComponent (this);
+  system->RegisterComponent(this);
   cSystem = system;
   myCfg = cfg;
 
-  a = myCfg->get_myName ();
-  b = myCfg->get_myValue ();
+  a = myCfg->get_myName();
+  b = myCfg->get_myValue();
 
-  CHECK_ALLOCATION (devid_string =
-                    (char *) malloc (strlen (a) + strlen (b) + 3));
-  sprintf (devid_string, "%s(%s)", a, b);
+  CHECK_ALLOCATION(devid_string = (char*) malloc(strlen(a) + strlen(b) + 3));
+  sprintf(devid_string, "%s(%s)", a, b);
 }
 
 /**
  * destructor.
  **/
-
-CSystemComponent::~CSystemComponent ()
+CSystemComponent::~CSystemComponent()
 {
-  free (devid_string);
+  free(devid_string);
 }

@@ -27,7 +27,7 @@
  * \file 
  * Contains the definitions for the emulated Serial Port devices.
  *
- * $Id: Serial.h,v 1.18 2008/03/13 13:19:19 iamcamiel Exp $
+ * $Id: Serial.h,v 1.19 2008/03/14 15:30:52 iamcamiel Exp $
  *
  * X-1.18       Camiel Vanderhoeven                             13-MAR-2008
  *      Create init(), start_threads() and stop_threads() functions.
@@ -84,7 +84,6 @@
  *
  * \author Camiel Vanderhoeven (camiel@camicom.com / http://www.camicom.com)
  **/
-
 #if !defined(INCLUDED_SERIAL_H)
 #define INCLUDED_SERIAL_H
 
@@ -96,63 +95,60 @@
  *
  * The serial port is translated to a telnet port.
  **/
-
-class CSerial:public CSystemComponent, public Poco::Runnable
+class CSerial : public CSystemComponent, public Poco::Runnable
 {
-public:
-  void write (char *s);
-  virtual void WriteMem (int index, u64 address, int dsize, u64 data);
-  virtual u64 ReadMem (int index, u64 address, int dsize);
-  CSerial (CConfigurator * cfg, CSystem * c, u16 number);
-  virtual ~ CSerial ();
-  void receive (const char *data);
-  virtual void check_state ();
-  virtual int SaveState (FILE * f);
-  virtual int RestoreState (FILE * f);
-  void eval_interrupts ();
-  void WaitForConnection ();
-  virtual void run ();
-  void execute ();
+  public:
+    void          write(char* s);
+    virtual void  WriteMem(int index, u64 address, int dsize, u64 data);
+    virtual u64   ReadMem(int index, u64 address, int dsize);
+    CSerial(CConfigurator* cfg, CSystem* c, u16 number);
+    virtual       ~CSerial();
+    void          receive(const char* data);
+    virtual void  check_state();
+    virtual int   SaveState(FILE* f);
+    virtual int   RestoreState(FILE* f);
+    void          eval_interrupts();
+    void          WaitForConnection();
+    virtual void  run();
+    void          execute();
 
-  virtual void init ();
-  virtual void start_threads ();
-  virtual void stop_threads ();
+    virtual void  init();
+    virtual void  start_threads();
+    virtual void  stop_threads();
+  private:
+    void  serial_menu();
 
-private:
+    Poco::Thread * myThread;
+    bool  StopThread;
+    bool  breakHit;
 
-  void serial_menu ();
-
-  Poco::Thread * myThread;
-  bool StopThread;
-  bool breakHit;
-  /// The state structure contains all elements that need to be saved to the statefile.
-  struct SSrl_state
-  {
-    u8 bTHR;      /**< Transmit Hold Register */
-    u8 bRDR;      /**< Received Data Register */
-    u8 bBRB_LSB;
-    u8 bBRB_MSB;
-    u8 bIER;      /**< Interrupt Enable Register */
-    u8 bIIR;      /**< Interrupt Identification Register */
-    u8 bFCR;
-    u8 bLCR;      /**< Line Control Register (Data Format Register) */
-    u8 bMCR;      /**< Modem Control Register */
-    u8 bLSR;      /**< Line Status Register */
-    u8 bMSR;      /**< Modem Status Register */
-    u8 bSPR;      /**< Scratch Pad Register */
-    int serial_cycles;
-    char rcvBuffer[1024];
-    int rcvW;
-    int rcvR;
-    int iNumber;
-    bool irq_active;
-  } state;
-  int listenPort;
-  int listenSocket;
-  int connectSocket;
+    /// The state structure contains all elements that need to be saved to the statefile.
+    struct SSrl_state
+    {
+      u8    bTHR; /**< Transmit Hold Register */
+      u8    bRDR; /**< Received Data Register */
+      u8    bBRB_LSB;
+      u8    bBRB_MSB;
+      u8    bIER; /**< Interrupt Enable Register */
+      u8    bIIR; /**< Interrupt Identification Register */
+      u8    bFCR;
+      u8    bLCR; /**< Line Control Register (Data Format Register) */
+      u8    bMCR; /**< Modem Control Register */
+      u8    bLSR; /**< Line Status Register */
+      u8    bMSR; /**< Modem Status Register */
+      u8    bSPR; /**< Scratch Pad Register */
+      int   serial_cycles;
+      char  rcvBuffer[1024];
+      int   rcvW;
+      int   rcvR;
+      int   iNumber;
+      bool  irq_active;
+    } state;
+    int listenPort;
+    int listenSocket;
+    int connectSocket;
 #if defined(IDB) && defined(LS_MASTER)
-  int throughSocket;
+    int throughSocket;
 #endif
 };
-
 #endif // !defined(INCLUDED_SERIAL_H)

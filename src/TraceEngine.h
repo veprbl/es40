@@ -27,7 +27,7 @@
  * \file 
  * Contains the definitions for the CPU tracing engine.
  *
- * $Id: TraceEngine.h,v 1.18 2008/02/29 10:50:10 iamcamiel Exp $
+ * $Id: TraceEngine.h,v 1.19 2008/03/14 15:30:52 iamcamiel Exp $
  *
  * X-1.18       Brian Wheeler                                   29-FEB-2008
  *      Add BREAKPOINT INSTRUCTION command to IDB.
@@ -86,109 +86,154 @@
  *
  * \author Camiel Vanderhoeven (camiel@camicom.com / http://www.camicom.com)
  **/
-
 #if !defined(INCLUDED_TRACEENGINE_H)
 #define INCLUDED_TRACEENGINE_H
 
 #if defined(IDB)
-
 #include "datatypes.h"
 
 /// Structure used to define named functions within memory.
-struct STraceFunction {
-  u32 address;
-  char * fn_name;
-  char * fn_arglist;
-  bool step_over;
+struct STraceFunction
+{
+  u32     address;
+  char*   fn_name;
+  char*   fn_arglist;
+  bool    step_over;
 };
 
 /// Structure used to keep track of PRBR values.
-struct STracePRBR {
-  u64 prbr;
-  u64 hwpcb;
-  FILE * f;
-  u64 trcadd[701];
-  int trclvl;
-  int trchide;
-  u64 trc_waitfor;
-  char procname[30];
-  int generation;
+struct STracePRBR
+{
+  u64     prbr;
+  u64     hwpcb;
+  FILE*   f;
+  u64     trcadd[701];
+  int     trclvl;
+  int     trchide;
+  u64     trc_waitfor;
+  char    procname[30];
+  int     generation;
 };
 
 /// Structure used to keep track of CPU's
-struct STraceCPU {
+struct STraceCPU
+{
   int last_prbr;
 };
 
 /**
  * \brief CPU tracing engine.
  **/
-
 class CTraceEngine
 {
- public:
-  void read_procfile(char * filename);
-  CTraceEngine(class CSystem * sys);
-  ~CTraceEngine(void);
-  void trace(class CAlphaCPU * cpu, u64 f, u64 t, bool down, bool up, const char * x, int y);
-  void trace_br(class CAlphaCPU * cpu, u64 f, u64 t);
-  void add_function(u64 address, char * fn_name, char * fn_arglist, bool step_over);
-  bool get_fnc_name(class CAlphaCPU * cpu, u64 address, char ** p_fn_name);
-  void set_waitfor(class CAlphaCPU * cpu, u64 address);
-  FILE * trace_file();
-  void trace_dev(const char * text);
-  int parse(char command[100][100]);
-  void run_script(char * filename);
-  void list_all();
-
- protected:
-  class CSystem * cSystem;
-  int trcfncs;
-  int iNumFunctions;
-  int iNumPRBRs;
-  struct STraceFunction asFunctions[25000];
-  struct STraceCPU asCPUs[4];
-  struct STracePRBR asPRBRs[1000];
-  int get_prbr(u64 prbr, u64 hwpcb);
-  void write_arglist(CAlphaCPU * c, FILE * f, char * a);
-  FILE * current_trace_file;
-  u64 iBreakPoint;
-  int iBreakPointMode;
-  bool bBreakPoint;
-  u32 iBreakPointInstruction;
+  public:
+    void    read_procfile(char* filename);
+    CTraceEngine(class CSystem* sys);
+    ~       CTraceEngine(void);
+    void    trace(class CAlphaCPU*  cpu, u64 f, u64 t, bool down, bool up,
+                  const char*  x, int y);
+    void    trace_br(class CAlphaCPU* cpu, u64 f, u64 t);
+    void    add_function(u64 address, char*  fn_name, char*  fn_arglist,
+                         bool step_over);
+    bool    get_fnc_name(class CAlphaCPU* cpu, u64 address, char ** p_fn_name);
+    void    set_waitfor(class CAlphaCPU* cpu, u64 address);
+    FILE*   trace_file();
+    void    trace_dev(const char* text);
+    int     parse(char command[100][100]);
+    void    run_script(char* filename);
+    void    list_all();
+  protected:
+    class CSystem*        cSystem;
+    int                   trcfncs;
+    int                   iNumFunctions;
+    int                   iNumPRBRs;
+    struct STraceFunction asFunctions[25000];
+    struct STraceCPU      asCPUs[4];
+    struct STracePRBR     asPRBRs[1000];
+    int                   get_prbr(u64 prbr, u64 hwpcb);
+    void                  write_arglist(CAlphaCPU* c, FILE* f, char* a);
+    FILE*                 current_trace_file;
+    u64                   iBreakPoint;
+    int                   iBreakPointMode;
+    bool                  bBreakPoint;
+    u32                   iBreakPointInstruction;
 };
 
-extern bool bTrace;
-extern bool bDisassemble;
-extern bool bHashing;
-extern bool bListing;
+extern bool           bTrace;
+extern bool           bDisassemble;
+extern bool           bHashing;
+extern bool           bListing;
 
 #if defined(DEBUG_TB)
-extern bool bTB_Debug;
+extern bool           bTB_Debug;
 #endif
+extern CTraceEngine*  trc;
 
-extern CTraceEngine * trc;
-
-#define TRC_DEV(a) { if (bTrace) { char t [1000]; sprintf(t, a); trc->trace_dev(t); } }
-#define TRC_DEV2(a,b) { if (bTrace) { char t [1000]; sprintf(t,a,b); trc->trace_dev(t); } }
-#define TRC_DEV3(a,b,c) { if (bTrace) { char t [1000]; sprintf(t,a,b,c); trc->trace_dev(t); } }
-#define TRC_DEV4(a,b,c,d) { if (bTrace) { char t [1000]; sprintf(t,a,b,c,d); trc->trace_dev(t); } }
-#define TRC_DEV5(a,b,c,d,e) { if (bTrace) { char t [1000]; sprintf(t,a,b,c,d,e); trc->trace_dev(t); } }
-#define TRC_DEV6(a,b,c,d,e,f) { if (bTrace) { char t [1000]; sprintf(t,a,b,c,d,e,f); trc->trace_dev(t); } }
+#define TRC_DEV(a)       \
+  {                      \
+    if(bTrace)           \
+    {                    \
+      char  t[1000];     \
+      sprintf(t, a);     \
+      trc->trace_dev(t); \
+    }                    \
+  }
+#define TRC_DEV2(a, b)   \
+  {                      \
+    if(bTrace)           \
+    {                    \
+      char  t[1000];     \
+      sprintf(t, a, b);  \
+      trc->trace_dev(t); \
+    }                    \
+  }
+#define TRC_DEV3(a, b, c)  \
+  {                        \
+    if(bTrace)             \
+    {                      \
+      char  t[1000];       \
+      sprintf(t, a, b, c); \
+      trc->trace_dev(t);   \
+    }                      \
+  }
+#define TRC_DEV4(a, b, c, d)  \
+  {                           \
+    if(bTrace)                \
+    {                         \
+      char  t[1000];          \
+      sprintf(t, a, b, c, d); \
+      trc->trace_dev(t);      \
+    }                         \
+  }
+#define TRC_DEV5(a, b, c, d, e)  \
+  {                              \
+    if(bTrace)                   \
+    {                            \
+      char  t[1000];             \
+      sprintf(t, a, b, c, d, e); \
+      trc->trace_dev(t);         \
+    }                            \
+  }
+#define TRC_DEV6(a, b, c, d, e, f)  \
+  {                                 \
+    if(bTrace)                      \
+    {                               \
+      char  t[1000];                \
+      sprintf(t, a, b, c, d, e, f); \
+      trc->trace_dev(t);            \
+    }                               \
+  }
 
 #define DO_ACTION !bListing
 
 #else //IDB
+#define TRC_DEV(a)                  ;
+#define TRC_DEV2(a, b)              ;
+#define TRC_DEV3(a, b, c)           ;
+#define TRC_DEV4(a, b, c, d)        ;
+#define TRC_DEV5(a, b, c, d, e)     ;
+#define TRC_DEV6(a, b, c, d, e, f)  ;
 
-#define TRC_DEV(a) ;
-#define TRC_DEV2(a,b) ;
-#define TRC_DEV3(a,b,c) ;
-#define TRC_DEV4(a,b,c,d) ;
-#define TRC_DEV5(a,b,c,d,e) ;
-#define TRC_DEV6(a,b,c,d,e,f) ;
-
-#define DO_ACTION 1
-
+#define DO_ACTION                   1
 #endif
-
 #endif

@@ -27,7 +27,7 @@
  * \file
  * Contains the definitions for the emulated Symbios SCSI controller.
  *
- * $Id: Sym53C810.h,v 1.5 2008/03/13 13:19:20 iamcamiel Exp $
+ * $Id: Sym53C810.h,v 1.6 2008/03/14 15:30:52 iamcamiel Exp $
  *
  * X-1.5        Camiel Vanderhoeven                             13-MAR-2008
  *      Create init(), start_threads() and stop_threads() functions.
@@ -45,7 +45,6 @@
  *      Created as a spinoff from 53C895 controller, as we couldn't get
  *      that chip to work properly with the OpenVMS driver.
  **/
-
 #if !defined(INCLUDED_SYM53C810_H_)
 #define INCLUDED_SYM53C810_H_
 
@@ -64,102 +63,90 @@
  *  - Symbios SCSI SCRIPTS Processors Programming Guide (http://la.causeuse.org/hauke/macbsd/symbios_53cXXX_doc/lsilogic-53cXXX-scripts.pdf)
  *  .
  **/
-
-class CSym53C810:public CDiskController, public CSCSIDevice, public
-  Poco::Runnable
+class CSym53C810 : public CDiskController, public CSCSIDevice, public Poco::Runnable
 {
-public:
-  virtual int SaveState (FILE * f);
-  virtual int RestoreState (FILE * f);
-  virtual void check_state ();
+  public:
+    virtual int   SaveState(FILE* f);
+    virtual int   RestoreState(FILE* f);
+    virtual void  check_state();
 
-  virtual void run ();          // Poco Thread entry point
-  virtual void init ();
-  virtual void start_threads ();
-  virtual void stop_threads ();
+    virtual void  run();  // Poco Thread entry point
+    virtual void  init();
+    virtual void  start_threads();
+    virtual void  stop_threads();
 
-  virtual void
-    WriteMem_Bar (int func, int bar, u32 address, int dsize, u32 data);
-  virtual u32 ReadMem_Bar (int func, int bar, u32 address, int dsize);
+    virtual void  WriteMem_Bar(int func, int bar, u32 address, int dsize,
+                               u32 data);
+    virtual u32   ReadMem_Bar(int func, int bar, u32 address, int dsize);
 
-  virtual u32 config_read_custom (int func, u32 address, int dsize, u32 data);
-  virtual void
-    config_write_custom (int func, u32 address, int dsize, u32 old_data,
-                         u32 new_data, u32 data);
+    virtual u32   config_read_custom(int func, u32 address, int dsize, u32 data);
+    virtual void  config_write_custom(int func, u32 address, int dsize,
+                                      u32 old_data, u32 new_data, u32 data);
 
-  virtual void register_disk (class CDisk * dsk, int bus, int dev);
+    virtual void  register_disk(class CDisk* dsk, int bus, int dev);
 
-  CSym53C810 (CConfigurator * cfg, class CSystem * c, int pcibus, int pcidev);
-  virtual ~ CSym53C810 ();
+    CSym53C810(CConfigurator* cfg, class CSystem* c, int pcibus, int pcidev);
+    virtual       ~CSym53C810();
+  private:
+    void  write_b_scntl0(u8 value);
+    void  write_b_scntl1(u8 value);
+    void  write_b_istat(u8 value);
+    u8    read_b_ctest2();
+    void  write_b_ctest3(u8 value);
+    void  write_b_ctest4(u8 value);
+    void  write_b_ctest5(u8 value);
+    void  write_b_stest2(u8 value);
+    void  write_b_stest3(u8 value);
+    u8    read_b_dstat();
+    u8    read_b_sist(int id);
+    void  write_b_dcntl(u8 value);
 
-private:
+    void  post_dsp_write();
 
-  void write_b_scntl0 (u8 value);
-  void write_b_scntl1 (u8 value);
-  void write_b_istat (u8 value);
-  u8 read_b_ctest2 ();
-  void write_b_ctest3 (u8 value);
-  void write_b_ctest4 (u8 value);
-  void write_b_ctest5 (u8 value);
-  void write_b_stest2 (u8 value);
-  void write_b_stest3 (u8 value);
-  u8 read_b_dstat ();
-  u8 read_b_sist (int id);
-  void write_b_dcntl (u8 value);
+    void  execute();
 
-  void post_dsp_write ();
+    void  eval_interrupts();
+    void  set_interrupt(int reg, u8 interrupt);
+    void  chip_reset();
 
-  void execute ();
+    Poco::Thread * myThread;
+    Poco::Semaphore mySemaphore;
+    CMutex*         myRegLock;
+    bool            StopThread;
 
-  void eval_interrupts ();
-  void set_interrupt (int reg, u8 interrupt);
-  void chip_reset ();
-
-  Poco::Thread * myThread;
-  Poco::Semaphore mySemaphore;
-  CMutex *myRegLock;
-  bool StopThread;
-
-  /// The state structure contains all elements that need to be saved to the statefile.
-  struct SSym_state
-  {
-
-    bool irq_asserted;
-
-    union USym_regs
+    /// The state structure contains all elements that need to be saved to the statefile.
+    struct SSym_state
     {
-      u8 reg8[128];
-      u16 reg16[64];
-      u32 reg32[64];
-    } regs;
+      bool  irq_asserted;
 
-    struct SSym_alu
-    {
-      bool carry;
-    } alu;
+      union USym_regs
+      {
+        u8  reg8[128];
+        u16 reg16[64];
+        u32 reg32[64];
+      } regs;
 
-    u8 ram[4096];
+      struct SSym_alu
+      {
+        bool  carry;
+      } alu;
 
-    bool executing;
+      u8    ram[4096];
 
-    bool wait_reselect;
-    bool select_timeout;
-    int disconnected;
-    u32 wait_jump;
+      bool  executing;
 
-    u8 dstat_stack;
-    u8 sist0_stack;
-    u8 sist1_stack;
+      bool  wait_reselect;
+      bool  select_timeout;
+      int   disconnected;
+      u32   wait_jump;
 
-    long gen_timer;
+      u8    dstat_stack;
+      u8    sist0_stack;
+      u8    sist1_stack;
 
-    //int phase;
+      long  gen_timer;
 
-
-
-
-  } state;
-
+      //int phase;
+    } state;
 };
-
 #endif // !defined(INCLUDED_SYM_H)

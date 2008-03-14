@@ -21,14 +21,14 @@
  * Although this is not required, the author would appreciate being notified of, 
  * and receiving any modifications you may make to the source code that might serve
  * the general public.
- */ 
+ */
 
 /**
  * \file 
  * Contains code macros for the processor logical instructions.
  * Based on ARM chapter 4.5.
  *
- * $Id: cpu_logical.h,v 1.5 2008/03/14 14:50:24 iamcamiel Exp $
+ * $Id: cpu_logical.h,v 1.6 2008/03/14 15:30:52 iamcamiel Exp $
  *
  * X-1.5        Camiel Vanderhoeven                             14-MAR-2008
  *   1. More meaningful exceptions replace throwing (int) 1.
@@ -50,24 +50,34 @@
  *
  * \author Camiel Vanderhoeven (camiel@camicom.com / http://www.camicom.com)
  **/
+#define DO_AND      state.r[REG_3] = state.r[REG_1] & V_2;
+#define DO_BIC      state.r[REG_3] = state.r[REG_1] &~V_2;
+#define DO_BIS      state.r[REG_3] = state.r[REG_1] | V_2;
+#define DO_EQV      state.r[REG_3] = state.r[REG_1] ^ ~V_2;
+#define DO_ORNOT    state.r[REG_3] = state.r[REG_1] | ~V_2;
+#define DO_XOR      state.r[REG_3] = state.r[REG_1] ^ V_2;
 
-#define DO_AND state.r[REG_3] = state.r[REG_1] & V_2;
-#define DO_BIC state.r[REG_3] = state.r[REG_1] & ~V_2;
-#define DO_BIS state.r[REG_3] = state.r[REG_1] | V_2;
-#define DO_EQV state.r[REG_3] = state.r[REG_1] ^ ~V_2;
-#define DO_ORNOT state.r[REG_3] = state.r[REG_1] | ~V_2;
-#define DO_XOR state.r[REG_3] = state.r[REG_1] ^ V_2;
+#define DO_CMOVEQ   if(!state.r[REG_1]) \
+    state.r[REG_3] = V_2;
+#define DO_CMOVGE   if((s64) state.r[REG_1] >= 0) \
+    state.r[REG_3] = V_2;
+#define DO_CMOVGT   if((s64) state.r[REG_1] > 0) \
+    state.r[REG_3] = V_2;
+#define DO_CMOVLBC  if(!(state.r[REG_1] & U64(0x1))) \
+    state.r[REG_3] = V_2;
+#define DO_CMOVLBS  if(state.r[REG_1] & U64(0x1)) \
+    state.r[REG_3] = V_2;
+#define DO_CMOVLE   if((s64) state.r[REG_1] <= 0) \
+    state.r[REG_3] = V_2;
+#define DO_CMOVLT   if((s64) state.r[REG_1] < 0) \
+    state.r[REG_3] = V_2;
+#define DO_CMOVNE   if(state.r[REG_1]) \
+    state.r[REG_3] = V_2;
 
-#define DO_CMOVEQ if   (!state.r[REG_1])		state.r[REG_3] = V_2;
-#define DO_CMOVGE if ((s64)state.r[REG_1]>=0)		state.r[REG_3] = V_2;
-#define DO_CMOVGT if ((s64)state.r[REG_1]>0)		state.r[REG_3] = V_2;
-#define DO_CMOVLBC if (!(state.r[REG_1] & U64(0x1)))	state.r[REG_3] = V_2;
-#define DO_CMOVLBS if   (state.r[REG_1] & U64(0x1))	state.r[REG_3] = V_2;
-#define DO_CMOVLE if ((s64)state.r[REG_1]<=0)		state.r[REG_3] = V_2;
-#define DO_CMOVLT if ((s64)state.r[REG_1]<0)		state.r[REG_3] = V_2;
-#define DO_CMOVNE if    (state.r[REG_1])		state.r[REG_3] = V_2;
-
-#define DO_SLL state.r[REG_3] = state.r[REG_1] << (V_2 & 63);
-#define DO_SRA state.r[REG_3] = (V_2 & 63) ? ((state.r[REG_1] >> (V_2 & 63)) | ((state.r[REG_1]>>63)?(X64_QUAD<<(64-(V_2 & 63))):0))	\
-				    :state.r[REG_1];
-#define DO_SRL state.r[REG_3] = state.r[REG_1] >> (V_2 & 63);
+#define DO_SLL      state.r[REG_3] = state.r[REG_1] << (V_2 & 63);
+#define DO_SRA      state.r[REG_3] = (V_2 & 63) ?                      \
+    (                                                                  \
+      (state.r[REG_1] >> (V_2 & 63)) |                                 \
+        ((state.r[REG_1] >> 63) ? (X64_QUAD << (64 - (V_2 & 63))) : 0) \
+    ) : state.r[REG_1];
+#define DO_SRL      state.r[REG_3] = state.r[REG_1] >> (V_2 & 63);

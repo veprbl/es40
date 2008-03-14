@@ -21,7 +21,7 @@
  * Although this is not required, the author would appreciate being notified of, 
  * and receiving any modifications you may make to the source code that might serve
  * the general public.
- */ 
+ */
 
 /**
  * \file 
@@ -30,7 +30,7 @@
  * point registers, and to convert them to/from the host's native floating point 
  * format when required.
  *
- * $Id: es40_float.h,v 1.20 2008/03/14 14:50:24 iamcamiel Exp $
+ * $Id: es40_float.h,v 1.21 2008/03/14 15:30:52 iamcamiel Exp $
  *
  * X-1.19       Camiel Vanderhoeven                             14-MAR-2008
  *   1. More meaningful exceptions replace throwing (int) 1.
@@ -95,63 +95,59 @@
  *
  * \author Camiel Vanderhoeven (camiel@camicom.com / http://www.camicom.com)
  **/
-
 #include <math.h>
 
 //#define DEBUG_FP_CONVERSION 1
 //#define DEBUG_FP_LOADSTORE 1
-
 #define FLOAT_IS_IEEE 1
 
 /**
  * VAX (G or F) floating point to host conversion.
  * Converts the register-form of F and G foating point values to a double.
  **/
-
 inline double f2host(u64 val)
 {
-  int s = (val & U64(0x8000000000000000))?1:0;
-  int e = (int)((val & U64(0x7ff0000000000000))>>52);
+  int s = (val & U64(0x8000000000000000)) ? 1 : 0;
+  int e = (int) ((val & U64(0x7ff0000000000000)) >> 52);
   s64 f = (val & U64(0x000fffffffffffff));
   f |= U64(0x0010000000000000);
-  double res;
 
-  if (e==0)
+  double  res;
+
+  if(e == 0)
     res = 0.0;
   else
-    res = (s?-1.0:1.0) * pow((double)2.0,e-1024) * ((double)f / (double)(s64)U64(0x0020000000000000));
+    res = (s ? -1.0 : 1.0) * pow((double) 2.0, e - 1024) * ((double) f / (double) (s64) U64(0x0020000000000000));
 
 #if defined(DEBUG_FP_CONVERSION)
-  printf("f/g->host: %016" LL "x -> %f   \n",val,res);
+  printf("f/g->host: %016"LL "x -> %f   \n", val, res);
 #endif
-
   return res;
 }
 
-#define g2host f2host
+#define g2host  f2host
 
 /**
  * VAX (D) floating point to host conversion.
  * Converts the register-form of D foating point values to a double.
  **/
-
 inline double d2host(u64 val)
 {
-  int s = (val & U64(0x8000000000000000))?1:0;
-  int e = (int)((val & U64(0x7f80000000000000))>>55);
+  int s = (val & U64(0x8000000000000000)) ? 1 : 0;
+  int e = (int) ((val & U64(0x7f80000000000000)) >> 55);
   s64 f = (val & U64(0x007fffffffffffff));
   f |= U64(0x0080000000000000);
-  double res;
 
-  if (e==0)
+  double  res;
+
+  if(e == 0)
     res = 0.0;
   else
-    res = (s?-1.0:1.0) * pow((double)2.0,e-128) * ((double)f / (double)(s64)U64(0x0100000000000000));
+    res = (s ? -1.0 : 1.0) * pow((double) 2.0, e - 128) * ((double) f / (double) (s64) U64(0x0100000000000000));
 
 #if defined(DEBUG_FP_CONVERSION)
-  printf("d->host: %016" LL "x -> %f   \n",val,res);
+  printf("d->host: %016"LL "x -> %f   \n", val, res);
 #endif
-
   return res;
 }
 
@@ -159,17 +155,17 @@ inline double d2host(u64 val)
  * IEEE (S or T) floating point to host conversion.
  * Converts the register-form of S and T foating point values to a double.
  **/
-
 inline double s2host(u64 val)
 {
-  double res;
+  double  res;
 
 #if defined(FLOAT_IS_IEEE)
-  if (sizeof(double)==8)
+  if(sizeof(double) == 8)
   {
-    union s2h_conv {
-      u64 a;
-      double b;
+    union s2h_conv
+    {
+      u64     a;
+      double  b;
     } f_ieee;
     f_ieee.a = val;
     res = f_ieee.b;
@@ -177,90 +173,93 @@ inline double s2host(u64 val)
   else
 #endif
   {
-    int s = (val & U64(0x8000000000000000))?1:0;
-    int e = (int)((val & U64(0x7ff0000000000000))>>52);
+    int s = (val & U64(0x8000000000000000)) ? 1 : 0;
+    int e = (int) ((val & U64(0x7ff0000000000000)) >> 52);
     s64 f = (val & U64(0x000fffffffffffff));
 
-    if (e==2047) {
-      if (f)
-        res = (s?-0.0:0.0) / 0.0;	// NaN
+    if(e == 2047)
+    {
+      if(f)
+        res = (s ? -0.0 : 0.0) / 0.0; // NaN
       else
-        res = (s?-1.0:1.0) / 0.0;	// +/- Inf
-    } else if (e==0) {
-      if (f)
-        res = (s?-1.0:1.0) * ldexp((double)f / (double)((s64)U64(0x10000000000000)), -1022);
+        res = (s ? -1.0 : 1.0) / 0.0; // +/- Inf
+    }
+    else if(e == 0)
+    {
+      if(f)
+        res = (s ? -1.0 : 1.0) * ldexp((double) f / (double) ((s64) U64(0x10000000000000)),
+                                                 -1022);
       else
-        res = (s?-1.0:1.0) * 0.0;
-    } else {
-        res = (s?-1.0:1.0) * ldexp (1.0 + ((double)f / (double)((s64)U64(0x0010000000000000))), e-1023);
+        res = (s ? -1.0 : 1.0) * 0.0;
+    }
+    else
+    {
+      res = (s ? -1.0 : 1.0) * ldexp(1.0 + ((double) f / (double) ((s64) U64(0x0010000000000000))),
+                                                 e - 1023);
     }
   }
 
 #if defined(DEBUG_FP_CONVERSION)
-  printf("s/t->host: %016" LL "x -> %f   \n",val,res);
+  printf("s/t->host: %016"LL "x -> %f   \n", val, res);
 #endif
-
   return res;
 }
 
-#define t2host s2host
+#define t2host  s2host
 
 /**
  * Check IEEE floating point value for NaN.
  **/
-
 inline bool i_isnan(u64 val)
 {
-  int e = (int)((val & U64(0x7ff0000000000000))>>52);
+  int e = (int) ((val & U64(0x7ff0000000000000)) >> 52);
   s64 f = (val & U64(0x000fffffffffffff));
 
-  return (e==2047) && f;
+  return(e == 2047) && f;
 }
 
 /**
  * Host to VAX F floating point conversion.
  * Converts a double to the register-form of F foating point values.
  **/
-
 inline u64 host2f(double val)
 {
-  double fr;
-  double v = val;
-  int s = (v<0.0)?1:0;
-  if (s) v *= -1.0;
-  int e = (int)(log((double)v) / log((double)2.0));
-  bool exp_down = true;
-  
-  if (val==0.0)
-	return 0;
+  double  fr;
+  double  v = val;
+  int     s = (v < 0.0) ? 1 : 0;
+  if(s)
+    v *= -1.0;
 
-  fr = v / pow((double)2.0,e);
+  int   e = (int) (log((double) v) / log((double) 2.0));
+  bool  exp_down = true;
 
-  while ((fr >= 1.0 && e<127) || e<-127)
+  if(val == 0.0)
+    return 0;
+
+  fr = v / pow((double) 2.0, e);
+
+  while((fr >= 1.0 && e < 127) || e < -127)
   {
     e++;
     exp_down = false;
-    fr = v / pow((double)2.0,e);
+    fr = v / pow((double) 2.0, e);
   }
 
-  while (((fr < 0.5 && e>-127) || e>127) && exp_down)
+  while(((fr < 0.5 && e > -127) || e > 127) && exp_down)
   {
     e--;
-    fr = v / pow((double)2.0,e);
+    fr = v / pow((double) 2.0, e);
   }
 
   e += 1024;
 
-  u64 f = (u64)(fr * (double)U64(0x0020000000000000)+0.5);
+  u64 f = (u64) (fr * (double) U64(0x0020000000000000) + 0.5);
 
-  f =                (s?U64(0x8000000000000000):0) | 
-	  (((u64)e << 52) & U64(0x7ff0000000000000)) |
-	  (f              & U64(0x000fffffe0000000));
+  f = (s ? U64(0x8000000000000000) : 0) | (((u64) e << 52) & U64(0x7ff0000000000000)) | (f & U64(0x000fffffe0000000));
 
 #if defined(DEBUG_FP_CONVERSION)
-  printf("host->f: %f -> %016" LL "x   \n",val,f);
+  printf("host->f: %f -> %016"LL "x   \n", val, f);
 #endif
-
   return f;
 }
 
@@ -268,46 +267,44 @@ inline u64 host2f(double val)
  * Host to VAX G floating point conversion.
  * Converts a double to the register-form of G foating point values.
  **/
-
 inline u64 host2g(double val)
 {
-  double fr;
-  double v = val;
-  int s = (v<0.0)?1:0;
-  if (s) v *= -1.0;
-  int e = (int)(log((double)v) / log((double)2.0));
-  bool exp_down = true;
-  
-  if (val==0.0)
-	return 0;
+  double  fr;
+  double  v = val;
+  int     s = (v < 0.0) ? 1 : 0;
+  if(s)
+    v *= -1.0;
 
-  fr = v / pow((double)2.0,e);
+  int   e = (int) (log((double) v) / log((double) 2.0));
+  bool  exp_down = true;
 
-  while ((fr >= 1.0 && e<1023) || e<-1023)
+  if(val == 0.0)
+    return 0;
+
+  fr = v / pow((double) 2.0, e);
+
+  while((fr >= 1.0 && e < 1023) || e < -1023)
   {
     e++;
     exp_down = false;
-    fr = v / pow((double)2.0,e);
+    fr = v / pow((double) 2.0, e);
   }
 
-  while (((fr < 0.5 && e>-1023) || e>1023) && exp_down)
+  while(((fr < 0.5 && e > -1023) || e > 1023) && exp_down)
   {
     e--;
-    fr = v / pow((double)2.0,e);
+    fr = v / pow((double) 2.0, e);
   }
-  
+
   e += 1024;
 
-  u64 f = (u64)(fr * (double)U64(0x0020000000000000)+0.5);
+  u64 f = (u64) (fr * (double) U64(0x0020000000000000) + 0.5);
 
-  f =                (s?U64(0x8000000000000000):0) | 
-	  (((u64)e << 52) & U64(0x7ff0000000000000)) |
-	  (f              & U64(0x000fffffffffffff));
+  f = (s ? U64(0x8000000000000000) : 0) | (((u64) e << 52) & U64(0x7ff0000000000000)) | (f & U64(0x000fffffffffffff));
 
 #if defined(DEBUG_FP_CONVERSION)
-  printf("host->g: %f -> %016" LL "x   \n",val,f);
+  printf("host->g: %f -> %016"LL "x   \n", val, f);
 #endif
-
   return f;
 }
 
@@ -315,134 +312,129 @@ inline u64 host2g(double val)
  * Host to VAX D floating point conversion.
  * Converts a double to the register-form of D foating point values.
  **/
-
 inline u64 host2d(double val)
 {
-  double fr;
-  double v = val;
-  int s = (v<0.0)?1:0;
-  if (s) v *= -1.0;
-  int e = (int)(log((double)v) / log((double)2.0));
-  bool exp_down = true;
-  
-  if (val==0.0)
-	return 0;
+  double  fr;
+  double  v = val;
+  int     s = (v < 0.0) ? 1 : 0;
+  if(s)
+    v *= -1.0;
 
-  fr = v / pow((double)2.0,e);
+  int   e = (int) (log((double) v) / log((double) 2.0));
+  bool  exp_down = true;
 
-  while ((fr >= 1.0 && e<127) || e<-127)
+  if(val == 0.0)
+    return 0;
+
+  fr = v / pow((double) 2.0, e);
+
+  while((fr >= 1.0 && e < 127) || e < -127)
   {
     e++;
     exp_down = false;
-    fr = v / pow((double)2.0,e);
+    fr = v / pow((double) 2.0, e);
   }
 
-  while (((fr < 0.5 && e>-127) || e>127) && exp_down)
+  while(((fr < 0.5 && e > -127) || e > 127) && exp_down)
   {
     e--;
-    fr = v / pow((double)2.0,e);
+    fr = v / pow((double) 2.0, e);
   }
 
   e += 128;
 
-  u64 f = (u64)(fr * (double)U64(0x0100000000000000)+0.5);
+  u64 f = (u64) (fr * (double) U64(0x0100000000000000) + 0.5);
 
-
-  f =                (s?U64(0x8000000000000000):0) | 
-	  (((u64)e << 55) & U64(0x7f80000000000000)) |
-	  (f              & U64(0x007fffffffffffff));
+  f = (s ? U64(0x8000000000000000) : 0) | (((u64) e << 55) & U64(0x7f80000000000000)) | (f & U64(0x007fffffffffffff));
 
 #if defined(DEBUG_FP_CONVERSION)
-  printf("host->d: %f -> %016" LL "x   \n",val,f);
+  printf("host->d: %f -> %016"LL "x   \n", val, f);
 #endif
-
   return f;
 }
 
 /**
  * Map an 8-bit IEEE (S) exponent to an 11-bit IEEE (T) exponent.
  **/
-
 inline u32 map_s(u32 val)
 {
-   if (val==0)
-     return 0;
-   else if (val==0xff)
-     return 0x7ff;
-   else if (val & 0x80)
-     return (val & 0x7f) | 0x400;
-   else
-     return (val & 0x7f) | 0x380;
+  if(val == 0)
+    return 0;
+  else if(val == 0xff)
+    return 0x7ff;
+  else if(val & 0x80)
+    return(val & 0x7f) | 0x400;
+  else
+    return(val & 0x7f) | 0x380;
 }
 
 /**
  * Host to 32-bit IEEE (S) floating point conversion.
  * Converts a double to the register-form of S foating point values.
  **/
-
 inline u64 host2s(double val)
 {
   u64 f;
   int s;
   int e;
 #if defined(FLOAT_IS_IEEE)
-  if (sizeof(float)==4)
+  if(sizeof(float) == 4)
   {
-    union h2s_conv {
-      u32 a;
+    union h2s_conv
+    {
+      u32   a;
       float b;
     } f_ieee;
-    f_ieee.b = (float)val;
-    s = (f_ieee.a>>31) & 1;
-    e = (f_ieee.a>>23) & 0xff;
-    f = (u64)(f_ieee.a>>0   & 0x7fffff) <<29;
+    f_ieee.b = (float) val;
+    s = (f_ieee.a >> 31) & 1;
+    e = (f_ieee.a >> 23) & 0xff;
+    f = (u64) (f_ieee.a >> 0 & 0x7fffff) << 29;
   }
   else
 #endif
   {
-    double v = val;
-    s = (v<0.0)?1:0;
-    if (s) v *= -1.0;
-    e = (int)(log((double)v) / log((double)2.0));
-    double fr;
-    bool exp_down = true;
+    double  v = val;
+    s = (v < 0.0) ? 1 : 0;
+    if(s)
+      v *= -1.0;
+    e = (int) (log((double) v) / log((double) 2.0));
 
-    if (val==0.0)
-	  return 0;
+    double  fr;
+    bool    exp_down = true;
 
-      fr = v / pow((double)2.0,e);
+    if(val == 0.0)
+      return 0;
 
-    while ((fr >= 2.0 && e<127) || e<-127)
+    fr = v / pow((double) 2.0, e);
+
+    while((fr >= 2.0 && e < 127) || e < -127)
     {
       e++;
       exp_down = false;
-      fr = v / pow((double)2.0,e);
+      fr = v / pow((double) 2.0, e);
     }
 
-    while (((fr < 1.0 && e>-127) || e>127) && exp_down)
+    while(((fr < 1.0 && e > -127) || e > 127) && exp_down)
     {
       e--;
-      fr = v / pow((double)2.0,e);
+      fr = v / pow((double) 2.0, e);
     }
 
     e += 255;
-    
-    if (e==0)
-      fr = v / pow((double)2.0,-126);
-    
-    f = (u64)(fr * (double)U64(0x0010000000000000)+0.5);
+
+    if(e == 0)
+      fr = v / pow((double) 2.0, -126);
+
+    f = (u64) (fr * (double) U64(0x0010000000000000) + 0.5);
   }
 
   e = map_s(e);
 
-  f =                (s?U64(0x800000000000000):0) | 
-      (((u64)e << 52) & U64(0x7ff0000000000000)) |
-      (f              & U64(0x000fffffe0000000));
+  f = (s ? U64(0x800000000000000) : 0) | (((u64) e << 52) & U64(0x7ff0000000000000)) | (f & U64(0x000fffffe0000000));
 
 #if defined(DEBUG_FP_CONVERSION)
-  printf("host->s: %f -> %016" LL "x   \n",val,f);
+  printf("host->s: %f -> %016"LL "x   \n", val, f);
 #endif
-
   return f;
 }
 
@@ -450,16 +442,16 @@ inline u64 host2s(double val)
  * Host to 64-bit IEEE (T) floating point conversion.
  * Converts a double to the register-form of T foating point values.
  **/
-
 inline u64 host2t(double val)
 {
   u64 f;
 #if defined(FLOAT_IS_IEEE)
-  if (sizeof(double)==8)
+  if(sizeof(double) == 8)
   {
-    union h2t_conv {
-      u64 a;
-      double b;
+    union h2t_conv
+    {
+      u64     a;
+      double  b;
     } f_ieee;
     f_ieee.b = val;
     f = f_ieee.a;
@@ -467,47 +459,48 @@ inline u64 host2t(double val)
   else
 #endif
   {
-    double v = val;
-    int s = (v<0.0)?1:0;
-    if (s) v *= -1.0;
-    int e = (int)(log((double)v) / log((double)2.0));
-    double fr;
-    bool exp_down = true;
+    double  v = val;
+    int     s = (v < 0.0) ? 1 : 0;
+    if(s)
+      v *= -1.0;
 
-    if (val==0.0)
-	  return 0;
+    int     e = (int) (log((double) v) / log((double) 2.0));
+    double  fr;
+    bool    exp_down = true;
 
-    fr = v / pow((double)2.0,e);
+    if(val == 0.0)
+      return 0;
 
-    while ((fr >= 2.0 && e<1023) || e<-1023)
+    fr = v / pow((double) 2.0, e);
+
+    while((fr >= 2.0 && e < 1023) || e < -1023)
     {
       e++;
       exp_down = false;
-      fr = v / pow((double)2.0,e);
+      fr = v / pow((double) 2.0, e);
     }
 
-    while (((fr < 1.0 && e>-1023) || e>1023) && exp_down)
+    while(((fr < 1.0 && e > -1023) || e > 1023) && exp_down)
     {
       e--;
-      fr = v / pow((double)2.0,e);
+      fr = v / pow((double) 2.0, e);
     }
 
     e += 1023;
 
-    if (e==0)
-      fr = v / pow((double)2.0,-1022);
+    if(e == 0)
+      fr = v / pow((double) 2.0, -1022);
 
-    f = (u64)(fr * (double)U64(0x0010000000000000)+0.5);
+    f = (u64) (fr * (double) U64(0x0010000000000000) + 0.5);
 
-    f =                (s?U64(0x800000000000000):0) | 
-        (((u64)e << 52) & U64(0x7ff0000000000000)) |
-        (f              & U64(0x000fffffffffffff));
+    f = (s ? U64(0x800000000000000) : 0) |
+      (((u64) e << 52) & U64(0x7ff0000000000000)) |
+        (f & U64(0x000fffffffffffff));
   }
 
 #if defined(DEBUG_FP_CONVERSION)
-  printf("host->t: %f -> %016" LL "x   \n",val,f);
+  printf("host->t: %f -> %016"LL "x   \n", val, f);
 #endif
-
   return f;
 }
 
@@ -515,36 +508,32 @@ inline u64 host2t(double val)
  * Perform the VAX-byte ordering swap + the SEF mapping necessary to store 
  * 32-bit VAX (F) floating point values to memory.
  **/
-
 inline u32 store_f(u64 val)
 {
   u64 retval = (val & U64(0x00001fffe0000000)) >> 13; /* frac.lo          : 29..44 --> 16..31 */
-  retval    |= (val & U64(0xc000000000000000)) >> 48; /* exp.hi + sign    : 62..63 --> 14..15 */
-  retval    |= (val & U64(0x07ffe00000000000)) >> 45; /* frac.hi + exp.lo : 45..58 -->  0..13 */
+  retval |= (val & U64(0xc000000000000000)) >> 48;    /* exp.hi + sign    : 62..63 --> 14..15 */
+  retval |= (val & U64(0x07ffe00000000000)) >> 45;    /* frac.hi + exp.lo : 45..58 -->  0..13 */
 
 #if defined(DEBUG_FP_LOADSTORE)
-  printf("f->mem: %016" LL "x -> %08x   \n",val,retval);
+  printf("f->mem: %016"LL "x -> %08x   \n", val, retval);
 #endif
-
-  return (u32)retval;
+  return(u32) retval;
 }
 
 /**
  * Perform the VAX-byte ordering swap necessary to store 64-bit VAX (G) 
  * floating point values to memory.
  **/
-
 inline u64 store_g(u64 val)
 {
   u64 retval = (val >> 48) & U64(0x000000000000ffff);
-  retval |= (val >> 16)    & U64(0x00000000ffff0000);
-  retval |= (val << 48)    & U64(0xffff000000000000);
-  retval |= (val << 16)    & U64(0x0000ffff00000000);
+  retval |= (val >> 16) & U64(0x00000000ffff0000);
+  retval |= (val << 48) & U64(0xffff000000000000);
+  retval |= (val << 16) & U64(0x0000ffff00000000);
 
 #if defined(DEBUG_FP_LOADSTORE)
-  printf("g->mem: %016" LL "x -> %016" LL "x   \n",val,retval);
+  printf("g->mem: %016"LL "x -> %016"LL "x   \n", val, retval);
 #endif
-
   return retval;
 }
 
@@ -552,19 +541,17 @@ inline u64 store_g(u64 val)
  * Perform the VAX-byte ordering swap + the SEF mapping necessary to load 
  * 32-bit VAX (F) floating point values from memory.
  **/
-
 inline u64 load_f(u32 val)
 {
-  u64 retval = (u64)(val & 0xffff0000) << 13; /* frac.lo          : 16..31 --> 29..44 */
-  retval    |= (u64)(val & 0x0000c000) << 48; /* exp.hi + sign    : 14..15 --> 62..63 */
-  retval    |= (u64)(val & 0x00003fff) << 45; /* frac.hi + exp.lo :  0..13 --> 45..58 */
-  if (((val & 0x00004000) == 0) && ((val & 0x00003f80) != 0))
-    retval  |= U64(0x3800000000000000);    /* exp.mid */
+  u64 retval = (u64) (val & 0xffff0000) << 13;  /* frac.lo          : 16..31 --> 29..44 */
+  retval |= (u64) (val & 0x0000c000) << 48;     /* exp.hi + sign    : 14..15 --> 62..63 */
+  retval |= (u64) (val & 0x00003fff) << 45;     /* frac.hi + exp.lo :  0..13 --> 45..58 */
+  if(((val & 0x00004000) == 0) && ((val & 0x00003f80) != 0))
+    retval |= U64(0x3800000000000000);          /* exp.mid */
 
 #if defined(DEBUG_FP_LOADSTORE)
-  printf("mem->f: %08x -> %016" LL "x   \n",val,retval);
+  printf("mem->f: %08x -> %016"LL "x   \n", val, retval);
 #endif
-
   return retval;
 }
 
@@ -572,18 +559,16 @@ inline u64 load_f(u32 val)
  * Perform the SEF mapping necessary to load 
  * 32-bit VAX (F) floating point values from an integer register.
  **/
-
 inline u64 itof_f(u64 val)
 {
   u64 retval = (val & U64(0x3fffffff)) << 29; /* frac + exp.lo  :  0..29 --> 29..58 */
-  retval    |= (val & U64(0xc0000000)) << 32; /* exp.hi + sign : 30..31 --> 62..63 */
-  if (((val & U64(0x40000000)) == 0) && ((val & U64(0x3f800000)) != 0))
-    retval  |= U64(0x3800000000000000);    /* exp.mid */
+  retval |= (val & U64(0xc0000000)) << 32;    /* exp.hi + sign : 30..31 --> 62..63 */
+  if(((val & U64(0x40000000)) == 0) && ((val & U64(0x3f800000)) != 0))
+    retval |= U64(0x3800000000000000);        /* exp.mid */
 
 #if defined(DEBUG_FP_LOADSTORE)
-  printf("reg->f: %08x -> %016" LL "x   \n",val,retval);
+  printf("reg->f: %08x -> %016"LL "x   \n", val, retval);
 #endif
-
   return retval;
 }
 
@@ -591,18 +576,16 @@ inline u64 itof_f(u64 val)
  * Perform the VAX-byte ordering swap necessary to load 64-bit VAX (G) 
  * floating point values from memory.
  **/
-
 inline u64 load_g(u64 val)
 {
   u64 retval = (val & U64(0x000000000000ffff)) << 48;
-  retval |=    (val & U64(0x00000000ffff0000)) << 16;
-  retval |=    (val & U64(0x0000ffff00000000)) >> 16;
-  retval |=    (val & U64(0xffff000000000000)) >> 48;
-  
-#if defined(DEBUG_FP_LOADSTORE)
-  printf("mem->g: %016" LL "x -> %016" LL "x   \n",val,retval);
-#endif
+  retval |= (val & U64(0x00000000ffff0000)) << 16;
+  retval |= (val & U64(0x0000ffff00000000)) >> 16;
+  retval |= (val & U64(0xffff000000000000)) >> 48;
 
+#if defined(DEBUG_FP_LOADSTORE)
+  printf("mem->g: %016"LL "x -> %016"LL "x   \n", val, retval);
+#endif
   return retval;
 }
 
@@ -610,21 +593,18 @@ inline u64 load_g(u64 val)
  * Perform the the SEF mapping necessary to load 32-bit IEEE (S) 
  * floating point values from memory.
  **/
-
 inline u64 load_s(u32 val)
 {
-  return  ((val & U64(0x80000000)) << 32)		// sign
-	| ((u64)map_s((val>>23) & 0xff) << 52)	// exp
-	| ((val & U64(0x7fffff)) << 29);
+  return((val & U64(0x80000000)) << 32)     // sign
+  | ((u64) map_s((val >> 23) & 0xff) << 52) // exp
+  | ((val & U64(0x7fffff)) << 29);
 }
 
 /**
  * Perform the the SEF mapping necessary to store 32-bit IEEE (S) 
  * floating point values to memory.
  **/
-
 inline u32 store_s(u64 val)
 {
-  return ((u32)(val>>32) & 0xc0000000) |
-	 ((u32)(val>>29) & 0x3fffffff);
+  return((u32) (val >> 32) & 0xc0000000) | ((u32) (val >> 29) & 0x3fffffff);
 }

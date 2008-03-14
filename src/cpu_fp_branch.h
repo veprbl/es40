@@ -21,14 +21,14 @@
  * Although this is not required, the author would appreciate being notified of, 
  * and receiving any modifications you may make to the source code that might serve
  * the general public.
- */ 
+ */
 
 /**
  * \file 
  * Contains code macros for the processor floating-point branch instructions.
  * Based on ARM chapter 4.9.
  *
- * $Id: cpu_fp_branch.h,v 1.12 2008/03/14 14:50:24 iamcamiel Exp $
+ * $Id: cpu_fp_branch.h,v 1.13 2008/03/14 15:30:52 iamcamiel Exp $
  *
  * X-1.12       Camiel Vanderhoeven                             14-MAR-2008
  *   1. More meaningful exceptions replace throwing (int) 1.
@@ -70,55 +70,52 @@
  * X-1.1        Camiel Vanderhoeven                             18-FEB-2007
  *      File created. Contains code previously found in AlphaCPU.h
  **/
-
 #if defined(HAVE_NEW_FP)
-
-#define DO_FBEQ                                                         \
-  FPSTART;                                                              \
-  if ((state.f[FREG_1] & ~FPR_SIGN) == 0)            /* +0 or - 0? */   \
+#define DO_FBEQ FPSTART;                                 \
+  if((state.f[FREG_1] &~FPR_SIGN) == 0) /* +0 or - 0? */ \
     add_pc(DISP_21 * 4);
 
-#define DO_FBGE                                                         \
-  FPSTART;                                                              \
-  if (state.f[FREG_1] <= FPR_SIGN)                   /* +0 to + n? */   \
+#define DO_FBGE FPSTART;                                 \
+  if(state.f[FREG_1] <= FPR_SIGN)       /* +0 to + n? */ \
     add_pc(DISP_21 * 4);
 
-#define DO_FBGT                                                         \
-  FPSTART;                                                              \
-  if (!(state.f[FREG_1] & FPR_SIGN) && (state.f[FREG_1] != 0))          \
-                                               /* not - and not 0? */   \
+#define DO_FBGT FPSTART;                                      \
+  if(!(state.f[FREG_1] & FPR_SIGN) && (state.f[FREG_1] != 0)) \
+                                                             \
+    /* not - and not 0? */                                    \
     add_pc(DISP_21 * 4);
 
-#define DO_FBLE                                                         \
-  FPSTART;                                                              \
-  if ((state.f[FREG_1] & FPR_SIGN) || (state.f[FREG_1] == 0))           \
-                                                        /* - or 0? */   \
+#define DO_FBLE FPSTART;                                     \
+  if((state.f[FREG_1] & FPR_SIGN) || (state.f[FREG_1] == 0)) \
+                                                            \
+    /* - or 0? */                                            \
     add_pc(DISP_21 * 4);
 
-#define DO_FBLT                                                         \
-  FPSTART;                                                              \
-  if (state.f[FREG_1] > FPR_SIGN)                     /* -0 to -n? */   \
+#define DO_FBLT FPSTART;                                \
+  if(state.f[FREG_1] > FPR_SIGN)        /* -0 to -n? */ \
     add_pc(DISP_21 * 4);
 
-#define DO_FBNE                                                         \
-  FPSTART;                                                              \
-  if ((state.f[FREG_1] & ~FPR_SIGN) != 0)         /* not +0 or -0? */   \
+#define DO_FBNE FPSTART;                                    \
+  if((state.f[FREG_1] &~FPR_SIGN) != 0) /* not +0 or -0? */ \
     add_pc(DISP_21 * 4);
 
 #else
-
-#define DO_FBEQ                                                   \
-  FPSTART;  if (state.f[FREG_1] == U64(0x0000000000000000) || state.f[FREG_1] == U64(0x8000000000000000))	add_pc(DISP_21 * 4);
-#define DO_FBGE                                                   \
-  FPSTART;  if (!(state.f[FREG_1]& U64(0x8000000000000000)) || state.f[FREG_1] == U64(0x8000000000000000))	add_pc(DISP_21 * 4);
-#define DO_FBGT                                                   \
-  FPSTART;  if (!(state.f[FREG_1]& U64(0x8000000000000000)) && state.f[FREG_1] != U64(0x0000000000000000))	add_pc(DISP_21 * 4);
-#define DO_FBLE                                                   \
-  FPSTART;  if ((state.f[FREG_1]& U64(0x8000000000000000)) || state.f[FREG_1] == U64(0x0000000000000000))	add_pc(DISP_21 * 4);
-#define DO_FBLT                                                   \
-  FPSTART;  if ((state.f[FREG_1]& U64(0x8000000000000000)) && state.f[FREG_1] != U64(0x8000000000000000))	add_pc(DISP_21 * 4);
-#define DO_FBNE                                                   \
-  FPSTART;  if (state.f[FREG_1] != U64(0x0000000000000000) && state.f[FREG_1] != U64(0x8000000000000000))	add_pc(DISP_21 * 4);
-
-
+#define DO_FBEQ FPSTART;                        \
+  if(state.f[FREG_1] == U64(0x0000000000000000) \
+   || state.f[FREG_1] == U64(0x8000000000000000)) add_pc(DISP_21 * 4);
+#define DO_FBGE FPSTART;                          \
+  if(!(state.f[FREG_1] & U64(0x8000000000000000)) \
+   || state.f[FREG_1] == U64(0x8000000000000000)) add_pc(DISP_21 * 4);
+#define DO_FBGT FPSTART;                          \
+  if(!(state.f[FREG_1] & U64(0x8000000000000000)) \
+   && state.f[FREG_1] != U64(0x0000000000000000)) add_pc(DISP_21 * 4);
+#define DO_FBLE FPSTART;                         \
+  if((state.f[FREG_1] & U64(0x8000000000000000)) \
+   || state.f[FREG_1] == U64(0x0000000000000000)) add_pc(DISP_21 * 4);
+#define DO_FBLT FPSTART;                         \
+  if((state.f[FREG_1] & U64(0x8000000000000000)) \
+   && state.f[FREG_1] != U64(0x8000000000000000)) add_pc(DISP_21 * 4);
+#define DO_FBNE FPSTART;                        \
+  if(state.f[FREG_1] != U64(0x0000000000000000) \
+   && state.f[FREG_1] != U64(0x8000000000000000)) add_pc(DISP_21 * 4);
 #endif

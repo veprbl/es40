@@ -27,7 +27,7 @@
  * \file
  * Contains the definitions for the emulated Ali M1543C USB chipset part.
  *
- * $Id: AliM1543C_usb.h,v 1.5 2008/02/18 15:51:30 iamcamiel Exp $
+ * $Id: AliM1543C_usb.h,v 1.6 2008/03/14 15:30:50 iamcamiel Exp $
  *
  * X-1.5        Brian wheeler                                   18-FEB-2008
  *      Implemented HCI register space. 
@@ -45,7 +45,6 @@
  *      Initial version in CVS; this part was split off from the CAliM1543C
  *      class.
  **/
-
 #if !defined(INCLUDED_ALIM1543C_USB_H_)
 #define INCLUDED_ALIM1543C_USB_H
 
@@ -61,28 +60,25 @@
  *    (http://mds.gotdns.com/sensors/docs/ali/1543dScb1-120.pdf)
  *  .
  **/
-
-class CAliM1543C_usb : public CPCIDevice  
+class CAliM1543C_usb : public CPCIDevice
 {
- public:
-  virtual int SaveState(FILE * f);
-  virtual int RestoreState(FILE * f);
+  public:
+    virtual int   SaveState(FILE* f);
+    virtual int   RestoreState(FILE* f);
 
-  CAliM1543C_usb(CConfigurator * cfg, class CSystem * c, int pcibus, int pcidev);
-  virtual ~CAliM1543C_usb();
-  virtual void WriteMem_Bar(int func,int bar, u32 address, int dsize, u32 data);
-  virtual u32 ReadMem_Bar(int func,int bar, u32 address, int dsize);
+    CAliM1543C_usb(CConfigurator*  cfg, class CSystem*  c, int pcibus, int pcidev);
+    virtual       ~CAliM1543C_usb();
+    virtual void  WriteMem_Bar(int func, int bar, u32 address, int dsize,
+                               u32 data);
+    virtual u32   ReadMem_Bar(int func, int bar, u32 address, int dsize);
+  private:
+    u64   usb_hci_read(u64 address, int dsize);
+    void  usb_hci_write(u64 address, int dsize, u64 data);
 
- private:
-
-  u64 usb_hci_read(u64 address, int dsize);
-  void usb_hci_write(u64 address, int dsize, u64 data);
-
-  /// The state structure contains all elements that need to be saved to the statefile.
-  struct SUSB_state {
-    u32 usb_data[0x110/4];
-  } state;
-
+    /// The state structure contains all elements that need to be saved to the statefile.
+    struct SUSB_state
+    {
+      u32 usb_data[0x110 / 4];
+    } state;
 };
-
 #endif // !defined(INCLUDED_ALIM1543C_USB_H)

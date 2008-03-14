@@ -27,7 +27,7 @@
  * \file
  * Contains definitions to use a file as a disk image.
  *
- * $Id: DiskFile.h,v 1.7 2008/01/09 10:13:58 iamcamiel Exp $
+ * $Id: DiskFile.h,v 1.8 2008/03/14 15:30:51 iamcamiel Exp $
  *
  * X-1.7        Camiel Vanderhoeven                             09-JAN-2008
  *      Save disk state to state file.
@@ -50,7 +50,6 @@
  * X-1.1        Camiel Vanderhoeven                             12-DEC-2007
  *      Initial version in CVS.
  **/
-
 #if !defined(__DISKFILE_H__)
 #define __DISKFILE_H__
 
@@ -59,22 +58,20 @@
 /**
  * \brief Emulated disk that uses an image file.
  **/
-
 class CDiskFile : public CDisk
 {
-public:
-  CDiskFile(CConfigurator * cfg, CSystem * sys, CDiskController * c, int idebus, int idedev);
-  virtual ~CDiskFile(void);
+  public:
+    CDiskFile(CConfigurator*  cfg, CSystem*  sys, CDiskController*  c,
+              int idebus, int idedev);
+    virtual         ~CDiskFile(void);
 
-  virtual bool seek_byte(off_t_large byte);
-  virtual size_t read_bytes(void * dest, size_t bytes);
-  virtual size_t write_bytes(void * src, size_t bytes);
+    virtual bool    seek_byte(off_t_large byte);
+    virtual size_t  read_bytes(void* dest, size_t bytes);
+    virtual size_t  write_bytes(void* src, size_t bytes);
 
-  FILE * get_handle() { return handle; };
-  
-protected:
-  FILE * handle;
-  char * filename;
+    FILE*           get_handle()  { return handle; };
+  protected:
+    FILE*   handle;
+    char*   filename;
 };
-
 #endif //!defined(__DISKFILE_H__)

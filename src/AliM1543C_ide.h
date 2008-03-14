@@ -27,7 +27,7 @@
  * \file
  * Contains the definitions for the emulated Ali M1543C IDE chipset part.
  *
- * $Id: AliM1543C_ide.h,v 1.18 2008/03/13 13:19:16 iamcamiel Exp $
+ * $Id: AliM1543C_ide.h,v 1.19 2008/03/14 15:30:50 iamcamiel Exp $
  *
  * X-1.16       Camiel Vanderhoeven                             13-MAR-2008
  *      Create init(), start_threads() and stop_threads() functions.
@@ -98,7 +98,6 @@
  *      Initial version in CVS; this part was split off from the CAliM1543C
  *      class.
  **/
-
 #if !defined(INCLUDED_ALIM1543C_IDE_H_)
 #define INCLUDED_ALIM1543C_IDE_H_
 
@@ -112,15 +111,12 @@
 #define DEBUG_IDE_PACKET
 #define DEBUG_IDE_MULTIPLE
 #endif
-
 #include "DiskController.h"
 #include "Configurator.h"
 #include "SCSIDevice.h"
 #include "SCSIBus.h"
 
-#define MAX_MULTIPLE_SECTORS 128
-
-
+#define MAX_MULTIPLE_SECTORS  128
 
 /**
  * \brief Emulated IDE part of ALi M1543C multi-function device.
@@ -133,167 +129,162 @@
  *  - Mt. Fuji Commands for Multimedia Devices Version 7 INF-8090i v7
  *  .
  **/
-
-class CAliM1543C_ide:public CDiskController, public CSCSIDevice, public
-  Poco::Runnable
+class CAliM1543C_ide : public CDiskController, public CSCSIDevice, public Poco::Runnable
 {
-public:
-  CAliM1543C_ide (CConfigurator * cfg, class CSystem * c, int pcibus,
-                  int pcidev);
-  virtual ~ CAliM1543C_ide ();
-  virtual void register_disk (class CDisk * dsk, int bus, int dev);
+  public:
+    CAliM1543C_ide(CConfigurator*  cfg, class CSystem*  c, int pcibus, int pcidev);
+    virtual       ~CAliM1543C_ide();
+    virtual void  register_disk(class CDisk* dsk, int bus, int dev);
 
-  virtual void WriteMem_Legacy (int index, u32 address, int dsize, u32 data);
-  virtual u32 ReadMem_Legacy (int index, u32 address, int dsize);
+    virtual void  WriteMem_Legacy(int index, u32 address, int dsize, u32 data);
+    virtual u32   ReadMem_Legacy(int index, u32 address, int dsize);
 
-  virtual void
-    WriteMem_Bar (int func, int bar, u32 address, int dsize, u32 data);
-  virtual u32 ReadMem_Bar (int func, int bar, u32 address, int dsize);
+    virtual void  WriteMem_Bar(int func, int bar, u32 address, int dsize,
+                               u32 data);
+    virtual u32   ReadMem_Bar(int func, int bar, u32 address, int dsize);
 
-  virtual int SaveState (FILE * f);
-  virtual int RestoreState (FILE * f);
+    virtual int   SaveState(FILE* f);
+    virtual int   RestoreState(FILE* f);
 
-  virtual void check_state ();
-  virtual void ResetPCI ();
+    virtual void  check_state();
+    virtual void  ResetPCI();
 
-  virtual void run ();
-  virtual void init ();
-  virtual void start_threads ();
-  virtual void stop_threads ();
+    virtual void  run();
+    virtual void  init();
+    virtual void  start_threads();
+    virtual void  stop_threads();
+  private:
 
-private:
+    // IDE controller
+    u32   ide_command_read(int channel, u32 address, int dsize);
+    void  ide_command_write(int channel, u32 address, int dsize, u32 data);
+    u32   ide_control_read(int channel, u32 address);
+    void  ide_control_write(int channel, u32 address, u32 data);
+    u32   ide_busmaster_read(int channel, u32 address, int dsize);
+    void  ide_busmaster_write(int channel, u32 address, u32 data, int dsize);
+    int   do_dma_transfer(int index, u8* buffer, u32 size, bool direction);
 
-  // IDE controller
-  u32 ide_command_read (int channel, u32 address, int dsize);
-  void ide_command_write (int channel, u32 address, int dsize, u32 data);
-  u32 ide_control_read (int channel, u32 address);
-  void ide_control_write (int channel, u32 address, u32 data);
-  u32 ide_busmaster_read (int channel, u32 address, int dsize);
-  void ide_busmaster_write (int channel, u32 address, u32 data, int dsize);
-  int do_dma_transfer (int index, u8 * buffer, u32 size, bool direction);
+    void  raise_interrupt(int channel);
+    void  set_signature(int channel, int id);
+    u8    get_status(int index);
+    void  command_aborted(int index, u8 command);
+    void  identify_drive(int index, bool packet);
+    void  ide_status(int index);
 
-  void raise_interrupt (int channel);
-  void set_signature (int channel, int id);
-  u8 get_status (int index);
-  void command_aborted (int index, u8 command);
-  void identify_drive (int index, bool packet);
-  void ide_status (int index);
+    void  execute(int index);
 
-  void execute (int index);
+    Poco::Thread * thrController[2];    // one thread for each controller chip
+    Poco::Semaphore * semController[2]; // controller start/stop
+    Poco::Semaphore * semBusMaster[2];  // bus master start/stop
+    CRWMutex*   mtRegisters[2];         // main registers
+    CRWMutex*   mtBusMaster[2];         // busmaster registers
+    bool        StopThread;
 
-  Poco::Thread * thrController[2];      // one thread for each controller chip
-  Poco::Semaphore * semController[2];   // controller start/stop
-  Poco::Semaphore * semBusMaster[2];    // bus master start/stop
-  CRWMutex *mtRegisters[2];     // main registers
-  CRWMutex *mtBusMaster[2];     // busmaster registers
+    bool        usedma;
 
-  bool StopThread;
-
-  bool usedma;
-
-// The state structure contains all elements that need to be saved to the statefile.
-  struct SAliM1543C_ideState
-  {
-    struct SDriveState
+    // The state structure contains all elements that need to be saved to the statefile.
+    struct SAliM1543C_ideState
     {
-      struct
+      struct SDriveState
       {
-        bool busy;
-        bool drive_ready;
-        bool fault;
-        bool seek_complete;
-        bool drq;
-        bool bit_2;
-        bool index_pulse;
-        bool err;
-        int index_pulse_count;
+        struct
+        {
+          bool  busy;
+          bool  drive_ready;
+          bool  fault;
+          bool  seek_complete;
+          bool  drq;
+          bool  bit_2;
+          bool  index_pulse;
+          bool  err;
+          int   index_pulse_count;
 
-        // debugging
-        u8 debug_last_status;
-        bool debug_status_update;
-      } status;
+          // debugging
+          u8    debug_last_status;
+          bool  debug_status_update;
+        } status;
 
-      struct
+        struct
+        {
+          bool  lba_mode;
+          int   features;
+          int   error;
+          int   sector_count;
+          int   sector_no;
+          int   cylinder_no;
+          int   head_no;
+          int   command;
+        } registers;
+
+        struct
+        {
+          bool  command_in_progress;
+          int   current_command;
+          int   command_cycle;
+          bool  packet_dma;
+          int   packet_phase;
+          u8    packet_command[12];
+          int   packet_buffersize;
+          u8    packet_sense;
+          u8    packet_asc;
+          u8    packet_ascq;
+        } command;
+
+        u8  multiple_size;
+      };
+
+      struct SControllerState
       {
-        bool lba_mode;
-        int features;
-        int error;
-        int sector_count;
-        int sector_no;
-        int cylinder_no;
-        int head_no;
-        int command;
-      } registers;
 
-      struct
-      {
-        bool command_in_progress;
-        int current_command;
-        int command_cycle;
-        bool packet_dma;
-        int packet_phase;
-        u8 packet_command[12];
-        int packet_buffersize;
-        u8 packet_sense;
-        u8 packet_asc;
-        u8 packet_ascq;
-      } command;
+        // the attached devices
+        struct SDriveState  drive[2];
 
-      u8 multiple_size;
-    };
+        // control data.
+        bool                disable_irq;
+        bool                reset;
 
+        // internal state
+        bool                reset_in_progress;
+        int                 selected;
 
-    struct SControllerState
-    {
-      // the attached devices
-      struct SDriveState drive[2];
+        // dma stuff
+        u8                  busmaster[8];
+        u8                  dma_mode;
+        u8                  bm_status;
 
-      // control data.
-      bool disable_irq;
-      bool reset;
-
-      // internal state
-      bool reset_in_progress;
-      int selected;
-
-      // dma stuff
-      u8 busmaster[8];
-      u8 dma_mode;
-      u8 bm_status;
-
-      // pio stuff
-#define IDE_BUFFER_SIZE 65536   // 64K words = 128K = 256 sectors @ 512 bytes
-      u16 data[IDE_BUFFER_SIZE];
-      int data_ptr;
-      int data_size;
-    } controller[2];
-
-
-#define SEL_STATUS(a) state.controller[a].drive[state.controller[a].selected].status
-#define SEL_COMMAND(a) state.controller[a].drive[state.controller[a].selected].command
-#define SEL_REGISTERS(a) state.controller[a].drive[state.controller[a].selected].registers
-
-#define SEL_DISK(a) get_disk(a,state.controller[a].selected)
-#define SEL_PER_DRIVE(a) state.controller[a].drive[state.controller[a].selected]
-
-#define STATUS(a,b) state.controller[a].drive[b].status
-#define COMMAND(a,b) state.controller[a].drive[b].command
-#define REGISTERS(a,b) state.controller[a].drive[b].registers
-#define PER_DRIVE(a,b) state.controller[a].drive[b]
-#define CONTROLLER(a) state.controller[a]
-
-
-
-  } state;
+        // pio stuff
+#define IDE_BUFFER_SIZE 65536           // 64K words = 128K = 256 sectors @ 512 bytes
+        u16                 data[IDE_BUFFER_SIZE];
+        int                 data_ptr;
+        int                 data_size;
+      } controller[2];
+    }
+    state;
 };
 
-extern CAliM1543C_ide *theIDE;
+#define SEL_STATUS(a)            \
+    state.controller[a].drive[state.controller[a].selected].status
+#define SEL_COMMAND(a)             \
+    state.controller[a].drive[state.controller[a].selected].command
+#define SEL_REGISTERS(a)               \
+    state.controller[a].drive[state.controller[a].selected].registers
+
+#define SEL_DISK(a)       get_disk(a, state.controller[a].selected)
+#define SEL_PER_DRIVE(a)  state.controller[a].drive[state.controller[a].selected]
+
+#define STATUS(a, b)      state.controller[a].drive[b].status
+#define COMMAND(a, b)     state.controller[a].drive[b].command
+#define REGISTERS(a, b)   state.controller[a].drive[b].registers
+#define PER_DRIVE(a, b)   state.controller[a].drive[b]
+#define CONTROLLER(a)     state.controller[a]
+
+extern CAliM1543C_ide*  theIDE;
 
 /* memory region ids */
-#define PRI_COMMAND 1
-#define PRI_CONTROL 2
-#define SEC_COMMAND 3
-#define SEC_CONTROL 4
+#define PRI_COMMAND   1
+#define PRI_CONTROL   2
+#define SEC_COMMAND   3
+#define SEC_CONTROL   4
 #define PRI_BUSMASTER 5
 #define SEC_BUSMASTER 6
 
@@ -302,21 +293,21 @@ extern CAliM1543C_ide *theIDE;
 #define BAR_PRI_CONTROL 1
 #define BAR_SEC_COMMAND 2
 #define BAR_SEC_CONTROL 3
-#define BAR_BUSMASTER 4
+#define BAR_BUSMASTER   4
 
 /* device registers */
-#define REG_COMMAND_DATA 0
-#define REG_COMMAND_ERROR 1
-#define REG_COMMAND_FEATURES 1
-#define REG_COMMAND_SECTOR_COUNT 2
-#define REG_COMMAND_SECTOR_NO 3
-#define REG_COMMAND_CYL_LOW 4
-#define REG_COMMAND_CYL_HI 5
-#define REG_COMMAND_DRIVE 6
-#define REG_COMMAND_STATUS 7
-#define REG_COMMAND_COMMAND 7
+#define REG_COMMAND_DATA          0
+#define REG_COMMAND_ERROR         1
+#define REG_COMMAND_FEATURES      1
+#define REG_COMMAND_SECTOR_COUNT  2
+#define REG_COMMAND_SECTOR_NO     3
+#define REG_COMMAND_CYL_LOW       4
+#define REG_COMMAND_CYL_HI        5
+#define REG_COMMAND_DRIVE         6
+#define REG_COMMAND_STATUS        7
+#define REG_COMMAND_COMMAND       7
 
-static char *register_names[] = {
+static char*  register_names[] = {
   "DATA",
   "ERROR/FEATURES",
   "SECTOR_COUNT/PKT REASON",
@@ -330,17 +321,17 @@ static char *register_names[] = {
 /* misc constants */
 
 /* Packet Protocol Aliases */
-#define DMRD fault
-#define SERV seek_complete
-#define CHK  err
-#define BYTE_COUNT cylinder_no
-#define REASON sector_count
-#define IR_CD 0x01
-#define IR_IO 0x02
-#define IR_REL 0x04
+#define DMRD        fault
+#define SERV        seek_complete
+#define CHK         err
+#define BYTE_COUNT  cylinder_no
+#define REASON      sector_count
+#define IR_CD       0x01
+#define IR_IO       0x02
+#define IR_REL      0x04
 
 /* Packet protocol states */
-static char *packet_states[] = {
+static char*  packet_states[] = {
   "DP0: Prepare A",
   "DP1: Receive Packet",
   "DP2: Prepare B",
@@ -349,24 +340,22 @@ static char *packet_states[] = {
 };
 
 #define PACKET_NONE 0
-#define PACKET_DP0 0
-#define PACKET_DP1 1
-#define PACKET_DP2 2
+#define PACKET_DP0  0
+#define PACKET_DP1  1
+#define PACKET_DP2  2
 #define PACKET_DP34 3
-#define PACKET_DI  4
+#define PACKET_DI   4
 
 /* SCSI SENSE Constants */
-#define SENSE_NONE 0x00
+#define SENSE_NONE            0x00
 #define SENSE_RECOVERED_ERROR 0x01
-#define SENSE_NOT_READY 0x02
-#define SENSE_MEDIUM_ERROR 0x03
-#define SENSE_HARDWARE_ERROR 0x04
+#define SENSE_NOT_READY       0x02
+#define SENSE_MEDIUM_ERROR    0x03
+#define SENSE_HARDWARE_ERROR  0x04
 #define SENSE_ILLEGAL_REQUEST 0x05
-#define SENSE_UNIT_ATTENTION 0x06
-#define SENSE_DATA_PROTECT 0x07
-#define SENSE_BLANK_CHECK 0x08
-#define SENSE_ABORT_COMMAND 0x0b
-#define SENSE_MISCOMPARE 0x0e
-
-
+#define SENSE_UNIT_ATTENTION  0x06
+#define SENSE_DATA_PROTECT    0x07
+#define SENSE_BLANK_CHECK     0x08
+#define SENSE_ABORT_COMMAND   0x0b
+#define SENSE_MISCOMPARE      0x0e
 #endif

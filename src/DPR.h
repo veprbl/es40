@@ -27,7 +27,7 @@
  * \file 
  * Contains the definitions for the emulated Dual Port Ram and RMC devices.
  *
- * $Id: DPR.h,v 1.12 2008/03/13 13:19:19 iamcamiel Exp $
+ * $Id: DPR.h,v 1.13 2008/03/14 15:30:51 iamcamiel Exp $
  *
  * X-1.12       Camiel Vanderhoeven                             13-MAR-2008
  *      Create init(), start_threads() and stop_threads() functions.
@@ -67,7 +67,6 @@
  *
  * \author Camiel Vanderhoeven (camiel@camicom.com / http://www.camicom.com)
  **/
-
 #if !defined(INCLUDED_DPR_H)
 #define INCLUDED_DPR_H
 
@@ -76,30 +75,28 @@
 /**
  * \brief Emulated dual-port RAM and management controller.
  **/
-
-class CDPR:public CSystemComponent
+class CDPR : public CSystemComponent
 {
-public:
-  CDPR (CConfigurator * cfg, class CSystem * c);
-  virtual ~ CDPR ();
-  virtual void init ();
-  virtual void WriteMem (int index, u64 address, int dsize, u64 data);
-  virtual u64 ReadMem (int index, u64 address, int dsize);
-  virtual int SaveState (FILE * f);
-  virtual int RestoreState (FILE * f);
-  void SaveStateF ();
-  void RestoreStateF ();
-  void SaveStateF (char *fn);
-  void RestoreStateF (char *fn);
+  public:
+    CDPR(CConfigurator* cfg, class CSystem* c);
+    virtual       ~CDPR();
+    virtual void  init();
+    virtual void  WriteMem(int index, u64 address, int dsize, u64 data);
+    virtual u64   ReadMem(int index, u64 address, int dsize);
+    virtual int   SaveState(FILE* f);
+    virtual int   RestoreState(FILE* f);
+    void          SaveStateF();
+    void          RestoreStateF();
+    void          SaveStateF(char* fn);
+    void          RestoreStateF(char* fn);
+  protected:
 
-protected:
-  /// The state structure contains all elements that need to be saved to the statefile.
-  struct SDPR_state
-  {
-    u8 ram[16 * 1024];
-  } state;
+    /// The state structure contains all elements that need to be saved to the statefile.
+    struct SDPR_state
+    {
+      u8  ram[16 * 1024];
+    } state;
 };
 
-extern CDPR *theDPR;
-
+extern CDPR*  theDPR;
 #endif // !defined(INCLUDED_DPR_H_)

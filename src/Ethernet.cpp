@@ -30,7 +30,7 @@
  * \file 
  * Contains the code for the packet queue and other NIC support routines.
  *
- * $Id: Ethernet.cpp,v 1.1 2008/02/26 15:54:57 iamcamiel Exp $
+ * $Id: Ethernet.cpp,v 1.2 2008/03/14 15:30:51 iamcamiel Exp $
  *
  * X-1.1        David Hittner                                   26-FEB-2008
  *      File creation.                    
@@ -42,8 +42,8 @@
 /**
  * \brief Packet Queue for Ethernet packets.
  **/
-
-CPacketQueue::CPacketQueue(char* name, int max) {
+CPacketQueue::CPacketQueue(char* name, int max)
+{
   this->name = name;
   this->max = max;
   head = 0;
@@ -54,18 +54,20 @@ CPacketQueue::CPacketQueue(char* name, int max) {
   packets = new eth_packet[max];
 }
 
-CPacketQueue::~CPacketQueue() {
+CPacketQueue::~CPacketQueue()
+{
   delete[] packets;
   printf("CPacketQueue(%s): highwater=%d, lost=%d\n", name, highwater, dropped);
 }
 
-void CPacketQueue::flush() {
+void CPacketQueue::flush()
+{
   cnt = 0;
   head = 0;
   tail = -1;
 }
 
-static const u32 crcTable[256] = {
+static const u32  crcTable[256] = {
   0x00000000, 0x77073096, 0xEE0E612C, 0x990951BA, 0x076DC419, 0x706AF48F,
   0xE963A535, 0x9E6495A3, 0x0EDB8832, 0x79DCB8A4, 0xE0D5E91E, 0x97D2D988,
   0x09B64C2B, 0x7EB17CBD, 0xE7B82D07, 0x90BF1D91, 0x1DB71064, 0x6AB020F2,
@@ -113,57 +115,75 @@ static const u32 crcTable[256] = {
 
 static u32 eth_crc32(u32 crc, const void* vbuf, int len)
 {
-  const u32 mask = 0xFFFFFFFF;
-  const unsigned char* buf = (const unsigned char*)vbuf;
+  const u32             mask = 0xFFFFFFFF;
+  const unsigned char*  buf = (const unsigned char*) vbuf;
 
   crc ^= mask;
-  while (0 != len--)
-    crc = (crc >> 8) ^ crcTable[ (crc ^ (*buf++)) & 0xFF ];
+  while(0 != len--)
+    crc = (crc >> 8) ^ crcTable[(crc ^ (*buf++)) & 0xFF];
   return(crc ^ mask);
 }
 
-bool CPacketQueue::add_tail(const u8* packet_data, int packet_len, bool calc_crc, bool need_crc) {
-  if ((cnt >= max) || (packet_len < 1) || (packet_len > 1514)) {
-	dropped += 1;
-	printf("CPacketQueue(%s):add() packet lost! Size = %d", name, packet_len);
-	printf(".. dst: %02x-%02x-%02x-%02x-%02x-%02x ", packet_data[0], packet_data[1], packet_data[2], packet_data[3], packet_data[4], packet_data[5]);
-	printf(".. src: %02x-%02x-%02x-%02x-%02x-%02x \n", packet_data[6], packet_data[7], packet_data[8], packet_data[9], packet_data[10], packet_data[11]);
-	return false;
+bool CPacketQueue::add_tail(const u8*  packet_data, int packet_len,
+                            bool calc_crc, bool need_crc)
+{
+  if((cnt >= max) || (packet_len < 1) || (packet_len > 1514))
+  {
+    dropped += 1;
+    printf("CPacketQueue(%s):add() packet lost! Size = %d", name, packet_len);
+    printf(".. dst: %02x-%02x-%02x-%02x-%02x-%02x ", packet_data[0],
+           packet_data[1], packet_data[2], packet_data[3], packet_data[4],
+           packet_data[5]);
+    printf(".. src: %02x-%02x-%02x-%02x-%02x-%02x \n", packet_data[6],
+           packet_data[7], packet_data[8], packet_data[9], packet_data[10],
+           packet_data[11]);
+    return false;
   }
 
   tail += 1;
-  if (tail >= max) {
-	tail = 0;
+  if(tail >= max)
+  {
+    tail = 0;
   }
-  eth_packet* next = &packets[tail];
+
+  eth_packet*   next = &packets[tail];
   next->len = packet_len;
   next->used = 0;
-  memcpy(next->frame, packet_data, packet_len);					// copy packet data
-  if (need_crc) {												// If packet needs CRC
-    u32 crc = calc_crc ? eth_crc32(0, packet_data, packet_len) : 0;	// recalculate crc if needed
-    u32 ncrc = htonl(crc);										// put crc in network order
-    memcpy(&next->frame[packet_len], &ncrc, 4);					// append CRC to packet
-    next->len += 4;												// increase packet length
+  memcpy(next->frame, packet_data, packet_len); // copy packet data
+  if(need_crc)
+  { // If packet needs CRC
+    u32 crc = calc_crc ? eth_crc32(0, packet_data, packet_len) : 0; // recalculate crc if needed
+    u32 ncrc = htonl(crc);  // put crc in network order
+    memcpy(&next->frame[packet_len], &ncrc, 4); // append CRC to packet
+    next->len += 4; // increase packet length
   }
+
   cnt += 1;
-  if (cnt > highwater) {
+  if(cnt > highwater)
+  {
     highwater = cnt;
   }
+
   return true;
 }
 
-bool CPacketQueue::get_head(eth_packet& packet) {
-  if (cnt <= 0) {
-	return false;
+bool CPacketQueue::get_head(eth_packet& packet)
+{
+  if(cnt <= 0)
+  {
+    return false;
   }
-  eth_packet* headp = &packets[head];
+
+  eth_packet*   headp = &packets[head];
   packet.len = headp->len;
   packet.used = headp->used;
   memcpy(packet.frame, headp->frame, sizeof(packet.frame));
   head += 1;
-  if (head >= max) {
-	head = 0;
+  if(head >= max)
+  {
+    head = 0;
   }
+
   cnt -= 1;
   return true;
 }

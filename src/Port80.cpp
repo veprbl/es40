@@ -27,7 +27,7 @@
  * \file
  * Contains the code for the emulated Port 80 device.
  *
- * $Id: Port80.cpp,v 1.11 2008/03/14 14:50:22 iamcamiel Exp $
+ * $Id: Port80.cpp,v 1.12 2008/03/14 15:30:51 iamcamiel Exp $
  *
  * X-1.11       Camiel Vanderhoeven                             14-MAR-2008
  *   1. More meaningful exceptions replace throwing (int) 1.
@@ -65,7 +65,6 @@
  *
  * \author Camiel Vanderhoeven (camiel@camicom.com / www.camicom.com)
  **/
-
 #include "StdAfx.h"
 #include "Port80.h"
 #include "System.h"
@@ -73,27 +72,22 @@
 /**
  * Constructor.
  **/
-
-CPort80::CPort80(CConfigurator * cfg, CSystem * c) : CSystemComponent(cfg,c)
+CPort80::CPort80(CConfigurator* cfg, CSystem* c) : CSystemComponent(cfg, c)
 {
-  c->RegisterMemory(this, 0, U64(0x00000801fc000080),1);
+  c->RegisterMemory(this, 0, U64(0x00000801fc000080), 1);
   state.p80 = 0;
 }
 
 /**
  * Destructor.
  **/
-
 CPort80::~CPort80()
-{
-
-}
+{ }
 
 /**
  * Read from port 80.
  * Returns the value last written to port 80.
  **/
-
 u64 CPort80::ReadMem(int index, u64 address, int dsize)
 {
   return state.p80;
@@ -102,85 +96,85 @@ u64 CPort80::ReadMem(int index, u64 address, int dsize)
 /**
  * Write to port 80.
  **/
-
 void CPort80::WriteMem(int index, u64 address, int dsize, u64 data)
 {
-  state.p80 = (u8)data;
+  state.p80 = (u8) data;
 }
 
-static u32 p80_magic1 = 0x80FFAA80;
-static u32 p80_magic2 = 0xAA8080FF;
+static u32  p80_magic1 = 0x80FFAA80;
+static u32  p80_magic2 = 0xAA8080FF;
 
 /**
  * Save state to a Virtual Machine State file.
  **/
-
-int CPort80::SaveState(FILE *f)
+int CPort80::SaveState(FILE* f)
 {
-  long ss = sizeof(state);
+  long  ss = sizeof(state);
 
-  fwrite(&p80_magic1,sizeof(u32),1,f);
-  fwrite(&ss,sizeof(long),1,f);
-  fwrite(&state,sizeof(state),1,f);
-  fwrite(&p80_magic2,sizeof(u32),1,f);
-  printf("%s: %d bytes saved.\n",devid_string,ss);
+  fwrite(&p80_magic1, sizeof(u32), 1, f);
+  fwrite(&ss, sizeof(long), 1, f);
+  fwrite(&state, sizeof(state), 1, f);
+  fwrite(&p80_magic2, sizeof(u32), 1, f);
+  printf("%s: %d bytes saved.\n", devid_string, ss);
   return 0;
 }
 
 /**
  * Restore state from a Virtual Machine State file.
  **/
-
-int CPort80::RestoreState(FILE *f)
+int CPort80::RestoreState(FILE* f)
 {
-  long ss;
-  u32 m1;
-  u32 m2;
-  size_t r;
+  long    ss;
+  u32     m1;
+  u32     m2;
+  size_t  r;
 
-  r = fread(&m1,sizeof(u32),1,f);
-  if (r!=1)
+  r = fread(&m1, sizeof(u32), 1, f);
+  if(r != 1)
   {
-    printf("%s: unexpected end of file!\n",devid_string);
-    return -1;
-  }
-  if (m1 != p80_magic1)
-  {
-    printf("%s: MAGIC 1 does not match!\n",devid_string);
+    printf("%s: unexpected end of file!\n", devid_string);
     return -1;
   }
 
-  fread(&ss,sizeof(long),1,f);
-  if (r!=1)
+  if(m1 != p80_magic1)
   {
-    printf("%s: unexpected end of file!\n",devid_string);
-    return -1;
-  }
-  if (ss != sizeof(state))
-  {
-    printf("%s: STRUCT SIZE does not match!\n",devid_string);
+    printf("%s: MAGIC 1 does not match!\n", devid_string);
     return -1;
   }
 
-  fread(&state,sizeof(state),1,f);
-  if (r!=1)
+  fread(&ss, sizeof(long), 1, f);
+  if(r != 1)
   {
-    printf("%s: unexpected end of file!\n",devid_string);
+    printf("%s: unexpected end of file!\n", devid_string);
     return -1;
   }
 
-  r = fread(&m2,sizeof(u32),1,f);
-  if (r!=1)
+  if(ss != sizeof(state))
   {
-    printf("%s: unexpected end of file!\n",devid_string);
-    return -1;
-  }
-  if (m2 != p80_magic2)
-  {
-    printf("%s: MAGIC 1 does not match!\n",devid_string);
+    printf("%s: STRUCT SIZE does not match!\n", devid_string);
     return -1;
   }
 
-  printf("%s: %d bytes restored.\n",devid_string,ss);
+  fread(&state, sizeof(state), 1, f);
+  if(r != 1)
+  {
+    printf("%s: unexpected end of file!\n", devid_string);
+    return -1;
+  }
+
+  r = fread(&m2, sizeof(u32), 1, f);
+  if(r != 1)
+  {
+    printf("%s: unexpected end of file!\n", devid_string);
+    return -1;
+  }
+
+  if(m2 != p80_magic2)
+  {
+    printf("%s: MAGIC 1 does not match!\n", devid_string);
+    return -1;
+  }
+
+  printf("%s: %d bytes restored.\n", devid_string, ss);
   return 0;
 }

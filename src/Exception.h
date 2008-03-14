@@ -27,24 +27,23 @@
  * \file 
  * Contains the definitions for the different exceptions used.
  *
- * $Id: Exception.h,v 1.1 2008/03/14 14:50:24 iamcamiel Exp $
+ * $Id: Exception.h,v 1.2 2008/03/14 15:30:51 iamcamiel Exp $
  *
  * X-1.1        Camiel Vanderhoeven                             14-MAR-2007
  *      File created.
  **/
-
-POCO_DECLARE_EXCEPTION(,CConfigurationException,Poco::Exception);
-POCO_DECLARE_EXCEPTION(,CThreadException,Poco::Exception);
-POCO_DECLARE_EXCEPTION(,CWin32Exception,Poco::Exception);
-POCO_DECLARE_EXCEPTION(,CSDLException,Poco::Exception);
-POCO_DECLARE_EXCEPTION(,CGracefulException,Poco::Exception);  /* User request to exit */
-POCO_DECLARE_EXCEPTION(,CAbortException,Poco::Exception);     /* User request to abort */
+POCO_DECLARE_EXCEPTION(, CConfigurationException, Poco::Exception);
+POCO_DECLARE_EXCEPTION(, CThreadException, Poco::Exception);
+POCO_DECLARE_EXCEPTION(, CWin32Exception, Poco::Exception);
+POCO_DECLARE_EXCEPTION(, CSDLException, Poco::Exception);
+POCO_DECLARE_EXCEPTION(, CGracefulException, Poco::Exception);  /* User request to exit */
+POCO_DECLARE_EXCEPTION(, CAbortException, Poco::Exception);     /* User request to abort */
 
 #define CInvalidArgumentException Poco::InvalidArgumentException
-#define CFileNotFoundException Poco::FileNotFoundException
-#define CTimeoutException Poco::TimeoutException
-#define CNotImplementedException Poco::NotImplementedException
-#define CIllegalStateException Poco::IllegalStateException
-#define CLogicException Poco::LogicException
-#define CRuntimeException Poco::RuntimeException
-#define COutOfMemoryException Poco::OutOfMemoryException
+#define CFileNotFoundException    Poco::FileNotFoundException
+#define CTimeoutException         Poco::TimeoutException
+#define CNotImplementedException  Poco::NotImplementedException
+#define CIllegalStateException    Poco::IllegalStateException
+#define CLogicException           Poco::LogicException
+#define CRuntimeException         Poco::RuntimeException
+#define COutOfMemoryException     Poco::OutOfMemoryException

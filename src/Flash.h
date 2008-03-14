@@ -27,7 +27,7 @@
  * \file 
  * Contains the definitions for the emulated Flash ROM devices.
  *
- * $Id: Flash.h,v 1.11 2008/01/02 09:30:19 iamcamiel Exp $
+ * $Id: Flash.h,v 1.12 2008/03/14 15:30:51 iamcamiel Exp $
  *
  * X-1.11       Camiel Vanderhoeven                             02-JAN-2008
  *      Comments.
@@ -65,7 +65,6 @@
  *
  * \author Camiel Vanderhoeven (camiel@camicom.com / http://www.camicom.com)
  **/
-
 #if !defined(INCLUDED_FLASH_H)
 #define INCLUDED_FLASH_H
 
@@ -77,30 +76,28 @@
  * Flash memory is only used for storing configuration data (such as SRM console variables),
  * it is not used for firmware.
  **/
-
-class CFlash : public CSystemComponent  
+class CFlash : public CSystemComponent
 {
- public:
-  virtual void WriteMem(int index, u64 address, int dsize, u64 data);
-  virtual u64 ReadMem(int index, u64 address, int dsize);
-  CFlash(CConfigurator * cfg, class CSystem * c);
-  virtual ~CFlash();
-  virtual int SaveState(FILE * f);
-  virtual int RestoreState(FILE * f);
-  void SaveStateF();
-  void RestoreStateF();
-  void SaveStateF(char * fn);
-  void RestoreStateF(char * fn);
+  public:
+    virtual void  WriteMem(int index, u64 address, int dsize, u64 data);
+    virtual u64   ReadMem(int index, u64 address, int dsize);
+    CFlash(CConfigurator* cfg, class CSystem* c);
+    virtual       ~CFlash();
+    virtual int   SaveState(FILE* f);
+    virtual int   RestoreState(FILE* f);
+    void          SaveStateF();
+    void          RestoreStateF();
+    void          SaveStateF(char* fn);
+    void          RestoreStateF(char* fn);
+  protected:
 
- protected:
-  /// The state structure contains all elements that need to be saved to the statefile.
-  struct SFlash_state
-  {
-    u8 Flash[2*1024*1024];
-    int mode;
-  } state;
+    /// The state structure contains all elements that need to be saved to the statefile.
+    struct SFlash_state
+    {
+      u8  Flash[2 * 1024 * 1024];
+      int mode;
+    } state;
 };
 
-extern CFlash * theSROM;
-
+extern CFlash*  theSROM;
 #endif // !defined(INCLUDED_FLASH_H)

@@ -27,7 +27,7 @@
  * \file
  * Contains the code for the emulated Floppy Controller devices.
  *
- * $Id: FloppyController.cpp,v 1.12 2008/03/14 14:50:21 iamcamiel Exp $
+ * $Id: FloppyController.cpp,v 1.13 2008/03/14 15:30:51 iamcamiel Exp $
  *
  * X-1.12       Camiel Vanderhoeven                             14-MAR-2008
  *   1. More meaningful exceptions replace throwing (int) 1.
@@ -68,7 +68,6 @@
  *
  * \author Camiel Vanderhoeven (camiel@camicom.com / http://www.camicom.com)
  **/
-
 #include "StdAfx.h"
 #include "FloppyController.h"
 #include "System.h"
@@ -76,8 +75,7 @@
 /**
  * Constructor.
  **/
-
-CFloppyController::CFloppyController(CConfigurator * cfg, CSystem * c, int id) : CSystemComponent(cfg,c)
+CFloppyController::CFloppyController(CConfigurator* cfg, CSystem* c, int id) : CSystemComponent(cfg, c)
 {
   c->RegisterMemory(this, 0, U64(0x00000801fc0003f0) - (0x80 * id), 6);
   c->RegisterMemory(this, 1, U64(0x00000801fc0003f7) - (0x80 * id), 1);
@@ -128,85 +126,94 @@ CFloppyController::CFloppyController(CConfigurator * cfg, CSystem * c, int id) :
   iRegisters[0x28] = 0x00;
   iRegisters[0x29] = 0x00;
 
-  printf("%s: $Id: FloppyController.cpp,v 1.12 2008/03/14 14:50:21 iamcamiel Exp $\n",devid_string);
+  printf("%s: $Id: FloppyController.cpp,v 1.13 2008/03/14 15:30:51 iamcamiel Exp $\n",
+       devid_string);
 }
 
 /**
  * Destructor.
  **/
-
 CFloppyController::~CFloppyController()
-{
-
-}
-
+{ }
 void CFloppyController::WriteMem(int index, u64 address, int dsize, u64 data)
 {
-  if (index==1)
+  if(index == 1)
     address += 7;
 
-  switch (address)
+  switch(address)
+  {
+  case 0:
+    switch(data & 0xff)
     {
-    case 0:
-      switch (data&0xff)
-	{
-	case 0x55:
-	  //			if (iMode==1)
-	  //				printf("Entering configuration mode for floppy controller %d\n", iID);
-	  if (iMode==0 || iMode==1) 
-	    iMode++;
-	  break;
-	case 0xaa:
-	  //			if (iMode==2)
-	  //				printf("Leaving configuration mode for floppy controller %d\n", iID);
-	  iMode=0;
-	  break;
-	default:
-	  if (iMode==2)
-	    iActiveRegister = (int)(data&0xff);
-	  //			else
-	  //				printf("Unknown command: %02x on floppy port %d\n",(u32)(data&0xff),(u32)address);
-	}
+    case 0x55:
+
+      //			if (iMode==1)
+      //				printf("Entering configuration mode for floppy controller %d\n", iID);
+      if(iMode == 0 || iMode == 1)
+        iMode++;
       break;
-    case 1:
-      if (iMode==2)
-	{
-	  if (iActiveRegister < 0x2a)
-	    iRegisters[iActiveRegister] = (u8)(data&0xff);
-	  //			else
-	  //				printf("Unknown floppy register: %02x\n",iActiveRegister);
-	}
-      //		else
-      //			printf("Unknown command: %02x on floppy port %d\n",(u32)(data&0xff),(u32)address);
+
+    case 0xaa:
+
+      //			if (iMode==2)
+      //				printf("Leaving configuration mode for floppy controller %d\n", iID);
+      iMode = 0;
       break;
-      //	default:
-      //		printf("Unknown command: %02x on floppy port %d\n",(u32)(data&0xff),(u32)address);
+
+    default:
+      if(iMode == 2)
+        iActiveRegister = (int) (data & 0xff);
+
+      //			else
+      //				printf("Unknown command: %02x on floppy port %d\n",(u32)(data&0xff),(u32)address);
     }
+    break;
+
+  case 1:
+    if(iMode == 2)
+    {
+      if(iActiveRegister < 0x2a)
+        iRegisters[iActiveRegister] = (u8) (data & 0xff);
+
+      //			else
+      //				printf("Unknown floppy register: %02x\n",iActiveRegister);
+    }
+
+    //		else
+    //			printf("Unknown command: %02x on floppy port %d\n",(u32)(data&0xff),(u32)address);
+    break;
+
+    //	default:
+    //		printf("Unknown command: %02x on floppy port %d\n",(u32)(data&0xff),(u32)address);
+  }
 }
 
 u64 CFloppyController::ReadMem(int index, u64 address, int dsize)
 {
-  if (index==1)
+  if(index == 1)
     address += 7;
 
-  switch (address)
+  switch(address)
+  {
+  case 1:
+    if(iMode == 2)
     {
-    case 1:
-      if (iMode==2)
-	{
-	  if (iActiveRegister < 0x2a)
-	    return (u64)(iRegisters[iActiveRegister]);
-	}
+      if(iActiveRegister < 0x2a)
+        return(u64) (iRegisters[iActiveRegister]);
+    }
     break;
-  case 4: //3f4 floppy main status register
-    return 0x80; // floppy ready
+
+  case 4:         //3f4 floppy main status register
+    return 0x80;  // floppy ready
     break;
-  case 5: //3f5 floppy command status register
+
+  case 5:         //3f5 floppy command status register
     return 0;
     break;
+
   default:
-	printf("Unknown read access on floppy port %d\n",(u32)address);
-    }
+    printf("Unknown read access on floppy port %d\n", (u32) address);
+  }
 
   return 0;
 }

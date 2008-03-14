@@ -27,7 +27,7 @@
  * \file
  * Contains definitions to use a RAM disk.
  *
- * $Id: DiskRam.h,v 1.9 2008/01/12 12:46:17 iamcamiel Exp $
+ * $Id: DiskRam.h,v 1.10 2008/03/14 15:30:51 iamcamiel Exp $
  *
  * X-1.9        Camiel Vanderhoeven                             12-JAN-2008
  *      Avoid compiler warnings.
@@ -56,7 +56,6 @@
  * X-1.1        Camiel Vanderhoeven                             12-DEC-2007
  *      Initial version in CVS.
  **/
-
 #if !defined(__DISKRAM_H__)
 #define __DISKRAM_H__
 
@@ -65,19 +64,17 @@
 /**
  * \brief Emulated disk that uses RAM.
  **/
-
 class CDiskRam : public CDisk
 {
-public:
-  CDiskRam(CConfigurator * cfg, CSystem * sys, CDiskController * c, int idebus, int idedev);
-  virtual ~CDiskRam(void);
+  public:
+    CDiskRam(CConfigurator*  cfg, CSystem*  sys, CDiskController*  c, int idebus,
+             int idedev);
+    virtual         ~CDiskRam(void);
 
-  virtual bool seek_byte(off_t_large byte);
-  virtual size_t read_bytes(void * dest, size_t bytes);
-  virtual size_t write_bytes(void * src, size_t bytes);
-
-protected:
-  void * ramdisk;
+    virtual bool    seek_byte(off_t_large byte);
+    virtual size_t  read_bytes(void* dest, size_t bytes);
+    virtual size_t  write_bytes(void* src, size_t bytes);
+  protected:
+    void*   ramdisk;
 };
-
 #endif //!defined(__DISKFILE_H__)

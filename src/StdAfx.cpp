@@ -35,7 +35,6 @@
  *
  * \author Camiel Vanderhoeven (camiel@camicom.com / http://www.camicom.com)
  **/
-
 #include "StdAfx.h"
 
 // TODO: reference any additional headers you need in STDAFX.H

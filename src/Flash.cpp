@@ -27,7 +27,7 @@
  * \file
  * Contains the code for the emulated Flash ROM devices.
  *
- * $Id: Flash.cpp,v 1.16 2008/03/14 14:50:21 iamcamiel Exp $
+ * $Id: Flash.cpp,v 1.17 2008/03/14 15:30:51 iamcamiel Exp $
  *
  * X-1.16       Camiel Vanderhoeven                             14-MAR-2008
  *   1. More meaningful exceptions replace throwing (int) 1.
@@ -80,87 +80,82 @@
  *
  * \author Camiel Vanderhoeven (camiel@camicom.com / http://www.camicom.com)
  **/
-
 #include "StdAfx.h"
 #include "Flash.h"
 #include "System.h"
 #include "AlphaCPU.h"
 
-#define MODE_READ 0
-#define MODE_STEP1 1
-#define MODE_STEP2 2
-#define MODE_AUTOSEL 3
-#define MODE_PROGRAM 4
-#define MODE_ERASE_STEP3 5
-#define MODE_ERASE_STEP4 6
-#define MODE_ERASE_STEP5 7
-#define MODE_CONFIRM_0 8
-#define MODE_CONFIRM_1 9
+#define MODE_READ         0
+#define MODE_STEP1        1
+#define MODE_STEP2        2
+#define MODE_AUTOSEL      3
+#define MODE_PROGRAM      4
+#define MODE_ERASE_STEP3  5
+#define MODE_ERASE_STEP4  6
+#define MODE_ERASE_STEP5  7
+#define MODE_CONFIRM_0    8
+#define MODE_CONFIRM_1    9
 
-extern CAlphaCPU * cpu[4];
+extern CAlphaCPU*   cpu[4];
 
 /**
  * Constructor.
  **/
-
-CFlash::CFlash(CConfigurator * cfg, CSystem * c) : CSystemComponent(cfg,c)
+CFlash::CFlash(CConfigurator* cfg, CSystem* c) : CSystemComponent(cfg, c)
 {
-  if (theSROM)
-    FAILURE(Configuration,"More than one Flash");
+  if(theSROM)
+    FAILURE(Configuration, "More than one Flash");
   theSROM = this;
-  c->RegisterMemory(this, 0, U64(0x0000080100000000),0x8000000); // 2MB
-  memset(state.Flash,0xff,2*1024*1024);
+  c->RegisterMemory(this, 0, U64(0x0000080100000000), 0x8000000); // 2MB
+  memset(state.Flash, 0xff, 2 * 1024 * 1024);
   state.mode = MODE_READ;
 
-  printf("%s: $Id: Flash.cpp,v 1.16 2008/03/14 14:50:21 iamcamiel Exp $\n",devid_string);
+  printf("%s: $Id: Flash.cpp,v 1.17 2008/03/14 15:30:51 iamcamiel Exp $\n",
+         devid_string);
 }
 
 /**
  * Destructor.
  **/
-
 CFlash::~CFlash()
-{
-
-}
+{ }
 
 /**
  * Read a byte from flashmemory.
  * Normally, this returns one byte from flash, however, after some commands
  * sent to the flash-rom, this returns identification of status information.
  **/
-
 u64 CFlash::ReadMem(int index, u64 address, int dsize)
 {
   u64 data = 0;
-  int a = (int)(address>>6);
+  int a = (int) (address >> 6);
 
-  switch (state.mode)
+  switch(state.mode)
+  {
+  case MODE_AUTOSEL:
+    switch(a)
     {
-    case MODE_AUTOSEL:
-      switch (a)
-	{
-	case 0:
-	  data = 1; // manufacturer
-	  break;
-	case 1:
-	  data = 0xad; // device
-	  break;
-	default:
-	  data = 0;
-	}
+    case 0:   data = 1;     // manufacturer
       break;
-    case MODE_CONFIRM_0:
-      data = 0x80;
-      state.mode = MODE_READ;
+    case 1:   data = 0xad;  // device
       break;
-    case MODE_CONFIRM_1:
-      data = 0x80;
-      state.mode = MODE_CONFIRM_0;
-      break;
-    default:
-      data = state.Flash[a];
+    default:  data = 0;
     }
+    break;
+
+  case MODE_CONFIRM_0:
+    data = 0x80;
+    state.mode = MODE_READ;
+    break;
+
+  case MODE_CONFIRM_1:
+    data = 0x80;
+    state.mode = MODE_CONFIRM_0;
+    break;
+
+  default:
+    data = state.Flash[a];
+  }
 
   return data;
 }
@@ -168,222 +163,223 @@ u64 CFlash::ReadMem(int index, u64 address, int dsize)
 /**
  * Write command or programming data to flash-rom.
  **/
-
 void CFlash::WriteMem(int index, u64 address, int dsize, u64 data)
 {
-  int a = (int)(address>>6);
-
+  int a = (int) (address >> 6);
 
   switch(state.mode)
+  {
+  case MODE_READ:
+  case MODE_AUTOSEL:
+    if((a == 0x5555) && (data == 0xaa))
     {
-    case MODE_READ:
-    case MODE_AUTOSEL:
-      if ((a == 0x5555) && (data==0xaa))
-	{
-	  state.mode = MODE_STEP1;
-	  return;
-	}
-      state.mode = MODE_READ;
+      state.mode = MODE_STEP1;
       return;
-    case MODE_STEP1:
-      if ((a == 0x2aaa) && (data==0x55))
-	{
-	  state.mode = MODE_STEP2;
-	  return;
-	}
-      state.mode = MODE_READ;
+    }
+
+    state.mode = MODE_READ;
+    return;
+
+  case MODE_STEP1:
+    if((a == 0x2aaa) && (data == 0x55))
+    {
+      state.mode = MODE_STEP2;
       return;
-    case MODE_STEP2:
-      if (a != 0x5555)
-	{
-	  state.mode = MODE_READ;
-	  return;
-	}
-      switch (data)
-	{
-	case 0x90:
-	  state.mode = MODE_AUTOSEL;
-	  return;
-	case 0xa0:
-	  state.mode = MODE_PROGRAM;
-	  return;
-	case 0x80:
-	  state.mode = MODE_ERASE_STEP3;
-	  return;
-	}
-      state.mode = MODE_READ;
-      return;
-    case MODE_ERASE_STEP3:
-      if ((a == 0x5555) && (data==0xaa))
-	{
-	  state.mode = MODE_ERASE_STEP4;
-	  return;
-	}
-      state.mode = MODE_READ;
-      return;
-    case MODE_ERASE_STEP4:
-      if ((a == 0x2aaa) && (data==0x55))
-	{
-	  state.mode = MODE_ERASE_STEP5;
-	  return;
-	}
-      state.mode = MODE_READ;
-      return;
-    case MODE_ERASE_STEP5:
-      if ((a == 0x5555) && (data==0x10))
-	{
-	  memset(state.Flash, 0xff, 1<<21);
-	  state.mode = MODE_CONFIRM_1;
-	  return;
-	}
-      if (data==0x30)
-	{
-	  memset(&state.Flash[(a>>16)<<16], 0xff, 1<<16);
-	  state.mode = MODE_CONFIRM_1;
-	  return;
-	}
+    }
+
+    state.mode = MODE_READ;
+    return;
+
+  case MODE_STEP2:
+    if(a != 0x5555)
+    {
       state.mode = MODE_READ;
       return;
     }
-	
+
+    switch(data)
+    {
+    case 0x90:  state.mode = MODE_AUTOSEL; return;
+    case 0xa0:  state.mode = MODE_PROGRAM; return;
+    case 0x80:  state.mode = MODE_ERASE_STEP3; return;
+    }
+
+    state.mode = MODE_READ;
+    return;
+
+  case MODE_ERASE_STEP3:
+    if((a == 0x5555) && (data == 0xaa))
+    {
+      state.mode = MODE_ERASE_STEP4;
+      return;
+    }
+
+    state.mode = MODE_READ;
+    return;
+
+  case MODE_ERASE_STEP4:
+    if((a == 0x2aaa) && (data == 0x55))
+    {
+      state.mode = MODE_ERASE_STEP5;
+      return;
+    }
+
+    state.mode = MODE_READ;
+    return;
+
+  case MODE_ERASE_STEP5:
+    if((a == 0x5555) && (data == 0x10))
+    {
+      memset(state.Flash, 0xff, 1 << 21);
+      state.mode = MODE_CONFIRM_1;
+      return;
+    }
+
+    if(data == 0x30)
+    {
+      memset(&state.Flash[(a >> 16) << 16], 0xff, 1 << 16);
+      state.mode = MODE_CONFIRM_1;
+      return;
+    }
+
+    state.mode = MODE_READ;
+    return;
+  }
 
   // we must now be in mode program...
-  state.Flash[a] = (u8)data;
+  state.Flash[a] = (u8) data;
   state.mode = MODE_READ;
 }
 
 /**
  * Save state to a flash rom file.
  **/
-
-void CFlash::SaveStateF(char * fn)
+void CFlash::SaveStateF(char* fn)
 {
-  FILE * ff;
-  ff = fopen(fn,"wb");
-  if (ff)
-    {
-      SaveState(ff);
-      fclose(ff);
-      printf("%%FLS-I-SAVEST: Flash state saved to %s\n",fn);
-    }
+  FILE*   ff;
+  ff = fopen(fn, "wb");
+  if(ff)
+  {
+    SaveState(ff);
+    fclose(ff);
+    printf("%%FLS-I-SAVEST: Flash state saved to %s\n", fn);
+  }
   else
   {
-    printf("%%FLS-F-NOSAVE: Flash could not be saved to %s\n",fn);
+    printf("%%FLS-F-NOSAVE: Flash could not be saved to %s\n", fn);
   }
 }
 
 /**
  * Save state to the default flash rom file.
  **/
-
 void CFlash::SaveStateF()
 {
-  SaveStateF(myCfg->get_text_value("rom.flash","flash.rom"));
+  SaveStateF(myCfg->get_text_value("rom.flash", "flash.rom"));
 }
 
 /**
  * Restore state from a flash rom file.
  **/
-
-void CFlash::RestoreStateF(char * fn)
+void CFlash::RestoreStateF(char* fn)
 {
-  FILE * ff;
-  ff = fopen(fn,"rb");
-  if (ff)
-    {
-      RestoreState(ff);
-      fclose(ff);
-      printf("%%FLS-I-RESTST: Flash state restored from %s\n",fn);
-    }
+  FILE*   ff;
+  ff = fopen(fn, "rb");
+  if(ff)
+  {
+    RestoreState(ff);
+    fclose(ff);
+    printf("%%FLS-I-RESTST: Flash state restored from %s\n", fn);
+  }
   else
   {
-    printf("%%FLS-F-NOREST: Flash could not be restored from %s\n",fn);
+    printf("%%FLS-F-NOREST: Flash could not be restored from %s\n", fn);
   }
 }
 
 /**
  * Restore state from the default flash rom file.
  **/
-
 void CFlash::RestoreStateF()
 {
-  RestoreStateF(myCfg->get_text_value("rom.flash","flash.rom"));
+  RestoreStateF(myCfg->get_text_value("rom.flash", "flash.rom"));
 }
 
-static u32 flash_magic1 = 0xFF3E3FF3;
-static u32 flash_magic2 = 0x3FF3E3FF;
+static u32  flash_magic1 = 0xFF3E3FF3;
+static u32  flash_magic2 = 0x3FF3E3FF;
 
 /**
  * Save state to a Virtual Machine State file.
  **/
-
-int CFlash::SaveState(FILE *f)
+int CFlash::SaveState(FILE* f)
 {
-  long ss = sizeof(state);
-  fwrite(&flash_magic1,sizeof(u32),1,f);
-  fwrite(&ss,sizeof(long),1,f);
-  fwrite(&state,sizeof(state),1,f);
-  fwrite(&flash_magic2,sizeof(u32),1,f);
-  printf("flash: %d bytes saved.\n",ss);
+  long  ss = sizeof(state);
+  fwrite(&flash_magic1, sizeof(u32), 1, f);
+  fwrite(&ss, sizeof(long), 1, f);
+  fwrite(&state, sizeof(state), 1, f);
+  fwrite(&flash_magic2, sizeof(u32), 1, f);
+  printf("flash: %d bytes saved.\n", ss);
   return 0;
 }
 
 /**
  * Restore state from a Virtual Machine State file.
  **/
-
-int CFlash::RestoreState(FILE *f)
+int CFlash::RestoreState(FILE* f)
 {
-  long ss;
-  u32 m1;
-  u32 m2;
-  size_t r;
+  long    ss;
+  u32     m1;
+  u32     m2;
+  size_t  r;
 
-  r = fread(&m1,sizeof(u32),1,f);
-  if (r!=1)
+  r = fread(&m1, sizeof(u32), 1, f);
+  if(r != 1)
   {
     printf("flash: unexpected end of file!\n");
     return -1;
   }
-  if (m1 != flash_magic1)
+
+  if(m1 != flash_magic1)
   {
     printf("flash: MAGIC 1 does not match!\n");
     return -1;
   }
 
-  fread(&ss,sizeof(long),1,f);
-  if (r!=1)
+  fread(&ss, sizeof(long), 1, f);
+  if(r != 1)
   {
     printf("flash: unexpected end of file!\n");
     return -1;
   }
-  if (ss != sizeof(state))
+
+  if(ss != sizeof(state))
   {
     printf("flash: STRUCT SIZE does not match!\n");
     return -1;
   }
 
-  fread(&state,sizeof(state),1,f);
-  if (r!=1)
+  fread(&state, sizeof(state), 1, f);
+  if(r != 1)
   {
     printf("flash: unexpected end of file!\n");
     return -1;
   }
 
-  r = fread(&m2,sizeof(u32),1,f);
-  if (r!=1)
+  r = fread(&m2, sizeof(u32), 1, f);
+  if(r != 1)
   {
     printf("flash: unexpected end of file!\n");
     return -1;
   }
-  if (m2 != flash_magic2)
+
+  if(m2 != flash_magic2)
   {
     printf("flash: MAGIC 1 does not match!\n");
     return -1;
   }
 
-  printf("flash: %d bytes restored.\n",ss);
+  printf("flash: %d bytes restored.\n", ss);
   return 0;
 }
 
-CFlash * theSROM = 0;
+CFlash*   theSROM = 0;

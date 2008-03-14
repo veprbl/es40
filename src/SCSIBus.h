@@ -27,7 +27,7 @@
  * \file
  * Contains definitions for the SCSI bus class.
  *
- * $Id: SCSIBus.h,v 1.2 2008/01/20 16:18:44 iamcamiel Exp $
+ * $Id: SCSIBus.h,v 1.3 2008/03/14 15:30:52 iamcamiel Exp $
  *
  * X-1.2        Camiel Vanderhoeven                             20-JAN-2008
  *      Avoid compiler warnings.
@@ -35,7 +35,6 @@
  * X-1.1        Camiel Vanderhoeven                             12-JAN-2008
  *      Initial version in CVS.
  **/
-
 #if !defined(__SCSIBUS__H__)
 #define __SCSIBUS__H__
 
@@ -50,41 +49,42 @@
  **/
 class CSCSIBus : public CSystemComponent
 {
-public:
-  CSCSIBus(CConfigurator * cfg, CSystem * c);
-  ~CSCSIBus(void);
-  virtual int SaveState(FILE * f);
-  virtual int RestoreState(FILE * f);
+  public:
+    CSCSIBus(CConfigurator* cfg, CSystem* c);
+    ~             CSCSIBus(void);
+    virtual int   SaveState(FILE* f);
+    virtual int   RestoreState(FILE* f);
 
-  void scsi_register(CSCSIDevice * dev, int bus, int target);
-  void scsi_unregister(CSCSIDevice * dev, int target);
+    void          scsi_register(CSCSIDevice* dev, int bus, int target);
+    void          scsi_unregister(CSCSIDevice* dev, int target);
 
-  bool arbitrate(int initiator);
-  bool select(int initiator, int target);
-  void set_phase(int target, int phase);
-  int get_phase() { return state.phase; }; /**< Get current SCSI bus phase **/
-  void free_bus(int initiator);
+    bool          arbitrate(int initiator);
+    bool          select(int initiator, int target);
+    void          set_phase(int target, int phase);
+    int           get_phase() { return state.phase; };
 
-  CSCSIDevice * targets[16]; /**< pointers to the SCSI devices that respond to the 15 possible target id's. **/
-  int target_bus_no[16];     /**< indicates what bus this is for each connected SCSI device. always 0 for disks,
+    /**< Get current SCSI bus phase **/
+    void          free_bus(int initiator);
+
+    CSCSIDevice*  targets[16];        /**< pointers to the SCSI devices that respond to the 15 possible target id's. **/
+    int           target_bus_no[16];  /**< indicates what bus this is for each connected SCSI device. always 0 for disks,
                                   but controllers could have multiple SCSI busses. **/
 
-  /// The state structure contains all elements that need to be saved to the statefile
-  struct SSCSI_state
-  {
-    int initiator; /**< SCSI id of the initiator. **/
-    int target;    /**< SCSI id of the target. **/
-    int phase;     /**< SCSI bus phase. **/
-  } state;
+    /// The state structure contains all elements that need to be saved to the statefile
+    struct SSCSI_state
+    {
+      int initiator;  /**< SCSI id of the initiator. **/
+      int target;     /**< SCSI id of the target. **/
+      int phase;      /**< SCSI bus phase. **/
+    } state;
 };
 
-#define SCSI_PHASE_FREE        -2
-#define SCSI_PHASE_ARBITRATION -1
+#define SCSI_PHASE_FREE         - 2
+#define SCSI_PHASE_ARBITRATION  - 1
 #define SCSI_PHASE_DATA_OUT     0
 #define SCSI_PHASE_DATA_IN      1
 #define SCSI_PHASE_COMMAND      2
 #define SCSI_PHASE_STATUS       3
 #define SCSI_PHASE_MSG_OUT      6
 #define SCSI_PHASE_MSG_IN       7
-
 #endif

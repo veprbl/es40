@@ -28,7 +28,6 @@
  *  SUCH DAMAGE.
  */
 
-
 /** 
  * \file
  * Contains code for debugging.
@@ -55,44 +54,46 @@
  *         of debug(), but not the output of fatal().
  *
  *****************************************************************************/
-
 #include "StdAfx.h"
 
 //int verbose = 0;
-int quiet_mode = 0;
+int         quiet_mode = 0;
 
-static int debug_indent = 0;
-static int debug_currently_at_start_of_line = 1;
+static int  debug_indent = 0;
+static int  debug_currently_at_start_of_line = 1;
 
 /*
  *  va_debug():
  *
  *  Used internally by debug() and fatal().
  */
-static void va_debug(va_list argp, char *fmt)
+static void va_debug(va_list argp, char* fmt)
 {
-	char buf[DEBUG_BUFSIZE + 1];
-	char *s;
-	int i;
+  char    buf[DEBUG_BUFSIZE + 1];
+  char*   s;
+  int     i;
 
-	buf[0] = buf[DEBUG_BUFSIZE] = 0;
-	//vsnprintf(buf, DEBUG_BUFSIZE, fmt, argp);
-	sprintf(buf,fmt,argp);
+  buf[0] = buf[DEBUG_BUFSIZE] = 0;
 
-	s = buf;
-	while (*s) {
-		if (debug_currently_at_start_of_line) {
-			for (i=0; i<debug_indent; i++)
-				printf(" ");
-		}
+  //vsnprintf(buf, DEBUG_BUFSIZE, fmt, argp);
+  sprintf(buf, fmt, argp);
 
-		printf("%c", *s);
+  s = buf;
+  while(*s)
+  {
+    if(debug_currently_at_start_of_line)
+    {
+      for(i = 0; i < debug_indent; i++)
+        printf(" ");
+    }
 
-		debug_currently_at_start_of_line = 0;
-		if (*s == '\n' || *s == '\r')
-			debug_currently_at_start_of_line = 1;
-		s++;
-	}
+    printf("%c", *s);
+
+    debug_currently_at_start_of_line = 0;
+    if(*s == '\n' || *s == '\r')
+      debug_currently_at_start_of_line = 1;
+    s++;
+  }
 }
 
 /*
@@ -102,9 +103,9 @@ static void va_debug(va_list argp, char *fmt)
  */
 void debug_indentation(int diff)
 {
-	debug_indent += diff;
-	if (debug_indent < 0)
-		fprintf(stderr, "WARNING: debug_indent less than 0!\n");
+  debug_indent += diff;
+  if(debug_indent < 0)
+    fprintf(stderr, "WARNING: debug_indent less than 0!\n");
 }
 
 /*
@@ -112,16 +113,16 @@ void debug_indentation(int diff)
  *
  *  Debug output (ignored if quiet_mode is set).
  */
-void debug(char *fmt, ...)
+void debug(char* fmt, ...)
 {
-	va_list argp;
+  va_list argp;
 
-	if (quiet_mode)
-		return;
+  if(quiet_mode)
+    return;
 
-	va_start(argp, fmt);
-	va_debug(argp, fmt);
-	va_end(argp);
+  va_start(argp, fmt);
+  va_debug(argp, fmt);
+  va_end(argp);
 }
 
 /*
@@ -130,11 +131,11 @@ void debug(char *fmt, ...)
  *  Fatal works like debug(), but doesn't care about the quiet_mode
  *  setting.
  */
-void fatal(char *fmt, ...)
+void fatal(char* fmt, ...)
 {
-	va_list argp;
+  va_list argp;
 
-	va_start(argp, fmt);
-	va_debug(argp, fmt);
-	va_end(argp);
+  va_start(argp, fmt);
+  va_debug(argp, fmt);
+  va_end(argp);
 }

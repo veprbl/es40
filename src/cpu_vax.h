@@ -21,7 +21,7 @@
  * Although this is not required, the author would appreciate being notified of, 
  * and receiving any modifications you may make to the source code that might serve
  * the general public.
- */ 
+ */
 
 /**
  * \file 
@@ -39,11 +39,8 @@
  *
  * \author Camiel Vanderhoeven (camiel@camicom.com / http://www.camicom.com)
  **/
+#define DO_RC state.r[REG_1] = state.bIntrFlag ? 1 : 0; \
+  state.bIntrFlag = false;
 
-#define DO_RC				\
-	    state.r[REG_1] = state.bIntrFlag?1:0;	\
-	    state.bIntrFlag = false;
-
-#define DO_RS				\
- 	    state.r[REG_1] = state.bIntrFlag?1:0;	\
-	    state.bIntrFlag = true;
+#define DO_RS state.r[REG_1] = state.bIntrFlag ? 1 : 0; \
+  state.bIntrFlag = true;

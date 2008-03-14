@@ -27,7 +27,7 @@
  * \file 
  * Contains the definitions for the ISA part of the emulated Ali M1543C chipset.
  *
- * $Id: AliM1543C.h,v 1.32 2008/03/13 13:19:16 iamcamiel Exp $
+ * $Id: AliM1543C.h,v 1.33 2008/03/14 15:30:50 iamcamiel Exp $
  *
  * X-1.32       Camiel Vanderhoeven                             13-MAR-2008
  *      Create init(), start_threads() and stop_threads() functions.
@@ -129,7 +129,6 @@
  *
  * \author Camiel Vanderhoeven (camiel@camicom.com / http://www.camicom.com)
  **/
-
 #if !defined(INCLUDED_ALIM1543C_H_)
 #define INCLUDED_ALIM1543C_H
 
@@ -146,94 +145,92 @@
  *  - Keyboard Scancodes, by Andries Brouwer (http://www.win.tue.nl/~aeb/linux/kbd/scancodes.html)
  *  .
  **/
-
-class CAliM1543C:public CPCIDevice, public Poco::Runnable
+class CAliM1543C : public CPCIDevice, public Poco::Runnable
 {
-public:
-  virtual int SaveState (FILE * f);
-  virtual int RestoreState (FILE * f);
-  //    void instant_tick();
-  //    void interrupt(int number);
-  virtual void run ();
-  virtual void check_state ();
-  virtual void WriteMem_Legacy (int index, u32 address, int dsize, u32 data);
-  virtual u32 ReadMem_Legacy (int index, u32 address, int dsize);
+  public:
+    virtual int   SaveState(FILE* f);
+    virtual int   RestoreState(FILE* f);
 
-  void do_pit_clock ();
+    //    void instant_tick();
+    //    void interrupt(int number);
+    virtual void  run();
+    virtual void  check_state();
+    virtual void  WriteMem_Legacy(int index, u32 address, int dsize, u32 data);
+    virtual u32   ReadMem_Legacy(int index, u32 address, int dsize);
 
-  CAliM1543C (CConfigurator * cfg, class CSystem * c, int pcibus, int pcidev);
-  virtual ~ CAliM1543C ();
-  void pic_interrupt (int index, int intno);
-  void pic_deassert (int index, int intno);
+    void          do_pit_clock();
 
-  void init ();
-  void start_threads ();
-  void stop_threads ();
+    CAliM1543C(CConfigurator* cfg, class CSystem* c, int pcibus, int pcidev);
+    virtual       ~CAliM1543C();
+    void          pic_interrupt(int index, int intno);
+    void          pic_deassert(int index, int intno);
 
-private:
-
-  Poco::Thread * myThread;
-  CMutex *myRegLock;
-  bool StopThread;
-
-  // REGISTER 61 (NMI)
-  u8 reg_61_read ();
-  void reg_61_write (u8 data);
-
-  // REGISTERS 70 - 73: TOY
-  u8 toy_read (u32 address);
-  void toy_write (u32 address, u8 data);
-
-  // Timer/Counter
-  u8 pit_read (u32 address);
-  void pit_write (u32 address, u8 data);
-  void pit_clock ();
-
-  // interrupt controller
-  u8 pic_read (int index, u32 address);
-  void pic_write (int index, u32 address, u8 data);
-  u8 pic_read_vector ();
-  u8 pic_read_edge_level (int index);
-  void pic_write_edge_level (int index, u8 data);
-
-  // LPT controller
-  u8 lpt_read (u32 address);
-  void lpt_write (u32 address, u8 data);
-  void lpt_reset ();
-
-  /// The state structure contains all elements that need to be saved to the statefile.
-  struct SAli_state
-  {
+    void          init();
+    void          start_threads();
+    void          stop_threads();
+  private:
+    Poco::Thread * myThread;
+    CMutex*   myRegLock;
+    bool      StopThread;
 
     // REGISTER 61 (NMI)
-    u8 reg_61;
+    u8        reg_61_read();
+    void      reg_61_write(u8 data);
 
     // REGISTERS 70 - 73: TOY
-    u8 toy_stored_data[256];
-    u8 toy_access_ports[4];
+    u8        toy_read(u32 address);
+    void      toy_write(u32 address, u8 data);
 
     // Timer/Counter
-    u32 pit_counter[9];
-#define PIT_OFFSET_LATCH 3
-#define PIT_OFFSET_MAX 6
-    u8 pit_status[4];
-    u8 pit_mode[4];
+    u8        pit_read(u32 address);
+    void      pit_write(u32 address, u8 data);
+    void      pit_clock();
 
     // interrupt controller
-    int pic_mode[2];
-    u8 pic_intvec[2];
-    u8 pic_mask[2];
-    u8 pic_asserted[2];
-    u8 pic_edge_level[2];
+    u8        pic_read(int index, u32 address);
+    void      pic_write(int index, u32 address, u8 data);
+    u8        pic_read_vector();
+    u8        pic_read_edge_level(int index);
+    void      pic_write_edge_level(int index, u8 data);
 
-    u8 lpt_data;
-    u8 lpt_control;
-    u8 lpt_status;
-    bool lpt_init;
-  } state;
+    // LPT controller
+    u8        lpt_read(u32 address);
+    void      lpt_write(u32 address, u8 data);
+    void      lpt_reset();
 
-  FILE *lpt;
+    /// The state structure contains all elements that need to be saved to the statefile.
+    struct SAli_state
+    {
+
+      // REGISTER 61 (NMI)
+      u8    reg_61;
+
+      // REGISTERS 70 - 73: TOY
+      u8    toy_stored_data[256];
+      u8    toy_access_ports[4];
+
+      // Timer/Counter
+      u32   pit_counter[9];
+#define PIT_OFFSET_LATCH  3
+#define PIT_OFFSET_MAX    6
+      u8    pit_status[4];
+      u8    pit_mode[4];
+
+      // interrupt controller
+      int   pic_mode[2];
+      u8    pic_intvec[2];
+      u8    pic_mask[2];
+      u8    pic_asserted[2];
+      u8    pic_edge_level[2];
+
+      u8    lpt_data;
+      u8    lpt_control;
+      u8    lpt_status;
+      bool  lpt_init;
+    } state;
+
+    FILE*   lpt;
 };
 
-extern CAliM1543C *theAli;
+extern CAliM1543C*  theAli;
 #endif // !defined(INCLUDED_ALIM1543C_H)

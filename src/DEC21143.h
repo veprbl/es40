@@ -30,7 +30,7 @@
  * \file 
  * Contains the definitions for the emulated DEC 21143 NIC device.
  *
- * $Id: DEC21143.h,v 1.16 2008/03/13 13:19:19 iamcamiel Exp $
+ * $Id: DEC21143.h,v 1.17 2008/03/14 15:30:51 iamcamiel Exp $
  *
  * X-1.16       Camiel Vanderhoeven                             13-MAR-2008
  *      Create init(), start_threads() and stop_threads() functions.
@@ -83,7 +83,6 @@
  * X-1.1        Camiel Vanderhoeven                             14-NOV-2007
  *      Initial version for ES40 emulator.
  **/
-
 #if !defined(INCLUDED_DEC21143_H_)
 #define INCLUDED_DEC21143_H
 
@@ -104,106 +103,102 @@
  *  - Tru64 Device Driver Kit Version 2 (Ethernet sample = tu driver!) [T64]. (http://h30097.www3.hp.com/docs/dev_doc/DOCUMENTATION/HTML/dev_docs_r2.html)
  *  .
  **/
-
-class CDEC21143:public CPCIDevice, public Poco::Runnable
+class CDEC21143 : public CPCIDevice, public Poco::Runnable
 {
-public:
-  virtual int SaveState (FILE * f);
-  virtual int RestoreState (FILE * f);
-  void instant_tick ();
-  //    void interrupt(int number);
-  virtual void check_state ();
-  virtual void
-    WriteMem_Bar (int func, int bar, u32 address, int dsize, u32 data);
-  virtual u32 ReadMem_Bar (int func, int bar, u32 address, int dsize);
+  public:
+    virtual int   SaveState(FILE* f);
+    virtual int   RestoreState(FILE* f);
+    void          instant_tick();
 
-  CDEC21143 (CConfigurator * confg, class CSystem * c, int pcibus,
-             int pcidev);
-  virtual ~ CDEC21143 ();
-  virtual void ResetPCI ();
-  void ResetNIC ();
-  void SetupFilter ();
-  void receive_process ();
-  virtual void run ();
-  virtual void init ();
-  virtual void start_threads ();
-  virtual void stop_threads ();
+    //    void interrupt(int number);
+    virtual void  check_state();
+    virtual void  WriteMem_Bar(int func, int bar, u32 address, int dsize,
+                               u32 data);
+    virtual u32   ReadMem_Bar(int func, int bar, u32 address, int dsize);
 
-private:
-  static int nic_num;
+    CDEC21143(CConfigurator* confg, class CSystem* c, int pcibus, int pcidev);
+    virtual       ~CDEC21143();
+    virtual void  ResetPCI();
+    void          ResetNIC();
+    void          SetupFilter();
+    void          receive_process();
+    virtual void  run();
+    virtual void  init();
+    virtual void  start_threads();
+    virtual void  stop_threads();
+  private:
+    static int  nic_num;
 
-  Poco::Thread * myThread;
-  bool StopThread;
+    Poco::Thread * myThread;
+    bool                StopThread;
 
-  u32 nic_read (u32 address, int dsize);
-  void nic_write (u32 address, int dsize, u32 data);
-  void mii_access (uint32_t oldreg, uint32_t idata);
-  void srom_access (uint32_t oldreg, uint32_t idata);
+    u32                 nic_read(u32 address, int dsize);
+    void                nic_write(u32 address, int dsize, u32 data);
+    void                mii_access(uint32_t oldreg, uint32_t idata);
+    void                srom_access(uint32_t oldreg, uint32_t idata);
 
-  int dec21143_rx ();
-  int dec21143_tx ();
-  void set_tx_state (int tx_state);
-  void set_rx_state (int rx_state);
+    int                 dec21143_rx();
+    int                 dec21143_tx();
+    void                set_tx_state(int tx_state);
+    void                set_rx_state(int rx_state);
 
-  CPacketQueue *rx_queue;
-  pcap_t *fp;
-  struct bpf_program fcode;
-  bool calc_crc;
+    CPacketQueue*       rx_queue;
+    pcap_t*             fp;
+    struct bpf_program  fcode;
+    bool                calc_crc;
 
-  /// The state structure contains all elements that need to be saved to the statefile.
-  struct SNIC_state
-  {
-
-    bool irq_was_asserted;      /**< remember state of IRQ */
-
-    u8 mac[6];                              /**< ethernet address */
-    u8 setup_filter[192];       /**< filter for perfect filtering */
-    int descr_skip;             // Descriptor Skip Length [DSL] (in bytes)
-
-    /// SROM emulation
-    struct SNIC_srom
+    /// The state structure contains all elements that need to be saved to the statefile.
+    struct SNIC_state
     {
-      u8 data[1 << (7)];
-      int curbit;
-      int opcode;
-      int opcode_has_started;
-      int addr;
-    } srom;
+      bool  irq_was_asserted;   /**< remember state of IRQ */
 
-    /// MII PHY emulation
-    struct SNIC_mii
-    {
-      u16 phy_reg[MII_NPHY * 32];
-      int state;
-      int bit;
-      int opcode;
-      int phyaddr;
-      int regaddr;
-    } mii;
+      u8    mac[6];             /**< ethernet address */
+      u8    setup_filter[192];  /**< filter for perfect filtering */
+      int   descr_skip;         // Descriptor Skip Length [DSL] (in bytes)
+      
+          /// SROM emulation
+      struct SNIC_srom
+      {
+        u8  data[1 << (7)];
+        int curbit;
+        int opcode;
+        int opcode_has_started;
+        int addr;
+      } srom;
 
-    u32 reg[32];             /**< 21143 registers */
+      /// MII PHY emulation
+      struct SNIC_mii
+      {
+        u16 phy_reg[MII_NPHY * 32];
+        int state;
+        int bit;
+        int opcode;
+        int phyaddr;
+        int regaddr;
+      } mii;
 
-    /// Internal TX state
-    struct SNIC_tx
-    {
-      u32 cur_addr;
-      unsigned char *cur_buf;
-      int cur_buf_len;
-      int idling;
-      int idling_threshold;
-      bool suspend;
-    } tx;
+      u32 reg[32];  /**< 21143 registers */
 
-    /// Internal RX state
-    struct SNIC_rx
-    {
-      u32 cur_addr;
-      unsigned char *cur_buf;
-      int cur_buf_len;
-      int cur_offset;
-      eth_packet current;
-    } rx;
-  } state;
+      /// Internal TX state
+      struct SNIC_tx
+      {
+        u32             cur_addr;
+        unsigned char*  cur_buf;
+        int             cur_buf_len;
+        int             idling;
+        int             idling_threshold;
+        bool            suspend;
+      } tx;
+
+      /// Internal RX state
+      struct SNIC_rx
+      {
+        u32             cur_addr;
+        unsigned char*  cur_buf;
+        int             cur_buf_len;
+        int             cur_offset;
+        eth_packet      current;
+      } rx;
+    } state;
 };
-
 #endif // !defined(INCLUDED_DEC21143_H)

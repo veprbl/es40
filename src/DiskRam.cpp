@@ -27,7 +27,7 @@
  * \file
  * Contains code to use a RAM disk.
  *
- * $Id: DiskRam.cpp,v 1.17 2008/03/14 14:50:21 iamcamiel Exp $
+ * $Id: DiskRam.cpp,v 1.18 2008/03/14 15:30:51 iamcamiel Exp $
  *
  * X-1.17       Camiel Vanderhoeven                             14-MAR-2008
  *   1. More meaningful exceptions replace throwing (int) 1.
@@ -78,15 +78,15 @@
  * X-1.1        Camiel Vanderhoeven                             12-DEC-2007
  *      Initial version in CVS.
  **/
-
-#include "StdAfx.h" 
+#include "StdAfx.h"
 #include "DiskRam.h"
 
-CDiskRam::CDiskRam(CConfigurator * cfg, CSystem * sys, CDiskController * c, int idebus, int idedev) : CDisk(cfg,sys,c,idebus,idedev)
+CDiskRam::CDiskRam(CConfigurator*  cfg, CSystem*  sys, CDiskController*  c,
+                   int idebus, int idedev) : CDisk(cfg, sys, c, idebus, idedev)
 {
-  byte_size = myCfg->get_num_value("size",false,512*1024*1024);
+  byte_size = myCfg->get_num_value("size", false, 512 * 1024 * 1024);
 
-  CHECK_ALLOCATION(ramdisk = malloc((size_t)byte_size));
+  CHECK_ALLOCATION(ramdisk = malloc((size_t) byte_size));
 
   state.byte_pos = 0;
 
@@ -96,16 +96,18 @@ CDiskRam::CDiskRam(CConfigurator * cfg, CSystem * sys, CDiskController * c, int 
   //calc_cylinders();
   determine_layout();
 
-  model_number=myCfg->get_text_value("model_number","ES40RAMDISK");
+  model_number = myCfg->get_text_value("model_number", "ES40RAMDISK");
 
-  printf("%s: Mounted RAMDISK, %" LL "d %d-byte blocks, %" LL "d/%d/%d.\n",devid_string,byte_size/state.block_size,state.block_size,cylinders,heads,sectors);
+  printf("%s: Mounted RAMDISK, %"LL "d %d-byte blocks, %"LL "d/%d/%d.\n",
+         devid_string, byte_size / state.block_size, state.block_size,
+         cylinders, heads, sectors);
 }
 
 CDiskRam::~CDiskRam(void)
 {
-  if (ramdisk)
+  if(ramdisk)
   {
-    printf("%s: RAMDISK freed.\n",devid_string);
+    printf("%s: RAMDISK freed.\n", devid_string);
     free(ramdisk);
     ramdisk = 0;
   }
@@ -113,37 +115,37 @@ CDiskRam::~CDiskRam(void)
 
 bool CDiskRam::seek_byte(off_t_large byte)
 {
-  if (byte >=byte_size)
+  if(byte >= byte_size)
   {
-    FAILURE_1(InvalidArgument,"%s: Seek beyond end of file!\n",devid_string);
+    FAILURE_1(InvalidArgument, "%s: Seek beyond end of file!\n", devid_string);
   }
 
   state.byte_pos = byte;
   return true;
 }
 
-size_t CDiskRam::read_bytes(void *dest, size_t bytes)
+size_t CDiskRam::read_bytes(void* dest, size_t bytes)
 {
-  if (state.byte_pos >=byte_size)
+  if(state.byte_pos >= byte_size)
     return 0;
 
-  while (state.byte_pos + bytes >= byte_size)
+  while(state.byte_pos + bytes >= byte_size)
     bytes--;
 
-  memcpy(dest,&(((char*)ramdisk)[state.byte_pos]),bytes);
-  state.byte_pos += (unsigned long)bytes;
+  memcpy(dest, &(((char*) ramdisk)[state.byte_pos]), bytes);
+  state.byte_pos += (unsigned long) bytes;
   return bytes;
 }
 
-size_t CDiskRam::write_bytes(void *src, size_t bytes)
+size_t CDiskRam::write_bytes(void* src, size_t bytes)
 {
-  if (state.byte_pos >=byte_size)
+  if(state.byte_pos >= byte_size)
     return 0;
 
-  while (state.byte_pos + bytes >= byte_size)
+  while(state.byte_pos + bytes >= byte_size)
     bytes--;
 
-  memcpy(&(((char*)ramdisk)[state.byte_pos]),src,bytes);
-  state.byte_pos += (unsigned long)bytes;
+  memcpy(&(((char*) ramdisk)[state.byte_pos]), src, bytes);
+  state.byte_pos += (unsigned long) bytes;
   return bytes;
 }
