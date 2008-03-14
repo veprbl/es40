@@ -27,7 +27,10 @@
  * \file 
  * Contains the definitions for the different locking structures for multi-threading.
  *
- * $Id: Lock.h,v 1.7 2008/03/14 20:22:50 iamcamiel Exp $
+ * $Id: Lock.h,v 1.8 2008/03/14 21:16:49 iamcamiel Exp $
+ *
+ * X-1.8        Camiel Vanderhoeven                             14-MAR-2008
+ *      Fixed last patch to be platform-independent.
  *
  * X-1.7        Camiel Vanderhoeven                             14-MAR-2008
  *      2-second timeouts on read/write mutexes.
@@ -458,7 +461,7 @@ inline bool CRWMutex::tryWriteLock(long milliseconds)
 #endif
         return true;
       }
-      Sleep(5);
+      Poco::Thread::sleep(5);
 	}
 	while (!now.isElapsed(diff));
 #if defined(DEBUG_LOCKS)
@@ -493,7 +496,7 @@ inline bool CRWMutex::tryReadLock(long milliseconds)
 #endif
         return true;
       }
-      Sleep(5);
+      Poco::Thread::sleep(5);
 	}
 	while (!now.isElapsed(diff));
 #if defined(DEBUG_LOCKS)
@@ -528,7 +531,7 @@ inline void CRWMutex::writeLock(long milliseconds)
 #endif
         return;
       }
-      Sleep(5);
+      Poco::Thread::sleep(5);
 	}
 	while (!now.isElapsed(diff));
     FAILURE(Timeout, "Timeout");
@@ -560,7 +563,7 @@ inline void CRWMutex::readLock(long milliseconds)
 #endif
         return;
       }
-      Sleep(5);
+      Poco::Thread::sleep(5);
 	}
 	while (!now.isElapsed(diff));
     FAILURE(Timeout, "Timeout");
