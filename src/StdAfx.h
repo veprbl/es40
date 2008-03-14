@@ -30,7 +30,13 @@
  * or project specific include files that are used frequently, but
  * are changed infrequently.
  *
- * $Id: StdAfx.h,v 1.30 2008/03/14 15:30:52 iamcamiel Exp $
+ * $Id: StdAfx.h,v 1.31 2008/03/14 20:41:54 iamcamiel Exp $
+ *
+ * X-1.31       Camiel Vanderhoeven                             14-MAR-2008
+ *      Added inclusion of typeinfo.
+ *
+ * X-1.30       Camiel Vanderhoeven                             14-MAR-2008
+ *      Formatting.
  *
  * X-1.29       Camiel Vanderhoeven                             14-MAR-2008
  *   1. More meaningful exceptions replace throwing (int) 1.
@@ -208,6 +214,9 @@ inline char printable(char c)
 #define ftell_large ftello64
 #define off_t_large off64_t
 #endif
+
+#include <typeinfo>
+
 #define POCO_NO_UNWINDOWS
 #include <Poco/Thread.h>
 #include <Poco/Runnable.h>
