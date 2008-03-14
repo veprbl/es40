@@ -34,7 +34,7 @@
  * Contains the definitions for the bx_keymap_c class used for keyboard
  * interfacing with SDL and other device interfaces.
  *
- * $Id: keymap.h,v 1.5 2008/01/02 09:35:57 iamcamiel Exp $
+ * $Id: keymap.h,v 1.6 2008/03/14 15:31:29 iamcamiel Exp $
  *
  * X-1.4        Camiel Vanderhoeven                             02-JAN-2008
  *      Comments.
@@ -49,43 +49,43 @@
  *      Initial version for ES40 emulator.
  *
  **/
-
 #include "../Configurator.h"
 
 // In case of unknown symbol
-#define BX_KEYMAP_UNKNOWN   0xFFFFFFFF
+#define BX_KEYMAP_UNKNOWN 0xFFFFFFFF
 
 /// Structure of an element of the keymap table
-typedef struct { 
-  u32 baseKey;   // base key
+typedef struct
+{
+  u32 baseKey;  // base key
   u32 modKey;   // modifier key that must be held down
   s32 ascii;    // ascii equivalent, if any
   u32 hostKey;  // value that the host's OS or library recognizes
-  } BXKeyEntry;
+} BXKeyEntry;
 
 /**
  * \brief Keymap, used to map host keys to scancodes.
  **/
+class bx_keymap_c
+{
+  public:
+    bx_keymap_c(CConfigurator* cfg);
+    ~             bx_keymap_c(void);
 
-class bx_keymap_c {
-public:
-  bx_keymap_c(CConfigurator * cfg);
-  ~bx_keymap_c(void);
+    void          loadKeymap(u32 stringToSymbol (const char*));
+    void          loadKeymap(u32 stringToSymbol (const char*),
+                             const char *filename);
+    bool          isKeymapLoaded();
 
-  void loadKeymap(u32 stringToSymbol(const char*));
-  void loadKeymap(u32 stringToSymbol(const char*),const char *filename);
-  bool isKeymapLoaded ();
+    BXKeyEntry*   findHostKey(u32 hostkeynum);
+    BXKeyEntry*   findAsciiChar(u8 ascii);
+    char*         getBXKeyName(u32 key);
+  private:
+    u32             convertStringToBXKey(const char* );
+    CConfigurator*  myCfg;
 
-  BXKeyEntry *findHostKey(u32 hostkeynum);
-  BXKeyEntry *findAsciiChar(u8 ascii);
-  char *getBXKeyName(u32 key);
+    BXKeyEntry*     keymapTable;
+    u16             keymapCount;
+};
 
-private:
-  u32 convertStringToBXKey(const char *);
-  CConfigurator * myCfg;
- 
-  BXKeyEntry *keymapTable;
-  u16   keymapCount;
-  };
-
-extern bx_keymap_c * bx_keymap;
+extern bx_keymap_c*   bx_keymap;
