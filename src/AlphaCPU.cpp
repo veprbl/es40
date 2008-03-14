@@ -27,7 +27,11 @@
  * \file 
  * Contains the code for the emulated DecChip 21264CB EV68 Alpha processor.
  *
- * $Id: AlphaCPU.cpp,v 1.74 2008/03/13 13:19:18 iamcamiel Exp $
+ * $Id: AlphaCPU.cpp,v 1.75 2008/03/14 14:50:20 iamcamiel Exp $
+ *
+ * X-1.75       Camiel Vanderhoeven                             14-MAR-2008
+ *   1. More meaningful exceptions replace throwing (int) 1.
+ *   2. U64 macro replaces X64 macro.
  *
  * X-1.74       Camiel Vanderhoeven                             13-MAR-2008
  *      Create init(), start_threads() and stop_threads() functions.
@@ -347,9 +351,9 @@ void CAlphaCPU::run ()
       }
     }
   }
-  catch (...)
+  catch (Poco::Exception & e)
   {
-    printf ("CPU: exception in thread.\n");
+    printf ("Exception in CPU thread: %s.\n",e.displayText().c_str());
     // Let the thread die...
   }
 }
@@ -380,13 +384,13 @@ void CAlphaCPU::init ()
   tbia (ACCESS_READ);
   tbia (ACCESS_EXEC);
 
-//  state.fpcr = X64(8ff0000000000000);
+//  state.fpcr = U64(0x8ff0000000000000);
   state.fpen = true;
-  state.i_ctl_other = X64 (502086);
+  state.i_ctl_other = U64(0x502086);
   state.smc = 1;
 
   // SROM imitation...
-  add_tb (0, 0, X64 (ff61), ACCESS_READ);
+  add_tb (0, 0, U64(0xff61), ACCESS_READ);
 
 #if defined(IDB)
   bListing = false;
@@ -403,12 +407,12 @@ void CAlphaCPU::init ()
 
   cc_per_instruction = 70;
   ins_per_timer_int = cpu_hz / 1024;
-  next_timer_int = state.iProcNum ? X64 (FFFFFFFFFFFFFFFF) : ins_per_timer_int; /* only on CPU 0 */
+  next_timer_int = state.iProcNum ? U64(0xFFFFFFFFFFFFFFFF) : ins_per_timer_int; /* only on CPU 0 */
 
   state.r[22] = state.r[22 + 32] = state.iProcNum;
 
   printf
-    ("%s(%d): $Id: AlphaCPU.cpp,v 1.74 2008/03/13 13:19:18 iamcamiel Exp $\n",
+    ("%s(%d): $Id: AlphaCPU.cpp,v 1.75 2008/03/14 14:50:20 iamcamiel Exp $\n",
      devid_string, state.iProcNum);
 }
 
@@ -495,7 +499,7 @@ static double max_mips = 0.0;
 void CAlphaCPU::check_state ()
 {
   if (myThread && !myThread->isRunning ())
-    FAILURE ("CPU thread has died");
+    FAILURE (Thread,"CPU thread has died");
 
   // correct CPU timing loop...
 
@@ -632,7 +636,7 @@ void CAlphaCPU::execute ()
           {
             // The timer has reached 0. Set the interrupt status, and set the flag that we
             // need to check the interrupt status
-            state.eir |= (X64 (1) << i);
+            state.eir |= (U64(0x1) << i);
             state.check_int = true;
           }
         }
@@ -1885,33 +1889,33 @@ void CAlphaCPU::add_tb (u64 virt, u64 pte_phys, u64 pte_flags, int flags)
   switch (pte_flags & 0x60)     // granularity hint
   {
   case 0:
-#define GH_0_MATCH  X64(000007ffffffe000)       /* <42:13> */
-#define GH_0_PHYS   X64(00000fffffffe000)       /* <43:13> */
-#define GH_0_KEEP   X64(0000000000001fff)       /* <12:0>  */
+#define GH_0_MATCH  U64(0x000007ffffffe000)       /* <42:13> */
+#define GH_0_PHYS   U64(0x00000fffffffe000)       /* <43:13> */
+#define GH_0_KEEP   U64(0x0000000000001fff)       /* <12:0>  */
     match_mask = GH_0_MATCH;
     phys_mask = GH_0_PHYS;
     keep_mask = GH_0_KEEP;
     break;
   case 0x20:
-#define GH_1_MATCH  X64(000007ffffff0000)
-#define GH_1_PHYS   X64(00000fffffff0000)
-#define GH_1_KEEP   X64(000000000000ffff)
+#define GH_1_MATCH  U64(0x000007ffffff0000)
+#define GH_1_PHYS   U64(0x00000fffffff0000)
+#define GH_1_KEEP   U64(0x000000000000ffff)
     match_mask = GH_1_MATCH;
     phys_mask = GH_1_PHYS;
     keep_mask = GH_1_KEEP;
     break;
   case 0x40:
-#define GH_2_MATCH  X64(000007fffff80000)
-#define GH_2_PHYS   X64(00000ffffff80000)
-#define GH_2_KEEP   X64(000000000007ffff)
+#define GH_2_MATCH  U64(0x000007fffff80000)
+#define GH_2_PHYS   U64(0x00000ffffff80000)
+#define GH_2_KEEP   U64(0x000000000007ffff)
     match_mask = GH_2_MATCH;
     phys_mask = GH_2_PHYS;
     keep_mask = GH_2_KEEP;
     break;
   case 0x60:
-#define GH_3_MATCH  X64(000007ffffc00000)
-#define GH_3_PHYS   X64(00000fffffc00000)
-#define GH_3_KEEP   X64(00000000003fffff)
+#define GH_3_MATCH  U64(0x000007ffffc00000)
+#define GH_3_PHYS   U64(0x00000fffffc00000)
+#define GH_3_KEEP   U64(0x00000000003fffff)
     match_mask = GH_3_MATCH;
     phys_mask = GH_3_PHYS;
     keep_mask = GH_3_KEEP;

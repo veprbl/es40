@@ -27,7 +27,11 @@
  * \file
  * Contains code to use a raw device as a disk image.
  *
- * $Id: DiskDevice.cpp,v 1.6 2008/02/27 12:04:22 iamcamiel Exp $
+ * $Id: DiskDevice.cpp,v 1.7 2008/03/14 14:50:20 iamcamiel Exp $
+ *
+ * X-1.7        Camiel Vanderhoeven                             14-MAR-2008
+ *   1. More meaningful exceptions replace throwing (int) 1.
+ *   2. U64 macro replaces X64 macro.
  *
  * X-1.6        Brian Wheeler                                   27-FEB-2008
  *      Avoid compiler warnings.
@@ -60,8 +64,7 @@ CDiskDevice::CDiskDevice(CConfigurator * cfg, CSystem * sys, CDiskController * c
   filename = myCfg->get_text_value("device");
   if (!filename)
   {
-    printf("%s: Disk has no device attached!\n",devid_string);
-    throw((int)1);
+    FAILURE_1(Configuration,"%s: Disk has no device attached!\n",devid_string);
   }
   
   if (read_only)
@@ -85,15 +88,12 @@ CDiskDevice::CDiskDevice(CConfigurator * cfg, CSystem * sys, CDiskController * c
 #if defined(_WIN32)
   if (handle==INVALID_HANDLE_VALUE)
   {
-    printf("%s: Could not open device %s!\n",devid_string,filename);
-    printf("%s: Error %ld.\n",devid_string,GetLastError());
-    throw((int)1);
+    FAILURE_3(Runtime,"%s: Could not open device %s. Error %ld.",devid_string,filename,GetLastError());
   }
 #else
   if (!handle)
   {
-    printf("%s: Could not open device %s!\n",devid_string,filename);
-    throw((int)1);
+    FAILURE_2(Runtime,"%s: Could not open device %s.",devid_string,filename);
   }
 #endif
 
@@ -104,9 +104,7 @@ CDiskDevice::CDiskDevice(CConfigurator * cfg, CSystem * sys, CDiskController * c
 
   if (!DeviceIoControl(handle, IOCTL_DISK_GET_DRIVE_GEOMETRY, NULL, 0, &x, sizeof(x), &bytesret, NULL))
   {
-    printf("%s: Could not get drive geometry for %s!\n",devid_string,filename);
-    printf("%s: Error %ld.\n",devid_string,GetLastError());
-    throw((int)1);
+    FAILURE_3(Runtime,"%s: Could not get drive geometry for %s. Error %ld.",devid_string,filename,GetLastError());
   }
 
   sectors = x.SectorsPerTrack;
@@ -151,8 +149,7 @@ bool CDiskDevice::seek_byte(off_t_large byte)
 {
   if (byte >=byte_size)
   {
-    printf("%s: Seek beyond end of file!\n",devid_string);
-    throw((int)1);
+    FAILURE_1(InvalidArgument,"%s: Seek beyond end of file!\n",devid_string);
   }
 
 #if defined(_WIN32)
@@ -234,7 +231,7 @@ size_t CDiskDevice::write_bytes(void * src, size_t bytes)
     if (r != (dev_block_size))
     {
       printf("%s: Tried to read %d bytes from pos %" LL "d, but could only read %d bytes!\n",devid_string,dev_block_size,byte_from,r);
-      FAILURE("Error during device write operation. Terminating to avoid disk corruption.");
+      FAILURE(InvalidArgument,"Error during device write operation. Terminating to avoid disk corruption.");
     }
   }
 
@@ -248,7 +245,7 @@ size_t CDiskDevice::write_bytes(void * src, size_t bytes)
     if (r != (dev_block_size))
     {
       printf("%s: Tried to read %d bytes from pos %" LL "d, but could only read %d bytes!\n",devid_string,dev_block_size,byte_to-dev_block_size,r);
-      FAILURE("Error during device write operation. Terminating to avoid disk corruption.");
+      FAILURE(InvalidArgument,"Error during device write operation. Terminating to avoid disk corruption.");
     }
   }
 
@@ -264,7 +261,7 @@ size_t CDiskDevice::write_bytes(void * src, size_t bytes)
   if (r != byte_len)
   {
     printf("%s: Tried to write %d bytes to pos %" LL "d, but could only write %d bytes!\n",devid_string,byte_len,byte_from,r);
-    FAILURE("Error during device write operation. Terminating to avoid disk corruption.");
+    FAILURE(InvalidArgument,"Error during device write operation. Terminating to avoid disk corruption.");
   }
 
   state.byte_pos += bytes;

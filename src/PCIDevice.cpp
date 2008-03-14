@@ -27,7 +27,11 @@
  * \file
  * Contains the code for the PCI device class.
  *
- * $Id: PCIDevice.cpp,v 1.15 2008/02/27 12:04:25 iamcamiel Exp $
+ * $Id: PCIDevice.cpp,v 1.16 2008/03/14 14:50:21 iamcamiel Exp $
+ *
+ * X-1.16       Camiel Vanderhoeven                             14-MAR-2008
+ *   1. More meaningful exceptions replace throwing (int) 1.
+ *   2. U64 macro replaces X64 macro.
  *
  * X-1.15       Brian Wheeler                                   27-FEB-2008
  *      Avoid compiler warnings.
@@ -120,16 +124,16 @@ void CPCIDevice::add_function(int func, u32 data[64], u32 mask[64])
 void CPCIDevice::add_legacy_io(int id, u32 base, u32 length)
 {
   dev_range_is_io[id] = true;
-  cSystem->RegisterMemory(this,id, X64(00000801fc000000)
-                                + (X64(0000000200000000) * myPCIBus)
+  cSystem->RegisterMemory(this,id, U64(0x00000801fc000000)
+                                + (U64(0x0000000200000000) * myPCIBus)
                                 + base, length);
 }
 
 void CPCIDevice::add_legacy_mem(int id, u32 base, u32 length)
 {
   dev_range_is_io[id] = false;
-  cSystem->RegisterMemory(this,id, X64(0000080000000000)
-                                + (X64(0000000200000000) * myPCIBus)
+  cSystem->RegisterMemory(this,id, U64(0x0000080000000000)
+                                + (U64(0x0000000200000000) * myPCIBus)
                                 + base, length);
 }
 
@@ -239,8 +243,8 @@ void CPCIDevice::register_bar(int func, int bar, u32 data, u32 mask)
     pci_range_is_io[func][bar] = true;
 
     cSystem->RegisterMemory(this, PCI_RANGE_BASE+(func*8)+bar, 
-                               t= X64(00000801fc000000)
-                               + (X64(0000000200000000) * myPCIBus)
+                               t= U64(0x00000801fc000000)
+                               + (U64(0x0000000200000000) * myPCIBus)
                                + (data & ~0x3),length);
 #if defined(DEBUG_PCI)
     printf("%s(%s).%d PCI BAR %d set to IO  % " LL "x, len %x.\n",myCfg->get_myName(), myCfg->get_myValue(), func,bar,t,length);
@@ -252,8 +256,8 @@ void CPCIDevice::register_bar(int func, int bar, u32 data, u32 mask)
     pci_range_is_io[func][bar] = true;
 
     cSystem->RegisterMemory(this, PCI_RANGE_BASE+(func*8)+bar, 
-                               t= X64(0000080000000000)
-                               + (X64(0000000200000000) * myPCIBus)
+                               t= U64(0x0000080000000000)
+                               + (U64(0x0000000200000000) * myPCIBus)
                                + (data & ~0xf),length);
 #if defined(DEBUG_PCI)
     printf("%s(%s).%d PCI BAR %d set to MEM % " LL "x, len %x.\n",myCfg->get_myName(), myCfg->get_myValue(), func,bar,t,length);
@@ -277,10 +281,10 @@ void CPCIDevice::ResetPCI()
     if (device_at[i])
     {
       cSystem->RegisterMemory(this, PCI_RANGE_BASE+(i*8)+7, 
-                                    X64(00000801fe000000)
-                                 + (X64(0000000200000000) * myPCIBus)
-                                 + (X64(0000000000000800) * myPCIDev)
-                                 + (X64(0000000000000100) * i),0x100);
+                                    U64(0x00000801fe000000)
+                                 + (U64(0x0000000200000000) * myPCIBus)
+                                 + (U64(0x0000000000000800) * myPCIDev)
+                                 + (U64(0x0000000000000100) * i),0x100);
       memcpy(pci_state.config_data[i],std_config_data[i],64 * sizeof(u32));
       memcpy(pci_state.config_mask[i],std_config_mask[i],64 * sizeof(u32));
 
@@ -305,8 +309,7 @@ u64 CPCIDevice::ReadMem(int index, u64 address, int dsize)
 
   if (dsize != 8 && dsize != 16 && dsize != 32)
   {
-    printf("ReadMem: %s(%s) Unsupported dsize %d. (%d, %" LL "x)\n",myCfg->get_myName(), myCfg->get_myValue(),dsize,index,address);
-    throw((int)1);
+    FAILURE_5(InvalidArgument,"ReadMem: %s(%s) Unsupported dsize %d. (%d, %" LL "x)\n",myCfg->get_myName(), myCfg->get_myValue(),dsize,index,address);
   }
   
   if (index < PCI_RANGE_BASE)
@@ -355,15 +358,14 @@ void CPCIDevice::WriteMem(int index, u64 address, int dsize, u64 data)
   
   if (dsize==64)
   {
-    WriteMem(index, address,   32, data & X64(ffffffff));
-    WriteMem(index, address+4, 32, (data>>32) & X64(ffffffff));
+    WriteMem(index, address,   32, data & U64(0xffffffff));
+    WriteMem(index, address+4, 32, (data>>32) & U64(0xffffffff));
     return;
   }
 
   if (dsize != 8 && dsize != 16 && dsize != 32)
   {
-    printf("WriteMem: %s(%s) Unsupported dsize %d. (%d,%" LL "x,%" LL "x)\n",myCfg->get_myName(), myCfg->get_myValue(),dsize,index,address,data);
-    throw((int)1);
+    FAILURE_6(InvalidArgument,"WriteMem: %s(%s) Unsupported dsize %d. (%d,%" LL "x,%" LL "x)\n",myCfg->get_myName(), myCfg->get_myValue(),dsize,index,address,data);
   }
   
   if (index < PCI_RANGE_BASE)
@@ -496,28 +498,24 @@ int CPCIDevice::RestoreState(FILE *f)
 
 u32 CPCIDevice::ReadMem_Legacy(int index, u32 address, int dsize) 
 {
-  printf("%s(%s) No Legacy read handler installed!\n",myCfg->get_myName(), myCfg->get_myValue());
-  throw((int)1);
+  FAILURE_2(NotImplemented,"%s(%s) No Legacy read handler installed",myCfg->get_myName(), myCfg->get_myValue());
   return 0;
 }
 
 void CPCIDevice::WriteMem_Legacy(int index, u32 address, int dsize, u32 data) 
 {
-  printf("%s(%s) No Legacy write handler installed!\n",myCfg->get_myName(), myCfg->get_myValue());
-  throw((int)1);
+  FAILURE_2(NotImplemented,"%s(%s) No Legacy write handler installed",myCfg->get_myName(), myCfg->get_myValue());
 }
 
 u32 CPCIDevice::ReadMem_Bar(int func,int bar, u32 address, int dsize) 
 { 
-  printf("%s(%s).%d No BAR read handler installed!\n",myCfg->get_myName(), myCfg->get_myValue(), func);
-  throw((int)1);
+  FAILURE_3(NotImplemented,"%s(%s).%d No BAR read handler installed",myCfg->get_myName(), myCfg->get_myValue(), func);
   return 0; 
 }
 
 void CPCIDevice::WriteMem_Bar(int func, int bar, u32 address, int dsize, u32 data) 
 {
-  printf("%s(%s).%d No BAR write handler installed!\n",myCfg->get_myName(), myCfg->get_myValue(), func);
-  throw((int)1);
+  FAILURE_3(NotImplemented,"%s(%s).%d No BAR write handler installed",myCfg->get_myName(), myCfg->get_myValue(), func);
 }
 
 /**
@@ -553,7 +551,7 @@ void CPCIDevice::do_pci_read(u32 address, void *dest, size_t element_size, size_
         *(u32*)dest = (u32) cSystem->ReadMem(phys_addr,32,this);
         break;
       default:
-        FAILURE("Strange element size");
+        FAILURE(InvalidArgument,"Strange element size");
     }
     return;
   }
@@ -604,7 +602,7 @@ void CPCIDevice::do_pci_read(u32 address, void *dest, size_t element_size, size_
     }
     break;
   default:
-    FAILURE("Strange element size");
+    FAILURE(InvalidArgument,"Strange element size");
   }
 }
 
@@ -641,7 +639,7 @@ void CPCIDevice::do_pci_write(u32 address, void *source, size_t element_size, si
         cSystem->WriteMem(phys_addr, 32, *(u32*)source,this);
         break;
       default:
-        FAILURE("Strange element size");
+        FAILURE(InvalidArgument,"Strange element size");
     }
     return;
   }
@@ -692,6 +690,6 @@ void CPCIDevice::do_pci_write(u32 address, void *source, size_t element_size, si
     }
     break;
   default:
-    FAILURE("Strange element size");
+    FAILURE(InvalidArgument,"Strange element size");
   }
 }

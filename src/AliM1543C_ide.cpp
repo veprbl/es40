@@ -27,7 +27,11 @@
  * \file
  * Contains the code for the emulated Ali M1543C IDE chipset part.
  *		
- * $Id: AliM1543C_ide.cpp,v 1.26 2008/03/13 13:19:16 iamcamiel Exp $
+ * $Id: AliM1543C_ide.cpp,v 1.27 2008/03/14 14:50:20 iamcamiel Exp $
+ *
+ * X-1.27       Camiel Vanderhoeven                             14-MAR-2008
+ *   1. More meaningful exceptions replace throwing (int) 1.
+ *   2. U64 macro replaces X64 macro.
  *
  * X-1.26       Camiel Vanderhoeven                             13-MAR-2008
  *      Create init(), start_threads() and stop_threads() functions.
@@ -205,88 +209,59 @@
 #include "AliM1543C.h"
 #include "Disk.h"
 
-#define PAUSE(msg) do { printf("Debug Pause: "); printf(msg); getc(stdin); } while(0);
+#define PAUSE(msg) \
+  do { \
+  printf("Debug Pause: "); \
+  printf(msg); \
+  getc(stdin); \
+  } while(0);
 
 u32 AliM1543C_ide_cfg_data[64] = {
-  /*00 */ 0x522910b9,
-  // CFID: vendor + device
-  /*04 */ 0x02800000,
-  // CFCS: command + status
-  /*08 */ 0x0101fac1,
-  // CFRV: class + revision
-  /*0c */ 0x00000000,
-  // CFLT: latency timer + cache line size
-  /*10 */ 0x000001f1,
-  // BAR0: 
-  /*14 */ 0x000003f5,
-  // BAR1: 
-  /*18 */ 0x00000171,
-  // BAR2: 
-  /*1c */ 0x00000375,
-  // BAR3: 
-  /*20 */ 0x0000f001,
-  // BAR4: 
-  /*24 */ 0x00000000,
-  // BAR5: 
-  /*28 */ 0x00000000,
-  // CCIC: CardBus
-  /*2c */ 0x00000000,
-  // CSID: subsystem + vendor
-  /*30 */ 0x00000000,
-  // BAR6: expansion rom base
-  /*34 */ 0x00000000,
-  // CCAP: capabilities pointer
-  /*38 */ 0x00000000,
-  /*3c */ 0x040201ff,
-  // CFIT: interrupt configuration
+  /*00*/ 0x522910b9,  // CFID: vendor + device
+  /*04*/ 0x02800000,  // CFCS: command + status
+  /*08*/ 0x0101fac1,  // CFRV: class + revision
+  /*0c*/ 0x00000000,  // CFLT: latency timer + cache line size
+  /*10*/ 0x000001f1,  // BAR0: 
+  /*14*/ 0x000003f5,  // BAR1: 
+  /*18*/ 0x00000171,  // BAR2: 
+  /*1c*/ 0x00000375,  // BAR3: 
+  /*20*/ 0x0000f001,  // BAR4: 
+  /*24*/ 0x00000000,  // BAR5: 
+  /*28*/ 0x00000000,  // CCIC: CardBus
+  /*2c*/ 0x00000000,  // CSID: subsystem + vendor
+  /*30*/ 0x00000000,  // BAR6: expansion rom base
+  /*34*/ 0x00000000,  // CCAP: capabilities pointer
+  /*38*/ 0x00000000,
+  /*3c*/ 0x040201ff,  // CFIT: interrupt configuration
   0, 0,
-  /*48 */ 0x4a000000,
-  // UDMA test
-  /*4c */ 0x1aba0000,
-  // reserved
+  /*48*/ 0x4a000000,  // UDMA test
+  /*4c*/ 0x1aba0000,  // reserved
   0,
-  /*54 */ 0x44445555,
-  // udma setting + fifo treshold
+  /*54*/ 0x44445555,  // udma setting + fifo treshold
   0, 0, 0, 0, 0, 0, 0, 0,
-  /*78 */ 0x00000021,
-  // ide clock
+  /*78*/ 0x00000021,  // ide clock
   0,
   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
 };
 
 u32 AliM1543C_ide_cfg_mask[64] = {
-  /*00 */ 0x00000000,
-  // CFID: vendor + device
-  /*04 */ 0x00000105,
-  // CFCS: command + status
-  /*08 */ 0x00000000,
-  // CFRV: class + revision
-  /*0c */ 0x0000ffff,
-  // CFLT: latency timer + cache line size
-  /*10 */ 0xfffffff8,
-  // BAR0
-  /*14 */ 0xfffffffc,
-  // BAR1: CBMA 
-  /*18 */ 0xfffffff8,
-  // BAR2: 
-  /*1c */ 0xfffffffc,
-  // BAR3: 
-  /*20 */ 0xfffffff0,
-  // BAR4: 
-  /*24 */ 0x00000000,
-  // BAR5: 
-  /*28 */ 0x00000000,
-  // CCIC: CardBus
-  /*2c */ 0x00000000,
-  // CSID: subsystem + vendor
-  /*30 */ 0x00000000,
-  // BAR6: expansion rom base
-  /*34 */ 0x00000000,
-  // CCAP: capabilities pointer
-  /*38 */ 0x00000000,
-  /*3c */ 0x000000ff,
-  // CFIT: interrupt configuration
+  /*00*/ 0x00000000,  // CFID: vendor + device
+  /*04*/ 0x00000105,  // CFCS: command + status
+  /*08*/ 0x00000000,  // CFRV: class + revision
+  /*0c*/ 0x0000ffff,  // CFLT: latency timer + cache line size
+  /*10*/ 0xfffffff8,  // BAR0
+  /*14*/ 0xfffffffc,  // BAR1: CBMA 
+  /*18*/ 0xfffffff8,  // BAR2: 
+  /*1c*/ 0xfffffffc,  // BAR3: 
+  /*20*/ 0xfffffff0,  // BAR4: 
+  /*24*/ 0x00000000,  // BAR5: 
+  /*28*/ 0x00000000,  // CCIC: CardBus
+  /*2c*/ 0x00000000,  // CSID: subsystem + vendor
+  /*30*/ 0x00000000,  // BAR6: expansion rom base
+  /*34*/ 0x00000000,  // CCAP: capabilities pointer
+  /*38*/ 0x00000000,
+  /*3c*/ 0x000000ff,  // CFIT: interrupt configuration
   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
@@ -301,7 +276,7 @@ CAliM1543C_ide::CAliM1543C_ide (CConfigurator * cfg, CSystem * c, int pcibus,
                                                              pcidev, 2, 2)
 {
   if (theIDE != 0)
-    FAILURE ("More than one IDE controller!!\n");
+    FAILURE(Configuration,"More than one IDE controller");
   theIDE = this;
 
   // create scsi busses
@@ -350,7 +325,6 @@ void CAliM1543C_ide::init ()
   //mtBusMaster[1] = new CMutex("ide1-busmaster");
   for (int i = 0; i < 2; i++)
   {
-    char buffer[5];
     semController[i] = new Poco::Semaphore (0, 1);      // disk controller
     semBusMaster[i] = new Poco::Semaphore (0, 1);       // bus master
     thrController[i] = 0;
@@ -1004,8 +978,7 @@ u32 CAliM1543C_ide::ide_busmaster_read (int index, u32 address, int dsize)
     data = *(u32 *) (&CONTROLLER (index).busmaster[address]);
     break;
   default:
-    printf ("16-bit read from busmaster.\n");
-    exit (1);
+    FAILURE(InvalidArgument,"16-bit read from busmaster");
     data = 0;
     break;
   }
@@ -1032,7 +1005,7 @@ void
 #endif
 
   u32 prd_address;
-  u32 base, control;
+//  u32 base, control;
 
   switch (dsize)
   {
@@ -1418,9 +1391,9 @@ void CAliM1543C_ide::ide_status (int index)
 void CAliM1543C_ide::check_state ()
 {
   if (thrController[0] && !thrController[0]->isRunning ())
-    FAILURE ("IDE 0 thread has died");
+    FAILURE (Thread,"IDE 0 thread has died");
   if (thrController[1] && !thrController[1]->isRunning ())
-    FAILURE ("IDE 1 thread has died");
+    FAILURE (Thread,"IDE 1 thread has died");
 }
 
 void CAliM1543C_ide::execute (int index)
@@ -1522,7 +1495,7 @@ void CAliM1543C_ide::execute (int index)
         // buffer is empty, so lets fill it.
         if (!SEL_REGISTERS (index).lba_mode)
         {
-          FAILURE ("Non-LBA disk read");
+          FAILURE (NotImplemented,"Non-LBA disk read");
         }
         else
         {
@@ -1603,7 +1576,7 @@ void CAliM1543C_ide::execute (int index)
           // the buffer is full.  Do something with the data.
           if (!SEL_REGISTERS (index).lba_mode)
           {
-            FAILURE ("Non-LBA disk write");
+            FAILURE (NotImplemented,"Non-LBA disk write");
           }
           else
           {
@@ -1762,9 +1735,9 @@ void CAliM1543C_ide::execute (int index)
           {
             // this must be the first time through.
             if (!scsi_arbitrate (index))
-              FAILURE ("ATAPI SCSI bus busy");
+              FAILURE (IllegalState,"ATAPI SCSI bus busy");
             if (!scsi_select (index, CONTROLLER (index).selected))
-              FAILURE ("ATAPI device not responding to selection");
+              FAILURE (IllegalState,"ATAPI device not responding to selection");
             SEL_REGISTERS (index).REASON = IR_CD;
             SEL_STATUS (index).busy = false;
             SEL_STATUS (index).drq = true;
@@ -1810,7 +1783,7 @@ void CAliM1543C_ide::execute (int index)
               {
                 // we now have a full command packet.
                 if (scsi_get_phase (index) != SCSI_PHASE_COMMAND)
-                  FAILURE ("SCSI command phase expected");
+                  FAILURE (IllegalState,"SCSI command phase expected");
                 void *cmd_ptr = scsi_xfer_ptr (index, 12);
                 memcpy (cmd_ptr, CONTROLLER (index).data, 12);
                 scsi_xfer_done (index);
@@ -1856,17 +1829,17 @@ void CAliM1543C_ide::execute (int index)
                   }
                   break;
                 case SCSI_PHASE_DATA_OUT:
-                  FAILURE ("ATAPI for now does not support write operations");
+                  FAILURE (NotImplemented,"ATAPI for now does not support write operations");
                   break;
                 case SCSI_PHASE_STATUS:
                   scsi_xfer_ptr (index, scsi_expected_xfer (index));
                   scsi_xfer_done (index);
                   if (scsi_get_phase (index) != SCSI_PHASE_FREE)
-                    FAILURE ("SCSI bus free phase expected");
+                    FAILURE (IllegalState,"SCSI bus free phase expected");
                   SEL_COMMAND (index).packet_phase = PACKET_DI;
                   break;
                 default:
-                  FAILURE ("Unexpected SCSI phase");
+                  FAILURE (IllegalState,"Unexpected SCSI phase");
                 }
               }
               else
@@ -1889,11 +1862,11 @@ void CAliM1543C_ide::execute (int index)
                                              SEL_REGISTERS (index).BYTE_COUNT,
                                              false);
                 if (scsi_get_phase (index) != SCSI_PHASE_STATUS)
-                  FAILURE ("SCSI status phase expected");
+                  FAILURE (IllegalState,"SCSI status phase expected");
                 scsi_xfer_ptr (index, scsi_expected_xfer (index));
                 scsi_xfer_done (index);
                 if (scsi_get_phase (index) != SCSI_PHASE_FREE)
-                  FAILURE ("SCSI bus free phase expected");
+                  FAILURE (IllegalState,"SCSI bus free phase expected");
                 SEL_STATUS (index).drq = true;
                 SEL_STATUS (index).busy = false;
                 SEL_COMMAND (index).packet_phase = PACKET_DI;
@@ -1921,11 +1894,11 @@ void CAliM1543C_ide::execute (int index)
                     // for now I assume that it is
                     // everything.
                     if (scsi_get_phase (index) != SCSI_PHASE_STATUS)
-                      FAILURE ("SCSI status phase expected");
+                      FAILURE (IllegalState,"SCSI status phase expected");
                     scsi_xfer_ptr (index, scsi_expected_xfer (index));
                     scsi_xfer_done (index);
                     if (scsi_get_phase (index) != SCSI_PHASE_FREE)
-                      FAILURE ("SCSI bus free phase expected");
+                      FAILURE (IllegalState,"SCSI bus free phase expected");
 #ifdef DEBUG_IDE_PACKET
                     printf ("Finished transferring!\n");
 #endif
@@ -1950,7 +1923,7 @@ void CAliM1543C_ide::execute (int index)
               break;
 
             default:
-              FAILURE ("Unknown packet phase");
+              FAILURE (InvalidArgument,"Unknown packet phase");
             }
           }
           while (!yield);
@@ -2001,7 +1974,7 @@ void CAliM1543C_ide::execute (int index)
           // buffer is empty, so lets fill it.
           if (!SEL_REGISTERS (index).lba_mode)
           {
-            FAILURE ("Non-LBA disk read");
+            FAILURE (NotImplemented,"Non-LBA disk read");
           }
           else
           {
@@ -2124,7 +2097,7 @@ void CAliM1543C_ide::execute (int index)
             // the buffer is full.  Do something with the data.
             if (!SEL_REGISTERS (index).lba_mode)
             {
-              FAILURE ("Non-LBA disk write");
+              FAILURE (NotImplemented,"Non-LBA disk write");
             }
             else
             {
@@ -2422,9 +2395,7 @@ void CAliM1543C_ide::execute (int index)
 
     default:                   // unknown/unhandled ATA command
       ide_status (index);
-      printf ("unhandled IDE command: %x\n",
-              SEL_COMMAND (index).current_command);
-      FAILURE ("Unknown IDE command");
+      FAILURE_1(NotImplemented,"Unknown IDE command %x",SEL_COMMAND (index).current_command);
       break;
     }
 
@@ -2506,7 +2477,7 @@ int
 
     if (count++ > 32)
     {
-      FAILURE ("Too many PRD nodes?");
+      FAILURE (InvalidArgument,"Too many PRD nodes?");
     }
 
 
@@ -2543,7 +2514,6 @@ int
  **/
 void CAliM1543C_ide::run ()
 {
-  bool executing;
   int index = (thrController[0] == Poco::Thread::current ())? 0 : 1;
   try
   {
@@ -2563,8 +2533,9 @@ void CAliM1543C_ide::run ()
       }
     }
   }
-  catch (...)
+  catch (Poco::Exception & e)
   {
-    printf ("IDE: exception in thread %d.\n", index);
+    printf ("Exception in IDE thread: %s.\n",e.displayText().c_str());
+    // Let the thread die...
   }
 }

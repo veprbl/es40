@@ -27,7 +27,11 @@
  * \file
  * Contains the code for the emulated Keyboard and mouse devices and controller.
  *
- * $Id: Keyboard.cpp,v 1.6 2008/03/13 13:19:19 iamcamiel Exp $
+ * $Id: Keyboard.cpp,v 1.7 2008/03/14 14:50:21 iamcamiel Exp $
+ *
+ * X-1.7        Camiel Vanderhoeven                             14-MAR-2008
+ *   1. More meaningful exceptions replace throwing (int) 1.
+ *   2. U64 macro replaces X64 macro.
  *
  * X-1.6        Camiel Vanderhoeven                             13-MAR-2008
  *      Create init(), start_threads() and stop_threads() functions.
@@ -68,7 +72,7 @@ CKeyboard::CKeyboard (CConfigurator * cfg, CSystem * c):CSystemComponent (cfg,
                   c)
 {
   if (theKeyboard != 0)
-    FAILURE ("More than one Keyboard controller!!");
+    FAILURE (Configuration,"More than one Keyboard controller");
   theKeyboard = this;
 }
 
@@ -79,8 +83,8 @@ void CKeyboard::init ()
 {
   int i;
 
-  cSystem->RegisterMemory (this, 0, X64 (00000801fc000060), 1);
-  cSystem->RegisterMemory (this, 1, X64 (00000801fc000064), 1);
+  cSystem->RegisterMemory (this, 0, U64(0x00000801fc000060), 1);
+  cSystem->RegisterMemory (this, 1, U64(0x00000801fc000064), 1);
 
   resetinternals (1);
 
@@ -138,7 +142,7 @@ void CKeyboard::init ()
   myThread = 0;
 
   printf
-    ("kbc: $Id: Keyboard.cpp,v 1.6 2008/03/13 13:19:19 iamcamiel Exp $\n");
+    ("kbc: $Id: Keyboard.cpp,v 1.7 2008/03/14 14:50:21 iamcamiel Exp $\n");
 }
 
 void CKeyboard::start_threads ()
@@ -184,7 +188,7 @@ u64 CKeyboard::ReadMem (int index, u64 address, int dsize)
     return read_64 ();
     break;
   default:
-    FAILURE ("kbc: ReadMem index out of range");
+    FAILURE (InvalidArgument,"kbc: ReadMem index out of range");
   }
 }
 
@@ -199,7 +203,7 @@ void CKeyboard::WriteMem (int index, u64 address, int dsize, u64 data)
     write_64 ((u8) data);
     break;
   default:
-    FAILURE ("kbc: ReadMem index out of range");
+    FAILURE (InvalidArgument,"kbc: ReadMem index out of range");
   }
 }
 
@@ -958,7 +962,7 @@ void CKeyboard::controller_enQ (u8 data, unsigned source)
   if (state.status.outb)
   {
     if (state.kbd_controller_Qsize >= BX_KBD_CONTROLLER_QSIZE)
-      FAILURE ("controller_enq(): controller_Q full!");
+      FAILURE (Runtime,"controller_enq(): controller_Q full!");
     state.kbd_controller_Q[state.kbd_controller_Qsize++] = data;
     state.kbd_controller_Qsource = source;
     return;
@@ -1811,7 +1815,7 @@ void CKeyboard::execute ()
 void CKeyboard::check_state ()
 {
   if (myThread && !myThread->isRunning ())
-    FAILURE ("KBD thread has died");
+    FAILURE (Thread,"KBD thread has died");
 }
 
 /**
@@ -1829,9 +1833,9 @@ void CKeyboard::run ()
       Poco::Thread::sleep (20);
     }
   }
-  catch (...)
+  catch (Poco::Exception & e)
   {
-    printf ("kbd: exception in thread.\n");
+    printf ("Exception in kbd thread: %s.\n",e.displayText().c_str());
     // Let the thread die...
   }
 }

@@ -1,5 +1,5 @@
 /* ES40 emulator.
- * Copyright (C) 2007 by the ES40 Emulator Project
+ * Copyright (C) 2007-2008 by the ES40 Emulator Project
  *
  * WWW    : http://sourceforge.net/projects/es40
  * E-mail : camiel@camicom.com
@@ -26,6 +26,12 @@
 /** 
  * \file
  * Contains the code for the emulated Port 80 device.
+ *
+ * $Id: Port80.cpp,v 1.11 2008/03/14 14:50:22 iamcamiel Exp $
+ *
+ * X-1.11       Camiel Vanderhoeven                             14-MAR-2008
+ *   1. More meaningful exceptions replace throwing (int) 1.
+ *   2. U64 macro replaces X64 macro.
  *
  * X-1.10       Camiel Vanderhoeven                             17-DEC-2007
  *      SaveState file format 2.1
@@ -70,7 +76,7 @@
 
 CPort80::CPort80(CConfigurator * cfg, CSystem * c) : CSystemComponent(cfg,c)
 {
-  c->RegisterMemory(this, 0, X64(00000801fc000080),1);
+  c->RegisterMemory(this, 0, U64(0x00000801fc000080),1);
   state.p80 = 0;
 }
 

@@ -28,7 +28,11 @@
  * Contains code macros for the processor integer arithmetic instructions.
  * Based on ARM chapter 4.4.
  *
- * $Id: cpu_arith.h,v 1.13 2008/01/28 19:54:23 iamcamiel Exp $
+ * $Id: cpu_arith.h,v 1.14 2008/03/14 14:50:22 iamcamiel Exp $
+ *
+ * X-1.14       Camiel Vanderhoeven                             14-MAR-2008
+ *   1. More meaningful exceptions replace throwing (int) 1.
+ *   2. U64 macro replaces X64 macro.
  *
  * X-1.13       Camiel Vanderhoeven                             28-JAN-2008
  *      Better floating-point exception handling.
@@ -154,7 +158,7 @@
     u64 rbv = RBV;                                      \
 	u64 sr = sext_u64_32(rav) * sext_u64_32(rbv);       \
     RCV = sext_u64_32(sr);                              \
-    if ((RCV ^ sr) & X64(ffffffff00000000)) {           \
+    if ((RCV ^ sr) & U64(0xffffffff00000000)) {           \
       ARITH_TRAP_I(TRAP_IOV, RC);              \
       printf("MULL_V %016" LL "x * %016" LL "x = %016" LL "x + TRAP.\n",rav,rbv,RCV); \
     }                                                   \

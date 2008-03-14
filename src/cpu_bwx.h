@@ -28,7 +28,11 @@
  * Contains code macros for the processor BWX (byte and word extension) instructions.
  * Based on ARM chapter 4.6.
  *
- * $Id: cpu_bwx.h,v 1.8 2008/01/18 20:58:20 iamcamiel Exp $
+ * $Id: cpu_bwx.h,v 1.9 2008/03/14 14:50:22 iamcamiel Exp $
+ *
+ * X-1.9        Camiel Vanderhoeven                             14-MAR-2008
+ *   1. More meaningful exceptions replace throwing (int) 1.
+ *   2. U64 macro replaces X64 macro.
  *
  * X-1.8        Camiel Vanderhoeven                             18-JAN-2008
  *      Replaced sext_64 inlines with sext_u64_<bits> inlines for
@@ -102,22 +106,22 @@
 #define DO_SEXTW state.r[REG_3] = sext_u64_16(V_2);
 
 #define DO_ZAP								\
-	  state.r[REG_3] = state.r[REG_1] & (  ((V_2&  1)?0:              X64(ff))	\
-				 | ((V_2&  2)?0:            X64(ff00))	\
-				 | ((V_2&  4)?0:          X64(ff0000))	\
-				 | ((V_2&  8)?0:        X64(ff000000))	\
-				 | ((V_2& 16)?0:      X64(ff00000000))	\
-				 | ((V_2& 32)?0:    X64(ff0000000000))	\
-				 | ((V_2& 64)?0:  X64(ff000000000000))	\
-				 | ((V_2&128)?0:X64(ff00000000000000)));
+	  state.r[REG_3] = state.r[REG_1] & (  ((V_2&  1)?0:              U64(0xff))	\
+				 | ((V_2&  2)?0:            U64(0xff00))	\
+				 | ((V_2&  4)?0:          U64(0xff0000))	\
+				 | ((V_2&  8)?0:        U64(0xff000000))	\
+				 | ((V_2& 16)?0:      U64(0xff00000000))	\
+				 | ((V_2& 32)?0:    U64(0xff0000000000))	\
+				 | ((V_2& 64)?0:  U64(0xff000000000000))	\
+				 | ((V_2&128)?0:U64(0xff00000000000000)));
 
 #define DO_ZAPNOT							\
- 	  state.r[REG_3] = state.r[REG_1] & (  ((V_2&  1)?              X64(ff):0)	\
-				 | ((V_2&  2)?            X64(ff00):0)	\
-				 | ((V_2&  4)?          X64(ff0000):0)	\
-				 | ((V_2&  8)?        X64(ff000000):0)	\
-				 | ((V_2& 16)?      X64(ff00000000):0)	\
-				 | ((V_2& 32)?    X64(ff0000000000):0)	\
-				 | ((V_2& 64)?  X64(ff000000000000):0)	\
-				 | ((V_2&128)?X64(ff00000000000000):0) );
+ 	  state.r[REG_3] = state.r[REG_1] & (  ((V_2&  1)?              U64(0xff):0)	\
+				 | ((V_2&  2)?            U64(0xff00):0)	\
+				 | ((V_2&  4)?          U64(0xff0000):0)	\
+				 | ((V_2&  8)?        U64(0xff000000):0)	\
+				 | ((V_2& 16)?      U64(0xff00000000):0)	\
+				 | ((V_2& 32)?    U64(0xff0000000000):0)	\
+				 | ((V_2& 64)?  U64(0xff000000000000):0)	\
+				 | ((V_2&128)?U64(0xff00000000000000):0) );
 

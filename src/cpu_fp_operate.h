@@ -28,7 +28,11 @@
  * Contains code macros for the processor floating-point operate instructions.
  * Based on ARM chapter 4.10.
  *
- * $Id: cpu_fp_operate.h,v 1.19 2008/02/27 12:04:33 iamcamiel Exp $
+ * $Id: cpu_fp_operate.h,v 1.20 2008/03/14 14:50:24 iamcamiel Exp $
+ *
+ * X-1.20       Camiel Vanderhoeven                             14-MAR-2008
+ *   1. More meaningful exceptions replace throwing (int) 1.
+ *   2. U64 macro replaces X64 macro.
  *
  * X-1.19       Brian Wheeler                                   27-FEB-2008
  *      Avoid compiler warnings.
@@ -150,9 +154,9 @@
 
 #define DO_MT_FPCR                                                  \
   FPSTART; \
-  state.fpcr = state.f[FREG_1] & X64(7fff800000000000);             \
-  if (state.fpcr & X64(03f0000000000000))                           \
-     state.fpcr |= X64(8000000000000000); /* SUM */
+  state.fpcr = state.f[FREG_1] & U64(0x7fff800000000000);             \
+  if (state.fpcr & U64(0x03f0000000000000))                           \
+     state.fpcr |= U64(0x8000000000000000); /* SUM */
 
 /* add */
 #define DO_ADDG                                                     \
@@ -216,7 +220,7 @@
 #define DO_CMPTUN                                                   \
   FPSTART; \
   state.f[FREG_3] = ((ieee_unpack (state.f[FREG_1], &ufp1, ins) == UFT_NAN)                   \
-                  || (ieee_unpack (state.f[FREG_2], &ufp2, ins) == UFT_NAN)) ? FP_TRUE : 0;   \
+                  || (ieee_unpack (state.f[FREG_2], &ufp2, ins) == UFT_NAN)) ? FP_TRUE : 0;
 
 /* format conversions */
 #define DO_CVTQL                                                    \
@@ -224,8 +228,8 @@
   state.f[FREG_3] = ((state.f[FREG_2] & 0xC0000000) << 32)          \
                   | ((state.f[FREG_2] & 0x3FFFFFFF) << 29);         \
   if (FPR_GETSIGN (state.f[FREG_2]) ?                               \
-                  (state.f[FREG_2] < X64(FFFFFFFF80000000)) :       \
-		          (state.f[FREG_2] > X64(000000007FFFFFFF)))        \
+                  (state.f[FREG_2] < U64(0xFFFFFFFF80000000)) :       \
+		          (state.f[FREG_2] > U64(0x000000007FFFFFFF)))        \
    {                                                                \
      if (ins & I_FTRP_V) vax_trap (TRAP_IOV, ins);					\
    }
@@ -359,47 +363,47 @@
 
 #define DO_CPYS                                                     \
   FPSTART;                                                          \
-  state.f[FREG_3] = (state.f[FREG_1] & X64(8000000000000000))		\
-		  	   | (state.f[FREG_2] & X64(7fffffffffffffff));
+  state.f[FREG_3] = (state.f[FREG_1] & U64(0x8000000000000000))		\
+		  	   | (state.f[FREG_2] & U64(0x7fffffffffffffff));
 
 #define DO_CPYSN                                                    \
   FPSTART;                                                          \
-  state.f[FREG_3] = (state.f[FREG_1] & X64(8000000000000000) ^ X64(8000000000000000)) 	\
-			   | (state.f[FREG_2] & X64(7fffffffffffffff));
+  state.f[FREG_3] = (state.f[FREG_1] & U64(0x8000000000000000) ^ U64(0x8000000000000000)) 	\
+			   | (state.f[FREG_2] & U64(0x7fffffffffffffff));
 
 #define DO_CPYSE                                                    \
   FPSTART;                                                          \
-  state.f[FREG_3] = (state.f[FREG_1] & X64(fff0000000000000))		\
-		  	   | (state.f[FREG_2] & X64(000fffffffffffff));
+  state.f[FREG_3] = (state.f[FREG_1] & U64(0xfff0000000000000))		\
+		  	   | (state.f[FREG_2] & U64(0x000fffffffffffff));
 
 #define DO_CVTQL                                                    \
   FPSTART;                                                          \
-  state.f[FREG_3] = ((state.f[FREG_2] & X64(00000000c0000000)) << 32)	\
-	                   | ((state.f[FREG_2] & X64(000000003fffffff)) << 29);
+  state.f[FREG_3] = ((state.f[FREG_2] & U64(0x00000000c0000000)) << 32)	\
+	                   | ((state.f[FREG_2] & U64(0x000000003fffffff)) << 29);
 
 #define DO_CVTLQ                                                   \
   FPSTART;                                                          \
-  state.f[FREG_3] = sext_u64_32(  ((state.f[FREG_2] >> 32) & X64(00000000c0000000))	\
-	                          | ((state.f[FREG_2] >> 29) & X64(000000003fffffff)));
+  state.f[FREG_3] = sext_u64_32(  ((state.f[FREG_2] >> 32) & U64(0x00000000c0000000))	\
+	                          | ((state.f[FREG_2] >> 29) & U64(0x000000003fffffff)));
 
 #define DO_FCMOVEQ                                                   \
   FPSTART;                                                          \
-    if (state.f[FREG_1] == X64(0000000000000000) || state.f[FREG_1] == X64(8000000000000000))	state.f[FREG_3] = state.f[FREG_2];
+    if (state.f[FREG_1] == U64(0x0000000000000000) || state.f[FREG_1] == U64(0x8000000000000000))	state.f[FREG_3] = state.f[FREG_2];
 #define DO_FCMOVGE                                                   \
   FPSTART;                                                          \
-    if (!(state.f[FREG_1]& X64(8000000000000000)) || state.f[FREG_1] == X64(8000000000000000))	state.f[FREG_3] = state.f[FREG_2];
+    if (!(state.f[FREG_1]& U64(0x8000000000000000)) || state.f[FREG_1] == U64(0x8000000000000000))	state.f[FREG_3] = state.f[FREG_2];
 #define DO_FCMOVGT                                                   \
   FPSTART;                                                          \
-    if (!(state.f[FREG_1]& X64(8000000000000000)) && state.f[FREG_1] != X64(0000000000000000))	state.f[FREG_3] = state.f[FREG_2];
+    if (!(state.f[FREG_1]& U64(0x8000000000000000)) && state.f[FREG_1] != U64(0x0000000000000000))	state.f[FREG_3] = state.f[FREG_2];
 #define DO_FCMOVLE                                                   \
   FPSTART;                                                          \
-    if ((state.f[FREG_1]& X64(8000000000000000)) || state.f[FREG_1] == X64(0000000000000000))	state.f[FREG_3] = state.f[FREG_2];
+    if ((state.f[FREG_1]& U64(0x8000000000000000)) || state.f[FREG_1] == U64(0x0000000000000000))	state.f[FREG_3] = state.f[FREG_2];
 #define DO_FCMOVLT                                                   \
   FPSTART;                                                          \
-    if ((state.f[FREG_1]& X64(8000000000000000)) && state.f[FREG_1] != X64(8000000000000000))	state.f[FREG_3] = state.f[FREG_2];
+    if ((state.f[FREG_1]& U64(0x8000000000000000)) && state.f[FREG_1] != U64(0x8000000000000000))	state.f[FREG_3] = state.f[FREG_2];
 #define DO_FCMOVNE                                                   \
   FPSTART;                                                          \
-    if (state.f[FREG_1] != X64(0000000000000000) && state.f[FREG_1] != X64(8000000000000000))	state.f[FREG_3] = state.f[FREG_2];
+    if (state.f[FREG_1] != U64(0x0000000000000000) && state.f[FREG_1] != U64(0x8000000000000000))	state.f[FREG_3] = state.f[FREG_2];
 
 #define DO_MF_FPCR                                                   \
   FPSTART;                                                          \
@@ -436,26 +440,26 @@
 
 #define DO_CMPGEQ                                                   \
   FPSTART;                                                          \
-   state.f[FREG_3] = (g2host(state.f[FREG_1])==g2host(state.f[FREG_2]))?X64(4000000000000000):0;
+   state.f[FREG_3] = (g2host(state.f[FREG_1])==g2host(state.f[FREG_2]))?U64(0x4000000000000000):0;
 #define DO_CMPGLE                                                   \
   FPSTART;                                                          \
-   state.f[FREG_3] = (g2host(state.f[FREG_1])<=g2host(state.f[FREG_2]))?X64(4000000000000000):0;
+   state.f[FREG_3] = (g2host(state.f[FREG_1])<=g2host(state.f[FREG_2]))?U64(0x4000000000000000):0;
 #define DO_CMPGLT                                                   \
   FPSTART;                                                          \
-   state.f[FREG_3] = (g2host(state.f[FREG_1])<g2host(state.f[FREG_2]))?X64(4000000000000000):0;
+   state.f[FREG_3] = (g2host(state.f[FREG_1])<g2host(state.f[FREG_2]))?U64(0x4000000000000000):0;
 
 #define DO_CMPTEQ                                                   \
   FPSTART;                                                          \
-   state.f[FREG_3] = (t2host(state.f[FREG_1])==t2host(state.f[FREG_2]))?X64(4000000000000000):0;
+   state.f[FREG_3] = (t2host(state.f[FREG_1])==t2host(state.f[FREG_2]))?U64(0x4000000000000000):0;
 #define DO_CMPTLE                                                   \
   FPSTART;                                                          \
-   state.f[FREG_3] = (t2host(state.f[FREG_1])<=t2host(state.f[FREG_2]))?X64(4000000000000000):0;
+   state.f[FREG_3] = (t2host(state.f[FREG_1])<=t2host(state.f[FREG_2]))?U64(0x4000000000000000):0;
 #define DO_CMPTLT                                                   \
   FPSTART;                                                          \
-   state.f[FREG_3] = (t2host(state.f[FREG_1])<t2host(state.f[FREG_2]))?X64(4000000000000000):0;
+   state.f[FREG_3] = (t2host(state.f[FREG_1])<t2host(state.f[FREG_2]))?U64(0x4000000000000000):0;
 #define DO_CMPTUN                                                   \
   FPSTART;                                                          \
-   state.f[FREG_3] = (i_isnan(state.f[FREG_1]) || i_isnan(state.f[FREG_2]))?X64(4000000000000000):0;
+   state.f[FREG_3] = (i_isnan(state.f[FREG_1]) || i_isnan(state.f[FREG_2]))?U64(0x4000000000000000):0;
 
 #define DO_CVTGQ                                                   \
   FPSTART;                                                          \
@@ -490,9 +494,9 @@
   FPSTART;                                                          \
   								\
  	    temp_64 = state.f[FREG_1];						\
-	    state.r[REG_3] = (temp_64 & X64(000000003fffffff))			\
-	      |((temp_64 & X64(c000000000000000)) >> 32)			\
-	      |(((temp_64 & X64(8000000000000000)) >>31) * X64(ffffffff));
+	    state.r[REG_3] = (temp_64 & U64(0x000000003fffffff))			\
+	      |((temp_64 & U64(0xc000000000000000)) >> 32)			\
+	      |(((temp_64 & U64(0x8000000000000000)) >>31) * U64(0xffffffff));
 
 #define DO_FTOIT                                                   \
   FPSTART;                                                          \

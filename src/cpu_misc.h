@@ -28,7 +28,11 @@
  * Contains code macros for miscellaneous processor instructions.
  * Based on ARM chapter 4.11.
  *
- * $Id: cpu_misc.h,v 1.11 2008/03/05 14:41:46 iamcamiel Exp $
+ * $Id: cpu_misc.h,v 1.12 2008/03/14 14:50:24 iamcamiel Exp $
+ *
+ * X-1.12       Camiel Vanderhoeven                             14-MAR-2008
+ *   1. More meaningful exceptions replace throwing (int) 1.
+ *   2. U64 macro replaces X64 macro.
  *
  * X-1.11       Camiel Vanderhoeven                             05-MAR-2008
  *      Multi-threading version.
@@ -253,7 +257,7 @@
 
 #define DO_IMPLVER state.r[REG_3] = CPU_IMPLVER;
 
-#define DO_RPCC state.r[REG_1] = ((u64)state.cc_offset)<<32 | (state.cc & X64(ffffffff));
+#define DO_RPCC state.r[REG_1] = ((u64)state.cc_offset)<<32 | (state.cc & U64(0xffffffff));
 
 // The following ops have no function right now (at least, not until multiple CPU's are supported).
 #define DO_TRAPB ;

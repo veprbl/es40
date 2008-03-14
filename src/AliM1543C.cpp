@@ -27,7 +27,11 @@
  * \file 
  * Contains the code for the emulated Ali M1543C chipset devices.
  *
- * $Id: AliM1543C.cpp,v 1.63 2008/03/13 13:19:16 iamcamiel Exp $
+ * $Id: AliM1543C.cpp,v 1.64 2008/03/14 14:50:20 iamcamiel Exp $
+ *
+ * X-1.64       Camiel Vanderhoeven                             14-MAR-2008
+ *   1. More meaningful exceptions replace throwing (int) 1.
+ *   2. U64 macro replaces X64 macro.
  *
  * X-1.63       Camiel Vanderhoeven                             13-MAR-2008
  *      Create init(), start_threads() and stop_threads() functions.
@@ -269,84 +273,53 @@ bool pic_messages = false;
 #define IPus 847
 
 u32 ali_cfg_data[64] = {
-  /*00 */ 0x153310b9,
-  // CFID: vendor + device
-  /*04 */ 0x0200000f,
-  // CFCS: command + status
-  /*08 */ 0x060100c3,
-  // CFRV: class + revision
-  /*0c */ 0x00000000,
-  // CFLT: latency timer + cache line size
-  /*10 */ 0x00000000,
-  // BAR0: 
-  /*14 */ 0x00000000,
-  // BAR1: 
-  /*18 */ 0x00000000,
-  // BAR2: 
-  /*1c */ 0x00000000,
-  // BAR3: 
-  /*20 */ 0x00000000,
-  // BAR4: 
-  /*24 */ 0x00000000,
-  // BAR5: 
-  /*28 */ 0x00000000,
-  // CCIC: CardBus
-  /*2c */ 0x00000000,
-  // CSID: subsystem + vendor
-  /*30 */ 0x00000000,
-  // BAR6: expansion rom base
-  /*34 */ 0x00000000,
-  // CCAP: capabilities pointer
-/*38*/ 0x00000000,
-  /*3c */ 0x00000000,
-  // CFIT: interrupt configuration
+  /*00*/ 0x153310b9,  // CFID: vendor + device
+  /*04*/ 0x0200000f,  // CFCS: command + status
+  /*08*/ 0x060100c3,  // CFRV: class + revision
+  /*0c*/ 0x00000000,  // CFLT: latency timer + cache line size
+  /*10*/ 0x00000000,  // BAR0: 
+  /*14*/ 0x00000000,  // BAR1: 
+  /*18*/ 0x00000000,  // BAR2: 
+  /*1c*/ 0x00000000,  // BAR3: 
+  /*20*/ 0x00000000,  // BAR4: 
+  /*24*/ 0x00000000,  // BAR5: 
+  /*28*/ 0x00000000,  // CCIC: CardBus
+  /*2c*/ 0x00000000,  // CSID: subsystem + vendor
+  /*30*/ 0x00000000,  // BAR6: expansion rom base
+  /*34*/ 0x00000000,  // CCAP: capabilities pointer
+  /*38*/ 0x00000000,
+  /*3c*/ 0x00000000,  // CFIT: interrupt configuration
   0, 0, 0, 0, 0,
-  /*54 */ 0x00000200,
-  //                             
+  /*54*/ 0x00000200,  //                             
   0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
 };
 
 u32 ali_cfg_mask[64] = {
-  /*00 */ 0x00000000,
-  // CFID: vendor + device
-  /*04 */ 0x00000000,
-  // CFCS: command + status
-  /*08 */ 0x00000000,
-  // CFRV: class + revision
-  /*0c */ 0x00000000,
-  // CFLT: latency timer + cache line size
-  /*10 */ 0x00000000,
-  // BAR0
-  /*14 */ 0x00000000,
-  // BAR1: CBMA
-  /*18 */ 0x00000000,
-  // BAR2: 
-  /*1c */ 0x00000000,
-  // BAR3: 
-  /*20 */ 0x00000000,
-  // BAR4: 
-  /*24 */ 0x00000000,
-  // BAR5: 
-  /*28 */ 0x00000000,
-  // CCIC: CardBus
-  /*2c */ 0x00000000,
-  // CSID: subsystem + vendor
-  /*30 */ 0x00000000,
-  // BAR6: expansion rom base
-  /*34 */ 0x00000000,
-  // CCAP: capabilities pointer
-/*38*/ 0x00000000,
-  /*3c */ 0x00000000,
-  // CFIT: interrupt configuration
-/*40*/ 0xffcfff7f,
-/*44*/ 0xff00cbdf,
-/*48*/ 0xffffffff,
-/*4c*/ 0x000000ff,
-/*50*/ 0xffff8fff,
-/*54*/ 0xf0ffff00,
-/*58*/ 0x030f0d7f,
+  /*00*/ 0x00000000,  // CFID: vendor + device
+  /*04*/ 0x00000000,  // CFCS: command + status
+  /*08*/ 0x00000000,  // CFRV: class + revision
+  /*0c*/ 0x00000000,  // CFLT: latency timer + cache line size
+  /*10*/ 0x00000000,  // BAR0
+  /*14*/ 0x00000000,  // BAR1: CBMA
+  /*18*/ 0x00000000,  // BAR2: 
+  /*1c*/ 0x00000000,  // BAR3: 
+  /*20*/ 0x00000000,  // BAR4: 
+  /*24*/ 0x00000000,  // BAR5: 
+  /*28*/ 0x00000000,  // CCIC: CardBus
+  /*2c*/ 0x00000000,  // CSID: subsystem + vendor
+  /*30*/ 0x00000000,  // BAR6: expansion rom base
+  /*34*/ 0x00000000,  // CCAP: capabilities pointer
+  /*38*/ 0x00000000,
+  /*3c*/ 0x00000000,  // CFIT: interrupt configuration
+  /*40*/ 0xffcfff7f,
+  /*44*/ 0xff00cbdf,
+  /*48*/ 0xffffffff,
+  /*4c*/ 0x000000ff,
+  /*50*/ 0xffff8fff,
+  /*54*/ 0xf0ffff00,
+  /*58*/ 0x030f0d7f,
   0, 0, 0, 0, 0, 0, 0, 0, 0,
   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
@@ -360,7 +333,7 @@ CAliM1543C::CAliM1543C (CConfigurator * cfg, CSystem * c, int pcibus,
                         int pcidev):CPCIDevice (cfg, c, pcibus, pcidev)
 {
   if (theAli != 0)
-    FAILURE ("More than one Ali!!");
+    FAILURE(Configuration,"More than one Ali");
   theAli = this;
 }
 
@@ -379,7 +352,7 @@ void CAliM1543C::init ()
   state.reg_61 = 0;
 
   add_legacy_io (2, 0x70, 4);
-  cSystem->RegisterMemory (this, 2, X64 (00000801fc000070), 4);
+  cSystem->RegisterMemory (this, 2, U64(0x00000801fc000070), 4);
   for (i = 0; i < 4; i++)
     state.toy_access_ports[i] = 0;
   for (i = 0; i < 256; i++)
@@ -409,7 +382,7 @@ void CAliM1543C::init ()
   add_legacy_io (30, 0x4d0, 2);
 
   // odd one, byte read in PCI IACK (interrupt acknowledge) cycle. Interrupt vector.
-  cSystem->RegisterMemory (this, 20, X64 (00000801f8000000), 1);
+  cSystem->RegisterMemory (this, 20, U64(0x00000801f8000000), 1);
 
   for (i = 0; i < 2; i++)
   {
@@ -437,13 +410,12 @@ void CAliM1543C::init ()
   myThread = 0;
 
   printf
-    ("%s: $Id: AliM1543C.cpp,v 1.63 2008/03/13 13:19:16 iamcamiel Exp $\n",
+    ("%s: $Id: AliM1543C.cpp,v 1.64 2008/03/14 14:50:20 iamcamiel Exp $\n",
      devid_string);
 }
 
 void CAliM1543C::start_threads ()
 {
-  char buffer[10];
   if (!myThread)
   {
     myThread = new Poco::Thread ("ali");
@@ -496,10 +468,8 @@ u32 CAliM1543C::ReadMem_Legacy (int index, u32 address, int dsize)
 {
   if (dsize != 8 && index != 20)        // when interrupt vector is read, dsize doesn't matter.
   {
-    printf
-      ("%s: DSize %d seen reading from legacy memory range # %d at address %02x\n",
+    FAILURE_4(InvalidArgument,"%s: DSize %d reading from legacy memory range # %d at address %02x\n",
        devid_string, dsize, index, address);
-//    FAILURE("Unsupported dsize");
   }
   int channel = 0;
   switch (index)
@@ -548,10 +518,8 @@ void CAliM1543C::WriteMem_Legacy (int index, u32 address, int dsize, u32 data)
 {
   if (dsize != 8)
   {
-    printf
-      ("%s: DSize %d seen writing to legacy memory range # %d at address %02x\n",
+    FAILURE_4(InvalidArgument,"%s: DSize %d writing to legacy memory range # %d at address %02x\n",
        devid_string, dsize, index, address);
-//    FAILURE("Unsupported dsize");
   }
   int channel = 0;
   switch (index)
@@ -965,9 +933,9 @@ void CAliM1543C::run ()
       do_pit_clock ();
     }
   }
-  catch (...)
+  catch (Poco::Exception & e)
   {
-    printf ("ALi: exception in thread.\n");
+    printf ("Exception in Ali thread: %s.\n",e.displayText().c_str());
     // Let the thread die...
   }
 }
@@ -1446,7 +1414,7 @@ void CAliM1543C::lpt_write (u32 address, u8 data)
 void CAliM1543C::check_state ()
 {
   if (myThread && !myThread->isRunning ())
-    FAILURE ("ALi thread has died");
+    FAILURE (Thread,"ALi thread has died");
 }
 
 CAliM1543C *theAli = 0;

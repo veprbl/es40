@@ -28,7 +28,11 @@
  * Contains code macros for the processor PALmode instructions.
  * Based on HRM.
  *
- * $Id: cpu_pal.h,v 1.14 2008/03/05 14:41:46 iamcamiel Exp $
+ * $Id: cpu_pal.h,v 1.15 2008/03/14 14:50:24 iamcamiel Exp $
+ *
+ * X-1.15       Camiel Vanderhoeven                             14-MAR-2008
+ *   1. More meaningful exceptions replace throwing (int) 1.
+ *   2. U64 macro replaces X64 macro.
  *
  * X-1.14       Camiel Vanderhoeven                             05-MAR-2008
  *      Multi-threading version.
@@ -86,8 +90,8 @@
     state.r[REG_1] = ((u64)state.asn << 39)				                    \
 	               | ((u64)state.astrr << 9)				                \
 	               | ((u64)state.aster <<5)				                    \
-	               | (state.fpen?X64(1)<<2:0)				                \
-	               | (state.ppcen?X64(1)<<1:0);				                \
+	               | (state.fpen?U64(0x1)<<2:0)				                \
+	               | (state.ppcen?U64(0x1)<<1:0);				                \
   } else {							                                        \
 	switch (function)					                                    \
     {							                                            \
@@ -121,9 +125,9 @@
 	                 | (((u64)(state.crr & state.cren)) << 31)			    \
 	                 | (((u64)(state.pcr & state.pcen)) << 29)			    \
 	                 | (((u64)(state.sir & state.sien)) << 13)			    \
-	                 | (((u64)(  ((X64(1)<<(state.cm+1))-1) & state.aster   \
+	                 | (((u64)(  ((U64(0x1)<<(state.cm+1))-1) & state.aster   \
                                & state.astrr & (state.asten * 0x3))) << 3)  \
-	                 | (((u64)(  ((X64(1)<<(state.cm+1))-1) & state.aster   \
+	                 | (((u64)(  ((U64(0x1)<<(state.cm+1))-1) & state.aster   \
                                & state.astrr & (state.asten * 0xc))) << 7); \
 	  break;						                                        \
     case 0x0f: /* EXC_SUM */				                                \
@@ -137,8 +141,8 @@
                      | (((u64)CPU_CHIP_ID)<<24)			                    \
 	                 | (u64)state.i_ctl_vptb					            \
 	                 | (((u64)state.i_ctl_va_mode) << 15)			        \
-	                 | (state.hwe?X64(1)<<12:0)				                \
-	                 | (state.sde?X64(1)<<7:0)				                \
+	                 | (state.hwe?U64(0x1)<<12:0)				                \
+	                 | (state.sde?U64(0x1)<<7:0)				                \
 	                 | (((u64)state.i_ctl_spe) << 3);			            \
 	  break;						                                        \
     case 0x14: /* PCTR_CTL */				                                \
@@ -157,7 +161,7 @@
  	  state.r[REG_1] = 0;					                                \
 	  break;						                                        \
     case 0xc0: /* CC */					                                    \
- 	  state.r[REG_1] = (((u64)state.cc_offset) << 32) |  (state.cc & X64(ffffffff));		    \
+ 	  state.r[REG_1] = (((u64)state.cc_offset) << 32) |  (state.cc & U64(0xffffffff));		    \
 	  break;						                                        \
     case 0xc2: /* VA */					                                    \
  	  state.r[REG_1] = state.fault_va;				                        \
@@ -227,16 +231,16 @@
       state.check_int = true;                                         \
 	  break;								\
     case 0x0e: /* HW_INT_CLR */						\
-	  state.pcr &= ~((state.r[REG_2]>>29)&X64(3));					\
-	  state.crr &= ~((state.r[REG_2]>>31)&X64(1));					\
-	  state.slr &= ~((state.r[REG_2]>>32)&X64(1));					\
+	  state.pcr &= ~((state.r[REG_2]>>29)&U64(0x3));					\
+	  state.crr &= ~((state.r[REG_2]>>31)&U64(0x1));					\
+	  state.slr &= ~((state.r[REG_2]>>32)&U64(0x1));					\
 	  break;								\
     case 0x10: /* PAL_BASE */						\
- 	  set_PAL_BASE(state.r[REG_2] & X64(00000fffffff8000));			\
+ 	  set_PAL_BASE(state.r[REG_2] & U64(0x00000fffffff8000));			\
 	  break;								\
     case 0x11: /* i_ctl */							\
- 	  state.i_ctl_other = state.r[REG_2]    & X64(00000000007e2f67);			\
-	  state.i_ctl_vptb  = sext_u64_48 (state.r[REG_2] & X64(0000ffffc0000000));		\
+ 	  state.i_ctl_other = state.r[REG_2]    & U64(0x00000000007e2f67);			\
+	  state.i_ctl_vptb  = sext_u64_48 (state.r[REG_2] & U64(0x0000ffffc0000000));		\
 	  state.i_ctl_spe   = (int)(state.r[REG_2]>>3) & 3;				\
 	  state.sde         = (state.r[REG_2]>>7) & 1;					\
 	  state.hwe         = (state.r[REG_2]>>12) & 1;					\
@@ -249,7 +253,7 @@
  	  flush_icache();							\
 	  break;								\
     case 0x14: /* PCTR_CTL */						\
- 	  state.pctr_ctl = state.r[REG_2] & X64(ffffffffffffffdf);			\
+ 	  state.pctr_ctl = state.r[REG_2] & U64(0xffffffffffffffdf);			\
 	  break;								\
     case 0x15: /* CLR_MAP */						\
     case 0x17: /* SLEEP   */						\
@@ -309,10 +313,10 @@
 	  break;								\
     case 0xc1: /* CC_CTL */							\
  	  state.cc_ena = (state.r[REG_2] >> 32) & 1;					\
-	  state.cc    = (u32)(state.r[REG_2] & X64(fffffff0));				\
+	  state.cc    = (u32)(state.r[REG_2] & U64(0xfffffff0));				\
 	  break;								\
     case 0xc4: /* VA_CTL */							\
- 	  state.va_ctl_vptb = sext_u64_48(state.r[REG_2] & X64(0000ffffc0000000));		\
+ 	  state.va_ctl_vptb = sext_u64_48(state.r[REG_2] & U64(0x0000ffffc0000000));		\
 	  state.va_ctl_va_mode = (int)(state.r[REG_2]>>1) & 3;				\
 	  break;								\
     default:								\

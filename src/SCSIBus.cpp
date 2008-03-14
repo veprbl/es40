@@ -27,7 +27,11 @@
  * \file
  * Contains definitions for the SCSI bus class.
  *
- * $Id: SCSIBus.cpp,v 1.3 2008/02/27 12:04:26 iamcamiel Exp $
+ * $Id: SCSIBus.cpp,v 1.4 2008/03/14 14:50:22 iamcamiel Exp $
+ *
+ * X-1.4        Camiel Vanderhoeven                             14-MAR-2008
+ *   1. More meaningful exceptions replace throwing (int) 1.
+ *   2. U64 macro replaces X64 macro.
  *
  * X-1.3        Brian Wheeler                                   27-FEB-2008
  *      Avoid compiler warnings.
@@ -73,7 +77,7 @@ CSCSIBus::~CSCSIBus(void)
 void CSCSIBus::scsi_register(CSCSIDevice * dev, int bus, int target)
 {
   if (targets[target] && targets[target] != dev)
-    FAILURE("More than one SCSI device at the same ID");
+    FAILURE(IllegalState,"More than one SCSI device at the same ID");
   targets[target] = dev;
   target_bus_no[target] = bus;
 }
@@ -87,7 +91,7 @@ void CSCSIBus::scsi_register(CSCSIDevice * dev, int bus, int target)
 void CSCSIBus::scsi_unregister(CSCSIDevice * dev, int target)
 {
   if (targets[target] != dev)
-    FAILURE("Attempt to unregister other SCSI device");
+    FAILURE(IllegalState,"Attempt to unregister other SCSI device");
   targets[target] = 0;
 }
 
@@ -120,7 +124,7 @@ bool CSCSIBus::arbitrate(int initiator)
 bool CSCSIBus::select(int initiator, int target)
 {
   if (state.phase != SCSI_PHASE_ARBITRATION || state.initiator != initiator) 
-    FAILURE("Attempt to select while the device has not won SCSI arbitration");
+    FAILURE(IllegalState,"Attempt to select while the device has not won SCSI arbitration");
 
   if (!targets[target])
     return false;
@@ -138,7 +142,7 @@ bool CSCSIBus::select(int initiator, int target)
 void CSCSIBus::set_phase(int target, int phase)
 {
   if (targets[target]!=targets[state.target])
-    FAILURE("Attempt to set phase while the device has not been selected");
+    FAILURE(IllegalState,"Attempt to set phase while the device has not been selected");
 
   state.phase = phase;
 }
@@ -158,12 +162,12 @@ void CSCSIBus::free_bus(int initiator)
   if (state.phase == SCSI_PHASE_ARBITRATION)
   {
     if (initiator != state.initiator)
-      FAILURE("Attempt to free the scsi bus");
+      FAILURE(IllegalState,"Attempt to free the scsi bus");
   }
   else
   {
     if (targets[initiator]!=targets[state.target])
-      FAILURE("Attempt to free the scsi bus");
+      FAILURE(IllegalState,"Attempt to free the scsi bus");
   }
 
   state.phase = SCSI_PHASE_FREE;

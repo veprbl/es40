@@ -34,7 +34,7 @@
  * Contains the code for the bx_sdl_gui_c class used for interfacing with
  * SDL.
  *
- * $Id: sdl.cpp,v 1.15 2008/02/29 14:04:56 iamcamiel Exp $
+ * $Id: sdl.cpp,v 1.16 2008/03/14 14:50:25 iamcamiel Exp $
  *
  * X-1.15       Camiel Vanderhoeven                             29-FEB-2008
  *      Comments
@@ -203,8 +203,7 @@ void bx_sdl_gui_c::specific_init(
   
   flags = SDL_INIT_VIDEO;
   if (SDL_Init(flags) < 0) {
-    printf("Unable to initialize SDL libraries  \n");
-    throw((int)1);
+    FAILURE(SDL,"Unable to initialize SDL libraries");
   }
   #ifdef __MORPHOS__
   atexit(bx_sdl_morphos_exit);
@@ -851,7 +850,7 @@ void bx_sdl_gui_c::handle_events(void)
 	break;
 
     case SDL_QUIT:
-	  FAILURE("User requested shutdown");
+	  FAILURE(Graceful,"User requested shutdown");
     }
   }
 }
@@ -927,8 +926,7 @@ void bx_sdl_gui_c::dimension_update(
   }
   else
   {
-    printf("%d bpp graphics mode not supported.   \n", bpp);
-    FAILURE("Graphics error");
+    FAILURE_1(SDL,"%d bpp graphics mode not supported.", bpp);
   }
   if( fheight > 0 )
   {
@@ -949,8 +947,7 @@ void bx_sdl_gui_c::dimension_update(
   sdl_screen = SDL_SetVideoMode( x, y/*+headerbar_height+statusbar_height*/, 32, SDL_SWSURFACE );
   if( !sdl_screen )
   {
-    printf("Unable to set requested videomode: %ix%i: %s   \n",x,y,SDL_GetError());
-    FAILURE("Graphics error");
+    FAILURE_3(SDL,"Unable to set requested videomode: %ix%i: %s   \n",x,y,SDL_GetError());
   }
   res_x = x;
   res_y = y;

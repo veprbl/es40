@@ -30,6 +30,12 @@
  * \file
  * Contains macro's and prototypes for debugging.
  *
+ * $Id: es40_debug.h,v 1.7 2008/03/14 14:50:24 iamcamiel Exp $
+ *
+ * X-1.7        Camiel Vanderhoeven                             14-MAR-2008
+ *   1. More meaningful exceptions replace throwing (int) 1.
+ *   2. U64 macro replaces X64 macro.
+ *
  * X-1.6        Brian Wheeler                                   27-FEB-2008
  *      Avoid compiler warnings.
  *
@@ -61,41 +67,71 @@
 
 #ifdef HAVE___FUNCTION__
 
-#define	FAILURE(error_msg) {	                                \
+#define	FAILURE(cls, error_msg) {	                            \
 		char where_msg[800];					                \
 		sprintf(where_msg,			                            \
-		    "%s, line %i, function '%s'\n",			            \
+		    "%s, line %i, function '%s'",			            \
 		    __FILE__, __LINE__, __FUNCTION__);			        \
-        fprintf(stderr, "%s: %s\n", error_msg, where_msg);	    \
-		fprintf(stderr, "Press <RETURN> to terminate.\n");      \
-		getchar();                                              \
-		throw((int)1);						                    \
+            throw C##cls##Exception(error_msg, where_msg);                      \
 	}
 
 #else
 
-#define	FAILURE(error_msg) {	                                \
+#define	FAILURE(cls, error_msg) {	                            \
 		char where_msg[800];					                \
-		sprintf(where_msg,                                      \
-		    "%s, line %i\n", __FILE__, __LINE__);		        \
-        	fprintf(stderr, "%s: %s\n", error_msg, where_msg);	\
-		fprintf(stderr, "Press <RETURN> to terminate.\n");      \
-		getchar();                                              \
-		throw((int)1);						                    \
+		sprintf(where_msg,			                            \
+		    "%s, line %i",			                            \
+		    __FILE__, __LINE__);			                    \
+            throw C##cls##Exception(error_msg, where_msg);                        \
 	}
-
 #endif	/*  !HAVE___FUNCTION__  */
+
+#define FAILURE_1(cls,error_msg,a) {                            \
+    char what_msg[800];                                         \
+    sprintf(what_msg,error_msg,a);                              \
+    FAILURE(cls,what_msg);                                      \
+  }
+
+#define FAILURE_2(cls,error_msg,a,b) {                            \
+    char what_msg[800];                                         \
+    sprintf(what_msg,error_msg,a,b);                              \
+    FAILURE(cls,what_msg);                                      \
+  }
+
+#define FAILURE_3(cls,error_msg,a,b,c) {                            \
+    char what_msg[800];                                         \
+    sprintf(what_msg,error_msg,a,b,c);                              \
+    FAILURE(cls,what_msg);                                      \
+  }
+
+#define FAILURE_4(cls,error_msg,a,b,c,d) {                            \
+    char what_msg[800];                                         \
+    sprintf(what_msg,error_msg,a,b,c,d);                              \
+    FAILURE(cls,what_msg);                                      \
+  }
+
+#define FAILURE_5(cls,error_msg,a,b,c,d,e) {                            \
+    char what_msg[800];                                         \
+    sprintf(what_msg,error_msg,a,b,c,d,e);                              \
+    FAILURE(cls,what_msg);                                      \
+  }
+
+#define FAILURE_6(cls,error_msg,a,b,c,d,e,f) {                            \
+    char what_msg[800];                                         \
+    sprintf(what_msg,error_msg,a,b,c,d,e,f);                              \
+    FAILURE(cls,what_msg);                                      \
+  }
 
 #define	CHECK_ALLOCATION(ptr) {	                                \
 		if ((ptr) == NULL)					                    \
-			FAILURE("Out of memory");			                \
+			FAILURE(OutOfMemory,"Out of memory");			                \
 	}
 
 #define	CHECK_REALLOCATION(dst,src,type) {	                    \
 	    type * rea_x;											\
 		rea_x = (type *)src;									\
 		if ((rea_x) == NULL) {									\
-			FAILURE("Out of memory");							\
+			FAILURE(OutOfMemory,"Out of memory");							\
 		} else {												\
 			dst = rea_x;										\
 		}														\

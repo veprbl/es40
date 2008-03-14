@@ -30,7 +30,11 @@
  * \file 
  * Contains the code for the emulated DEC 21143 NIC device.
  *
- * $Id: DEC21143.cpp,v 1.32 2008/03/13 13:19:19 iamcamiel Exp $
+ * $Id: DEC21143.cpp,v 1.33 2008/03/14 14:50:20 iamcamiel Exp $
+ *
+ * X-1.33       Camiel Vanderhoeven                             14-MAR-2008
+ *   1. More meaningful exceptions replace throwing (int) 1.
+ *   2. U64 macro replaces X64 macro.
  *
  * X-1.32       Camiel Vanderhoeven                             13-MAR-2008
  *      Create init(), start_threads() and stop_threads() functions.
@@ -192,82 +196,52 @@ void CDEC21143::run ()
       Poco::Thread::sleep (10);
     }
   }
-  catch (...)
+  catch (Poco::Exception & e)
   {
-    printf ("nic: exception in thread.\n");
+    printf ("Exception in NIC thread: %s.\n",e.displayText().c_str());
     // Let the thread die...
   }
 }
 
 u32 dec21143_cfg_data[64] = {
-  /*00 */ 0x00191011,
-  // CFID: vendor + device
-  /*04 */ 0x02800000,
-  // CFCS: command + status
-  /*08 */ 0x02000030,
-  // CFRV: class + revision   //dth:was 41
-  /*0c */ 0x00000000,
-  // CFLT: latency timer + cache line size
-  /*10 */ 0x00000001,
-  // BAR0: CBIO
-  /*14 */ 0x00000000,
-  // BAR1: CBMA
-  /*18 */ 0x00000000,
-  // BAR2: 
-  /*1c */ 0x00000000,
-  // BAR3: 
-  /*20 */ 0x00000000,
-  // BAR4: 
-  /*24 */ 0x00000000,
-  // BAR5: 
-  /*28 */ 0x00000000,
-  // CCIC: CardBus
-  /*2c */ 0x500b1011,
-  // CSID: subsystem + vendor
-  /*30 */ 0x00000000,
-  // BAR6: expansion rom base
-  /*34 */ 0x00000000,
-  // CCAP: capabilities pointer
-/*38*/ 0x00000000,
-  /*3c */ 0x281401ff,
-  // CFIT: interrupt configuration
+  /*00*/ 0x00191011,  // CFID: vendor + device
+  /*04*/ 0x02800000,  // CFCS: command + status
+  /*08*/ 0x02000030,  // CFRV: class + revision   //dth:was 41
+  /*0c*/ 0x00000000,  // CFLT: latency timer + cache line size
+  /*10*/ 0x00000001,  // BAR0: CBIO
+  /*14*/ 0x00000000,  // BAR1: CBMA
+  /*18*/ 0x00000000,  // BAR2: 
+  /*1c*/ 0x00000000,  // BAR3: 
+  /*20*/ 0x00000000,  // BAR4: 
+  /*24*/ 0x00000000,  // BAR5: 
+  /*28*/ 0x00000000,  // CCIC: CardBus
+  /*2c*/ 0x500b1011,  // CSID: subsystem + vendor
+  /*30*/ 0x00000000,  // BAR6: expansion rom base
+  /*34*/ 0x00000000,  // CCAP: capabilities pointer
+  /*38*/ 0x00000000,
+  /*3c*/ 0x281401ff,  // CFIT: interrupt configuration
   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
 };
 
 u32 dec21143_cfg_mask[64] = {
-  /*00 */ 0x00000000,
-  // CFID: vendor + device
-  /*04 */ 0x0000ffff,
-  // CFCS: command + status
-  /*08 */ 0x00000000,
-  // CFRV: class + revision
-  /*0c */ 0x0000ffff,
-  // CFLT: latency timer + cache line size
-  /*10 */ 0xffffff00,
-  // BAR0
-  /*14 */ 0xffffff00,
-  // BAR1: CBMA
-  /*18 */ 0x00000000,
-  // BAR2: 
-  /*1c */ 0x00000000,
-  // BAR3: 
-  /*20 */ 0x00000000,
-  // BAR4: 
-  /*24 */ 0x00000000,
-  // BAR5: 
-  /*28 */ 0x00000000,
-  // CCIC: CardBus
-  /*2c */ 0x00000000,
-  // CSID: subsystem + vendor
-  /*30 */ 0x00000000,
-  // BAR6: expansion rom base
-  /*34 */ 0x00000000,
-  // CCAP: capabilities pointer
-/*38*/ 0x00000000,
-  /*3c */ 0x000000ff,
-  // CFIT: interrupt configuration
+  /*00*/ 0x00000000,  // CFID: vendor + device
+  /*04*/ 0x0000ffff,  // CFCS: command + status
+  /*08*/ 0x00000000,  // CFRV: class + revision
+  /*0c*/ 0x0000ffff,  // CFLT: latency timer + cache line size
+  /*10*/ 0xffffff00,  // BAR0
+  /*14*/ 0xffffff00,  // BAR1: CBMA
+  /*18*/ 0x00000000,  // BAR2: 
+  /*1c*/ 0x00000000,  // BAR3: 
+  /*20*/ 0x00000000,  // BAR4: 
+  /*24*/ 0x00000000,  // BAR5: 
+  /*28*/ 0x00000000,  // CCIC: CardBus
+  /*2c*/ 0x00000000,  // CSID: subsystem + vendor
+  /*30*/ 0x00000000,  // BAR6: expansion rom base
+  /*34*/ 0x00000000,  // CCAP: capabilities pointer
+  /*38*/ 0x00000000,
+  /*3c*/ 0x000000ff,  // CFIT: interrupt configuration
   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
@@ -299,12 +273,10 @@ void CDEC21143::init ()
   cfg = myCfg->get_text_value ("adapter");
   if (!cfg)
   {
-    printf ("\n%%NIC-Q-CHNIC: Choose a network adapter to connect to:\n");
+    printf ("\n%s: Choose a network adapter to connect to:\n", devid_string);
     if (pcap_findalldevs (&alldevs, errbuf) == -1)
     {
-      printf ("%%NIC-F-PCAPFAD: Error in pcap_findalldevs_ex:");
-      printf (errbuf);
-      FAILURE ("NIC error");
+      FAILURE_1 (Runtime,"Error in pcap_findalldevs_ex: %s",errbuf);
     }
 
     /* Print the list */
@@ -318,7 +290,7 @@ void CDEC21143::init ()
     }
 
     if (i == 0)
-      FAILURE ("%%NIC-F-NONIC: No interfaces found! Exiting");
+      FAILURE (Runtime,"No network interfaces found");
 
     if (i == 1)
       inum = 1;
@@ -362,7 +334,7 @@ void CDEC21143::init ()
                             1 /*read timeout: 1ms. */ ,
                             errbuf)) == NULL)   // connect to pcap...
 #endif
-    FAILURE ("Error opening adapter\n");
+    FAILURE_1 (Runtime,"Error opening adapter %s", cfg);
 
   // set default mac = Digital ethernet prefix: 08-00-2B + hexified "ES40" + nic number
   state.mac[0] = 0x08;
@@ -410,14 +382,11 @@ void CDEC21143::init ()
     }
     if (mac_replaced)
     {
-      printf ("\n%%NIC-I-MACSET: MAC set to %s\n", cfg);
+      printf ("%s: MAC set to %s\n", devid_string,cfg);
     }
     else
     {
-      printf ("\n%%NIC-F-BADMAC: Illegal MAC address: %s\n", cfg);
-      printf
-        ("\n%%NIC-I-MACFORMAT: MAC should have xx-xx-xx-xx-xx-xx format.\n");
-      FAILURE ("NIC error");
+      FAILURE_1 (Configuration,"MAC address (%s) should have xx-xx-xx-xx-xx-xx format",cfg);
     }
   }
   else
@@ -426,7 +395,7 @@ void CDEC21143::init ()
     sprintf (mac, "%02X-%02X-%02X-%02X-%02X-%02X",
              state.mac[0], state.mac[1], state.mac[2],
              state.mac[3], state.mac[4], state.mac[5]);
-    printf ("\n%%NIC-I-MACDEFAULT: MAC defaulted to %s\n", mac);
+    printf ("%s: MAC defaulted to %s\n", devid_string, mac);
   }
 
   rx_queue =
@@ -444,7 +413,7 @@ void CDEC21143::init ()
   myThread = 0;
 
   printf
-    ("%s: $Id: DEC21143.cpp,v 1.32 2008/03/13 13:19:19 iamcamiel Exp $\n",
+    ("%s: $Id: DEC21143.cpp,v 1.33 2008/03/14 14:50:20 iamcamiel Exp $\n",
      devid_string);
 }
 
@@ -515,7 +484,7 @@ void
 void CDEC21143::check_state ()
 {
   if (myThread && !myThread->isRunning ())
-    FAILURE ("CPU thread has died");
+    FAILURE (Thread,"NIC thread has died");
 }
 
 void CDEC21143::receive_process ()
@@ -1498,10 +1467,10 @@ void CDEC21143::SetupFilter ()
 #endif
 
   if (pcap_compile (fp, &fcode, filter, 1, 0xffffffff) < 0)
-    FAILURE ("Unable to compile the packet filter. Check the syntax.");
+    FAILURE_1 (Logic,"Unable to compile the packet filter (%s)",filter);
 
   if (pcap_setfilter (fp, &fcode) < 0)
-    FAILURE ("Error setting the filter.");
+    FAILURE (Runtime,"Error setting the filter.");
 }
 
 /**

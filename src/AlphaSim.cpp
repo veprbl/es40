@@ -27,7 +27,11 @@
  * \file
  * Defines the entry point for the application.
  *
- * $Id: AlphaSim.cpp,v 1.42 2008/03/04 19:33:47 iamcamiel Exp $
+ * $Id: AlphaSim.cpp,v 1.43 2008/03/14 14:50:20 iamcamiel Exp $
+ *
+ * X-1.43       Camiel Vanderhoeven                             14-MAR-2008
+ *   1. More meaningful exceptions replace throwing (int) 1.
+ *   2. U64 macro replaces X64 macro.
  *
  * X-1.42       Camiel Vanderhoeven                             04-MAR-2008
  *      Version updated to 0.18.
@@ -292,7 +296,7 @@ int main(int argc, char* argv[])
         }
       }
       if(filename==NULL)
-        FAILURE("Configuration file not found.");
+        FAILURE(FileNotFound,"configuration file");
     }
 
     char * ch1;
@@ -308,10 +312,7 @@ int main(int argc, char* argv[])
     free(ch1);
 
     if(!theSystem) 
-    {
-      printf("%%SYS-F-INIT: Initialization of system has failed. Syntax error in config?.\n");
-      exit(1);
-    }
+      FAILURE(Configuration,"no system initialized");
 
 #if defined(IDB)
     trc = new CTraceEngine(theSystem);
@@ -339,13 +340,17 @@ int main(int argc, char* argv[])
       trc->run_script(NULL);
 #else
 
-    if (theSystem->Run()>0)
-    {
-      // save flash and dpr rom only if not terminated with a fatal error
-      theSROM->SaveStateF();
-      theDPR->SaveStateF();
-    }
+    theSystem->Run();
 #endif
+  }
+  catch(CGracefulException& e)
+  {
+    printf("Exiting gracefully: %s\n",e.displayText().c_str());
+
+    theSystem->stop_threads();
+    // save flash and dpr rom only if not terminated with a fatal error
+    theSROM->SaveStateF();
+    theDPR->SaveStateF();
 
 #if defined(PROFILE)
     {
@@ -379,10 +384,14 @@ int main(int argc, char* argv[])
 
     delete theSystem;
   }
-  catch(int)
+  catch(Poco::Exception& e)
   {
+    printf("Emulator Failure: %s\n",e.displayText().c_str());
 	if (theSystem)
+    {
+      theSystem->stop_threads();
 	  delete theSystem;
+    }
   }
   return 0;
 }

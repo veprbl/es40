@@ -30,7 +30,11 @@
  * point registers, and to convert them to/from the host's native floating point 
  * format when required.
  *
- * $Id: es40_float.h,v 1.19 2008/02/06 10:59:52 iamcamiel Exp $
+ * $Id: es40_float.h,v 1.20 2008/03/14 14:50:24 iamcamiel Exp $
+ *
+ * X-1.19       Camiel Vanderhoeven                             14-MAR-2008
+ *   1. More meaningful exceptions replace throwing (int) 1.
+ *   2. U64 macro replaces X64 macro.
  *
  * X-1.18       Camiel Vanderhoeven                             06-FEB-2008
  *      Check for FPEN in old floating point code. 
@@ -106,16 +110,16 @@
 
 inline double f2host(u64 val)
 {
-  int s = (val & X64(8000000000000000))?1:0;
-  int e = (int)((val & X64(7ff0000000000000))>>52);
-  s64 f = (val & X64(000fffffffffffff));
-  f |= X64(0010000000000000);
+  int s = (val & U64(0x8000000000000000))?1:0;
+  int e = (int)((val & U64(0x7ff0000000000000))>>52);
+  s64 f = (val & U64(0x000fffffffffffff));
+  f |= U64(0x0010000000000000);
   double res;
 
   if (e==0)
     res = 0.0;
   else
-    res = (s?-1.0:1.0) * pow((double)2.0,e-1024) * ((double)f / (double)(s64)X64(0020000000000000));
+    res = (s?-1.0:1.0) * pow((double)2.0,e-1024) * ((double)f / (double)(s64)U64(0x0020000000000000));
 
 #if defined(DEBUG_FP_CONVERSION)
   printf("f/g->host: %016" LL "x -> %f   \n",val,res);
@@ -133,16 +137,16 @@ inline double f2host(u64 val)
 
 inline double d2host(u64 val)
 {
-  int s = (val & X64(8000000000000000))?1:0;
-  int e = (int)((val & X64(7f80000000000000))>>55);
-  s64 f = (val & X64(007fffffffffffff));
-  f |= X64(0080000000000000);
+  int s = (val & U64(0x8000000000000000))?1:0;
+  int e = (int)((val & U64(0x7f80000000000000))>>55);
+  s64 f = (val & U64(0x007fffffffffffff));
+  f |= U64(0x0080000000000000);
   double res;
 
   if (e==0)
     res = 0.0;
   else
-    res = (s?-1.0:1.0) * pow((double)2.0,e-128) * ((double)f / (double)(s64)X64(0100000000000000));
+    res = (s?-1.0:1.0) * pow((double)2.0,e-128) * ((double)f / (double)(s64)U64(0x0100000000000000));
 
 #if defined(DEBUG_FP_CONVERSION)
   printf("d->host: %016" LL "x -> %f   \n",val,res);
@@ -173,9 +177,9 @@ inline double s2host(u64 val)
   else
 #endif
   {
-    int s = (val & X64(8000000000000000))?1:0;
-    int e = (int)((val & X64(7ff0000000000000))>>52);
-    s64 f = (val & X64(000fffffffffffff));
+    int s = (val & U64(0x8000000000000000))?1:0;
+    int e = (int)((val & U64(0x7ff0000000000000))>>52);
+    s64 f = (val & U64(0x000fffffffffffff));
 
     if (e==2047) {
       if (f)
@@ -184,11 +188,11 @@ inline double s2host(u64 val)
         res = (s?-1.0:1.0) / 0.0;	// +/- Inf
     } else if (e==0) {
       if (f)
-        res = (s?-1.0:1.0) * ldexp((double)f / (double)((s64)X64(10000000000000)), -1022);
+        res = (s?-1.0:1.0) * ldexp((double)f / (double)((s64)U64(0x10000000000000)), -1022);
       else
         res = (s?-1.0:1.0) * 0.0;
     } else {
-        res = (s?-1.0:1.0) * ldexp (1.0 + ((double)f / (double)((s64)X64(0010000000000000))), e-1023);
+        res = (s?-1.0:1.0) * ldexp (1.0 + ((double)f / (double)((s64)U64(0x0010000000000000))), e-1023);
     }
   }
 
@@ -207,8 +211,8 @@ inline double s2host(u64 val)
 
 inline bool i_isnan(u64 val)
 {
-  int e = (int)((val & X64(7ff0000000000000))>>52);
-  s64 f = (val & X64(000fffffffffffff));
+  int e = (int)((val & U64(0x7ff0000000000000))>>52);
+  s64 f = (val & U64(0x000fffffffffffff));
 
   return (e==2047) && f;
 }
@@ -247,11 +251,11 @@ inline u64 host2f(double val)
 
   e += 1024;
 
-  u64 f = (u64)(fr * (double)X64(0020000000000000)+0.5);
+  u64 f = (u64)(fr * (double)U64(0x0020000000000000)+0.5);
 
-  f =                (s?X64(8000000000000000):0) | 
-	  (((u64)e << 52) & X64(7ff0000000000000)) |
-	  (f              & X64(000fffffe0000000));
+  f =                (s?U64(0x8000000000000000):0) | 
+	  (((u64)e << 52) & U64(0x7ff0000000000000)) |
+	  (f              & U64(0x000fffffe0000000));
 
 #if defined(DEBUG_FP_CONVERSION)
   printf("host->f: %f -> %016" LL "x   \n",val,f);
@@ -294,11 +298,11 @@ inline u64 host2g(double val)
   
   e += 1024;
 
-  u64 f = (u64)(fr * (double)X64(0020000000000000)+0.5);
+  u64 f = (u64)(fr * (double)U64(0x0020000000000000)+0.5);
 
-  f =                (s?X64(8000000000000000):0) | 
-	  (((u64)e << 52) & X64(7ff0000000000000)) |
-	  (f              & X64(000fffffffffffff));
+  f =                (s?U64(0x8000000000000000):0) | 
+	  (((u64)e << 52) & U64(0x7ff0000000000000)) |
+	  (f              & U64(0x000fffffffffffff));
 
 #if defined(DEBUG_FP_CONVERSION)
   printf("host->g: %f -> %016" LL "x   \n",val,f);
@@ -341,12 +345,12 @@ inline u64 host2d(double val)
 
   e += 128;
 
-  u64 f = (u64)(fr * (double)X64(0100000000000000)+0.5);
+  u64 f = (u64)(fr * (double)U64(0x0100000000000000)+0.5);
 
 
-  f =                (s?X64(8000000000000000):0) | 
-	  (((u64)e << 55) & X64(7f80000000000000)) |
-	  (f              & X64(007fffffffffffff));
+  f =                (s?U64(0x8000000000000000):0) | 
+	  (((u64)e << 55) & U64(0x7f80000000000000)) |
+	  (f              & U64(0x007fffffffffffff));
 
 #if defined(DEBUG_FP_CONVERSION)
   printf("host->d: %f -> %016" LL "x   \n",val,f);
@@ -426,14 +430,14 @@ inline u64 host2s(double val)
     if (e==0)
       fr = v / pow((double)2.0,-126);
     
-    f = (u64)(fr * (double)X64(0010000000000000)+0.5);
+    f = (u64)(fr * (double)U64(0x0010000000000000)+0.5);
   }
 
   e = map_s(e);
 
-  f =                (s?X64(800000000000000):0) | 
-      (((u64)e << 52) & X64(7ff0000000000000)) |
-      (f              & X64(000fffffe0000000));
+  f =                (s?U64(0x800000000000000):0) | 
+      (((u64)e << 52) & U64(0x7ff0000000000000)) |
+      (f              & U64(0x000fffffe0000000));
 
 #if defined(DEBUG_FP_CONVERSION)
   printf("host->s: %f -> %016" LL "x   \n",val,f);
@@ -493,11 +497,11 @@ inline u64 host2t(double val)
     if (e==0)
       fr = v / pow((double)2.0,-1022);
 
-    f = (u64)(fr * (double)X64(0010000000000000)+0.5);
+    f = (u64)(fr * (double)U64(0x0010000000000000)+0.5);
 
-    f =                (s?X64(800000000000000):0) | 
-        (((u64)e << 52) & X64(7ff0000000000000)) |
-        (f              & X64(000fffffffffffff));
+    f =                (s?U64(0x800000000000000):0) | 
+        (((u64)e << 52) & U64(0x7ff0000000000000)) |
+        (f              & U64(0x000fffffffffffff));
   }
 
 #if defined(DEBUG_FP_CONVERSION)
@@ -514,9 +518,9 @@ inline u64 host2t(double val)
 
 inline u32 store_f(u64 val)
 {
-  u64 retval = (val & X64(00001fffe0000000)) >> 13; /* frac.lo          : 29..44 --> 16..31 */
-  retval    |= (val & X64(c000000000000000)) >> 48; /* exp.hi + sign    : 62..63 --> 14..15 */
-  retval    |= (val & X64(07ffe00000000000)) >> 45; /* frac.hi + exp.lo : 45..58 -->  0..13 */
+  u64 retval = (val & U64(0x00001fffe0000000)) >> 13; /* frac.lo          : 29..44 --> 16..31 */
+  retval    |= (val & U64(0xc000000000000000)) >> 48; /* exp.hi + sign    : 62..63 --> 14..15 */
+  retval    |= (val & U64(0x07ffe00000000000)) >> 45; /* frac.hi + exp.lo : 45..58 -->  0..13 */
 
 #if defined(DEBUG_FP_LOADSTORE)
   printf("f->mem: %016" LL "x -> %08x   \n",val,retval);
@@ -532,10 +536,10 @@ inline u32 store_f(u64 val)
 
 inline u64 store_g(u64 val)
 {
-  u64 retval = (val >> 48) & X64(000000000000ffff);
-  retval |= (val >> 16)    & X64(00000000ffff0000);
-  retval |= (val << 48)    & X64(ffff000000000000);
-  retval |= (val << 16)    & X64(0000ffff00000000);
+  u64 retval = (val >> 48) & U64(0x000000000000ffff);
+  retval |= (val >> 16)    & U64(0x00000000ffff0000);
+  retval |= (val << 48)    & U64(0xffff000000000000);
+  retval |= (val << 16)    & U64(0x0000ffff00000000);
 
 #if defined(DEBUG_FP_LOADSTORE)
   printf("g->mem: %016" LL "x -> %016" LL "x   \n",val,retval);
@@ -555,7 +559,7 @@ inline u64 load_f(u32 val)
   retval    |= (u64)(val & 0x0000c000) << 48; /* exp.hi + sign    : 14..15 --> 62..63 */
   retval    |= (u64)(val & 0x00003fff) << 45; /* frac.hi + exp.lo :  0..13 --> 45..58 */
   if (((val & 0x00004000) == 0) && ((val & 0x00003f80) != 0))
-    retval  |= X64(3800000000000000);    /* exp.mid */
+    retval  |= U64(0x3800000000000000);    /* exp.mid */
 
 #if defined(DEBUG_FP_LOADSTORE)
   printf("mem->f: %08x -> %016" LL "x   \n",val,retval);
@@ -571,10 +575,10 @@ inline u64 load_f(u32 val)
 
 inline u64 itof_f(u64 val)
 {
-  u64 retval = (val & X64(3fffffff)) << 29; /* frac + exp.lo  :  0..29 --> 29..58 */
-  retval    |= (val & X64(c0000000)) << 32; /* exp.hi + sign : 30..31 --> 62..63 */
-  if (((val & X64(40000000)) == 0) && ((val & X64(3f800000)) != 0))
-    retval  |= X64(3800000000000000);    /* exp.mid */
+  u64 retval = (val & U64(0x3fffffff)) << 29; /* frac + exp.lo  :  0..29 --> 29..58 */
+  retval    |= (val & U64(0xc0000000)) << 32; /* exp.hi + sign : 30..31 --> 62..63 */
+  if (((val & U64(0x40000000)) == 0) && ((val & U64(0x3f800000)) != 0))
+    retval  |= U64(0x3800000000000000);    /* exp.mid */
 
 #if defined(DEBUG_FP_LOADSTORE)
   printf("reg->f: %08x -> %016" LL "x   \n",val,retval);
@@ -590,10 +594,10 @@ inline u64 itof_f(u64 val)
 
 inline u64 load_g(u64 val)
 {
-  u64 retval = (val & X64(000000000000ffff)) << 48;
-  retval |=    (val & X64(00000000ffff0000)) << 16;
-  retval |=    (val & X64(0000ffff00000000)) >> 16;
-  retval |=    (val & X64(ffff000000000000)) >> 48;
+  u64 retval = (val & U64(0x000000000000ffff)) << 48;
+  retval |=    (val & U64(0x00000000ffff0000)) << 16;
+  retval |=    (val & U64(0x0000ffff00000000)) >> 16;
+  retval |=    (val & U64(0xffff000000000000)) >> 48;
   
 #if defined(DEBUG_FP_LOADSTORE)
   printf("mem->g: %016" LL "x -> %016" LL "x   \n",val,retval);
@@ -609,9 +613,9 @@ inline u64 load_g(u64 val)
 
 inline u64 load_s(u32 val)
 {
-  return  ((val & X64(80000000)) << 32)		// sign
+  return  ((val & U64(0x80000000)) << 32)		// sign
 	| ((u64)map_s((val>>23) & 0xff) << 52)	// exp
-	| ((val & X64(  7fffff)) << 29);
+	| ((val & U64(0x7fffff)) << 29);
 }
 
 /**

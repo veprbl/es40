@@ -27,7 +27,11 @@
  * \file
  * Contains the code for the emulated Symbios SCSI controller.
  *
- * $Id: Sym53C810.cpp,v 1.9 2008/03/13 13:19:20 iamcamiel Exp $
+ * $Id: Sym53C810.cpp,v 1.10 2008/03/14 14:50:22 iamcamiel Exp $
+ *
+ * X-1.10       Camiel Vanderhoeven                             14-MAR-2008
+ *   1. More meaningful exceptions replace throwing (int) 1.
+ *   2. U64 macro replaces X64 macro.
  *
  * X-1.9        Camiel Vanderhoeven                             13-MAR-2008
  *      Create init(), start_threads() and stop_threads() functions.
@@ -300,74 +304,44 @@
 #define PTD get_disk(0,GET_DEST())
 
 u32 osym_cfg_data[64] = {
-  /*00 */ 0x00011000,
-  // CFID: vendor + device
-  /*04 */ 0x02000001,
-  // CFCS: command + status
-  /*08 */ 0x01000001,
-  // CFRV: class + revision
-  /*0c */ 0x00000000,
-  // CFLT: latency timer + cache line size
-  /*10 */ 0x00000001,
-  // BAR0: IO Space
-  /*14 */ 0x00000000,
-  // BAR1: Memory space
-  /*18 */ 0x00000000,
-  // BAR2: RAM space
-  /*1c */ 0x00000000,
-  // BAR3: 
-  /*20 */ 0x00000000,
-  // BAR4: 
-  /*24 */ 0x00000000,
-  // BAR5: 
-  /*28 */ 0x00000000,
-  // CCIC: CardBus
-  /*2c */ 0x00000000,
-  // CSID: subsystem + vendor
-  /*30 */ 0x00000000,
-  // BAR6: expansion rom base
-  /*34 */ 0x00000000,
-  // CCAP: capabilities pointer
-/*38*/ 0x00000000,
-  /*3c */ 0x401101ff,
-  // CFIT: interrupt configuration
+  /*00*/ 0x00011000,  // CFID: vendor + device
+  /*04*/ 0x02000001,  // CFCS: command + status
+  /*08*/ 0x01000001,  // CFRV: class + revision
+  /*0c*/ 0x00000000,  // CFLT: latency timer + cache line size
+  /*10*/ 0x00000001,  // BAR0: IO Space
+  /*14*/ 0x00000000,  // BAR1: Memory space
+  /*18*/ 0x00000000,  // BAR2: RAM space
+  /*1c*/ 0x00000000,  // BAR3: 
+  /*20*/ 0x00000000,  // BAR4: 
+  /*24*/ 0x00000000,  // BAR5: 
+  /*28*/ 0x00000000,  // CCIC: CardBus
+  /*2c*/ 0x00000000,  // CSID: subsystem + vendor
+  /*30*/ 0x00000000,  // BAR6: expansion rom base
+  /*34*/ 0x00000000,  // CCAP: capabilities pointer
+  /*38*/ 0x00000000,
+  /*3c*/ 0x401101ff,  // CFIT: interrupt configuration
   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
 };
 
 u32 osym_cfg_mask[64] = {
-  /*00 */ 0x00000000,
-  // CFID: vendor + device
-  /*04 */ 0x00000157,
-  // CFCS: command + status
-  /*08 */ 0x00000000,
-  // CFRV: class + revision
-  /*0c */ 0x0000ffff,
-  // CFLT: latency timer + cache line size
-  /*10 */ 0xffffff00,
-  // BAR0: IO space (256 bytes)
-  /*14 */ 0xffffff00,
-  // BAR1: Memory space (256 bytes)
-  /*18 */ 0x00000000,
-  // BAR2: RAM space (4KB)
-  /*1c */ 0x00000000,
-  // BAR3: 
-  /*20 */ 0x00000000,
-  // BAR4: 
-  /*24 */ 0x00000000,
-  // BAR5: 
-  /*28 */ 0x00000000,
-  // CCIC: CardBus
-  /*2c */ 0x00000000,
-  // CSID: subsystem + vendor
-  /*30 */ 0x00000000,
-  // BAR6: expansion rom base
-  /*34 */ 0x00000000,
-  // CCAP: capabilities pointer
-/*38*/ 0x00000000,
-  /*3c */ 0x000000ff,
-  // CFIT: interrupt configuration
+  /*00*/ 0x00000000,  // CFID: vendor + device
+  /*04*/ 0x00000157,  // CFCS: command + status
+  /*08*/ 0x00000000,  // CFRV: class + revision
+  /*0c*/ 0x0000ffff,  // CFLT: latency timer + cache line size
+  /*10*/ 0xffffff00,  // BAR0: IO space (256 bytes)
+  /*14*/ 0xffffff00,  // BAR1: Memory space (256 bytes)
+  /*18*/ 0x00000000,  // BAR2: RAM space (4KB)
+  /*1c*/ 0x00000000,  // BAR3: 
+  /*20*/ 0x00000000,  // BAR4: 
+  /*24*/ 0x00000000,  // BAR5: 
+  /*28*/ 0x00000000,  // CCIC: CardBus
+  /*2c*/ 0x00000000,  // CSID: subsystem + vendor
+  /*30*/ 0x00000000,  // BAR6: expansion rom base
+  /*34*/ 0x00000000,  // CCAP: capabilities pointer
+  /*38*/ 0x00000000,
+  /*3c*/ 0x000000ff,  // CFIT: interrupt configuration
   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
@@ -393,9 +367,9 @@ void CSym53C810::run ()
       }
     }
   }
-  catch (...)
+  catch (Poco::Exception & e)
   {
-    printf ("SYM: exception in thread.\n");
+    printf ("Exception in SYM thread: %s.\n",e.displayText().c_str());
     // Let the thread die...
   }
 }
@@ -429,7 +403,7 @@ void CSym53C810::init ()
   myThread = 0;
 
   printf
-    ("%s: $Id: Sym53C810.cpp,v 1.9 2008/03/13 13:19:20 iamcamiel Exp $\n",
+    ("%s: $Id: Sym53C810.cpp,v 1.10 2008/03/14 14:50:22 iamcamiel Exp $\n",
      devid_string);
 }
 
@@ -715,9 +689,8 @@ void
         break;
 
       default:
-        printf ("SYM: Write to unknown register at %02x with %08x.\n",
+        FAILURE_2 (NotImplemented,"SYM: Write to unknown register at %02x with %08x.\n",
                 address, data);
-        throw ((int) 1);
       }
       MUTEX_UNLOCK (myRegLock);
       break;
@@ -866,11 +839,8 @@ u32 CSym53C810::ReadMem_Bar (int func, int bar, u32 address, int dsize)
         break;
 
       default:
-        printf ("SYM: Attempt to read from unknown register at %02x\n", dsize,
+        FAILURE_2 (NotImplemented,"SYM: Attempt to read from unknown register at %02x\n", dsize,
                 address);
-
-
-        throw ((int) 1);
       }
       MUTEX_UNLOCK (myRegLock);
 #if defined(DEBUG_SYM_REGS)
@@ -931,10 +901,10 @@ void CSym53C810::write_b_scntl0 (u8 value)
   WRM_R8 (SCNTL0, value);
 
   if (TB_R8 (SCNTL0, START) && !old_start)
-    FAILURE ("SYM: Don't know how to start arbitration sequence");
+    FAILURE (NotImplemented,"SYM: Don't know how to start arbitration sequence");
 
   if (TB_R8 (SCNTL0, TRG))
-    FAILURE ("SYM: Don't know how to operate in target mode");
+    FAILURE (NotImplemented,"SYM: Don't know how to operate in target mode");
 }
 
 void CSym53C810::write_b_scntl1 (u8 value)
@@ -965,7 +935,7 @@ void CSym53C810::write_b_scntl1 (u8 value)
 
   if (TB_R8 (SCNTL1, IARB) && !old_iarb)
     FAILURE
-      ("SYM: Don't know how to start immediate arbitration sequence.\n");
+      (NotImplemented,"SYM: Don't know how to start immediate arbitration sequence.\n");
 }
 
 void CSym53C810::write_b_istat (u8 value)
@@ -1031,7 +1001,7 @@ void CSym53C810::write_b_ctest3 (u8 value)
   //  printf("SYM: Don't know how to clear DMA FIFO\n");
 
   if ((value >> 1) & 1)
-    FAILURE ("SYM: Don't know how to handle FM mode");
+    FAILURE (NotImplemented,"SYM: Don't know how to handle FM mode");
 }
 
 void CSym53C810::write_b_ctest4 (u8 value)
@@ -1039,7 +1009,7 @@ void CSym53C810::write_b_ctest4 (u8 value)
   R8 (CTEST4) = value;
 
   if ((value >> 4) & 1)
-    FAILURE ("SYM: Don't know how to handle SRTM mode");
+    FAILURE (NotImplemented,"SYM: Don't know how to handle SRTM mode");
 }
 
 
@@ -1048,10 +1018,10 @@ void CSym53C810::write_b_ctest5 (u8 value)
   WRM_R8 (CTEST5, value);
 
   if ((value >> 7) & 1)
-    FAILURE ("SYM: Don't know how to do Clock Address increment");
+    FAILURE (NotImplemented,"SYM: Don't know how to do Clock Address increment");
 
   if ((value >> 6) & 1)
-    FAILURE ("SYM: Don't know how to do Clock Byte Counter decrement");
+    FAILURE (NotImplemented,"SYM: Don't know how to do Clock Byte Counter decrement");
 }
 
 u8 CSym53C810::read_b_dstat ()
@@ -1106,7 +1076,7 @@ void CSym53C810::write_b_stest2 (u8 value)
 //    printf("SYM: Don't know how to reset SCSI offset!\n");
 
   if (TB_R8 (STEST2, LOW))
-    FAILURE ("SYM: I don't like LOW level mode");
+    FAILURE (NotImplemented,"SYM: I don't like LOW level mode");
 }
 
 void CSym53C810::write_b_stest3 (u8 value)
@@ -1132,7 +1102,7 @@ void CSym53C810::post_dsp_write ()
 void CSym53C810::check_state ()
 {
   if (myThread && !myThread->isRunning ())
-    FAILURE ("SYM thread has died");
+    FAILURE (Thread,"SYM thread has died");
 
   if (state.gen_timer)
   {
@@ -1281,7 +1251,7 @@ void CSym53C810::execute ()
         }
         else if (indirect)
         {
-          FAILURE ("SYM: Unsupported: indirect addressing");
+          FAILURE (NotImplemented,"SYM: Unsupported: indirect addressing");
         }
         else
         {
@@ -1741,10 +1711,9 @@ void CSym53C810::execute ()
         return;
         break;
       default:
-        printf
-          ("SYM: Transfer Control Instruction with opcode %d is RESERVED.\n",
+        FAILURE_1
+          (NotImplemented,"SYM: Transfer Control Instruction with opcode %d is RESERVED.\n",
            opcode);
-        throw ((int) 1);
       }
     }
   case 3:
@@ -1827,7 +1796,7 @@ void CSym53C810::execute ()
     }
     break;
   }
-  FAILURE ("SCSI should never get here");
+  FAILURE (Logic,"SCSI should never get here");
 }
 
 void CSym53C810::set_interrupt (int reg, u8 interrupt)
@@ -1881,8 +1850,7 @@ void CSym53C810::set_interrupt (int reg, u8 interrupt)
     R8 (ISTAT) |= interrupt;
     break;
   default:
-    printf ("set_interrupt reg %02x!!\n", reg);
-    throw ((int) 1);
+    FAILURE_1(NotImplemented,"set_interrupt reg %02x!!\n", reg);
   }
 
   //printf("--> eval int\n");

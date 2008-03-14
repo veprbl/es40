@@ -1,7 +1,7 @@
 /* ES40 emulator.
- * Copyright (C) 2007 by Camiel Vanderhoeven
+ * Copyright (C) 2007-2008 by the ES40 Emulator Project
  *
- * Website: www.camicom.com
+ * Website: http://sourceforge.net/projects/es40
  * E-mail : camiel@camicom.com
  * 
  * This program is free software; you can redistribute it and/or
@@ -27,6 +27,12 @@
  * \file 
  * Contains code macros for the processor logical instructions.
  * Based on ARM chapter 4.5.
+ *
+ * $Id: cpu_logical.h,v 1.5 2008/03/14 14:50:24 iamcamiel Exp $
+ *
+ * X-1.5        Camiel Vanderhoeven                             14-MAR-2008
+ *   1. More meaningful exceptions replace throwing (int) 1.
+ *   2. U64 macro replaces X64 macro.
  *
  * X-1.4        Camiel Vanderhoeven                             11-APR-2007
  *      Moved all data that should be saved to a state file to a structure
@@ -55,8 +61,8 @@
 #define DO_CMOVEQ if   (!state.r[REG_1])		state.r[REG_3] = V_2;
 #define DO_CMOVGE if ((s64)state.r[REG_1]>=0)		state.r[REG_3] = V_2;
 #define DO_CMOVGT if ((s64)state.r[REG_1]>0)		state.r[REG_3] = V_2;
-#define DO_CMOVLBC if (!(state.r[REG_1] & X64(1)))	state.r[REG_3] = V_2;
-#define DO_CMOVLBS if   (state.r[REG_1] & X64(1))	state.r[REG_3] = V_2;
+#define DO_CMOVLBC if (!(state.r[REG_1] & U64(0x1)))	state.r[REG_3] = V_2;
+#define DO_CMOVLBS if   (state.r[REG_1] & U64(0x1))	state.r[REG_3] = V_2;
 #define DO_CMOVLE if ((s64)state.r[REG_1]<=0)		state.r[REG_3] = V_2;
 #define DO_CMOVLT if ((s64)state.r[REG_1]<0)		state.r[REG_3] = V_2;
 #define DO_CMOVNE if    (state.r[REG_1])		state.r[REG_3] = V_2;

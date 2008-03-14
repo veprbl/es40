@@ -1,5 +1,5 @@
 /* ES40 emulator.
- * Copyright (C) 2007 by the ES40 Emulator Project
+ * Copyright (C) 2007-2008 by the ES40 Emulator Project
  *
  * WWW    : http://sourceforge.net/projects/es40
  * E-mail : camiel@camicom.com
@@ -26,6 +26,12 @@
 /**
  * \file
  * Contains definitions for the disk controller base class.
+ *
+ * $Id: DiskController.cpp,v 1.13 2008/03/14 14:50:20 iamcamiel Exp $
+ *
+ * X-1.13       Camiel Vanderhoeven                             14-MAR-2008
+ *   1. More meaningful exceptions replace throwing (int) 1.
+ *   2. U64 macro replaces X64 macro.
  *
  * X-1.12       Camiel Vanderhoeven                             14-JAN-2008
  *      Removed unreferenced variable.
@@ -81,9 +87,9 @@ CDiskController::~CDiskController(void)
 void CDiskController::register_disk(class CDisk * dsk, int bus, int dev)
 {
   if (bus>=num_bus) 
-    FAILURE("Can't register disk: bus number out of range");
+    FAILURE(Configuration,"Can't register disk: bus number out of range");
   if (dev>=num_dev)
-    FAILURE("Can't register disk: device number out of range");
+    FAILURE(Configuration,"Can't register disk: device number out of range");
 
   disks[bus*num_bus+dev] = dsk;
 }

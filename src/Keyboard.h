@@ -27,7 +27,11 @@
  * \file
  * Contains the definitions for the emulated Keyboard and mouse devices and controller.
  *
- * $Id: Keyboard.h,v 1.3 2008/03/13 13:19:19 iamcamiel Exp $
+ * $Id: Keyboard.h,v 1.4 2008/03/14 14:50:21 iamcamiel Exp $
+ *
+ * X-1.4        Camiel Vanderhoeven                             14-MAR-2008
+ *   1. More meaningful exceptions replace throwing (int) 1.
+ *   2. U64 macro replaces X64 macro.
  *
  * X-1.3        Camiel Vanderhoeven                             13-MAR-2008
  *      Create init(), start_threads() and stop_threads() functions.
@@ -180,7 +184,8 @@ private:
           case 8:ret = 3;
           break;
 
-          default:FAILURE ("mouse: invalid resolution_cpmm");
+          default:
+            FAILURE (NotImplemented,"mouse: invalid resolution_cpmm");
         };
         return ret;
       }

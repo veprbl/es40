@@ -27,7 +27,11 @@
  * \file
  * Contains code to use a file as a disk image.
  *
- * $Id: DiskFile.cpp,v 1.18 2008/03/05 14:41:46 iamcamiel Exp $
+ * $Id: DiskFile.cpp,v 1.19 2008/03/14 14:50:21 iamcamiel Exp $
+ *
+ * X-1.19       Camiel Vanderhoeven                             14-MAR-2008
+ *   1. More meaningful exceptions replace throwing (int) 1.
+ *   2. U64 macro replaces X64 macro.
  *
  * X-1.18       Camiel Vanderhoeven                             05-MAR-2008
  *      Multi-threading version.
@@ -93,8 +97,7 @@ CDiskFile::CDiskFile(CConfigurator * cfg, CSystem * sys, CDiskController * c, in
   filename = myCfg->get_text_value("file");
   if (!filename)
   {
-    printf("%s: Disk has no file attached!\n",devid_string);
-    throw((int)1);
+    FAILURE_1(Configuration,"%s: Disk has no file attached!\n",devid_string);
   }
   
   if (read_only)
@@ -106,11 +109,11 @@ CDiskFile::CDiskFile(CConfigurator * cfg, CSystem * sys, CDiskController * c, in
     printf("%s: Could not open file %s!\n",devid_string,filename);
     int sz = myCfg->get_num_value("autocreate_size",false,0)/1024/1024;
     if (!sz)
-      FAILURE("File does not exist and no autocreate_size set");
+      FAILURE(Runtime,"%s: File does not exist and no autocreate_size set",devid_string);
     void * crt_buf;
     handle = fopen(filename,"wb");
     if (!handle)
-      FAILURE("File does not exist and could not be created");
+      FAILURE_1(Runtime,"%s: File does not exist and could not be created",devid_string);
     crt_buf = calloc(1024,1024);
     printf("%s: writing %d 1kB blocks:   0%%\b\b\b\b", devid_string, sz);
     int lastpc = 0;
@@ -131,7 +134,9 @@ CDiskFile::CDiskFile(CConfigurator * cfg, CSystem * sys, CDiskController * c, in
     else
       handle = fopen(filename,"rb+");
     if (!handle)
-      FAILURE("File created could not be opened");
+    {
+      FAILURE_1(Runtime,"%s: File created could not be opened",devid_string);
+    }
     printf("%s: %d MB file %s created.\n",devid_string,sz,filename);
   }
 
@@ -174,8 +179,7 @@ bool CDiskFile::seek_byte(off_t_large byte)
 {
   if (byte >=byte_size)
   {
-    printf("%s: Seek beyond end of file!\n",devid_string);
-    throw((int)1);
+    FAILURE_1(InvalidArgument,"%s: Seek beyond end of file!\n",devid_string);
   }
 
   fseek_large(handle,byte,SEEK_SET);

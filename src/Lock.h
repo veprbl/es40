@@ -27,7 +27,11 @@
  * \file 
  * Contains the definitions for the different locking structures for multi-threading.
  *
- * $Id: Lock.h,v 1.3 2008/03/12 14:04:03 iamcamiel Exp $
+ * $Id: Lock.h,v 1.4 2008/03/14 14:50:21 iamcamiel Exp $
+ *
+ * X-1.4        Camiel Vanderhoeven                             14-MAR-2008
+ *   1. More meaningful exceptions replace throwing (int) 1.
+ *   2. U64 macro replaces X64 macro.
  *
  * X-1.3        Camiel Vanderhoeven                             12-MAR-2007
  *      Print an error message on locking failures.
@@ -145,8 +149,7 @@ inline void CMutex::lock()
   }
   catch(Poco::Exception& e)
   {
-    printf("Locking error trying to lock mutex %s from thread %s.\n", lockName, CURRENT_THREAD_NAME);
-    FAILURE (e.message().c_str());
+    FAILURE_3(Thread, "Locking error (%s) trying to lock mutex %s from thread %s.\n", e.message().c_str(), lockName, CURRENT_THREAD_NAME);
   }
 #if defined(DEBUG_LOCKS)
   printf("      LOCKED mutex %s from thread %s.   \n",lockName, CURRENT_THREAD_NAME);
@@ -162,12 +165,11 @@ inline void CMutex::lock(long milliseconds)
   try
   {
     if (!tryLockImpl(milliseconds))
-      throw Poco::TimeoutException();
+      FAILURE(Timeout,"Timeout");
   }
   catch(Poco::Exception& e)
   {
-    printf("Locking error trying to lock mutex %s from thread %s.\n", lockName, CURRENT_THREAD_NAME);
-    FAILURE (e.message().c_str());
+    FAILURE_3(Thread, "Locking error (%s) trying to lock mutex %s from thread %s.\n", e.message().c_str(), lockName, CURRENT_THREAD_NAME);
   }
 #if defined(DEBUG_LOCKS)
   printf("      LOCKED mutex %s from thread %s.   \n",lockName, CURRENT_THREAD_NAME);
@@ -187,8 +189,7 @@ inline bool CMutex::tryLock()
   }
   catch(Poco::Exception& e)
   {
-    printf("Locking error trying to lock mutex %s from thread %s.\n", lockName, CURRENT_THREAD_NAME);
-    FAILURE (e.message().c_str());
+    FAILURE_3(Thread, "Locking error (%s) trying to lock mutex %s from thread %s.\n", e.message().c_str(), lockName, CURRENT_THREAD_NAME);
   }
 #if defined(DEBUG_LOCKS)
   printf("  %s mutex %s from thread %s.   \n",res?"    LOCKED":"CAN'T LOCK",lockName, CURRENT_THREAD_NAME);
@@ -209,8 +210,7 @@ inline bool CMutex::tryLock(long milliseconds)
   }
   catch(Poco::Exception& e)
   {
-    printf("Locking error trying to lock mutex %s from thread %s.\n", lockName, CURRENT_THREAD_NAME);
-    FAILURE (e.message().c_str());
+    FAILURE_3(Thread, "Locking error (%s) trying to lock mutex %s from thread %s.\n", e.message().c_str(), lockName, CURRENT_THREAD_NAME);
   }
 #if defined(DEBUG_LOCKS)
   printf("  %s mutex %s from thread %s.   \n",res?"    LOCKED":"CAN'T LOCK",lockName, CURRENT_THREAD_NAME);
@@ -230,8 +230,7 @@ inline void CMutex::unlock()
   }
   catch(Poco::Exception& e)
   {
-    printf("Locking error trying to unlock mutex %s from thread %s.\n", lockName, CURRENT_THREAD_NAME);
-    FAILURE (e.message().c_str());
+    FAILURE_3(Thread, "Locking error (%s) trying to unlock mutex %s from thread %s.\n", e.message().c_str(), lockName, CURRENT_THREAD_NAME);
   }
 #if defined(DEBUG_LOCKS)
   printf("    UNLOCKED mutex %s from thread %s.   \n",lockName, CURRENT_THREAD_NAME);
@@ -249,8 +248,7 @@ inline void CFastMutex::lock()
   }
   catch(Poco::Exception& e)
   {
-    printf("Locking error trying to lock mutex %s from thread %s.\n", lockName, CURRENT_THREAD_NAME);
-    FAILURE (e.message().c_str());
+    FAILURE_3(Thread, "Locking error (%s) trying to lock mutex %s from thread %s.\n", e.message().c_str(), lockName, CURRENT_THREAD_NAME);
   }
 #if defined(DEBUG_LOCKS)
   printf("      LOCKED mutex %s from thread %s.   \n",lockName, CURRENT_THREAD_NAME);
@@ -266,12 +264,11 @@ inline void CFastMutex::lock(long milliseconds)
   try
   {
     if (!tryLockImpl(milliseconds))
-      throw Poco::TimeoutException();
+      FAILURE(Timeout,"Timeout");
   }
   catch(Poco::Exception& e)
   {
-    printf("Locking error trying to lock mutex %s from thread %s.\n", lockName, CURRENT_THREAD_NAME);
-    FAILURE (e.message().c_str());
+    FAILURE_3(Thread, "Locking error (%s) trying to lock mutex %s from thread %s.\n", e.message().c_str(), lockName, CURRENT_THREAD_NAME);
   }
 #if defined(DEBUG_LOCKS)
   printf("      LOCKED mutex %s from thread %s.   \n",lockName, CURRENT_THREAD_NAME);
@@ -291,8 +288,7 @@ inline bool CFastMutex::tryLock()
   }
   catch(Poco::Exception& e)
   {
-    printf("Locking error trying to lock mutex %s from thread %s.\n", lockName, CURRENT_THREAD_NAME);
-    FAILURE (e.message().c_str());
+    FAILURE_3(Thread, "Locking error (%s) trying to lock mutex %s from thread %s.\n", e.message().c_str(), lockName, CURRENT_THREAD_NAME);
   }
 #if defined(DEBUG_LOCKS)
   printf("  %s mutex %s from thread %s.   \n",res?"    LOCKED":"CAN'T LOCK",lockName, CURRENT_THREAD_NAME);
@@ -313,8 +309,7 @@ inline bool CFastMutex::tryLock(long milliseconds)
   }
   catch(Poco::Exception& e)
   {
-    printf("Locking error trying to lock mutex %s from thread %s.\n", lockName, CURRENT_THREAD_NAME);
-    FAILURE (e.message().c_str());
+    FAILURE_3(Thread, "Locking error (%s) trying to lock mutex %s from thread %s.\n", e.message().c_str(), lockName, CURRENT_THREAD_NAME);
   }
 #if defined(DEBUG_LOCKS)
   printf("  %s mutex %s from thread %s.   \n",res?"    LOCKED":"CAN'T LOCK",lockName, CURRENT_THREAD_NAME);
@@ -334,8 +329,7 @@ inline void CFastMutex::unlock()
   }
   catch(Poco::Exception& e)
   {
-    printf("Locking error trying to unlock mutex %s from thread %s.\n", lockName, CURRENT_THREAD_NAME);
-    FAILURE (e.message().c_str());
+    FAILURE_3(Thread, "Locking error (%s) trying to unlock mutex %s from thread %s.\n", e.message().c_str(), lockName, CURRENT_THREAD_NAME);
   }
 #if defined(DEBUG_LOCKS)
   printf("    UNLOCKED mutex %s from thread %s.   \n",lockName, CURRENT_THREAD_NAME);
@@ -353,8 +347,7 @@ inline void CRWMutex::readLock()
   }
   catch(Poco::Exception& e)
   {
-    printf("Locking error trying to read-lock mutex %s from thread %s.\n", lockName, CURRENT_THREAD_NAME);
-    FAILURE (e.message().c_str());
+    FAILURE_3(Thread, "Locking error (%s) trying to read-lock mutex %s from thread %s.\n", e.message().c_str(), lockName, CURRENT_THREAD_NAME);
   }
 #if defined(DEBUG_LOCKS)
   printf(" READ LOCKED mutex %s from thread %s.   \n",lockName, CURRENT_THREAD_NAME);
@@ -374,8 +367,7 @@ inline bool CRWMutex::tryReadLock()
   }
   catch(Poco::Exception& e)
   {
-    printf("Locking error trying to read-lock mutex %s from thread %s.\n", lockName, CURRENT_THREAD_NAME);
-    FAILURE (e.message().c_str());
+    FAILURE_3(Thread, "Locking error (%s) trying to read-lock mutex %s from thread %s.\n", e.message().c_str(), lockName, CURRENT_THREAD_NAME);
   }
 #if defined(DEBUG_LOCKS)
   printf("  %s mutex %s from thread %s.   \n",res?"    LOCKED":"CAN'T LOCK",lockName, CURRENT_THREAD_NAME);
@@ -395,8 +387,7 @@ inline void CRWMutex::writeLock()
   }
   catch(Poco::Exception& e)
   {
-    printf("Locking error trying to write-lock mutex %s from thread %s.\n", lockName, CURRENT_THREAD_NAME);
-    FAILURE (e.message().c_str());
+    FAILURE_3(Thread, "Locking error (%s) trying to write-lock mutex %s from thread %s.\n", e.message().c_str(), lockName, CURRENT_THREAD_NAME);
   }
 #if defined(DEBUG_LOCKS)
   printf("WRITE LOCKED mutex %s from thread %s.   \n",lockName, CURRENT_THREAD_NAME);
@@ -416,8 +407,7 @@ inline bool CRWMutex::tryWriteLock()
   }
   catch(Poco::Exception& e)
   {
-    printf("Locking error trying to write-lock mutex %s from thread %s.\n", lockName, CURRENT_THREAD_NAME);
-    FAILURE (e.message().c_str());
+    FAILURE_3(Thread, "Locking error (%s) trying to write-lock mutex %s from thread %s.\n", e.message().c_str(), lockName, CURRENT_THREAD_NAME);
   }
 #if defined(DEBUG_LOCKS)
   printf("  %s mutex %s from thread %s.   \n",res?"    LOCKED":"CAN'T LOCK",lockName, CURRENT_THREAD_NAME);
@@ -437,8 +427,7 @@ inline void CRWMutex::unlock()
   }
   catch(Poco::Exception& e)
   {
-    printf("Locking error trying to unlock mutex %s from thread %s.\n", lockName, CURRENT_THREAD_NAME);
-    FAILURE (e.message().c_str());
+    FAILURE_3(Thread, "Locking error (%s) trying to unlock mutex %s from thread %s.\n", e.message().c_str(), lockName, CURRENT_THREAD_NAME);
   }
 #if defined(DEBUG_LOCKS)
   printf("    UNLOCKED mutex %s from thread %s.   \n",lockName, CURRENT_THREAD_NAME);

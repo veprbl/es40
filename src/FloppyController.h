@@ -27,7 +27,11 @@
  * \file 
  * Contains the definitions for the emulated Floppy Controller devices.
  *
- * $Id: FloppyController.h,v 1.8 2008/01/02 09:30:19 iamcamiel Exp $
+ * $Id: FloppyController.h,v 1.9 2008/03/14 14:50:21 iamcamiel Exp $
+ *
+ * X-1.9        Camiel Vanderhoeven                             14-MAR-2008
+ *   1. More meaningful exceptions replace throwing (int) 1.
+ *   2. U64 macro replaces X64 macro.
  *
  * X-1.8        Camiel Vanderhoeven                             02-JAN-2008
  *      Comments.
@@ -74,7 +78,7 @@ class CFloppyController : public CSystemComponent
   virtual ~CFloppyController();
 
  private:
-  u8 iRegisters[X32(2a)];
+  u8 iRegisters[0x2a];
   int iActiveRegister;
   int iMode;
   int iID;

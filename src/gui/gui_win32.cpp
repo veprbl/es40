@@ -37,7 +37,7 @@
  * \file
  * Win32 GUI implementation. Allows use of gfx without SDL on WIndows
  *
- * $Id: gui_win32.cpp,v 1.6 2008/03/05 14:41:46 iamcamiel Exp $
+ * $Id: gui_win32.cpp,v 1.7 2008/03/14 14:50:25 iamcamiel Exp $
  *
  * X-1.5        Camiel Vanderhoeven                             05-MAR-2008
  *      Multi-threading version.
@@ -541,13 +541,13 @@ void terminateEmul(int reason) {
 
   switch (reason) {
   case EXIT_GUI_SHUTDOWN:
-    FAILURE("Window closed, exiting!");
+    FAILURE(Graceful,"Window closed, exiting!");
     break;
   case EXIT_GMH_FAILURE:
-    FAILURE("GetModuleHandle failure!");
+    FAILURE(Win32,"GetModuleHandle failure!");
     break;
   case EXIT_FONT_BITMAP_ERROR:
-    FAILURE("Font bitmap creation failure!");
+    FAILURE(Win32,"Font bitmap creation failure!");
     break;
   case EXIT_NORMAL:
     break;

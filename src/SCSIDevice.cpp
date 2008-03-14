@@ -27,7 +27,11 @@
  * \file
  * Contains definitions for the SCSI device base class.
  *
- * $Id: SCSIDevice.cpp,v 1.1 2008/01/12 12:46:43 iamcamiel Exp $
+ * $Id: SCSIDevice.cpp,v 1.2 2008/03/14 14:50:22 iamcamiel Exp $
+ *
+ * X-1.2        Camiel Vanderhoeven                             14-MAR-2008
+ *   1. More meaningful exceptions replace throwing (int) 1.
+ *   2. U64 macro replaces X64 macro.
  *
  * X-1.1        Camiel Vanderhoeven                             12-JAN-2008
  *      Initial version in CVS.
@@ -98,7 +102,7 @@ bool CSCSIDevice::scsi_select(int bus, int target)
  **/
 void CSCSIDevice::scsi_select_me(int bus)
 {
-  FAILURE("selected device doesn't implement scsi_select_me");
+  FAILURE(NotImplemented,"selected device doesn't implement scsi_select_me");
 }
 
 /**
@@ -143,7 +147,7 @@ void CSCSIDevice::scsi_free(int bus)
  **/
 size_t CSCSIDevice::scsi_expected_xfer_me(int bus)
 {
-  FAILURE("selected device doesn't implement scsi_expected_xfer_me");
+  FAILURE(NotImplemented,"selected device doesn't implement scsi_expected_xfer_me");
 }
 
 /**
@@ -172,7 +176,7 @@ size_t CSCSIDevice::scsi_expected_xfer(int bus)
  **/
 void * CSCSIDevice::scsi_xfer_ptr_me(int bus, size_t bytes)
 {
-  FAILURE("selected device doesn't implement scsi_xfer_ptr_me");
+  FAILURE(NotImplemented,"selected device doesn't implement scsi_xfer_ptr_me");
 }
 
 /**
@@ -209,7 +213,7 @@ void * CSCSIDevice::scsi_xfer_ptr(int bus, size_t bytes)
  **/
 void CSCSIDevice::scsi_xfer_done_me(int bus)
 {
-  FAILURE("selected device doesn't implement scsi_xfer_done_me");
+  FAILURE(NotImplemented,"selected device doesn't implement scsi_xfer_done_me");
 }
 
 /**

@@ -27,7 +27,11 @@
  * \file 
  * Contains debugging macros used by AlphaCPU.cpp
  *
- * $Id: cpu_debug.h,v 1.25 2008/03/05 14:41:46 iamcamiel Exp $
+ * $Id: cpu_debug.h,v 1.26 2008/03/14 14:50:23 iamcamiel Exp $
+ *
+ * X-1.26       Camiel Vanderhoeven                             14-MAR-2008
+ *   1. More meaningful exceptions replace throwing (int) 1.
+ *   2. U64 macro replaces X64 macro.
  *
  * X-1.25       Camiel Vanderhoeven                             05-MAR-2008
  *      Multi-threading version.
@@ -155,7 +159,7 @@ void handle_debug_string(char * s);
     state.exc_addr = state.current_pc;						        \
     set_pc(state.pal_base | offset | 1);					        \
     if ((offset==DTBM_SINGLE || offset==ITB_MISS) && bTrace)		\
-      trc->set_waitfor(this, state.exc_addr&~X64(3));				\
+      trc->set_waitfor(this, state.exc_addr&~U64(0x3));				\
     else								                            \
       TRC_(true,false,"GO_PAL %04x",offset);                        \
   }
@@ -177,14 +181,14 @@ void handle_debug_string(char * s);
 #if defined(IDB)
 
 #define DEBUG_XX							                        \
-  if (trc->get_fnc_name(this, state.current_pc&~X64(3),&funcname))	\
+  if (trc->get_fnc_name(this, state.current_pc&~U64(0x3),&funcname))	\
   {									                                \
     if (bListing && !strcmp(funcname,"")) {							\
       printf("%08" LL "x: \"%s\"\n",state.current_pc,			    \
         cSystem->PtrToMem(state.current_pc));		                \
       state.pc =(  state.current_pc                                 \
                  + strlen(cSystem->PtrToMem(state.current_pc)) + 4)	\
-	          & ~X64(3);							                \ 
+	          & ~U64(0x3);							                \ 
 	  while (state.pc < 0x600000 &&                                 \
              cSystem->ReadMem(state.pc,32,this)==0)                 \
         state.pc += 4;                                              \
@@ -314,7 +318,7 @@ void handle_debug_string(char * s);
 
 #define PRE_BR(mnemonic)						                    \
   if (bDisassemble) {							                    \
-    u64 dbg_x = (state.current_pc + 4 + (DISP_21 * 4))&~X64(3);	    \
+    u64 dbg_x = (state.current_pc + 4 + (DISP_21 * 4))&~U64(0x3);	    \
     DEBUG_XX								                        \
     sprintf(dbg_strptr,#mnemonic " r%d, ", REG_1&31);			    \
     dbg_strptr += strlen(dbg_strptr);					            \
@@ -330,7 +334,7 @@ void handle_debug_string(char * s);
 
 #define PRE_COND(mnemonic)						                    \
   if (bDisassemble) {							                    \
-    u64 dbg_x = (state.current_pc + 4 + (DISP_21 * 4))&~X64(3);		\
+    u64 dbg_x = (state.current_pc + 4 + (DISP_21 * 4))&~U64(0x3);		\
     DEBUG_XX								                        \
     sprintf(dbg_strptr,#mnemonic " r%d, ", REG_1&31);			    \
     dbg_strptr += strlen(dbg_strptr);					            \
@@ -350,7 +354,7 @@ void handle_debug_string(char * s);
 
 #define PRE_FCOND(mnemonic)						                    \
   if (bDisassemble) {							                    \
-    u64 dbg_x = (state.current_pc + 4 + (DISP_21 * 4))&~X64(3);		\
+    u64 dbg_x = (state.current_pc + 4 + (DISP_21 * 4))&~U64(0x3);		\
     DEBUG_XX								                        \
     sprintf(dbg_strptr,#mnemonic " f%d, ", FREG_1);			        \
     dbg_strptr += strlen(dbg_strptr);					            \
@@ -370,7 +374,7 @@ void handle_debug_string(char * s);
 
 #define PRE_BSR(mnemonic)						                    \
   if (bDisassemble) {							                    \
-    u64 dbg_x = (state.current_pc + 4 + (DISP_21 * 4))&~X64(3);	    \
+    u64 dbg_x = (state.current_pc + 4 + (DISP_21 * 4))&~U64(0x3);	    \
     DEBUG_XX								                        \
     sprintf(dbg_strptr,#mnemonic " r%d, ", REG_1&31);			    \
     dbg_strptr += strlen(dbg_strptr);					            \

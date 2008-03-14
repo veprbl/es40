@@ -27,7 +27,11 @@
  * \file
  * Contains the code for the emulated Serial Port devices.
  *
- * $Id: Serial.cpp,v 1.42 2008/03/13 13:19:19 iamcamiel Exp $
+ * $Id: Serial.cpp,v 1.43 2008/03/14 14:50:22 iamcamiel Exp $
+ *
+ * X-1.42       Camiel Vanderhoeven                             14-MAR-2008
+ *   1. More meaningful exceptions replace throwing (int) 1.
+ *   2. U64 macro replaces X64 macro.
  *
  * X-1.41       Camiel Vanderhoeven                             13-MAR-2008
  *      Create init(), start_threads() and stop_threads() functions.
@@ -203,7 +207,7 @@ void CSerial::init ()
   int i = 0;
 
   cSystem->RegisterMemory (this, 0,
-                           X64 (00000801fc0003f8) - (0x100 * state.iNumber),
+                           U64(0x00000801fc0003f8) - (0x100 * state.iNumber),
                            8);
 
 // Start Telnet server
@@ -271,7 +275,7 @@ void CSerial::init ()
   state.irq_active = false;
   myThread = 0;
 
-  printf ("%s: $Id: Serial.cpp,v 1.42 2008/03/13 13:19:19 iamcamiel Exp $\n",
+  printf ("%s: $Id: Serial.cpp,v 1.43 2008/03/14 14:50:22 iamcamiel Exp $\n",
           devid_string);
 }
 
@@ -489,12 +493,7 @@ void CSerial::run ()
   }
   catch (Poco::Exception & e)
   {
-    printf ("Serial: exception in thread.\n");
-    FAILURE (e.message ());
-  }
-  catch (...)
-  {
-    printf ("Serial: exception in thread.\n");
+    printf ("Exception in Serial thread: %s.\n",e.displayText().c_str());
     // Let the thread die...
   }
 }
@@ -510,7 +509,7 @@ void CSerial::check_state ()
     serial_menu ();
 
   if (myThread && !myThread->isRunning ())
-    FAILURE ("Serial: thread has died");
+    FAILURE (Thread,"Serial thread has died");
 }
 
 void CSerial::serial_menu ()
@@ -558,12 +557,12 @@ void CSerial::serial_menu ()
       break;
     case '1':
       write ("%SRL-I-EXIT: exiting emulation gracefully.\r\n");
-      FAILURE ("Should be graceful exit");
+      FAILURE (Graceful,"Graceful exit");
       exitLoop = true;
       break;
     case '2':
       write ("%SRL-I-ABORT: aborting emulation.\r\n");
-      FAILURE ("Aborting");
+      FAILURE (Abort,"Aborting");
       exitLoop = true;
       break;
     case '3':
@@ -807,7 +806,7 @@ void CSerial::WaitForConnection ()
     {
       execvp (argv[0], argv);
       printf ("Exec of '%s' failed.\n", argv[0]);
-      throw ((int) 1);
+      FAILURE("undefined");
     }
     else
     {
@@ -816,7 +815,7 @@ void CSerial::WaitForConnection ()
       if (kill (child, 0) < 0)
       {                         // uh oh, no kiddo.
         printf ("%%SRL-F-EXEC: Exec of '%s' has failed.\n", argv[0]);
-        throw ((int) 1);
+        FAILURE("undefined");
       }
     }
 #endif

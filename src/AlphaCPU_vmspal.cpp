@@ -29,7 +29,11 @@
  * DecChip 21264CB EV68 Alpha processor. Based on disassembly of original VMS
  * PALcode, HRM, and OpenVMS AXP Internals and Data Structures.
  *
- * $Id: AlphaCPU_vmspal.cpp,v 1.13 2008/03/05 14:41:46 iamcamiel Exp $
+ * $Id: AlphaCPU_vmspal.cpp,v 1.14 2008/03/14 14:50:20 iamcamiel Exp $
+ *
+ * X-1.14       Camiel Vanderhoeven                             14-MAR-2008
+ *   1. More meaningful exceptions replace throwing (int) 1.
+ *   2. U64 macro replaces X64 macro.
  *
  * X-1.13       Camiel Vanderhoeven                             05-MAR-2008
  *      Multi-threading version.
@@ -130,8 +134,8 @@
 #define r30 state.r[30]
 #define r31 state.r[31]
 
-#define hw_stq(a,b) cSystem->WriteMem(a&~X64(7),64,b,this)
-#define hw_stl(a,b) cSystem->WriteMem(a&~X64(3),32,b,this)
+#define hw_stq(a,b) cSystem->WriteMem(a&~U64(0x7),64,b,this)
+#define hw_stl(a,b) cSystem->WriteMem(a&~U64(0x3),32,b,this)
 #define stq(a,b)                                              \
       if (virt2phys(a,&phys_address,ACCESS_WRITE,NULL,0)) \
         return -1;                                             \
@@ -152,8 +156,8 @@
       if (virt2phys(a,&phys_address,ACCESS_READ,NULL,0))  \
         return -1;                                             \
       b = (char)(cSystem->ReadMem(phys_address, 8,this));
-#define hw_ldq(a,b) b = cSystem->ReadMem(a&~X64(7),64,this)
-#define hw_ldl(a,b) b = sext_u64_32(cSystem->ReadMem(a&~X64(3),32,this));
+#define hw_ldq(a,b) b = cSystem->ReadMem(a&~U64(0x7),64,this)
+#define hw_ldl(a,b) b = sext_u64_32(cSystem->ReadMem(a&~U64(0x3),32,this));
 #define hw_ldbu(a,b) b = cSystem->ReadMem(a,8,this)
 
 /**
@@ -280,8 +284,8 @@ void CAlphaCPU::vmspal_call_swpctx()
   hw_ldq(r16+0x40,p7);
   hw_ldq(r16+0x20,p6);
 
-  p4 = (state.cc & X64(ffffffff)) + state.cc_offset;
-  state.cc_offset = ((u32)p7 & 0xffffffff) - (state.cc & X64(ffffffff));
+  p4 = (state.cc & U64(0xffffffff)) + state.cc_offset;
+  state.cc_offset = ((u32)p7 & 0xffffffff) - (state.cc & U64(0xffffffff));
 
   p6 <<= 0x0d;
   hw_stq(p21+8,p6);
@@ -422,7 +426,7 @@ void CAlphaCPU::vmspal_call_mfpr_ipl()
 void CAlphaCPU::vmspal_call_mtpr_ipl()
 {
   r0 = (p22>>8) & 0xff;
-  p22 &= ~X64(ff00);
+  p22 &= ~U64(0xff00);
   p22 |= (r16<<8);
   state.eien = ipl_ier_mask[r16][0];
   state.slen = ipl_ier_mask[r16][1];
@@ -448,9 +452,9 @@ void CAlphaCPU::vmspal_call_mfpr_mces()
 
 void CAlphaCPU::vmspal_call_mtpr_mces()
 {
-  p22 =        (p22 & X64(ffffffffff00ffff))       
-      |        (p22 & X64(0000000000070000) & ~(r16 << 16))                      
-      | ((r16 <<16) & X64(0000000000180000));
+  p22 =        (p22 & U64(0xffffffffff00ffff))       
+      |        (p22 & U64(0x0000000000070000) & ~(r16 << 16))                      
+      | ((r16 <<16) & U64(0x0000000000180000));
 }
 
 /**
@@ -506,7 +510,7 @@ void CAlphaCPU::vmspal_call_mfpr_scbb()
 
 void CAlphaCPU::vmspal_call_mtpr_scbb()
 {
-  hw_stq(p21+0x170,(r16&X64(ffffffff))<<0xd);
+  hw_stq(p21+0x170,(r16&U64(0xffffffff))<<0xd);
 }
 
 /**
@@ -537,7 +541,7 @@ void CAlphaCPU::vmspal_call_mfpr_sisr()
 
 void CAlphaCPU::vmspal_call_mfpr_tbchk()
 {
-  r0 = X64(8000000000000000);
+  r0 = U64(0x8000000000000000);
 }
 
 
@@ -693,7 +697,7 @@ void CAlphaCPU::vmspal_call_mtpr_datfx()
   u64 t,u;
   hw_ldq(p21+0x10,t);
   hw_ldq(t,u);
-  u |= X64(1)<<0x3f;
+  u |= U64(0x1)<<0x3f;
   u &= ~(r16<<0x3f);
   hw_stq(t,u);
 }
@@ -786,7 +790,7 @@ void CAlphaCPU::vmspal_call_probew()
 
 void CAlphaCPU::vmspal_call_rd_ps()
 {
-  r0 = p22 & X64(ffff);
+  r0 = p22 & U64(0xffff);
 }
 
 /**
@@ -817,7 +821,7 @@ int CAlphaCPU::vmspal_call_rei()
     state.bIntrFlag = false;
     ldq(r30+0x30,p23);
     p4 = p20 & 0x18; // new cm
-    if ((p4<p7) || (p20 & ~X64(3f0000000000001b)))
+    if ((p4<p7) || (p20 & ~U64(0x3f0000000000001b)))
     {
       p4 = 0x430;
       hw_stq(p21+0x158,p4);
@@ -835,10 +839,10 @@ int CAlphaCPU::vmspal_call_rei()
     p7 += p6;
     p6 += p4;
     p20 &= 0xffff;
-    p22 &= ~X64(ffff);
+    p22 &= ~U64(0xffff);
     state.cm = (int)(p4>>3)&3;
     p22 |= p20;
-    p23 &= ~X64(3);
+    p23 &= ~U64(0x3);
     p20 = r30 + 0x40;
     p20 |= p5;
     hw_stq(p7,p20);
@@ -866,9 +870,9 @@ int CAlphaCPU::vmspal_call_rei()
     state.cm = (int)(p4>>3)&3;
     p5 = (p20>>56)&0xff;
     p20 &= 0xff;
-    p22 &= ~X64(ffff);
+    p22 &= ~U64(0xffff);
     p22 |= p20;
-    p23 &= ~X64(3);
+    p23 &= ~U64(0x3);
     p20 = r30 + 0x40;
     p20 |= p5;
     hw_ldq(p7,r30);
@@ -885,10 +889,10 @@ int CAlphaCPU::vmspal_call_rei()
   }
   p5 = (p20>>56) & 0xff;
   p20 &= 0xffff;
-  p22 &= ~X64(ffff);
+  p22 &= ~U64(0xffff);
   p7 = (p20>>8) & 0xff;
   p22 |= p20;
-  p23 &= ~X64(3);
+  p23 &= ~U64(0x3);
   p20 = r30 + 0x40;
   r30 = p20 | p5;
   state.eien = ipl_ier_mask[p7][0];
@@ -924,8 +928,8 @@ void CAlphaCPU::vmspal_call_swasten()
 
 void CAlphaCPU::vmspal_call_wr_ps_sw()
 {
-  p22 &= ~X64(3);                            
-  p22 |= r16 & X64(3);               
+  p22 &= ~U64(0x3);                            
+  p22 |= r16 & U64(0x3);               
 }
 
 /**
@@ -935,10 +939,10 @@ void CAlphaCPU::vmspal_call_wr_ps_sw()
 void CAlphaCPU::vmspal_call_rscc()
 {
   hw_ldq(p21+0xa0,r0);
-  if ((state.cc & X64(ffffffff))<(r0 & X64(00000000ffffffff)))    
-    r0 += X64(1)<<0x20;                         
-  r0 &= X64(ffffffff00000000);                  
-  r0 |= (state.cc & X64(ffffffff));                               
+  if ((state.cc & U64(0xffffffff))<(r0 & U64(0x00000000ffffffff)))    
+    r0 += U64(0x1)<<0x20;                         
+  r0 &= U64(0xffffffff00000000);                  
+  r0 |= (state.cc & U64(0xffffffff));                               
   hw_stq(p21+0xa0,r0);
 }
 
@@ -978,8 +982,8 @@ int CAlphaCPU::vmspal_int_initiate_exception()
 {
   u64 phys_address;
 
-  p4 = p22 & X64(18);
-  hw_ldq(p21 + X64(10),   p20);
+  p4 = p22 & U64(0x18);
+  hw_ldq(p21 + U64(0x10),   p20);
   if (p4)
   {
     // change mode to kernel
@@ -987,35 +991,35 @@ int CAlphaCPU::vmspal_int_initiate_exception()
     // switch to kernel stack
     p20 += p4;
     hw_stq(p20,      r30);
-    hw_ldq(p21 + X64(18), r30);
+    hw_ldq(p21 + U64(0x18), r30);
   }
-  p20 = r30 & X64(3f);
-  r30 &= ~X64(3f);
-  stq(r30 - X64(40),    r2);
-  stq(r30 - X64(38),    r3);
-  hw_stq(p21 + X64(f0), r1);
+  p20 = r30 & U64(0x3f);
+  r30 &= ~U64(0x3f);
+  stq(r30 - U64(0x40),    r2);
+  stq(r30 - U64(0x38),    r3);
+  hw_stq(p21 + U64(0xf0), r1);
   r3 = p21;
-  stq(r30 - X64(30),    state.r[4]);
-  stq(r30 - X64(28),    state.r[5]);
-  stq(r30 - X64(20),    state.r[6]);
-  stq(r30 - X64(18),    state.r[7]);
-  hw_ldq(state.r[3] + X64(160), state.r[4]);
-  hw_ldq(state.r[3] + X64(168), state.r[5]);
-  hw_ldq(p21 + X64(f0), r1);
-  hw_ldq(p21 + X64(170), p4);
-  hw_ldq(p21 + X64(158), p5);
-  p7 = p22 & X64(ffff);
+  stq(r30 - U64(0x30),    state.r[4]);
+  stq(r30 - U64(0x28),    state.r[5]);
+  stq(r30 - U64(0x20),    state.r[6]);
+  stq(r30 - U64(0x18),    state.r[7]);
+  hw_ldq(state.r[3] + U64(0x160), state.r[4]);
+  hw_ldq(state.r[3] + U64(0x168), state.r[5]);
+  hw_ldq(p21 + U64(0xf0), r1);
+  hw_ldq(p21 + U64(0x170), p4);
+  hw_ldq(p21 + U64(0x158), p5);
+  p7 = p22 & U64(0xffff);
   p20 <<= 0x38;
   p20 |= p7;
   p4 += p5;
-  hw_ldq(p4 + X64(00), r2);
-  hw_ldq(p4 + X64(08), r3);
-  p22 &= ~X64(1b);
-  r30 -= X64(40);
-  hw_ldq(p21 + X64(150), p6);
-  r2 &= ~X64(3);
-  stq(r30 + X64(38), p20);
-  stq(r30 + X64(30), p6);
+  hw_ldq(p4 + U64(0x00), r2);
+  hw_ldq(p4 + U64(0x08), r3);
+  p22 &= ~U64(0x1b);
+  r30 -= U64(0x40);
+  hw_ldq(p21 + U64(0x150), p6);
+  r2 &= ~U64(0x3);
+  stq(r30 + U64(0x38), p20);
+  stq(r30 + U64(0x30), p6);
 
   set_pc(r2);
   return -1;
@@ -1029,8 +1033,8 @@ int CAlphaCPU::vmspal_int_initiate_interrupt()
 {
   u64 phys_address;
   
-  p4 = p22 & X64(18);
-  hw_ldq(p21 + X64(10),   p20);
+  p4 = p22 & U64(0x18);
+  hw_ldq(p21 + U64(0x10),   p20);
   if (p4)
   {
     // change mode to kernel
@@ -1038,37 +1042,37 @@ int CAlphaCPU::vmspal_int_initiate_interrupt()
     // switch to kernel stack
     p20 += p4;
     hw_stq(p20,      r30);
-    hw_ldq(p21 + X64(18), r30);
+    hw_ldq(p21 + U64(0x18), r30);
   }
-  p20 = r30 & X64(3f);
-  r30 &= ~X64(3f);
-  stq(r30 - X64(40),    r2);
-  stq(r30 - X64(38),    r3);
-  hw_stq(p21 + X64(f0), r1);
+  p20 = r30 & U64(0x3f);
+  r30 &= ~U64(0x3f);
+  stq(r30 - U64(0x40),    r2);
+  stq(r30 - U64(0x38),    r3);
+  hw_stq(p21 + U64(0xf0), r1);
   r3 = p21;
-  stq(r30 - X64(30),    state.r[4]);
-  stq(r30 - X64(28),    state.r[5]);
-  stq(r30 - X64(20),    state.r[6]);
-  stq(r30 - X64(18),    state.r[7]);
-  hw_ldq(state.r[3] + X64(160), state.r[4]);
-  hw_ldq(state.r[3] + X64(168), state.r[5]);
-  hw_ldq(p21 + X64(f0), r1);
-  hw_ldq(p21 + X64(170), p4);
-  hw_ldq(p21 + X64(158), p5);
-  p7 = p22 & X64(ffff);
+  stq(r30 - U64(0x30),    state.r[4]);
+  stq(r30 - U64(0x28),    state.r[5]);
+  stq(r30 - U64(0x20),    state.r[6]);
+  stq(r30 - U64(0x18),    state.r[7]);
+  hw_ldq(state.r[3] + U64(0x160), state.r[4]);
+  hw_ldq(state.r[3] + U64(0x168), state.r[5]);
+  hw_ldq(p21 + U64(0xf0), r1);
+  hw_ldq(p21 + U64(0x170), p4);
+  hw_ldq(p21 + U64(0x158), p5);
+  p7 = p22 & U64(0xffff);
   p20 <<= 0x38;
   p20 |= p7;
   p4 += p5;
   hw_ldq(p4, r2);
-  hw_ldq(p4 + X64(08), r3);
-  hw_ldq(p21 + X64(128), p4);
-  p22 &= ~X64(ffff);
+  hw_ldq(p4 + U64(0x08), r3);
+  hw_ldq(p21 + U64(0x128), p4);
+  p22 &= ~U64(0xffff);
   p22 |= p4;
-  r30 -= X64(40);
-  hw_ldq(p21 + X64(150), p6);
-  r2 &= ~X64(3);
-  stq(r30 + X64(38), p20);
-  stq(r30 + X64(30), p6);
+  r30 -= U64(0x40);
+  hw_ldq(p21 + U64(0x150), p6);
+  r2 &= ~U64(0x3);
+  stq(r30 + U64(0x38), p20);
+  stq(r30 + U64(0x30), p6);
 
   set_pc(r2);
   return -1;
@@ -1135,18 +1139,18 @@ int CAlphaCPU::vmspal_ent_ext_int(int ei)
     cSystem->clear_clock_int(state.iProcNum);
     p6 = cSystem->get_c_misc();
 
-    p22 += X64(0000010000000000);
-    p22 &= X64(ffff0fffffffffff);
+    p22 += U64(0x0000010000000000);
+    p22 &= U64(0xffff0fffffffffff);
 
     hw_ldq(p21+0xa0,p20);
-    p6 = X64(1)<<0x20;
-    p4 = (state.cc & X64(ffffffff));
-    p5 = p20 & X64(ffffffff);
-    p20 &= X64(ffffffff00000000);
+    p6 = U64(0x1)<<0x20;
+    p4 = (state.cc & U64(0xffffffff));
+    p5 = p20 & U64(0xffffffff);
+    p20 &= U64(0xffffffff00000000);
     p7 = p4-p5;
     if (((s64)p7)<0)
       p20 += p6;
-    p20 |= (state.cc & X64(ffffffff));
+    p20 |= (state.cc & U64(0xffffffff));
     hw_stq(p21+0xa0,p20);
     hw_stq(p21+0x1c8,0);
     p20 = 0x600;
@@ -1158,7 +1162,7 @@ int CAlphaCPU::vmspal_ent_ext_int(int ei)
   {
     p5 = cSystem->get_c_dir(state.iProcNum);
     if (test_bit_64(p5,0x32))
-      FAILURE("Can't handle IRQ 50");
+      FAILURE(NotImplemented,"Can't handle IRQ 50");
 
     p4 = 0x100;
     p20 = 8;
@@ -1180,12 +1184,12 @@ int CAlphaCPU::vmspal_ent_ext_int(int ei)
     else if (test_bit_64(p5,0x37))
     {
         // irq 55 - PIC - isa
-      p5 = X64(00000801f8000000);
+      p5 = U64(0x00000801f8000000);
         // pic_read_vector
       hw_ldl(p5,p5);
       p4 = p5 & 0xff;
       if (p4 == 0x07)
-        FAILURE ("Can't handle PIC interrupt 7");
+        FAILURE (NotImplemented,"Can't handle PIC interrupt 7");
 
       if (p4 >= 0x10)
         return 0;
@@ -1193,7 +1197,7 @@ int CAlphaCPU::vmspal_ent_ext_int(int ei)
       p4 <<= 4;
       p20 = p4 + 0x800;
       hw_ldq(0x148,p5);
-      if (!p5 || p20!=X64(830))
+      if (!p5 || p20!=U64(0x830))
       {
         p7 = 0x15;
         do_11670 = true;
@@ -1201,8 +1205,8 @@ int CAlphaCPU::vmspal_ent_ext_int(int ei)
       else
       {
         hw_stq(0x150,p20);
-        p4 = X64(00000801a0000000);
-        p5 = X64(2000);
+        p4 = U64(0x00000801a0000000);
+        p5 = U64(0x2000);
         hw_stq(p4+0x80,p5);
         hw_ldq(p4+0x80,p5);
         return 0;
@@ -1210,7 +1214,7 @@ int CAlphaCPU::vmspal_ent_ext_int(int ei)
     }
     else 
     {
-      p6 = p5 & X64(0060000000000000);
+      p6 = p5 & U64(0x0060000000000000);
       if (p6)
         cSystem->set_c_dim(state.iProcNum,cSystem->get_c_dim(state.iProcNum) & ~p6);
       return 0;
@@ -1281,7 +1285,7 @@ int CAlphaCPU::vmspal_ent_dtbm_single(int flags)
   p5 = state.mm_stat;
   p7 = state.exc_sum;
   p6 = state.fault_va;
-  p7 &= ~X64(1);
+  p7 &= ~U64(0x1);
   if (test_bit_64(p22,63))
   {
     // 1-ON-1 translations
@@ -1289,7 +1293,7 @@ int CAlphaCPU::vmspal_ent_dtbm_single(int flags)
     p4 = p6>>0x0d;
     if (!test_bit_64(p6,43))
     {
-      p4 &= ~X64(ffffffffbfc00000);
+      p4 &= ~U64(0xffffffffbfc00000);
       if (    (p4 >= 0x400a0000 && p4 <= 0x400bffff)
            || (p4 >= 0x400c8000 && p4 <= 0x400cffff)
            || (p4 >= 0x400e0000 && p4 <= 0x400fbfff)
@@ -1298,7 +1302,7 @@ int CAlphaCPU::vmspal_ent_dtbm_single(int flags)
            || (p4 >= 0x401c8000 && p4 <= 0x401fbfff)
            || (p4 >= 0x401fb000 && p4 <= 0x401fffff)
            || (p4 >= 0x40200000 && p4 <= 0x403fffff) )
-        p5 = X64(1);
+        p5 = U64(0x1);
     }
 
     p4 <<= 0x20;
@@ -1307,7 +1311,7 @@ int CAlphaCPU::vmspal_ent_dtbm_single(int flags)
     return 0;
   }
 
-  p4 &=~X64(7);
+  p4 &=~U64(0x7);
   if (virt2phys(p4,&pte_phys,ACCESS_READ | NO_CHECK | VPTE | (flags & (PROBE | PROBEW)), NULL, 0))
     return -1;
   p4 = cSystem->ReadMem(pte_phys,64,this);
@@ -1316,7 +1320,7 @@ int CAlphaCPU::vmspal_ent_dtbm_single(int flags)
   {
     if (flags & PROBE)
     {
-      t25 = X64(30000);
+      t25 = U64(0x30000);
       p4 |= t25;
       t26 = p5 & 1;                            // write or read?
       t26 *= 4;
@@ -1328,7 +1332,7 @@ int CAlphaCPU::vmspal_ent_dtbm_single(int flags)
       t26 = (t25 << t26) & p4;
       p7 = t26?0x90:0x80;                           //page fault or acv
       hw_stq(p21+0x158, p7);
-      t26 = p23 & ~X64(3);
+      t26 = p23 & ~U64(0x3);
       hw_ldq(p21+0x148, p7);
       if (test_bit_64(p4,(int)(8+p7+((flags & PROBEW)?4:0))))
         return 1;
@@ -1338,7 +1342,7 @@ int CAlphaCPU::vmspal_ent_dtbm_single(int flags)
 
     if (state.current_pc & 1)
     {
-      t25 = X64(30000);
+      t25 = U64(0x30000);
       p4 |= t25;
       t26 = p5 & 1;                            // write or read?
       t26 *= 4;
@@ -1350,7 +1354,7 @@ int CAlphaCPU::vmspal_ent_dtbm_single(int flags)
       t26 = (t25 << t26) & p4;
       p7 = t26?0x90:0x80;                           //page fault or acv
       hw_stq(p21+0x158, p7);
-      t26 = p23 & ~X64(3);
+      t26 = p23 & ~U64(0x3);
 
       hw_stq(p21+0x118,state.r[25]);
       hw_stq(p21+0x120,state.r[26]);
@@ -1360,8 +1364,8 @@ int CAlphaCPU::vmspal_ent_dtbm_single(int flags)
       return -1;
       //return vmspal_int_dfault_in_palmode();
     }
-    hw_stq(p21+X64(150),p23);
-    hw_stq(p21+X64(160),p6);
+    hw_stq(p21+U64(0x150),p23);
+    hw_stq(p21+U64(0x160),p6);
     p20 = ((p22 >> 3) & 3) + 8;
     if (    (test_bit_64(p5,0) && ((p5>>4)&0x3f)==0x18)
         || (!test_bit_64(p5,0) && ((p7>>8)&0x1f)==0x1f) )
@@ -1370,15 +1374,15 @@ int CAlphaCPU::vmspal_ent_dtbm_single(int flags)
       set_pc(state.current_pc + 4);
       return -1;
     }
-    p5 &= X64(1);
+    p5 &= U64(0x1);
     p7 = p5 << 0x3f;
     p6 = 4 * p5;
-    hw_stq(p21+X64(168),p7);
+    hw_stq(p21+U64(0x168),p7);
     p6 += p20;
-    p6 = X64(1) << p6;
+    p6 = U64(0x1) << p6;
     p6 &= p4;
     p20 = (p6)?0x90:0x80;
-    hw_stq(p21+X64(158),p20);
+    hw_stq(p21+U64(0x158),p20);
     return vmspal_int_initiate_exception();
   }
   add_tb_d(p6,p4);
@@ -1407,7 +1411,7 @@ int CAlphaCPU::vmspal_ent_itbm(int flags)
     return 0;
   }
 
-  p4 &=~X64(7);
+  p4 &=~U64(0x7);
   if (virt2phys(p4,&pte_phys,ACCESS_READ | NO_CHECK | VPTE, NULL, 0))
     return -1;
   p4 = cSystem->ReadMem(pte_phys,64,this);
@@ -1423,7 +1427,7 @@ int CAlphaCPU::vmspal_ent_itbm(int flags)
     p6 = p22 >> 3;
     hw_stq(p21+0x160,p23);
     hw_stq(p21+0x150,p23);
-    p6 &= X64(3);
+    p6 &= U64(0x3);
     p5 = 1;
     p6 += 8;
     hw_stq(p21+0x168,p5);
@@ -1479,7 +1483,7 @@ int CAlphaCPU::vmspal_ent_dtbm_double_3(int flags)
 
   if(flags & PROBE)                        // in PALmode!!
   {
-    p4 = t25 & ~X64(30000);
+    p4 = t25 & ~U64(0x30000);
     t26 = p5 & 1;                            // write or read?
     t26 *= 4;
     t25 = ((p22>>3) & 3) | 8;
@@ -1487,13 +1491,13 @@ int CAlphaCPU::vmspal_ent_dtbm_double_3(int flags)
     t25 = p4 >> 16;
     if (!(t25 & 1))
       t26 = 8;
-    t26 = (X64(1) << t26) & p4;
+    t26 = (U64(0x1) << t26) & p4;
     p7 = t26?0x90:0x80;                           //page fault or acv
     hw_stq(p21+0x158, p7);
 
     if (p7 != 0x80)
     {
-      p5 = (flags & PROBEW) ? X64(8000000000000000) : 0;
+      p5 = (flags & PROBEW) ? U64(0x8000000000000000) : 0;
       hw_stq(p21+0x160,p6);
       hw_stq(p21+0x168,p5);
       hw_stq(p21+0x150,state.current_pc);
@@ -1505,7 +1509,7 @@ int CAlphaCPU::vmspal_ent_dtbm_double_3(int flags)
 
   if(p23 & 1)                        // in PALmode!!
   {
-    p4 = t25 & ~X64(30000);
+    p4 = t25 & ~U64(0x30000);
     t26 = p5 & 1;                            // write or read?
     t26 *= 4;
     t25 = ((p22>>3) & 3) | 8;
@@ -1513,10 +1517,10 @@ int CAlphaCPU::vmspal_ent_dtbm_double_3(int flags)
     t25 = p4 >> 16;
     if (!(t25 & 1))
       t26 = 8;
-    t26 = (X64(1) << t26) & p4;
+    t26 = (U64(0x1) << t26) & p4;
     p7 = t26?0x90:0x80;                           //page fault or acv
     hw_stq(p21+0x158, p7);
-    t26 = p23 & ~X64(3);
+    t26 = p23 & ~U64(0x3);
 
     hw_stq(p21+0x118,state.r[25]);
     hw_stq(p21+0x120,state.r[26]);
@@ -1526,7 +1530,7 @@ int CAlphaCPU::vmspal_ent_dtbm_double_3(int flags)
     return -1;
   }
 
-  p20 = p4 & ~X64(3);
+  p20 = p4 & ~U64(0x3);
   p4 = t25 & 0x100;
   hw_stq(p21+0x150, p23);
   p20 = t26 - p20;
@@ -1593,7 +1597,7 @@ int CAlphaCPU::vmspal_ent_dfault(int flags)
   {
     hw_stq(p21+0xd0,p23);
     p23 = p6;
-    t26 = p6 & ~X64(3);
+    t26 = p6 & ~U64(0x3);
     p6 = state.fault_va;
     t25 = p5 & 2;
     p7 = 0x80;
@@ -1618,7 +1622,7 @@ int CAlphaCPU::vmspal_ent_dfault(int flags)
   {
     hw_stq(p21+0xd0,p23);
     p23 = p6;
-    t26 = p6 & ~X64(3);
+    t26 = p6 & ~U64(0x3);
     p6 = state.fault_va;
     t25 = p5 & 2;
     p7 = 0x80;

@@ -30,7 +30,11 @@
  * or project specific include files that are used frequently, but
  * are changed infrequently.
  *
- * $Id: StdAfx.h,v 1.28 2008/03/11 09:10:40 iamcamiel Exp $
+ * $Id: StdAfx.h,v 1.29 2008/03/14 14:50:22 iamcamiel Exp $
+ *
+ * X-1.29       Camiel Vanderhoeven                             14-MAR-2008
+ *   1. More meaningful exceptions replace throwing (int) 1.
+ *   2. U64 macro replaces X64 macro.
  *
  * X-1.28       Camiel Vanderhoeven                             11-MAR-2008
  *      Named, debuggable mutexes.
@@ -189,9 +193,6 @@ inline char printable(char c)
   return '.';
 }
 
-#include "es40_debug.h"
-#include "es40_endian.h"
-
 // Different OS'es define different functions to access 64-bit files
 #if defined(_WIN32)
 // Windows obviously does things differently...
@@ -219,6 +220,11 @@ inline char printable(char c)
 #include <Poco/Mutex.h>
 #include <Poco/Timestamp.h>
 
+#include "es40_debug.h"
+
+#include "Exception.h"
 #include "Lock.h"
+
+#include "es40_endian.h"
 
 #endif // !defined(INCLUDED_STDAFX_H)

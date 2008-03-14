@@ -3870,6 +3870,10 @@
 				>
 			</File>
 			<File
+				RelativePath="..\Exception.cpp"
+				>
+			</File>
+			<File
 				RelativePath="..\Flash.cpp"
 				>
 				<FileConfiguration
@@ -6624,7 +6628,15 @@
 				>
 			</File>
 			<File
+				RelativePath="..\es40_float.h"
+				>
+			</File>
+			<File
 				RelativePath="..\Ethernet.h"
+				>
+			</File>
+			<File
+				RelativePath="..\Exception.h"
 				>
 			</File>
 			<File

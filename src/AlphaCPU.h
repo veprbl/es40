@@ -28,7 +28,11 @@
  * \file
  * Contains the definitions for the emulated DecChip 21264CB EV68 Alpha processor.
  *
- * $Id: AlphaCPU.h,v 1.54 2008/03/13 13:19:18 iamcamiel Exp $
+ * $Id: AlphaCPU.h,v 1.55 2008/03/14 14:50:20 iamcamiel Exp $
+ *
+ * X-1.55       Camiel Vanderhoeven                             14-MAR-2008
+ *   1. More meaningful exceptions replace throwing (int) 1.
+ *   2. U64 macro replaces X64 macro.
  *
  * X-1.54       Camiel Vanderhoeven                             13-MAR-2008
  *      Create init(), start_threads() and stop_threads() functions.
@@ -208,8 +212,8 @@
 
 #define ICACHE_ENTRIES          1024
 #define ICACHE_LINE_SIZE        512     // in dwords
-#define ICACHE_MATCH_MASK       (u64)(X64(1)-(ICACHE_LINE_SIZE*4))
-#define ICACHE_INDEX_MASK       (u64)(ICACHE_LINE_SIZE-X64(1))
+#define ICACHE_MATCH_MASK       (u64)(U64(0x1)-(ICACHE_LINE_SIZE*4))
+#define ICACHE_INDEX_MASK       (u64)(ICACHE_LINE_SIZE-U64(0x1))
 #define ICACHE_BYTE_MASK        (u64)(ICACHE_INDEX_MASK<<2)
 
 #define TB_ENTRIES              16
@@ -565,7 +569,7 @@ inline void CAlphaCPU::flush_icache_asm ()
 inline void CAlphaCPU::set_PAL_BASE (u64 pb)
 {
   state.pal_base = pb;
-  state.pal_vms = (pb == X64 (8000));
+  state.pal_vms = (pb == U64(0x8000));
 }
 
 /**
@@ -634,7 +638,7 @@ inline int CAlphaCPU::get_icache (u64 address, u32 * data)
 
     if (address & 1)
     {
-      p_a = v_a & ~X64 (1);
+      p_a = v_a & ~U64(0x1);
       asm_bit = true;
     }
     else
@@ -673,7 +677,7 @@ inline int CAlphaCPU::get_icache (u64 address, u32 * data)
   // icache disabled
   if (address & 1)
   {
-    state.pc_phys = address & ~X64 (3);
+    state.pc_phys = address & ~U64(0x3);
     state.rem_ins_in_page = 1;
   }
   else
@@ -701,17 +705,17 @@ inline u64 CAlphaCPU::va_form (u64 address, bool bIBOX)
   {
   case 0:
     return ((bIBOX ? state.i_ctl_vptb : state.
-             va_ctl_vptb) & X64 (fffffffe00000000)) | ((address >> 10) &
-                                                       X64 (00000001fffffff8));
+             va_ctl_vptb) & U64(0xfffffffe00000000)) | ((address >> 10) &
+                                                       U64(0x00000001fffffff8));
   case 1:
     return ((bIBOX ? state.i_ctl_vptb : state.
-             va_ctl_vptb) & X64 (fffff80000000000)) | ((address >> 10) &
-                                                       X64 (0000003ffffffff8)) |
-      (((address >> 10) & X64 (0000002000000000)) * X64 (3e));
+             va_ctl_vptb) & U64(0xfffff80000000000)) | ((address >> 10) &
+                                                       U64(0x0000003ffffffff8)) |
+      (((address >> 10) & U64(0x0000002000000000)) * U64(0x3e));
   case 2:
        return ((bIBOX ? state.i_ctl_vptb : state.
-                va_ctl_vptb) & X64 (ffffffffc0000000)) | ((address >> 10) &
-                                                          X64 (00000000003ffff8));
+                va_ctl_vptb) & U64(0xffffffffc0000000)) | ((address >> 10) &
+                                                          U64(0x00000000003ffff8));
        }
        return 0;
        }
@@ -729,7 +733,7 @@ inline u64 CAlphaCPU::va_form (u64 address, bool bIBOX)
  **/
        inline void CAlphaCPU::irq_h (int number, bool assert, int delay)
        {
-       bool active = (state.eir & (X64 (1) << number))
+       bool active = (state.eir & (U64(0x1) << number))
        || state.irq_h_timer[number]; if (assert && !active)
        {
        if (delay)
@@ -737,11 +741,11 @@ inline u64 CAlphaCPU::va_form (u64 address, bool bIBOX)
        state.irq_h_timer[number] = delay; state.check_timers = true;}
        else
        {
-       state.eir |= (X64 (1) << number); state.check_int = true;}
+       state.eir |= (U64(0x1) << number); state.check_int = true;}
        return;}
        if (!assert && active)
        {
-       state.eir &= ~(X64 (1) << number);
+       state.eir &= ~(U64(0x1) << number);
        state.irq_h_timer[number] = 0;
        state.check_timers = false; for (int i = 0; i < 6; i++)
        {
@@ -771,7 +775,7 @@ inline u64 CAlphaCPU::va_form (u64 address, bool bIBOX)
  **/
        inline u64 CAlphaCPU::get_clean_pc ()
        {
-       return state.pc & ~X64 (3);}
+       return state.pc & ~U64(0x3);}
 
 /**
  * Jump to next instruction
@@ -845,14 +849,14 @@ inline u64 CAlphaCPU::va_form (u64 address, bool bIBOX)
        bool b;
        if (state.r[21 + 32]
            && ((u64) (state.r[21 + 32] + 0xaf) <
-               (u64) ((X64 (1) << cSystem->get_memory_bits ()))))v_prbr =
+               (u64) ((U64(0x1) << cSystem->get_memory_bits ()))))v_prbr =
        cSystem->ReadMem (state.r[21 + 32] + 0xa8, 64, this);
        else
        v_prbr = cSystem->ReadMem (0x70a8 + (0x200 * get_cpuid ()), 64, this);
        if (virt2phys (v_prbr, &p_prbr, ACCESS_READ | FAKE | NO_CHECK, &b, 0))
        p_prbr = v_prbr;
        if ((u64) p_prbr >
-           (u64) (X64 (1) << cSystem->get_memory_bits ()))p_prbr = 0;
+           (u64) (U64(0x1) << cSystem->get_memory_bits ()))p_prbr = 0;
        return p_prbr;}
 
 /**
@@ -865,13 +869,13 @@ inline u64 CAlphaCPU::va_form (u64 address, bool bIBOX)
        bool b;
        if (state.r[21 + 32]
            && ((u64) (state.r[21 + 32] + 0x17) <
-               (u64) ((X64 (1) << cSystem->get_memory_bits ()))))v_pcb =
+               (u64) ((U64(0x1) << cSystem->get_memory_bits ()))))v_pcb =
        cSystem->ReadMem (state.r[21 + 32] + 0x10, 64, this);
        else
        v_pcb = cSystem->ReadMem (0x7010 + (0x200 * get_cpuid ()), 64, this);
        if (virt2phys (v_pcb, &p_pcb, ACCESS_READ | NO_CHECK | FAKE, &b, 0))
        p_pcb = v_pcb;
-       if (p_pcb > (u64) (X64 (1) << cSystem->get_memory_bits ()))p_pcb = 0;
+       if (p_pcb > (u64) (U64(0x1) << cSystem->get_memory_bits ()))p_pcb = 0;
        return p_pcb;}
 
 #if defined(IDB)

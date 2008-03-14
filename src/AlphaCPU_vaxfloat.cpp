@@ -27,7 +27,11 @@
  * \file 
  * Contains VAX floating point code for the Alpha CPU.
  *
- * $Id: AlphaCPU_vaxfloat.cpp,v 1.9 2008/02/05 15:51:33 iamcamiel Exp $
+ * $Id: AlphaCPU_vaxfloat.cpp,v 1.10 2008/03/14 14:50:20 iamcamiel Exp $
+ *
+ * X-1.9        Camiel Vanderhoeven                             14-MAR-2008
+ *   1. More meaningful exceptions replace throwing (int) 1.
+ *   2. U64 macro replaces X64 macro.
  *
  * X-1.8        Camiel Vanderhoeven                             05-FEB-2008
  *      Bug description added.
@@ -65,14 +69,14 @@
 #include "AlphaCPU.h"
 #include "cpu_debug.h"
 
-#define IPMAX		X64(7FFFFFFFFFFFFFFF)		/* plus MAX (int) */
-#define IMMAX		X64(8000000000000000)		/* minus MAX (int) */
+#define IPMAX		U64(0x7FFFFFFFFFFFFFFF)		/* plus MAX (int) */
+#define IMMAX		U64(0x8000000000000000)		/* minus MAX (int) */
 
 /* Unpacked rounding constants */
 
-#define UF_FRND		X64(0000008000000000)		/* F round */
-#define UF_DRND		X64(0000000000000080)		/* D round */
-#define UF_GRND		X64(0000000000000400)		/* G round */
+#define UF_FRND		U64(0x0000008000000000)		/* F round */
+#define UF_DRND		U64(0x0000000000000080)		/* D round */
+#define UF_GRND		U64(0x0000000000000400)		/* G round */
 
 /***************************************************************************//**
  * \name VAX_fp_load_store
@@ -476,8 +480,8 @@ void CAlphaCPU::vax_norm (UFP *r)
 {
   s32 i;
   static u64 normmask[5] = {
-   X64(c000000000000000), X64(f000000000000000), X64(ff00000000000000),
-   X64(ffff000000000000), X64(ffffffff00000000) };
+   U64(0xc000000000000000), U64(0xf000000000000000), U64(0xff00000000000000),
+   U64(0xffff000000000000), U64(0xffffffff00000000) };
   static s32 normtab[6] = { 1, 2, 4, 8, 16, 32};
 
   r->frac = r->frac & X64_QUAD;

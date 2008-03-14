@@ -28,7 +28,11 @@
  * Contains code macros for the processor floating-point branch instructions.
  * Based on ARM chapter 4.9.
  *
- * $Id: cpu_fp_branch.h,v 1.11 2008/02/27 12:04:32 iamcamiel Exp $
+ * $Id: cpu_fp_branch.h,v 1.12 2008/03/14 14:50:24 iamcamiel Exp $
+ *
+ * X-1.12       Camiel Vanderhoeven                             14-MAR-2008
+ *   1. More meaningful exceptions replace throwing (int) 1.
+ *   2. U64 macro replaces X64 macro.
  *
  * X-1.11       Brian Wheeler                                   27-FEB-2008
  *      Avoid compiler warnings.
@@ -104,17 +108,17 @@
 #else
 
 #define DO_FBEQ                                                   \
-  FPSTART;  if (state.f[FREG_1] == X64(0000000000000000) || state.f[FREG_1] == X64(8000000000000000))	add_pc(DISP_21 * 4);
+  FPSTART;  if (state.f[FREG_1] == U64(0x0000000000000000) || state.f[FREG_1] == U64(0x8000000000000000))	add_pc(DISP_21 * 4);
 #define DO_FBGE                                                   \
-  FPSTART;  if (!(state.f[FREG_1]& X64(8000000000000000)) || state.f[FREG_1] == X64(8000000000000000))	add_pc(DISP_21 * 4);
+  FPSTART;  if (!(state.f[FREG_1]& U64(0x8000000000000000)) || state.f[FREG_1] == U64(0x8000000000000000))	add_pc(DISP_21 * 4);
 #define DO_FBGT                                                   \
-  FPSTART;  if (!(state.f[FREG_1]& X64(8000000000000000)) && state.f[FREG_1] != X64(0000000000000000))	add_pc(DISP_21 * 4);
+  FPSTART;  if (!(state.f[FREG_1]& U64(0x8000000000000000)) && state.f[FREG_1] != U64(0x0000000000000000))	add_pc(DISP_21 * 4);
 #define DO_FBLE                                                   \
-  FPSTART;  if ((state.f[FREG_1]& X64(8000000000000000)) || state.f[FREG_1] == X64(0000000000000000))	add_pc(DISP_21 * 4);
+  FPSTART;  if ((state.f[FREG_1]& U64(0x8000000000000000)) || state.f[FREG_1] == U64(0x0000000000000000))	add_pc(DISP_21 * 4);
 #define DO_FBLT                                                   \
-  FPSTART;  if ((state.f[FREG_1]& X64(8000000000000000)) && state.f[FREG_1] != X64(8000000000000000))	add_pc(DISP_21 * 4);
+  FPSTART;  if ((state.f[FREG_1]& U64(0x8000000000000000)) && state.f[FREG_1] != U64(0x8000000000000000))	add_pc(DISP_21 * 4);
 #define DO_FBNE                                                   \
-  FPSTART;  if (state.f[FREG_1] != X64(0000000000000000) && state.f[FREG_1] != X64(8000000000000000))	add_pc(DISP_21 * 4);
+  FPSTART;  if (state.f[FREG_1] != U64(0x0000000000000000) && state.f[FREG_1] != U64(0x8000000000000000))	add_pc(DISP_21 * 4);
 
 
 #endif

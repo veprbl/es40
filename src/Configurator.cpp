@@ -27,7 +27,11 @@
  * \file
  * Contains the code for the configuration file interpreter.
  *
- * $Id: Configurator.cpp,v 1.24 2008/03/13 13:19:18 iamcamiel Exp $
+ * $Id: Configurator.cpp,v 1.25 2008/03/14 14:50:20 iamcamiel Exp $
+ *
+ * X-1.25       Camiel Vanderhoeven                             14-MAR-2008
+ *   1. More meaningful exceptions replace throwing (int) 1.
+ *   2. U64 macro replaces X64 macro.
  *
  * X-1.24       Camiel Vanderhoeven                             13-MAR-2008
  *      Create init() start_threads() and stop_threads() functions.
@@ -188,12 +192,7 @@ CConfigurator::CConfigurator (class CConfigurator * parent, char *name,
           break;
         case '/':
           if (i == textlen - 1)
-          {
-            printf
-              ("%%SYS-E-PARSE: file ends in mid-token.  Line %d, Col %d\n",
-               line, col);
-            exit (1);
-          }
+            FAILURE_2(Configuration,"Configuration file ends in mid-token at line %d, col %d", line, col);
 
           if (*(q + 1) == '/')
           {
@@ -212,12 +211,7 @@ CConfigurator::CConfigurator (class CConfigurator * parent, char *name,
           break;
         case '}':
           if (cbrace == 0)
-          {
-            printf
-              ("%%SYS-E-PARSE: too many closed braces.  Line %d, Col %d\n",
-               line, col);
-            exit (1);
-          }
+            FAILURE_2(Configuration,"Too many closed braces at line %d, col %d", line, col);
           cbrace--;
           *p++ = *q;
           break;
@@ -230,12 +224,7 @@ CConfigurator::CConfigurator (class CConfigurator * parent, char *name,
               *p++ = *q;
             }
             else
-            {
-              printf
-                ("%%SYS-E-PARSE: Illegal character '%c'.  Line %d, Col %d\n",
-                 *q, line, col);
-              exit (1);
-            }
+              FAILURE_3(Configuration,"Illegal character %c at line %d, col %d", *q, line, col);
           }
         }
         break;
@@ -250,12 +239,7 @@ CConfigurator::CConfigurator (class CConfigurator * parent, char *name,
         if (*q == '*')
         {
           if (i == textlen - 1)
-          {
-            printf
-              ("%%SYS-E-PARSE: file ends in mid-comment.  Line %d, Col %d\n",
-               line, col);
-            exit (1);
-          }
+            FAILURE_2(Configuration,"Configuration file ends in mid-comment at line %d, col %d", line, col);
           if (*(q + 1) == '/')
           {
             state = STATE_NONE;
@@ -267,12 +251,7 @@ CConfigurator::CConfigurator (class CConfigurator * parent, char *name,
         if (*q == '"')
         {
           if (i == textlen - 1)
-          {
-            printf
-              ("%%SYS-E-PARSE: file ends in mid-string.  Line %d, Col %d\n",
-               line, col);
-            exit (1);
-          }
+            FAILURE_2(Configuration,"Configuration file ends in mid-string at line %d, col %d", line, col);
           if (*(q + 1) != '"')
           {
             state_start = line;
@@ -286,12 +265,7 @@ CConfigurator::CConfigurator (class CConfigurator * parent, char *name,
           }
         }
         else if (*q == 0x0a || *q == 0x0d)
-        {
-          printf
-            ("%%SYS-E-PARSE: multi-line strings are forbidden.  Line %d, Col %d\n",
-             line, col);
-          exit (1);
-        }
+          FAILURE_2(Configuration,"Multi-line strings are forbidden at line %d, col %d", line, col);
         *p++ = *q;
         break;
       }
@@ -570,8 +544,7 @@ bool CConfigurator::get_bool_value (const char *n, bool def)
       case '0':
         return false;
       default:
-        printf ("Illegal boolean value: %s   \n", pValues[i].value);
-        FAILURE ("Configuration error");
+        FAILURE_2(Configuration,"Illegal boolean value (%s) for %s", pValues[i].value, n);
       }
     }
   }
@@ -620,9 +593,7 @@ u64 CConfigurator::get_num_value (const char *n, bool decimal, u64 def)
           retval += partval;
           return retval;
         default:
-          printf ("%s: numeric value %s (%s) not in right format!\n", myName,
-                  n, val);
-          FAILURE ("Configuration error");
+          FAILURE_2(Configuration,"Illegal numeric value (%s) for %s", pValues[i].value, n);
         }
       }
     }
@@ -709,86 +680,49 @@ void CConfigurator::initialize ()
   }
 
   if (myClassId == c_none)
-  {
-    printf ("Class %s not known!!\n", myValue);
-    throw ((int) 1);
-  }
+    FAILURE_2(Configuration,"Class %s for %s not known", myValue, myName);
 
   if (myFlags & N_P)
   {
     if (pParent->get_flags ())
-    {
-      printf ("Error: %s(%s) should not have a parent!\n", myName, myValue);
-      throw ((int) 1);
-    }
+      FAILURE_2(Configuration,"Class %s for %s needs a parent", myValue, myName);
   }
 
   if (myFlags & ON_CS)
   {
     if (!(pParent->get_flags () & IS_CS))
-    {
-      printf ("Error: parent of SYSBUS device %s(%s) should be a chipset.\n",
-              myName, myValue);
-      throw ((int) 1);
-    }
+      FAILURE_2(Configuration,"Class %s for %s needs a chipset parent", myValue, myName);
   }
 
   if (myFlags & ON_GUI)
   {
     if (!bx_gui)
-    {
-      printf ("Error: %s(%s) needs a GUI.\n", myName, myValue);
-      throw ((int) 1);
-    }
+      FAILURE_2(Configuration,"Class %s for %s needs a GUI", myValue, myName);
   }
 
   if (myFlags & IS_GUI)
   {
     if (bx_gui)
-    {
-      printf ("Error: %s(%s): another GUI was already instantiated.\n",
-              myName, myValue);
-      throw ((int) 1);
-    }
+      FAILURE_2(Configuration,"Class %s for %s already found a gui", myValue, myName);
   }
 
 #if !defined(HAVE_PCAP)
   if (myFlags & IS_NIC)
-  {
-    printf
-      ("Error: %s(%s): For network support, compilation with libpcap support is required.\n",
-       myName, myValue);
-    throw ((int) 1);
-  }
+    FAILURE_2(Configuration,"Class %s for %s needs compilation with libpcap support", myValue, myName);
 #endif
 
   if (myFlags & IS_PCI)
   {
     if (strncmp (myName, "pci", 3))
-    {
-      printf
-        ("Error: name of PCI device %s should be pci<bus>.<device>, %s found.\n",
-         myValue, myName);
-      throw ((int) 1);
-    }
+      FAILURE_2(Configuration,"Name %s for class %s should be pci<bus>.<device>", myName, myValue);
     if (!(pParent->get_flags () & HAS_PCI))
-    {
-      printf
-        ("Error: parent of PCI device %s(%s) should be a pci-bus capable device.\n",
-         myName, myValue);
-      throw ((int) 1);
-    }
+      FAILURE_2(Configuration,"Class %s for %s should have a pci-bus capable parent device", myValue, myName);
 
     pt = &myName[3];
     pcibus = atoi (pt);
     pt = strchr (pt, '.');
     if (!pt)
-    {
-      printf
-        ("Error: name of PCI device %s should be pci<bus>.<device>, %s found.\n",
-         myValue, myName);
-      throw ((int) 1);
-    }
+      FAILURE_2(Configuration,"Name %s for class %s should be pci<bus>.<device>", myName, myValue);
     pt++;
     pcidev = atoi (pt);
   }
@@ -796,30 +730,15 @@ void CConfigurator::initialize ()
   if (myFlags & IS_DISK)
   {
     if (strncmp (myName, "disk", 4))
-    {
-      printf
-        ("Error: name of Disk device %s should be disk<channel>.<device>, %s found.\n",
-         myValue, myName);
-      throw ((int) 1);
-    }
+      FAILURE_2(Configuration,"Name %s for class %s should be disk<bus>.<device>", myName, myValue);
     if (!(pParent->get_flags () & HAS_DISK))
-    {
-      printf
-        ("Error: parent of disk device %s(%s) should be a disk controller.\n",
-         myName, myValue);
-      throw ((int) 1);
-    }
+      FAILURE_2(Configuration,"Class %s for %s should have a disk-controller parent device", myValue, myName);
 
     pt = &myName[4];
     idebus = atoi (pt);
     pt = strchr (pt, '.');
     if (!pt)
-    {
-      printf
-        ("Error: name of Disk device %s should be disk<controller>.<device>, %s found.\n",
-         myValue, myName);
-      throw ((int) 1);
-    }
+      FAILURE_2(Configuration,"Name %s for class %s should be disk<bus>.<device>", myName, myValue);
     pt++;
     idedev = atoi (pt);
   }
@@ -873,7 +792,7 @@ void CConfigurator::initialize ()
     myDevice =
       new CRadeon (this, (CSystem *) pParent->get_device (), pcibus, pcidev);
 #else
-    FAILURE ("ES40 was not compiled with Radeon support");
+      FAILURE_2(Configuration,"Class %s for %s needs compilation with Radeon support", myValue, myName);
 #endif
     break;
 
@@ -932,7 +851,7 @@ void CConfigurator::initialize ()
 #if defined(HAVE_SDL)
     PLUG_load_plugin (this, sdl);
 #else
-    FAILURE ("Can't instantiate the SDL GUI without SDL support");
+      FAILURE_2(Configuration,"Class %s for %s needs compilation with SDL support", myValue, myName);
 #endif
     break;
 
@@ -940,7 +859,7 @@ void CConfigurator::initialize ()
 #if defined(_WIN32)
     PLUG_load_plugin (this, win32);
 #else
-    FAILURE ("Can't instantiate the Win32 GUI on a non-Win32 platform");
+      FAILURE_2(Configuration,"Class %s for %s needs a Win32 platform", myValue, myName);
 #endif
     break;
 
@@ -948,7 +867,7 @@ void CConfigurator::initialize ()
 #if defined(HAVE_X11)
     PLUG_load_plugin (this, x11);
 #else
-    FAILURE ("Can't instantiate the X11 GUI on a non-X11 platform");
+      FAILURE_2(Configuration,"Class %s for %s needs an X11 platform", myValue, myName);
 #endif
     break;
 

@@ -27,7 +27,11 @@
  * \file
  * Contains code for the disk base class.
  *
- * $Id: Disk.cpp,v 1.27 2008/02/27 12:04:22 iamcamiel Exp $
+ * $Id: Disk.cpp,v 1.28 2008/03/14 14:50:20 iamcamiel Exp $
+ *
+ * X-1.28       Camiel Vanderhoeven                             14-MAR-2008
+ *   1. More meaningful exceptions replace throwing (int) 1.
+ *   2. U64 macro replaces X64 macro.
  *
  * X-1.27       Brian Wheeler                                   27-FEB-2008
  *      Avoid compiler warnings.
@@ -304,8 +308,7 @@ size_t CDisk::scsi_expected_xfer_me(int bus)
   case SCSI_PHASE_MSG_IN:
     return state.scsi.msgi.available - state.scsi.msgi.read;
   default:
-    printf("%s: transfer requested in phase %d\n",devid_string, scsi_get_phase(0));
-    FAILURE("SCSI Transfer Failed");
+    FAILURE_2(IllegalState,"%s: transfer requested in phase %d\n",devid_string, scsi_get_phase(0));
   }
 }
 
@@ -381,8 +384,7 @@ void * CDisk::scsi_xfer_ptr_me(int bus, size_t bytes)
     break;
 
   default:
-    printf("%s: transfer requested in phase %d\n",devid_string, scsi_get_phase(0));
-    FAILURE("SCSI Transfer Failed");
+    FAILURE_2(IllegalState,"%s: transfer requested in phase %d\n",devid_string, scsi_get_phase(0));
   }
 
   return res;
@@ -412,7 +414,7 @@ void CDisk::scsi_xfer_done_me(int bus)
 
     res = do_scsi_command();
     if (res == 2)
-      FAILURE("do_command returned 2 after DATA OUT phase");
+      FAILURE(IllegalState,"do_command returned 2 after DATA OUT phase");
 
     if (state.scsi.dati.available)
       newphase = SCSI_PHASE_DATA_IN;
@@ -478,8 +480,7 @@ void CDisk::scsi_xfer_done_me(int bus)
     break;
 
   default:
-    printf("%s: transfer requested in phase %d\n",devid_string, scsi_get_phase(0));
-    FAILURE("SCSI Transfer Failed");
+    FAILURE_2(IllegalState,"%s: transfer requested in phase %d\n",devid_string, scsi_get_phase(0));
   }
 
   // if data in and can disconnect...
@@ -708,8 +709,7 @@ int CDisk::do_scsi_command()
 
   if (state.scsi.lun_selected && state.scsi.cmd.data[0] != SCSICMD_INQUIRY && state.scsi.cmd.data[0] != SCSICMD_REQUEST_SENSE)
   {
-    printf("%s: LUN not supported!\n",devid_string);
-    FAILURE("SCSI Command Failed");
+    FAILURE_1(NotImplemented,"%s: LUN not supported!\n",devid_string);
   }
 
   switch(state.scsi.cmd.data[0])
@@ -777,8 +777,7 @@ int CDisk::do_scsi_command()
 #endif
 	  if ((state.scsi.cmd.data[1] & 0x1e) != 0x00) 
       {
-        printf("%s: Don't know how to handle INQUIRY with cmd[1]=0x%02x.\n", devid_string, state.scsi.cmd.data[1]);
-        FAILURE("SCSI Command Failed");
+        FAILURE_2(NotImplemented,"%s: Don't know how to handle INQUIRY with cmd[1]=0x%02x.\n", devid_string, state.scsi.cmd.data[1]);
         break;
 	  }
       u8 qual_dev = state.scsi.lun_selected ? 0x7F : (cdrom() ? 0x05 : 0x00);
@@ -811,8 +810,7 @@ int CDisk::do_scsi_command()
            memcpy(&state.scsi.dati.data[4],serial_number,strlen(serial_number));
           break;
         default:
-          printf("Don't know format for vital product data page %02x!!\n",state.scsi.cmd.data[2]);
-          FAILURE("SCSI Command Failed");
+          FAILURE_1(NotImplemented,"Don't know format for vital product data page %02x!!\n",state.scsi.cmd.data[2]);
           state.scsi.dati.data[1] = state.scsi.cmd.data[2]; // page code
           state.scsi.dati.data[2] = 0x00; // reserved
         }
@@ -887,8 +885,7 @@ int CDisk::do_scsi_command()
       
 	  if ((state.scsi.cmd.data[2] & 0xc0) > 0x40)
       {
-        printf(" mode sense, cmd[2] = 0x%02x.\n", state.scsi.cmd.data[2]);
-        FAILURE("SCSI Command Failed");
+        FAILURE_2(NotImplemented,"%s: mode sense, cmd[2] = 0x%02x.\n", devid_string, state.scsi.cmd.data[2]);
       }
 
       bool changeable = ((state.scsi.cmd.data[2] & 0xc0) ==0x40);
@@ -969,8 +966,7 @@ int CDisk::do_scsi_command()
       case SCSIMP_FLEX_PARAMS:		//  flexible disk page  
         if (cdrom())
         {
-          printf("%s: CD-ROM write parameter page not implemented.\n",devid_string);
-          FAILURE("SCSI Command Failed");
+          FAILURE_1(NotImplemented,"%s: CD-ROM write parameter page not implemented.\n",devid_string);
         }
 
 	    state.scsi.dati.data[q + 0] = pagecode;
@@ -1070,8 +1066,7 @@ int CDisk::do_scsi_command()
         }
         break;
 	  default:
-        printf("%s: MODE_SENSE for page %i is not yet implemented!\n", devid_string, pagecode);
-        FAILURE("SCSI Command Failed");
+        FAILURE_2(NotImplemented,"%s: MODE_SENSE for page %i is not yet implemented!\n", devid_string, pagecode);
 	  }
 #if defined(DEBUG_SCSI)
 	printf("%s: Returning data: ",devid_string);
@@ -1152,8 +1147,7 @@ int CDisk::do_scsi_command()
 #endif
 	if (state.scsi.cmd.data[8] & 1) 
     {
-      printf("%s: Don't know how to handle READ CAPACITY with PMI bit set.\n",devid_string);
-      FAILURE("SCSI Command Failed");
+      FAILURE_1(NotImplemented,"%s: Don't know how to handle READ CAPACITY with PMI bit set.\n",devid_string);
       break;
 	}
 
@@ -1228,8 +1222,7 @@ int CDisk::do_scsi_command()
     {
       if (state.scsi.cmd.data[9] != 0x10)
       {
-        printf("READ CD issued with data type %02x.\n",state.scsi.cmd.data[9]);
-        FAILURE("SCSI Command Failed");
+        FAILURE_2(NotImplemented,"%s: READ CD issued with data type %02x.\n",devid_string,state.scsi.cmd.data[9]);
       }
       //  cmd[2..5] hold the logical block address.
 	  //  cmd[6..8] holds the number of logical blocks to transfer.
@@ -1393,14 +1386,12 @@ int CDisk::do_scsi_command()
 #endif
       if (state.scsi.cmd.data[2]&0x0f)
       {
-        printf("%s: I don't understand READ TOC/PMA/ATIP with format %01x.\n",devid_string,state.scsi.cmd.data[2] & 0x0f);
-        FAILURE("SCSI Command Failed");
+        FAILURE_2(NotImplemented,"%s: I don't understand READ TOC/PMA/ATIP with format %01x.\n",devid_string,state.scsi.cmd.data[2] & 0x0f);
       }
 
       if (state.scsi.cmd.data[6]>1 && state.scsi.cmd.data[6] != 0xAA)
       {
-        printf("%s: I don't know CD-ROM track 0x%02x.\n",devid_string,state.scsi.cmd.data[6]);
-        FAILURE("SCSI Command Failed");
+        FAILURE_2(InvalidArgument,"%s: I don't know CD-ROM track 0x%02x.\n",devid_string,state.scsi.cmd.data[6]);
       }
 
       retlen = state.scsi.cmd.data[7]*256 + state.scsi.cmd.data[8];
@@ -1497,8 +1488,7 @@ int CDisk::do_scsi_command()
 
 
   default:
-    printf("%s: Unknown SCSI command 0x%02x.\n",devid_string,state.scsi.cmd.data[0]);
-    FAILURE("SCSI Command Failed");
+    FAILURE_2(NotImplemented,"%s: Unknown SCSI command 0x%02x.\n",devid_string,state.scsi.cmd.data[0]);
   }
   return 0;
 }
@@ -1581,14 +1571,12 @@ int CDisk::do_scsi_message()
 		  }
           break;
         default:
-          printf("%s: MSG: don't understand extended message %02x.\n",devid_string,state.scsi.msgo.data[msg]);
-	      FAILURE("SCSI Message Failed");
+          FAILURE_2(NotImplemented,"%s: MSG: don't understand extended message %02x.\n",devid_string,state.scsi.msgo.data[msg]);
 		}
         msg += msglen;
         break;
       default:
-        printf("%s: MSG: don't understand message %02x.\n",devid_string,state.scsi.msgo.data[msg]);
-        FAILURE("SCSI Message Failed");
+        FAILURE_2(NotImplemented,"%s: MSG: don't understand message %02x.\n",devid_string,state.scsi.msgo.data[msg]);
       }
     }
   }

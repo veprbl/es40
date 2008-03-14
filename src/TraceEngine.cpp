@@ -28,7 +28,11 @@
  * Contains the code for the CPU tracing engine.
  * This will become the debugging engine (interactive debugger) soon.
  *
- * $Id: TraceEngine.cpp,v 1.33 2008/02/29 10:50:09 iamcamiel Exp $
+ * $Id: TraceEngine.cpp,v 1.34 2008/03/14 14:50:22 iamcamiel Exp $
+ *
+ * X-1.35       Camiel Vanderhoeven                             14-MAR-2008
+ *   1. More meaningful exceptions replace throwing (int) 1.
+ *   2. U64 macro replaces X64 macro.
  *
  * X-1.34       Brian Wheeler                                   29-FEB-2008
  *      Add BREAKPOINT INSTRUCTION command to IDB.
@@ -175,15 +179,15 @@ inline u64 real_address(u64 address, CAlphaCPU * c, bool bIBOX)
   u64 a;
 
   if (bIBOX && (address&1))
-    return address & X64(fffffffffffffffc);
+    return address & U64(0xfffffffffffffffc);
 
   if (!(c->virt2phys(address,&a,ACCESS_READ | NO_CHECK | FAKE,&b,0)))
-    return a & (bIBOX?X64(fffffffffffffffc):X64(ffffffffffffffff));
+    return a & (bIBOX?U64(0xfffffffffffffffc):U64(0xffffffffffffffff));
 
-  return ((address&X64(fffffffff0000000)) ==X64(0000000020000000))?
-     address-X64(000000001fe00000):
-      (((address&X64(fffffffff0000000))== X64(0000000010000000))?
-       address-X64(000000000fffe000):address) & (bIBOX?X64(fffffffffffffffc):X64(ffffffffffffffff));
+  return ((address&U64(0xfffffffff0000000)) ==U64(0x0000000020000000))?
+     address-U64(0x000000001fe00000):
+      (((address&U64(0xfffffffff0000000))== U64(0x0000000010000000))?
+       address-U64(0x000000000fffe000):address) & (bIBOX?U64(0xfffffffffffffffc):U64(0xffffffffffffffff));
 }
 
 CTraceEngine::CTraceEngine(CSystem * sys)
@@ -229,7 +233,7 @@ void CTraceEngine::trace(CAlphaCPU * cpu, u64 f, u64 t, bool down, bool up, cons
 
   if (asPRBRs[p].trc_waitfor)
     {
-      if ((t&~X64(3))==asPRBRs[p].trc_waitfor)
+      if ((t&~U64(0x3))==asPRBRs[p].trc_waitfor)
 	asPRBRs[p].trc_waitfor = 0;
       return;
     }
@@ -324,7 +328,7 @@ void CTraceEngine::trace_br(CAlphaCPU * cpu, u64 f, u64 t)
 
   if (asPRBRs[p].trc_waitfor)
     {
-      if ((t&~X64(3))==asPRBRs[p].trc_waitfor)
+      if ((t&~U64(0x3))==asPRBRs[p].trc_waitfor)
 	asPRBRs[p].trc_waitfor = 0;
       return;
     }
@@ -384,7 +388,7 @@ void CTraceEngine::set_waitfor(CAlphaCPU * cpu, u64 address)
   p = get_prbr(cpu->get_prbr(),cpu->get_hwpcb());
 
   if(asPRBRs[p].trc_waitfor == 0)
-    asPRBRs[p].trc_waitfor = address & ~X64(3);
+    asPRBRs[p].trc_waitfor = address & ~U64(0x3);
 }
 bool CTraceEngine::get_fnc_name(CAlphaCPU * c, u64 address, char ** p_fn_name)
 {
@@ -434,7 +438,7 @@ int CTraceEngine::get_prbr(u64 prbr, u64 hwpcb)
 
   asPRBRs[i].prbr = prbr;
   asPRBRs[i].hwpcb = hwpcb;
-  if (prbr > 0 && prbr < (X64(1)<<cSystem->get_memory_bits()))
+  if (prbr > 0 && prbr < (U64(0x1)<<cSystem->get_memory_bits()))
     strncpy(asPRBRs[i].procname, cSystem->PtrToMem(prbr+0x154), 20);
   else
     strcpy(asPRBRs[i].procname,"");
@@ -484,7 +488,7 @@ void CTraceEngine::write_arglist(CAlphaCPU * c, FILE * fl, char * a)
 	      while (*op)
 		op++;
 	      value = real_address(value, c, false);
-	      if ((value > 0) && (value < (X64(1)<<cSystem->get_memory_bits())))
+	      if ((value > 0) && (value < (U64(0x1)<<cSystem->get_memory_bits())))
 		write_printable_s(op, cSystem->PtrToMem(value));
 	      else
 		sprintf(op,"INVPTR");
@@ -542,7 +546,7 @@ void CTraceEngine::read_procfile(char *filename)
     {
       while (fscanf(f,"%[^\n] ",linebuffer) != EOF)
 	{
-	  address = X64(0);
+	  address = U64(0x0);
 	  fn_name = strchr(linebuffer,';');
 	  if (fn_name)
             {
@@ -628,7 +632,7 @@ void CTraceEngine::run_script(char * filename)
     }
     else
     {
-      printf("IDB %016" LL "x %c>",theSystem->get_cpu(0)->get_clean_pc(), (theSystem->get_cpu(0)->get_pc()&X64(1))?'P':'-');
+      printf("IDB %016" LL "x %c>",theSystem->get_cpu(0)->get_clean_pc(), (theSystem->get_cpu(0)->get_pc()&U64(0x1))?'P':'-');
     }
 #endif
 
@@ -1072,13 +1076,13 @@ int CTraceEngine::parse(char command[100][100])
 	printf("%%IDB-F-INVVAL: Invalid hexadecimal value.\n");
 	return 0;
       }
-      if (iJump&X64(3))
+      if (iJump&U64(0x3))
       {
 	printf("%%IDB-F-ALGVAL: Value not aligned on a 4-byte bounday.\n");
 	return 0;
       }
       printf("%%IDB-I-JUMPTO: Jumping.\n");
-      theSystem->get_cpu(0)->set_pc(iJump + (theSystem->get_cpu(0)->get_pc() & X64(1)));
+      theSystem->get_cpu(0)->set_pc(iJump + (theSystem->get_cpu(0)->get_pc() & U64(0x1)));
       return 0;
     }
     break;
@@ -1096,7 +1100,7 @@ int CTraceEngine::parse(char command[100][100])
 	  bBreakPoint = false;
 	  return 0;
 	}
-	if (iBreakPoint&X64(3))
+	if (iBreakPoint&U64(0x3))
 	{
 	  printf("%%IDB-F-ALGVAL: Value not aligned on a 4-byte bounday.\n");
 	  bBreakPoint = false;
@@ -1221,7 +1225,7 @@ int CTraceEngine::parse(char command[100][100])
         printf("%%IDB-F-INVVAL: Invalid hexadecimal value.\n");
 	return 0;
       }
-      if (iFrom&X64(3) || iTo&X64(3))
+      if (iFrom&U64(0x3) || iTo&U64(0x3))
       {
         printf("%%IDB-F-ALGVAL: Value not aligned on a 4-byte bounday.\n");
 	return 0;
@@ -1262,7 +1266,7 @@ void CTraceEngine::list_all()
 
   for (;;)
   {
-    while ((!pM[f] || pM[f] == X64(efefefefefefefef) || pM[f] == X64(ffffffffffffffff)) && f<ms)
+    while ((!pM[f] || pM[f] == U64(0xefefefefefefefef) || pM[f] == U64(0xffffffffffffffff)) && f<ms)
     {
       f++;
       if (!(f&0x1ffff)) printf(".");
@@ -1272,15 +1276,15 @@ void CTraceEngine::list_all()
     t = f;
     for(;;)
     {
-      while (pM[t] && pM[t] != X64(efefefefefefefef) && pM[t] != X64(ffffffffffffffff) && t<ms)
+      while (pM[t] && pM[t] != U64(0xefefefefefefefef) && pM[t] != U64(0xffffffffffffffff) && t<ms)
       {
         t++;
         if (!(t&0x1ffff)) printf("x");
       }
       if (t+3<ms)
-	if ((!pM[t+1] || pM[t+1] == X64(efefefefefefefef) || pM[t+1] == X64(ffffffffffffffff))
-		&& (!pM[t+2] || pM[t+2] == X64(efefefefefefefef) || pM[t+2] == X64(ffffffffffffffff)) 
-		&& (!pM[t+3] || pM[t+3] == X64(efefefefefefefef) || pM[t+3] == X64(ffffffffffffffff)))
+	if ((!pM[t+1] || pM[t+1] == U64(0xefefefefefefefef) || pM[t+1] == U64(0xffffffffffffffff))
+		&& (!pM[t+2] || pM[t+2] == U64(0xefefefefefefefef) || pM[t+2] == U64(0xffffffffffffffff)) 
+		&& (!pM[t+3] || pM[t+3] == U64(0xefefefefefefefef) || pM[t+3] == U64(0xffffffffffffffff)))
 	  break;
       if (t>=ms)
         break;

@@ -27,7 +27,11 @@
  * \file
  * Contains the datatype definitions for use with Microsoft Visual C++ and Linux.
  *
- * $Id: datatypes.h,v 1.17 2008/02/20 19:16:19 iamcamiel Exp $
+ * $Id: datatypes.h,v 1.18 2008/03/14 14:50:24 iamcamiel Exp $
+ *
+ * X-1.18       Camiel Vanderhoeven                             14-MAR-2008
+ *   1. More meaningful exceptions replace throwing (int) 1.
+ *   2. U64 macro replaces X64 macro.
  *
  * X-1.17       Alex                                            20-FEB-2008
  *      GNU compiler support on Windows.
@@ -100,7 +104,7 @@ typedef signed __int16    s16;
 typedef signed __int32    s32;
 typedef signed __int64    s64;
 
-#define X64(a) 0x##a##ui64
+#define U64(a) a##ui64
 #define LL "I64"
 
 #else // defined(_WIN32)
@@ -121,7 +125,7 @@ typedef int16_t			  s16;
 typedef int32_t			  s32;
 typedef int64_t			  s64;
 
-#define X64(a) 0x##a##ll
+#define U64(a) a##ll
 #define LL "ll"
 
 #endif // defined(_WIN32)
@@ -150,18 +154,18 @@ typedef s64 int64_t;
 #define HAVE_U_INT64_T 1
 #define HAVE_INT64_T 1
 
-#define X32(a) 0x##a
-#define X16(a) 0x##a
-#define X8(a) 0x##a
+//#define X32(a) 0x##a
+//#define X16(a) 0x##a
+//#define X8(a) 0x##a
 
 /**
  * Sign-extend an 8-bit value to 64 bits.
  **/
 inline u64 sext_u64_8(u64 a) 
 {
-  return  (((a) & X64(0000000000000080)) ?
-           ((a) | X64(ffffffffffffff00)) :
-           ((a) & X64(00000000000000ff)));
+  return  (((a) & U64(0x0000000000000080)) ?
+           ((a) | U64(0xffffffffffffff00)) :
+           ((a) & U64(0x00000000000000ff)));
 }
 
 /**
@@ -169,9 +173,9 @@ inline u64 sext_u64_8(u64 a)
  **/
 inline u64 sext_u64_12(u64 a)
 {
-  return (((a) & X64(0000000000000800)) ?
-          ((a) | X64(fffffffffffff000)) :
-          ((a) & X64(0000000000000fff)));
+  return (((a) & U64(0x0000000000000800)) ?
+          ((a) | U64(0xfffffffffffff000)) :
+          ((a) & U64(0x0000000000000fff)));
 }
 
 /**
@@ -179,9 +183,9 @@ inline u64 sext_u64_12(u64 a)
  **/
 inline u64 sext_u64_13(u64 a)
 {
-  return (((a) & X64(0000000000001000)) ?
-          ((a) | X64(ffffffffffffe000)) :
-          ((a) & X64(0000000000001fff)));
+  return (((a) & U64(0x0000000000001000)) ?
+          ((a) | U64(0xffffffffffffe000)) :
+          ((a) & U64(0x0000000000001fff)));
 }
 
 /**
@@ -189,9 +193,9 @@ inline u64 sext_u64_13(u64 a)
  **/
 inline u64 sext_u64_16(u64 a)
 {
-  return (((a) & X64(0000000000008000)) ?
-          ((a) | X64(ffffffffffff0000)) :
-          ((a) & X64(000000000000ffff)));
+  return (((a) & U64(0x0000000000008000)) ?
+          ((a) | U64(0xffffffffffff0000)) :
+          ((a) & U64(0x000000000000ffff)));
 }
 
 /**
@@ -199,9 +203,9 @@ inline u64 sext_u64_16(u64 a)
  **/
 inline u64 sext_u64_21(u64 a)
 {
-  return (((a) & X64(0000000000100000)) ? 
-          ((a) | X64(ffffffffffe00000)) : 
-          ((a) & X64(00000000001fffff)));
+  return (((a) & U64(0x0000000000100000)) ? 
+          ((a) | U64(0xffffffffffe00000)) : 
+          ((a) & U64(0x00000000001fffff)));
 }
 
 /**
@@ -209,9 +213,9 @@ inline u64 sext_u64_21(u64 a)
  **/
 inline u64 sext_u64_32(u64 a)
 {
-  return (((a) & X64(0000000080000000)) ?
-          ((a) | X64(ffffffff00000000)) :
-          ((a) & X64(00000000ffffffff)));
+  return (((a) & U64(0x0000000080000000)) ?
+          ((a) | U64(0xffffffff00000000)) :
+          ((a) & U64(0x00000000ffffffff)));
 }
 
 /**
@@ -219,14 +223,14 @@ inline u64 sext_u64_32(u64 a)
  **/
 inline u64 sext_u64_48(u64 a)
 {
-  return (((a) & X64(0000800000000000)) ?
-          ((a) | X64(ffff000000000000)) :
-          ((a) & X64(0000ffffffffffff)));
+  return (((a) & U64(0x0000800000000000)) ?
+          ((a) | U64(0xffff000000000000)) :
+          ((a) & U64(0x0000ffffffffffff)));
 }
 
 inline bool test_bit_64(u64 x, int bit)
 {
-  return (x & (X64(1)<<bit))?true:false;
+  return (x & (U64(0x1)<<bit))?true:false;
 }
 
 /**

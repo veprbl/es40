@@ -27,7 +27,11 @@
  * \file 
  * Contains the definitions for the emulated Typhoon Chipset devices.
  *
- * $Id: System.h,v 1.31 2008/03/13 13:19:20 iamcamiel Exp $
+ * $Id: System.h,v 1.32 2008/03/14 14:50:22 iamcamiel Exp $
+ *
+ * X-1.32       Camiel Vanderhoeven                             14-MAR-2008
+ *   1. More meaningful exceptions replace throwing (int) 1.
+ *   2. U64 macro replaces X64 macro.
  *
  * X-1.31       Camiel Vanderhoeven                             13-MAR-2008
  *      Create init(), start_threads() and stop_threads() functions.
@@ -143,16 +147,16 @@
 #define MAX_COMPONENTS 100
 
 #if defined(PROFILE)
-#define PROFILE_FROM      X64(8000)
-#define PROFILE_TO        X64(1a81c0)
-#define PROFILE_AFTER     X64(200000)
+#define PROFILE_FROM      U64(0x8000)
+#define PROFILE_TO        U64(0x1a81c0)
+#define PROFILE_AFTER     U64(0x200000)
 #define PROFILE_BUCKSIZE  16
 #define PROFILE_LENGTH    (PROFILE_TO - PROFILE_FROM)
 #define PROFILE_INSTS     (PROFILE_LENGTH / 4)
 #define PROFILE_BUCKETS   (PROFILE_INSTS / PROFILE_BUCKSIZE)
 #define PROFILE_YN(a)     ((a >= PROFILE_FROM) && (a < PROFILE_TO) && profile_started)
 #define PROFILE_BUCKET(a) profile_buckets[(a-PROFILE_FROM)/4/PROFILE_BUCKSIZE]
-#define PROFILE_DO(a)     if ((a&(~X64(3)))>=PROFILE_AFTER) profile_started = true; if (PROFILE_YN(a)) { PROFILE_BUCKET(a)++; profiled_insts++; }
+#define PROFILE_DO(a)     if ((a&(~U64(0x3)))>=PROFILE_AFTER) profile_started = true; if (PROFILE_YN(a)) { PROFILE_BUCKET(a)++; profiled_insts++; }
 
 extern u64 profile_buckets[PROFILE_BUCKETS];
 extern u64 profiled_insts;
@@ -214,7 +218,7 @@ public:
   int LoadROM ();
   u64 ReadMem (u64 address, int dsize, CSystemComponent * source);
   void WriteMem (u64 address, int dsize, u64 data, CSystemComponent * source);
-  int Run ();
+  void Run ();
   int SingleStep ();
 
   void init ();
@@ -499,22 +503,22 @@ extern CSystem *theSystem;
 
 /* constants for P-Chip CSR's */
 
-#define PCI_PCTL_HOLE       X64(0000000000000020)       /* <5>     */
+#define PCI_PCTL_HOLE       U64(0x0000000000000020)       /* <5>     */
 #define PCI_PCTL_HOLE_START 0x00080000
 #define PCI_PCTL_HOLE_END   0x000fffff
 
 /* constants for pci-to-phys-address-mapping */
-#define PCI_WSM_MASK        X64(00000000fff00000)       /* <31:20> */
-#define PCI_ADD_MASK        X64(00000000000fffff)       /* <19:0>  */
-#define PCI_TBA_MASK        X64(00000007fff00000)       /* <34:20> */
-#define PCI_PTE_ADD_MASK    X64(00000000000fe000)       /* <19:13> */
+#define PCI_WSM_MASK        U64(0x00000000fff00000)       /* <31:20> */
+#define PCI_ADD_MASK        U64(0x00000000000fffff)       /* <19:0>  */
+#define PCI_TBA_MASK        U64(0x00000007fff00000)       /* <34:20> */
+#define PCI_PTE_ADD_MASK    U64(0x00000000000fe000)       /* <19:13> */
 #define PCI_PTE_ADD_SHIFT   10
-#define PCI_PTE_TBA_MASK    X64(00000007fffffc00)       /* <34:10> */
-#define PCI_PTE_MASK        X64(00000007ffffe000)       /* <34:13> */
+#define PCI_PTE_TBA_MASK    U64(0x00000007fffffc00)       /* <34:10> */
+#define PCI_PTE_MASK        U64(0x00000007ffffe000)       /* <34:13> */
 #define PCI_PTE_SHIFT       12
-#define PCI_PTE_ADD2_MASK   X64(0000000000001fff)       /* <12:0>  */
-#define PCI_PTE_PEER_BIT    X64(0000000090000000)       /* <31,28> */
+#define PCI_PTE_ADD2_MASK   U64(0x0000000000001fff)       /* <12:0>  */
+#define PCI_PTE_PEER_BIT    U64(0x0000000090000000)       /* <31,28> */
 
-#define PHYS_PIO_ACCESS     X64(0000080000000000)       /* <43>    */
+#define PHYS_PIO_ACCESS     U64(0x0000080000000000)       /* <43>    */
 
 #endif // !defined(INCLUDED_SYSTEM_H)

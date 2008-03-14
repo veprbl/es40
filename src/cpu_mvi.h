@@ -1,7 +1,7 @@
 /* ES40 emulator.
- * Copyright (C) 2007 by Camiel Vanderhoeven
+ * Copyright (C) 2007-2008 by the ES40 Emulator Project
  *
- * Website: www.camicom.com
+ * Website: http://sourceforge.net/projects/es40
  * E-mail : camiel@camicom.com
  * 
  * This program is free software; you can redistribute it and/or
@@ -26,6 +26,12 @@
 /**
  * \file 
  * Contains code macros for the processor MVI (multimedia) instructions.
+ *
+ * $Id: cpu_mvi.h,v 1.4 2008/03/14 14:50:24 iamcamiel Exp $
+ *
+ * X-1.4        Camiel Vanderhoeven                             14-MAR-2008
+ *   1. More meaningful exceptions replace throwing (int) 1.
+ *   2. U64 macro replaces X64 macro.
  *
  * X-1.3        Camiel Vanderhoeven                             11-APR-2007
  *      Moved all data that should be saved to a state file to a structure
@@ -149,25 +155,25 @@
 
 #define DO_PKLB							\
  	    temp_64_2 = V_2;					\
-	    state.r[REG_3] =  (temp_64_2 & X64(00000000000000ff))	\
-	      | ((temp_64_2 & X64(000000ff00000000)) >> 24);
+	    state.r[REG_3] =  (temp_64_2 & U64(0x00000000000000ff))	\
+	      | ((temp_64_2 & U64(0x000000ff00000000)) >> 24);
 
 #define DO_PKWB							\
  	    temp_64_2 = V_2;					\
-	    state.r[REG_3] =  (temp_64_2 & X64(00000000000000ff))	\
-	      | ((temp_64_2 & X64(0000000000ff0000)) >> 8)	\
-	      | ((temp_64_2 & X64(000000ff00000000)) >> 16)	\
-	      | ((temp_64_2 & X64(00ff000000000000)) >> 24);
+	    state.r[REG_3] =  (temp_64_2 & U64(0x00000000000000ff))	\
+	      | ((temp_64_2 & U64(0x0000000000ff0000)) >> 8)	\
+	      | ((temp_64_2 & U64(0x000000ff00000000)) >> 16)	\
+	      | ((temp_64_2 & U64(0x00ff000000000000)) >> 24);
 
 #define DO_UNPKBL					\
 	temp_64_2 = V_2;				\
-	    state.r[REG_3] =  (temp_64_2 & X64(000000ff))	\
-	      | ((temp_64_2 & X64(0000ff00)) << 24);
+	    state.r[REG_3] =  (temp_64_2 & U64(0x000000ff))	\
+	      | ((temp_64_2 & U64(0x0000ff00)) << 24);
 
 #define DO_UNPKBW					\
 	temp_64_2 = V_2;				\
-	    state.r[REG_3] =  (temp_64_2 & X64(000000ff))	\
-	      | ((temp_64_2 & X64(0000ff00)) << 8)	\
-	      | ((temp_64_2 & X64(00ff0000)) << 16)	\
-	      | ((temp_64_2 & X64(ff000000)) << 24);
+	    state.r[REG_3] =  (temp_64_2 & U64(0x000000ff))	\
+	      | ((temp_64_2 & U64(0x0000ff00)) << 8)	\
+	      | ((temp_64_2 & U64(0x00ff0000)) << 16)	\
+	      | ((temp_64_2 & U64(0xff000000)) << 24);
 

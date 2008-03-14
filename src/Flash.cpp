@@ -1,5 +1,5 @@
 /* ES40 emulator.
- * Copyright (C) 2007 by the ES40 Emulator Project
+ * Copyright (C) 2007-2008 by the ES40 Emulator Project
  *
  * Website: http://sourceforge.net/projects/es40
  * E-mail : camiel@camicom.com
@@ -26,6 +26,12 @@
 /** 
  * \file
  * Contains the code for the emulated Flash ROM devices.
+ *
+ * $Id: Flash.cpp,v 1.16 2008/03/14 14:50:21 iamcamiel Exp $
+ *
+ * X-1.16       Camiel Vanderhoeven                             14-MAR-2008
+ *   1. More meaningful exceptions replace throwing (int) 1.
+ *   2. U64 macro replaces X64 macro.
  *
  * X-1.15       Camiel Vanderhoeven                             30-DEC-2007
  *      Print file id on initialization.
@@ -100,13 +106,13 @@ extern CAlphaCPU * cpu[4];
 CFlash::CFlash(CConfigurator * cfg, CSystem * c) : CSystemComponent(cfg,c)
 {
   if (theSROM)
-    FAILURE("More than one SROM!!");
+    FAILURE(Configuration,"More than one Flash");
   theSROM = this;
-  c->RegisterMemory(this, 0, X64(0000080100000000),0x8000000); // 2MB
+  c->RegisterMemory(this, 0, U64(0x0000080100000000),0x8000000); // 2MB
   memset(state.Flash,0xff,2*1024*1024);
   state.mode = MODE_READ;
 
-  printf("%s: $Id: Flash.cpp,v 1.15 2007/12/30 15:10:22 iamcamiel Exp $\n",devid_string);
+  printf("%s: $Id: Flash.cpp,v 1.16 2008/03/14 14:50:21 iamcamiel Exp $\n",devid_string);
 }
 
 /**

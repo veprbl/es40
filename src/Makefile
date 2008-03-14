@@ -27,7 +27,10 @@
 #
 # Makefile for GNU Linux. (And possibly many UNIX'es).
 #
-# $Id: Makefile,v 1.34 2008/03/11 09:10:40 iamcamiel Exp $
+# $Id: Makefile,v 1.35 2008/03/14 14:50:21 iamcamiel Exp $
+#
+# X-1.30       Camiel Vanderhoeven              14-MAR-2008
+#      Added Exception.h.
 #
 # X-1.29       Camiel Vanderhoeven              04-MAR-2008
 #      Merged Brian wheeler's New IDE code into the standard 
@@ -221,6 +224,7 @@ OBJS = AliM1543C.o \
        DPR.o \
        es40_debug.o \
        Ethernet.o \
+       Exception.o \
        Flash.o \
        FloppyController.o \
        Keyboard.o \

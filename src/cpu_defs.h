@@ -27,7 +27,11 @@
  * \file 
  * Contains some macro definitions and some inline functions for the Alpha CPU.
  *
- * $Id: cpu_defs.h,v 1.11 2008/03/05 14:41:46 iamcamiel Exp $
+ * $Id: cpu_defs.h,v 1.12 2008/03/14 14:50:24 iamcamiel Exp $
+ *
+ * X-1.12       Camiel Vanderhoeven                             14-MAR-2008
+ *   1. More meaningful exceptions replace throwing (int) 1.
+ *   2. U64 macro replaces X64 macro.
  *
  * X-1.11       Camiel Vanderhoeven                             05-MAR-2008
  *      Multi-threading version.
@@ -163,10 +167,10 @@
 #define G_BIAS		0x400
 #define G_EXP		(G_M_EXP << G_V_EXP)
 #define G_GETEXP(x)	(((x) >> G_V_EXP) & G_M_EXP)
-#define SWAP_VAXG(x)	((((x) & X64(000000000000FFFF)) << 48) | \
-			 (((x) & X64(00000000FFFF0000)) << 16) | \
-			 (((x) >> 16) & X64(00000000FFFF0000)) | \
-			 (((x) >> 48) & X64(000000000000FFFF)))
+#define SWAP_VAXG(x)	((((x) & U64(0x000000000000FFFF)) << 48) | \
+			 (((x) & U64(0x00000000FFFF0000)) << 16) | \
+			 (((x) >> 16) & U64(0x00000000FFFF0000)) | \
+			 (((x) >> 48) & U64(0x000000000000FFFF)))
 
 /* Floating memory format (IEEE S) */
 
@@ -183,41 +187,41 @@
 /* Floating point memory format (IEEE T) */
 
 #define T_V_SIGN	63
-#define T_SIGN		X64(8000000000000000)
+#define T_SIGN		U64(0x8000000000000000)
 #define T_V_EXP		52
 #define T_M_EXP		0x7FF
 #define T_BIAS		0x3FF
 #define T_NAN		0x7FF
-#define T_EXP		X64(7FF0000000000000)
-#define T_FRAC		X64(000FFFFFFFFFFFFF)
+#define T_EXP		U64(0x7FF0000000000000)
+#define T_FRAC		U64(0x000FFFFFFFFFFFFF)
 #define T_GETEXP(x)	(((u32) ((x) >> T_V_EXP)) & T_M_EXP)
 
 /* Floating point register format (all except VAX D) */
 
 #define FPR_V_SIGN	63
-#define FPR_SIGN	X64(8000000000000000)
+#define FPR_SIGN	U64(0x8000000000000000)
 #define FPR_V_EXP	52
 #define FPR_M_EXP	0x7FF
 #define FPR_NAN		0x7FF
-#define FPR_EXP		X64(7FF0000000000000)
-#define FPR_HB		X64(0010000000000000)
-#define FPR_FRAC	X64(000FFFFFFFFFFFFF)
+#define FPR_EXP		U64(0x7FF0000000000000)
+#define FPR_HB		U64(0x0010000000000000)
+#define FPR_FRAC	U64(0x000FFFFFFFFFFFFF)
 #define FPR_GUARD	(UF_V_NM - FPR_V_EXP)
 #define FPR_GETSIGN(x)	(((u32) ((x) >> FPR_V_SIGN)) & 1)
 #define FPR_GETEXP(x)	(((u32) ((x) >> FPR_V_EXP)) & FPR_M_EXP)
 #define FPR_GETFRAC(x)	((x) & FPR_FRAC)
 
-#define FP_TRUE		X64(4000000000000000)		/* 0.5/2.0 in reg */
+#define FP_TRUE		U64(0x4000000000000000)		/* 0.5/2.0 in reg */
 
 /* Floating point register format (VAX D) */
 
 #define FDR_V_SIGN	63
-#define FDR_SIGN	X64(8000000000000000)
+#define FDR_SIGN	U64(0x8000000000000000)
 #define FDR_V_EXP	55
 #define FDR_M_EXP	0xFF
-#define FDR_EXP		X64(7F80000000000000)
-#define FDR_HB		X64(0080000000000000)
-#define FDR_FRAC	X64(007FFFFFFFFFFFFF)
+#define FDR_EXP		U64(0x7F80000000000000)
+#define FDR_HB		U64(0x0080000000000000)
+#define FDR_FRAC	U64(0x007FFFFFFFFFFFFF)
 #define FDR_GUARD	(UF_V_NM - FDR_V_EXP)
 #define FDR_GETSIGN(x)	(((u32) ((x) >> FDR_V_SIGN)) & 1)
 #define FDR_GETEXP(x)	(((u32) ((x) >> FDR_V_EXP)) & FDR_M_EXP)
@@ -235,41 +239,41 @@ struct ufp {
 typedef struct ufp UFP;
 
 #define UF_V_NM		63
-#define UF_NM		X64(8000000000000000)		/* normalized */
+#define UF_NM		U64(0x8000000000000000)		/* normalized */
 
 /* Bit patterns */
 
-#define X64_BYTE	X64(ff)
-#define X64_WORD	X64(ffff)
-#define X64_LONG	X64(ffffffff)
-#define X64_QUAD	X64(ffffffffffffffff)
+#define X64_BYTE	U64(0xff)
+#define X64_WORD	U64(0xffff)
+#define X64_LONG	U64(0xffffffff)
+#define X64_QUAD	U64(0xffffffffffffffff)
 
-#define B_SIGN		X64(80)
-#define W_SIGN		X64(8000)
-#define L_SIGN		X64(80000000)
-#define Q_SIGN		X64(8000000000000000)
+#define B_SIGN		U64(0x80)
+#define W_SIGN		U64(0x8000)
+#define L_SIGN		U64(0x80000000)
+#define Q_SIGN		U64(0x8000000000000000)
 #define Q_GETSIGN(x)	(((x) >> 63) & 1)
 
 /* IEEE control register (left 32b only) */
 
-#define FPCR_SUM	X64(8000000000000000)			/* summary */
-#define FPCR_INED	X64(4000000000000000)			/* inexact disable */
-#define FPCR_UNFD	X64(2000000000000000)			/* underflow disable */
-#define FPCR_UNDZ	X64(1000000000000000)			/* underflow to 0 */
+#define FPCR_SUM	U64(0x8000000000000000)			/* summary */
+#define FPCR_INED	U64(0x4000000000000000)			/* inexact disable */
+#define FPCR_UNFD	U64(0x2000000000000000)			/* underflow disable */
+#define FPCR_UNDZ	U64(0x1000000000000000)			/* underflow to 0 */
 #define FPCR_V_RMOD	58              				/* rounding mode */
 #define FPCR_M_RMOD	0x3
-#define FPCR_IOV	X64(0200000000000000)			/* integer overflow */
-#define FPCR_INE	X64(0100000000000000)			/* inexact */
-#define FPCR_UNF	X64(0080000000000000)			/* underflow */
-#define FPCR_OVF	X64(0040000000000000)			/* overflow */
-#define FPCR_DZE	X64(0020000000000000)			/* div by zero */
-#define FPCR_INV	X64(0010000000000000)			/* invalid operation */
-#define FPCR_OVFD	X64(0008000000000000)			/* overflow disable */
-#define FPCR_DZED	X64(0004000000000000)			/* div by zero disable */
-#define FPCR_INVD	X64(0002000000000000)			/* invalid op disable */
-#define FPCR_DNZ	X64(0001000000000000)			/* denormal to zero */
-#define FPCR_DNOD	X64(0000800000000000)			/* denormal disable */
-#define FPCR_RAZ	X64(00007FFF00000000)			/* zero */
+#define FPCR_IOV	U64(0x0200000000000000)			/* integer overflow */
+#define FPCR_INE	U64(0x0100000000000000)			/* inexact */
+#define FPCR_UNF	U64(0x0080000000000000)			/* underflow */
+#define FPCR_OVF	U64(0x0040000000000000)			/* overflow */
+#define FPCR_DZE	U64(0x0020000000000000)			/* div by zero */
+#define FPCR_INV	U64(0x0010000000000000)			/* invalid operation */
+#define FPCR_OVFD	U64(0x0008000000000000)			/* overflow disable */
+#define FPCR_DZED	U64(0x0004000000000000)			/* div by zero disable */
+#define FPCR_INVD	U64(0x0002000000000000)			/* invalid op disable */
+#define FPCR_DNZ	U64(0x0001000000000000)			/* denormal to zero */
+#define FPCR_DNOD	U64(0x0000800000000000)			/* denormal disable */
+#define FPCR_RAZ	U64(0x00007FFF00000000)			/* zero */
 #define FPCR_ERR	(FPCR_IOV|FPCR_INE|FPCR_UNF|FPCR_OVF|FPCR_DZE|FPCR_INV)
 #define FPCR_GETFRND(x)	(((x) >> FPCR_V_RMOD) & FPCR_M_RMOD)
 
@@ -388,20 +392,20 @@ return zsig;
 }
 
 // INTERRUPT VECTORS
-#define DTBM_DOUBLE_3 X64(100)
-#define DTBM_DOUBLE_4 X64(180)
-#define FEN           X64(200)
-#define UNALIGN       X64(280)
-#define DTBM_SINGLE   X64(300)
-#define DFAULT        X64(380)
-#define OPCDEC        X64(400)
-#define IACV          X64(480)
-#define MCHK          X64(500)
-#define ITB_MISS      X64(580)
-#define ARITH         X64(600)
-#define INTERRUPT     X64(680)
-#define MT_FPCR       X64(700)
-#define RESET         X64(780)
+#define DTBM_DOUBLE_3 U64(0x100)
+#define DTBM_DOUBLE_4 U64(0x180)
+#define FEN           U64(0x200)
+#define UNALIGN       U64(0x280)
+#define DTBM_SINGLE   U64(0x300)
+#define DFAULT        U64(0x380)
+#define OPCDEC        U64(0x400)
+#define IACV          U64(0x480)
+#define MCHK          U64(0x500)
+#define ITB_MISS      U64(0x580)
+#define ARITH         U64(0x600)
+#define INTERRUPT     U64(0x680)
+#define MT_FPCR       U64(0x700)
+#define RESET         U64(0x780)
 
 /** Chip ID (EV68CB pass 4) [HRM p 5-16]; actual value derived from SRM-code */
 #define CPU_CHIP_ID	0x21
@@ -412,7 +416,7 @@ return zsig;
 /** Implementation version [HRM p 2-38; ARM p D-5] */
 #define CPU_IMPLVER	2
 /** Architecture mask [HRM p 2-38; ARM p D-4]; FIX not implemented */
-#define CPU_AMASK	X64(1305)
+#define CPU_AMASK	U64(0x1305)
 
 #define DISP_12 (sext_u64_12(ins))
 #define DISP_13 (sext_u64_13(ins))
@@ -424,7 +428,7 @@ return zsig;
   {                                                       \
     u64 a1 = (addr);                                      \
     u64 a2 = (addr) + (align);                            \
-    if ((a1 ^ a2) & ~X64(fff)) /*page boundary crossed*/  \
+    if ((a1 ^ a2) & ~U64(0xfff)) /*page boundary crossed*/  \
     {                                                     \
       state.fault_va = addr;                              \
 	  state.exc_sum = ((REG_1 & 0x1f) << 8);  			  \
@@ -528,15 +532,15 @@ return zsig;
 
 /* Traps - corresponds to arithmetic trap summary register */
 
-#define TRAP_SWC	X64(01)				/* software completion */
-#define TRAP_INV	X64(02)				/* invalid operand */
-#define TRAP_DZE	X64(04)				/* divide by zero */
-#define TRAP_OVF	X64(08)				/* overflow */
-#define TRAP_UNF	X64(10)				/* underflow */
-#define TRAP_INE	X64(20)				/* inexact */
-#define TRAP_IOV	X64(40)				/* integer overflow */
+#define TRAP_SWC	U64(0x01)				/* software completion */
+#define TRAP_INV	U64(0x02)				/* invalid operand */
+#define TRAP_DZE	U64(0x04)				/* divide by zero */
+#define TRAP_OVF	U64(0x08)				/* overflow */
+#define TRAP_UNF	U64(0x10)				/* underflow */
+#define TRAP_INE	U64(0x20)				/* inexact */
+#define TRAP_IOV	U64(0x40)				/* integer overflow */
 
-#define TRAP_INT    X64(80)             /* exception register is integer reg */
+#define TRAP_INT    U64(0x80)             /* exception register is integer reg */
 
 #define ARITH_TRAP(flags, reg)                                      \
   {                                                                 \
@@ -551,19 +555,19 @@ return zsig;
     ARITH_TRAP(TRAP_INT | flags, reg)                               \
   }
 
-#define SPE_0_MASK    X64(0000ffffc0000000) /* <47:30> */
-#define SPE_0_MATCH   X64(0000ffff80000000) /* <47:31> */
-#define SPE_0_MAP     X64(000000003fffffff) /* <29:0>  */
+#define SPE_0_MASK    U64(0x0000ffffc0000000) /* <47:30> */
+#define SPE_0_MATCH   U64(0x0000ffff80000000) /* <47:31> */
+#define SPE_0_MAP     U64(0x000000003fffffff) /* <29:0>  */
 
-#define SPE_1_MASK    X64(0000fe0000000000) /* <47:41> */
-#define SPE_1_MATCH   X64(0000fc0000000000) /* <47:42> */
-#define SPE_1_MAP     X64(000001ffffffffff) /* <40:0>  */
-#define SPE_1_TEST    X64(0000010000000000) /* <40>    */
-#define SPE_1_ADD     X64(00000e0000000000) /* <43:41> */
+#define SPE_1_MASK    U64(0x0000fe0000000000) /* <47:41> */
+#define SPE_1_MATCH   U64(0x0000fc0000000000) /* <47:42> */
+#define SPE_1_MAP     U64(0x000001ffffffffff) /* <40:0>  */
+#define SPE_1_TEST    U64(0x0000010000000000) /* <40>    */
+#define SPE_1_ADD     U64(0x00000e0000000000) /* <43:41> */
 
-#define SPE_2_MASK    X64(0000c00000000000) /* <47:46> */
-#define SPE_2_MATCH   X64(0000800000000000) /* <47>    */
-#define SPE_2_MAP     X64(00000fffffffffff) /* <43:0>  */
+#define SPE_2_MASK    U64(0x0000c00000000000) /* <47:46> */
+#define SPE_2_MATCH   U64(0x0000800000000000) /* <47>    */
+#define SPE_2_MAP     U64(0x00000fffffffffff) /* <43:0>  */
 
 
 #endif

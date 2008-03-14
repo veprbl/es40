@@ -27,7 +27,11 @@
  * \file
  * Contains the code for the emulated Cirrus CL GD-5434 Video Card device.
  *
- * $Id: Cirrus.cpp,v 1.16 2008/03/13 13:19:18 iamcamiel Exp $
+ * $Id: Cirrus.cpp,v 1.17 2008/03/14 14:50:20 iamcamiel Exp $
+ *
+ * X-1.17       Camiel Vanderhoeven                             14-MAR-2008
+ *   1. More meaningful exceptions replace throwing (int) 1.
+ *   2. U64 macro replaces X64 macro.
  *
  * X-1.16       Camiel Vanderhoeven                             13-MAR-2008
  *      Create init(), start_threads() and stop_threads() functions.
@@ -141,9 +145,9 @@ void CCirrus::run ()
       Poco::Thread::sleep (100);        // 10 fps
     }
   }
-  catch (...)
+  catch (Poco::Exception & e)
   {
-    printf ("cirrus: exception in thread.\n");
+    printf ("Exception in Cirrus thread: %s.\n",e.displayText().c_str());
     // Let the thread die...
   }
 }
@@ -153,74 +157,44 @@ static u8 option_rom[65536];
 
 
 static u32 cirrus_cfg_data[64] = {
-  /*00 */ 0x00a81013,
-  // CFID: vendor + device
-  /*04 */ 0x011f0000,
-  // CFCS: command + status
-  /*08 */ 0x03000002,
-  // CFRV: class + revision
-  /*0c */ 0x00000000,
-  // CFLT: latency timer + cache line size
-  /*10 */ 0xf8000000,
-  // BAR0: FB
-  /*14 */ 0x00000000,
-  // BAR1:
-  /*18 */ 0x00000000,
-  // BAR2: 
-  /*1c */ 0x00000000,
-  // BAR3: 
-  /*20 */ 0x00000000,
-  // BAR4: 
-  /*24 */ 0x00000000,
-  // BAR5: 
-  /*28 */ 0x00000000,
-  // CCIC: CardBus
-  /*2c */ 0x00000000,
-  // CSID: subsystem + vendor
-  /*30 */ 0x00000000,
-  // BAR6: expansion rom base
-  /*34 */ 0x00000000,
-  // CCAP: capabilities pointer
-/*38*/ 0x00000000,
-  /*3c */ 0x281401ff,
-  // CFIT: interrupt configuration
+  /*00*/ 0x00a81013,  // CFID: vendor + device
+  /*04*/ 0x011f0000,  // CFCS: command + status
+  /*08*/ 0x03000002,  // CFRV: class + revision
+  /*0c*/ 0x00000000,  // CFLT: latency timer + cache line size
+  /*10*/ 0xf8000000,  // BAR0: FB
+  /*14*/ 0x00000000,  // BAR1:
+  /*18*/ 0x00000000,  // BAR2: 
+  /*1c*/ 0x00000000,  // BAR3: 
+  /*20*/ 0x00000000,  // BAR4: 
+  /*24*/ 0x00000000,  // BAR5: 
+  /*28*/ 0x00000000,  // CCIC: CardBus
+  /*2c*/ 0x00000000,  // CSID: subsystem + vendor
+  /*30*/ 0x00000000,  // BAR6: expansion rom base
+  /*34*/ 0x00000000,  // CCAP: capabilities pointer
+  /*38*/ 0x00000000,
+  /*3c*/ 0x281401ff,  // CFIT: interrupt configuration
   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
 };
 
 static u32 cirrus_cfg_mask[64] = {
-  /*00 */ 0x00000000,
-  // CFID: vendor + device
-  /*04 */ 0x0000ffff,
-  // CFCS: command + status
-  /*08 */ 0x00000000,
-  // CFRV: class + revision
-  /*0c */ 0x0000ffff,
-  // CFLT: latency timer + cache line size
-  /*10 */ 0xfc000000,
-  // BAR0: FB
-  /*14 */ 0x00000000,
-  // BAR1:     
-  /*18 */ 0x00000000,
-  // BAR2: 
-  /*1c */ 0x00000000,
-  // BAR3: 
-  /*20 */ 0x00000000,
-  // BAR4: 
-  /*24 */ 0x00000000,
-  // BAR5: 
-  /*28 */ 0x00000000,
-  // CCIC: CardBus
-  /*2c */ 0x00000000,
-  // CSID: subsystem + vendor
-  /*30 */ 0x00000000,
-  // BAR6: expansion rom base
-  /*34 */ 0x00000000,
-  // CCAP: capabilities pointer
-/*38*/ 0x00000000,
-  /*3c */ 0x000000ff,
-  // CFIT: interrupt configuration
+  /*00*/ 0x00000000,  // CFID: vendor + device
+  /*04*/ 0x0000ffff,  // CFCS: command + status
+  /*08*/ 0x00000000,  // CFRV: class + revision
+  /*0c*/ 0x0000ffff,  // CFLT: latency timer + cache line size
+  /*10*/ 0xfc000000,  // BAR0: FB
+  /*14*/ 0x00000000,  // BAR1:     
+  /*18*/ 0x00000000,  // BAR2: 
+  /*1c*/ 0x00000000,  // BAR3: 
+  /*20*/ 0x00000000,  // BAR4: 
+  /*24*/ 0x00000000,  // BAR5: 
+  /*28*/ 0x00000000,  // CCIC: CardBus
+  /*2c*/ 0x00000000,  // CSID: subsystem + vendor
+  /*30*/ 0x00000000,  // BAR6: expansion rom base
+  /*34*/ 0x00000000,  // CCAP: capabilities pointer
+  /*38*/ 0x00000000,
+  /*3c*/ 0x000000ff,  // CFIT: interrupt configuration
   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
@@ -266,15 +240,10 @@ void CCirrus::init ()
   // use a VGA rom from bochs
   FILE *rom = fopen (myCfg->get_text_value ("rom", "vgabios.bin"), "rb");
   if (!rom)
-  {
-    printf ("cirrus: Cannot load rom '%s'\n",
-            myCfg->get_text_value ("rom", "vgabios.bin"));
-    throw ((int) 1);
-  }
+    FAILURE_1(FileNotFound,"cirrus rom file %s not found.",myCfg->get_text_value ("rom", "vgabios.bin"));
 
   rom_max = (unsigned) fread (option_rom, 1, 65536, rom);
   fclose (rom);
-  printf ("cirrus: ROM is %d bytes.\n", rom_max);
 
   /* Option ROM address space: C0000  */
   add_legacy_mem (5, 0xc0000, rom_max);
@@ -383,7 +352,7 @@ void CCirrus::init ()
   state.vga_mem_updated = 1;
 
   myThread = 0;
-  printf ("%s: $Id: Cirrus.cpp,v 1.16 2008/03/13 13:19:18 iamcamiel Exp $\n",
+  printf ("%s: $Id: Cirrus.cpp,v 1.17 2008/03/14 14:50:20 iamcamiel Exp $\n",
           devid_string);
 }
 
@@ -501,7 +470,7 @@ void
 void CCirrus::check_state ()
 {
   if (myThread && !myThread->isRunning ())
-    FAILURE ("cirrus: thread has died");
+    FAILURE (Thread,"Cirrus thread has died");
 }
 
 static u32 cirrus_magic1 = 0xC1AA4500;
@@ -694,7 +663,7 @@ u32 CCirrus::io_read (u32 address, int dsize)
 {
   u32 data = 0;
   if (dsize != 8)
-    FAILURE ("Unsupported dsize!\n");
+    FAILURE (InvalidArgument,"Unsupported dsize!\n");
 
   switch (address)
   {
@@ -742,8 +711,7 @@ u32 CCirrus::io_read (u32 address, int dsize)
     break;
 
   default:
-    printf ("cirrus: Unhandled port %x read\n", address);
-    throw ((int) 1);
+    FAILURE_1 (NotImplemented,"Unhandled port %x read", address);
   }
 
   //printf("cirrus: io read: %" LL "x, %d, %" LL "x   \n", address+VGA_BASE, dsize, data);
@@ -767,7 +735,7 @@ void CCirrus::io_write (u32 address, int dsize, u32 data)
     io_write_b (address + 1, (u8) (data >> 8));
     break;
   default:
-    FAILURE ("Weird IO size!");
+    FAILURE (InvalidArgument,"Weird IO size!");
   }
 }
 
@@ -816,8 +784,7 @@ void CCirrus::io_write_b (u32 address, u8 data)
     break;
 
   default:
-    printf ("cirrus: Unhandled port %x write\n", address);
-    throw ((int) 1);
+    FAILURE_1 (NotImplemented,"Unhandled port %x write", address);
   }
 }
 
@@ -965,9 +932,8 @@ void CCirrus::write_b_3c0 (u8 value)
 #endif
       break;
     default:
-      printf ("io write 3c0: data-write mode %02x h  \n",
+      FAILURE_1 (NotImplemented,"io write 3c0: data-write mode %02x h",
               (unsigned) state.attribute_ctrl.address);
-      throw ((int) 1);
     }
   }
   state.attribute_ctrl.flip_flop = !state.attribute_ctrl.flip_flop;
@@ -1077,9 +1043,8 @@ void CCirrus::write_b_3c5 (u8 value)
 #endif
     break;
   default:
-    printf ("io write 3c5: index %u unhandled   \n",
+    FAILURE_1 (NotImplemented,"io write 3c5: index %u unhandled",
             (unsigned) state.sequencer.index);
-    throw ((int) 1);
   }
 }
 
@@ -1241,9 +1206,8 @@ void CCirrus::write_b_3cf (u8 value)
     break;
   default:
     /* ??? */
-    printf ("io write: 3cf: index %u unhandled   \n",
+    FAILURE_1 (NotImplemented,"io write: 3cf: index %u unhandled",
             (unsigned) state.graphics_ctrl.index);
-    throw ((int) 1);
   }
 }
 
@@ -1366,8 +1330,7 @@ u8 CCirrus::read_b_3c0 ()
   }
   else
   {
-    printf ("io read: 0x3c0: flip_flop != 0   \n");
-    throw ((int) 1);
+    FAILURE (NotImplemented,"io read: 0x3c0: flip_flop != 0");
   }
 }
 
@@ -1419,9 +1382,8 @@ u8 CCirrus::read_b_3c1 ()
     return (state.attribute_ctrl.color_select);
     break;
   default:
-    printf ("io read: 0x3c1: unknown register 0x%02x   \n",
+    FAILURE_1 (NotImplemented,"io read: 0x3c1: unknown register 0x%02x",
             (unsigned) state.attribute_ctrl.address);
-    throw ((int) 1);
   }
 }
 
@@ -1469,10 +1431,8 @@ u8 CCirrus::read_b_3c5 ()
       (state.sequencer.odd_even << 2) | (state.sequencer.chain_four << 3);
     break;
   default:
-    BX_DEBUG (("io read 0x3c5: index %u unhandled",
-               (unsigned) state.sequencer.index));
-    throw ((int) 1);
-    return 0;
+    FAILURE_1 (NotImplemented,"io read 0x3c5: index %u unhandled",
+               (unsigned) state.sequencer.index);
   }
 }
 
@@ -1577,11 +1537,8 @@ u8 CCirrus::read_b_3cf ()
     return (state.graphics_ctrl.bitmask);
     break;
   default:
-    /* ??? */
-    BX_DEBUG (("io read: 0x3cf: index %u unhandled",
-               (unsigned) state.graphics_ctrl.index));
-    throw ((int) 1);
-    return (0);
+    FAILURE_1 (NotImplemented,"io read: 0x3cf: index %u unhandled",
+               (unsigned) state.graphics_ctrl.index);
   }
 
 }
@@ -1595,10 +1552,8 @@ u8 CCirrus::read_b_3d5 ()
 {
   if (state.CRTC.address > 0x18)
   {
-    printf ("io read: invalid CRTC register 0x%02x   \n",
+    FAILURE_1 (NotImplemented,"io read: invalid CRTC register 0x%02x   \n",
             (unsigned) state.CRTC.address);
-    throw ((int) 1);
-    return 0;
   }
   return state.CRTC.reg[state.CRTC.address];
 
@@ -1938,8 +1893,7 @@ void CCirrus::update (void)
 
         if (state.misc_output.select_high_bank != 1)
         {
-          printf ("update: select_high_bank != 1   \n");
-          throw ((int) 1);
+          FAILURE (NotImplemented,"update: select_high_bank != 1   \n");
         }
 
         for (yc = 0, yti = 0; yc < iHeight; yc += Y_TILESIZE, yti++)
@@ -2004,9 +1958,8 @@ void CCirrus::update (void)
       break;                    // case 2
 
     default:
-      printf ("update: shift_reg == %u   \n", (unsigned)
+      FAILURE_1 (NotImplemented,"update: shift_reg == %u   \n", (unsigned)
               state.graphics_ctrl.shift_reg);
-      throw ((int) 1);
     }
 
     state.vga_mem_updated = 0;
@@ -2335,13 +2288,8 @@ void CCirrus::vga_mem_write (u32 addr, u8 value)
       /* CGA 320x200x4 / 640x200x2 end */
     }
     else if (state.graphics_ctrl.memory_mapping != 1)
-    {
-
-      printf ("mem_write: graphics: mapping = %u  \n",
+      FAILURE_1 (NotImplemented,"mem_write: graphics: mapping = %u  \n",
               (unsigned) state.graphics_ctrl.memory_mapping);
-      throw ((int) 1);
-      return;
-    }
 
     if (state.sequencer.chain_four)
     {
@@ -2480,9 +2428,8 @@ void CCirrus::vga_mem_write (u32 addr, u8 value)
               : (value ^ state.graphics_ctrl.latch[3]) & bitmask);
         break;
       default:
-        printf ("vga_mem_write: write mode 0: op = %u",
+        FAILURE_1(NotImplemented,"vga_mem_write: write mode 0: op = %u",
                 (unsigned) state.graphics_ctrl.raster_op);
-        throw ((int) 1);
       }
     }
     break;
@@ -2609,9 +2556,8 @@ void CCirrus::vga_mem_write (u32 addr, u8 value)
     break;
 
   default:
-    printf ("vga_mem_write: write mode %u ?",
+    FAILURE_1 (NotImplemented,"vga_mem_write: write mode %u ?",
             (unsigned) state.graphics_ctrl.write_mode);
-    throw ((int) 1);
   }
 
   if (state.sequencer.map_mask & 0x0f)

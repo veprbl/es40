@@ -28,7 +28,11 @@
  * Contains code macros for the processor control instructions.
  * Based on ARM chapter 4.3
  *
- * $Id: cpu_control.h,v 1.5 2008/01/30 17:22:45 iamcamiel Exp $
+ * $Id: cpu_control.h,v 1.6 2008/03/14 14:50:22 iamcamiel Exp $
+ *
+ * X-1.6        Camiel Vanderhoeven                             14-MAR-2008
+ *   1. More meaningful exceptions replace throwing (int) 1.
+ *   2. U64 macro replaces X64 macro.
  *
  * X-1.5        Camiel Vanderhoeven                             30-JAN-2008
  *      Always use set_pc or add_pc to change the program counter.
@@ -84,7 +88,7 @@
 
 #define DO_BR					                                        \
   {                                                                     \
-    state.r[REG_1] = state.pc & ~X64(3);		                        \
+    state.r[REG_1] = state.pc & ~U64(0x3);		                        \
     add_pc(DISP_21 * 4);                                                \
   }
 
@@ -92,8 +96,8 @@
 
 #define DO_JMP					                                        \
   {                                                                     \
-    temp_64 = state.r[REG_2] & ~X64(3);		                            \
-    state.r[REG_1] = state.pc & ~X64(3);		                        \
+    temp_64 = state.r[REG_2] & ~U64(0x3);		                            \
+    state.r[REG_1] = state.pc & ~U64(0x3);		                        \
     set_pc(temp_64 | (state.pc & 3));                                   \
   }
 

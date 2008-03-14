@@ -27,7 +27,11 @@
  * \file 
  * Contains IEEE floating point code for the Alpha CPU.
  *
- * $Id: AlphaCPU_ieeefloat.cpp,v 1.6 2008/01/29 09:38:13 iamcamiel Exp $
+ * $Id: AlphaCPU_ieeefloat.cpp,v 1.7 2008/03/14 14:50:20 iamcamiel Exp $
+ *
+ * X-1.7        Camiel Vanderhoeven                             14-MAR-2008
+ *   1. More meaningful exceptions replace throwing (int) 1.
+ *   2. U64 macro replaces X64 macro.
  *
  * X-1.6        Camiel Vanderhoeven                             29-JAN-2008
  *      Comments.
@@ -135,23 +139,23 @@
 
 /* Register format constants */
 
-#define QNAN		X64(0008000000000000)		/* quiet NaN flag */
-#define CQNAN		X64(FFF8000000000000)		/* canonical quiet NaN */
-#define FPZERO		X64(0000000000000000)		/* plus zero (fp) */
-#define FMZERO		X64(8000000000000000)		/* minus zero (fp) */
-#define FPINF		X64(7FF0000000000000)		/* plus infinity (fp) */
-#define FMINF		X64(FFF0000000000000)		/* minus infinity (fp) */
-#define FPMAX		X64(7FFFFFFFFFFFFFFF)		/* plus MAX (fp) */
-#define FMMAX		X64(FFFFFFFFFFFFFFFF)		/* minus MAX (fp) */
-#define IPMAX		X64(7FFFFFFFFFFFFFFF)		/* plus MAX (int) */
-#define IMMAX		X64(8000000000000000)		/* minus MAX (int) */
+#define QNAN		U64(0x0008000000000000)		/* quiet NaN flag */
+#define CQNAN		U64(0xFFF8000000000000)		/* canonical quiet NaN */
+#define FPZERO		U64(0x0000000000000000)		/* plus zero (fp) */
+#define FMZERO		U64(0x8000000000000000)		/* minus zero (fp) */
+#define FPINF		U64(0x7FF0000000000000)		/* plus infinity (fp) */
+#define FMINF		U64(0xFFF0000000000000)		/* minus infinity (fp) */
+#define FPMAX		U64(0x7FFFFFFFFFFFFFFF)		/* plus MAX (fp) */
+#define FMMAX		U64(0xFFFFFFFFFFFFFFFF)		/* minus MAX (fp) */
+#define IPMAX		U64(0x7FFFFFFFFFFFFFFF)		/* plus MAX (int) */
+#define IMMAX		U64(0x8000000000000000)		/* minus MAX (int) */
 
 /* Unpacked rounding constants */
 
-#define UF_SRND		X64(0000008000000000)		/* S normal round */
-#define UF_SINF		X64(000000FFFFFFFFFF)		/* S infinity round */
-#define UF_TRND		X64(0000000000000400)		/* T normal round */
-#define UF_TINF		X64(00000000000007FF)		/* T infinity round */
+#define UF_SRND		U64(0x0000008000000000)		/* S normal round */
+#define UF_SINF		U64(0x000000FFFFFFFFFF)		/* S infinity round */
+#define UF_TRND		U64(0x0000000000000400)		/* T normal round */
+#define UF_TINF		U64(0x00000000000007FF)		/* T infinity round */
 
 /***************************************************************************//**
  * \name IEEE_fp_load_store
@@ -659,8 +663,8 @@ void CAlphaCPU::ieee_norm (UFP *r)
 {
   s32 i;
   static u64 normmask[5] = {
-   X64(c000000000000000), X64(f000000000000000), X64(ff00000000000000),
-   X64(ffff000000000000), X64(ffffffff00000000) };
+   U64(0xc000000000000000), U64(0xf000000000000000), U64(0xff00000000000000),
+   U64(0xffff000000000000), U64(0xffffffff00000000) };
   static s32 normtab[6] = { 1, 2, 4, 8, 16, 32};
 
   r->frac = r->frac & X64_QUAD;
@@ -765,7 +769,7 @@ u64 CAlphaCPU::ieee_rpack (UFP *r, u32 ins, u32 dp)
  **/
 void CAlphaCPU::ieee_trap (u64 trap, u32 instenb, u64 fpcrdsb, u32 ins)
 {
-  u64 real_trap = X64(0);
+  u64 real_trap = U64(0x0);
 
   if (!state.fpcr & (trap<<51))     // trap bit not set in FPCR
     real_trap |= trap<<41;          // SET trap bit in EXC_SUM

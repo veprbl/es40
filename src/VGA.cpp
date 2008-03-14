@@ -1,5 +1,5 @@
 /* ES40 emulator.
- * Copyright (C) 2007 by the ES40 Emulator Project
+ * Copyright (C) 2007-2008 by the ES40 Emulator Project
  *
  * WWW    : http://sourceforge.net/projects/es40
  * E-mail : camiel@camicom.com
@@ -27,6 +27,12 @@
  * \file
  * Contains the code for the VGA base class.
  *
+ * $Id: VGA.cpp,v 1.4 2008/03/14 14:50:22 iamcamiel Exp $
+ *
+ * X-1.4        Camiel Vanderhoeven                             14-MAR-2008
+ *   1. More meaningful exceptions replace throwing (int) 1.
+ *   2. U64 macro replaces X64 macro.
+ *
  * X-1.3        Brian Wheeler                                   27-FEB-2008
  *      Avoid compiler warnings.
  *
@@ -43,7 +49,7 @@
 CVGA::CVGA(class CConfigurator * cfg, class CSystem * c, int pcibus, int pcidev) : CPCIDevice(cfg,c,pcibus,pcidev)
 {
   if (theVGA != 0)
-    FAILURE("More than one VGA card not supported!!");
+    FAILURE(Configuration,"More than one VGA");
   theVGA = this;
 }
 

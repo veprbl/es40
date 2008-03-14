@@ -27,7 +27,11 @@
  * \file
  * Contains macro's for byte-swapping on big-endian host architectures.
  *
- * $Id: es40_endian.h,v 1.5 2008/01/04 10:56:54 iamcamiel Exp $
+ * $Id: es40_endian.h,v 1.6 2008/03/14 14:50:24 iamcamiel Exp $
+ *
+ * X-1.6        Camiel Vanderhoeven                             14-MAR-2008
+ *   1. More meaningful exceptions replace throwing (int) 1.
+ *   2. U64 macro replaces X64 macro.
  *
  * X-1.5        Camiel Vanderhoeven                             04-JAN-2008
  *      Added swap_xx macro's for use in places where bytes need to be 
@@ -86,14 +90,14 @@
 
 #endif // !defined(ES40_LITTLE_ENDIAN) && !defined(ES40_BIG_ENDIAN)
 
-#define swap_64(x) (  (((x)&X64(00000000000000ff))<<56) |    \
-                        (((x)&X64(000000000000ff00))<<40) |    \
-                        (((x)&X64(0000000000ff0000))<<24) |    \
-                        (((x)&X64(00000000ff000000))<<8)  |    \
-                        (((x)&X64(000000ff00000000))>>8)  |    \
-                        (((x)&X64(0000ff0000000000))>>24) |    \
-                        (((x)&X64(00ff000000000000))>>40) |    \
-                        (((x)&X64(ff00000000000000))>>56)   )
+#define swap_64(x) (  (((x)&U64(0x00000000000000ff))<<56) |    \
+                        (((x)&U64(0x000000000000ff00))<<40) |    \
+                        (((x)&U64(0x0000000000ff0000))<<24) |    \
+                        (((x)&U64(0x00000000ff000000))<<8)  |    \
+                        (((x)&U64(0x000000ff00000000))>>8)  |    \
+                        (((x)&U64(0x0000ff0000000000))>>24) |    \
+                        (((x)&U64(0x00ff000000000000))>>40) |    \
+                        (((x)&U64(0xff00000000000000))>>56)   )
 
 #define swap_32(x) (  (((x)&0x000000ff)<<24) |               \
                         (((x)&0x0000ff00)<<8)  |               \
@@ -135,7 +139,7 @@ inline u64 endian_bits(u64 x, int numbits)
         case 8:
             return endian_8(x);
         default:
-            FAILURE("Weird numbits in endian_bits");
+            FAILURE(InvalidArgument,"Weird numbits in endian_bits");
     }
 }
                         
