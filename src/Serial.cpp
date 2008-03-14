@@ -27,7 +27,13 @@
  * \file
  * Contains the code for the emulated Serial Port devices.
  *
- * $Id: Serial.cpp,v 1.44 2008/03/14 15:30:52 iamcamiel Exp $
+ * $Id: Serial.cpp,v 1.45 2008/03/14 21:24:18 iamcamiel Exp $
+ *
+ * X-1.45       Camiel Vanderhoeven                             13-MAR-2008
+ *      Fixed FAILURE macro's for Unix.
+ *
+ * X-1.44       Camiel Vanderhoeven                             13-MAR-2008
+ *      Formatting.
  *
  * X-1.42       Camiel Vanderhoeven                             14-MAR-2008
  *   1. More meaningful exceptions replace throwing (int) 1.
@@ -266,7 +272,7 @@ void CSerial::init()
   state.irq_active = false;
   myThread = 0;
 
-  printf("%s: $Id: Serial.cpp,v 1.44 2008/03/14 15:30:52 iamcamiel Exp $\n",
+  printf("%s: $Id: Serial.cpp,v 1.45 2008/03/14 21:24:18 iamcamiel Exp $\n",
          devid_string);
 }
 
@@ -831,8 +837,7 @@ void CSerial::WaitForConnection()
     if(!(child = fork()))
     {
       execvp(argv[0], argv);
-      printf("Exec of '%s' failed.\n", argv[0]);
-      FAILURE("undefined");
+      FAILURE_1(Runtime,"Exec of '%s' failed.\n", argv[0]);
     }
     else
     {
@@ -840,8 +845,7 @@ void CSerial::WaitForConnection()
       waitpid(child, &status, WNOHANG); // reap it, if needed.
       if(kill(child, 0) < 0)
       { // uh oh, no kiddo.
-        printf("%%SRL-F-EXEC: Exec of '%s' has failed.\n", argv[0]);
-        FAILURE("undefined");
+        FAILURE_1(Runtime,"Exec of '%s' has failed.\n", argv[0]);
       }
     }
 #endif
