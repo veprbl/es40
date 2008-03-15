@@ -30,9 +30,7 @@
  * You could read the documentation from this file; but it would probably
  * be easier to go to http://es40.sourceforge.net.
  *
- * $Id: dox.cpp,v 1.15 2008/03/05 14:41:46 iamcamiel Exp $
- *
- * \author Camiel Vanderhoeven (camiel@camicom.com / http://www.camicom.com)
+ * $Id: dox.cpp,v 1.16 2008/03/15 17:50:42 iamcamiel Exp $
  **/
 
 /**
@@ -73,7 +71,7 @@
  * configuration file (gui=win32), if your system supports X-Windows (as is
  * the case on most Linux/BSD/UNIX distributions, change it to gui=X11.
  * If your system is not supported, remove the gui section alltogether, as
- * well as any vga-card sections. Graphics support will nbot be available
+ * well as any vga-card sections. Graphics support will not be available
  * in this case.
  *
  * \subsection a3 A3. PCAP not found
@@ -113,25 +111,14 @@
  * Q: Which of the two emulated VGA cards should I choose? S3 Trio64 or
  * Cirrus?
  *
- * A: Right now, both cards are nearly identical (except for the PCI
- * configuration ID, which tells the OS what card this is). In the future,
- * the emulated Cirrus card will evolve into a more complete card, 
- * supporting various SVGA features. For the S3 Trio, this is more difficult,
- * because documentation is harder to find. Also, we chose to continue with
- * Cirrus, because the Bochs emulator emulates a Cirrus card, and we can
- * borrow bits of their code.
- *
- * \subsection b2 B2. CD-ROM on Windows?
- * Q: How do I connect my real CD drive under Windows so that I can have ES40
- * boot a real AlphaVMS CD?
- *
- * A: I'm planning to create a DiskDevice class that does this, but I
- * haven't gotten around to it yet... Right now, it isn't possible yet.
- * You could use a CD-burning tool to create an ISO image, and boot using
- * that image. That's what I do.
- *
- * UPDATE: The current version in CVS, and the next release will make this
- * possibe; check the sample configuration file in CVS for information.
+ * A: Short answer: That depends on what the OS you intend to run on the
+ * emulator likes. Long answer: Right now, both cards are nearly identical
+ * (except for the PCI configuration ID, which tells the OS what card this
+ * is). In the future, the emulated Cirrus card may evolve into a more 
+ * complete card, supporting various SVGA features. For the S3 Trio, this
+ * is more difficult, because documentation is harder to find. Since
+ * DECwindows on OpenVMS doesn't seem to like either of the cards, support
+ * for an entirely different card may be added in the future.
  */
 
 /**
@@ -154,11 +141,13 @@
  * In order of appearance.
  *  - Gerrit Woertman (HP)
  *  - Jur van der Burg (helped out with IDE problems)
+ *  - Stephen "Hoff" Hoffman (helped out with booting problems)
  *  - Sue Skonetski (HP) (publicity)
  *  - Andy Goldstein (HP)
  *  - Ian Miller (publicity: http://www.openvms.org)
  *  - Anders Gavare (allowing us to re-use parts of GXEmul)
  *  - Bob Supnik (author of the SIMH Alpha pre-implementation)
+ *  - Paco Linux
  *  .
  *
  * If we missed anyone, please let us know!
