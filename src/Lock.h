@@ -27,7 +27,12 @@
  * \file 
  * Contains the definitions for the different locking structures for multi-threading.
  *
- * $Id: Lock.h,v 1.8 2008/03/14 21:16:49 iamcamiel Exp $
+ * $Id: Lock.h,v 1.9 2008/03/16 11:22:10 iamcamiel Exp $
+ *
+ * X-1.9        Camiel Vanderhoeven                             16-MAR-2008
+ *      Fixed threading problems with SDL (I hope). Standard locking
+ *      timeout is now 5000 ms, but can be overridden by defining
+ *      LOCK_TIMEOUT_MS or NO_LOCK_TIMEOUTS.
  *
  * X-1.8        Camiel Vanderhoeven                             14-MAR-2008
  *      Fixed last patch to be platform-independent.
@@ -55,7 +60,14 @@
  *      File created to support named, debuggable mutexes.
  **/
 
-//#define DEBUG_LOCKS
+#if defined(NO_LOCK_TIMEOUTS)
+#define LOCK_TIMEOUT_MS
+#else
+#if !defined(LOCK_TIMEOUT_MS)
+#define LOCK_TIMEOUT_MS 5000
+#endif
+#endif
+
 #include <Poco/Mutex.h>
 #include <Poco/RWLock.h>
 
@@ -77,7 +89,7 @@ template<class M>
 class CScopedLock
 {
   public:
-    inline  CScopedLock(M* mutex) { _mutex = mutex; _mutex->lock(2000); }
+    inline  CScopedLock(M* mutex) { _mutex = mutex; _mutex->lock(LOCK_TIMEOUT_MS); }
     inline  ~CScopedLock()        { _mutex->unlock(); }
   private:
     M*  _mutex;
@@ -654,9 +666,9 @@ inline CScopedRWLock::CScopedRWLock(CRWMutex* rwl, bool write) : _rwl(rwl)
 {
   _rwl = rwl;
   if(write)
-    _rwl->writeLock(2000);
+    _rwl->writeLock(LOCK_TIMEOUT_MS);
   else
-    _rwl->readLock(2000);
+    _rwl->readLock(LOCK_TIMEOUT_MS);
 }
 
 inline CScopedRWLock::~CScopedRWLock()
@@ -664,9 +676,9 @@ inline CScopedRWLock::~CScopedRWLock()
   _rwl->unlock();
 }
 
-#define MUTEX_LOCK(mutex)         mutex->lock(2000)
-#define MUTEX_READ_LOCK(mutex)    mutex->readLock(2000)
-#define MUTEX_WRITE_LOCK(mutex)   mutex->writeLock(2000)
+#define MUTEX_LOCK(mutex)         mutex->lock(LOCK_TIMEOUT_MS)
+#define MUTEX_READ_LOCK(mutex)    mutex->readLock(LOCK_TIMEOUT_MS)
+#define MUTEX_WRITE_LOCK(mutex)   mutex->writeLock(LOCK_TIMEOUT_MS)
 #define MUTEX_UNLOCK(mutex)       mutex->unlock()
 #define SCOPED_M_LOCK(mutex)      CMutex::ScopedLock L_##__LINE__(mutex)
 #define SCOPED_FM_LOCK(mutex)     CFastMutex::ScopedLock L_##__LINE__(mutex)

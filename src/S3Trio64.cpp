@@ -27,7 +27,13 @@
  * \file
  * Contains the code for emulated S3 Trio 64 Video Card device.
  *
- * $Id: S3Trio64.cpp,v 1.16 2008/03/14 15:30:51 iamcamiel Exp $
+ * $Id: S3Trio64.cpp,v 1.17 2008/03/16 11:22:10 iamcamiel Exp $
+ *
+ * X-1.17       Camiel Vanderhoeven                             16-MAR-2008
+ *      Fixed threading problems with SDL (I hope).
+ *
+ * X-1.16       Camiel Vanderhoeven                             14-MAR-2008
+ *      Formatting.
  *
  * X-1.15       Camiel Vanderhoeven                             14-MAR-2008
  *   1. More meaningful exceptions replace throwing (int) 1.
@@ -125,10 +131,18 @@ static const u8 ccdat[16][4] = {
 {
   try
   {
+    bx_gui->init(state.x_tilesize, state.y_tilesize);
     for(;;)
     {
       if(StopThread)
         return;
+      for (int i=0;i<10;i++)
+      {
+        bx_gui->lock();
+        bx_gui->handle_events();
+        bx_gui->unlock();
+        Poco::Thread::sleep(10);
+      }
       bx_gui->lock();
       update();
       bx_gui->flush();
@@ -331,7 +345,7 @@ void CS3Trio64::init()
     for(unsigned x = 0; x < 640 / X_TILESIZE; x++)
       SET_TILE_UPDATED(x, y, 0);
 
-  bx_gui->init(state.x_tilesize, state.y_tilesize);
+//  bx_gui->init(state.x_tilesize, state.y_tilesize);
 
   state.charmap_address = 0;
   state.x_dotclockdiv2 = 0;
@@ -344,7 +358,7 @@ void CS3Trio64::init()
 
   myThread = 0;
 
-  printf("%s: $Id: S3Trio64.cpp,v 1.16 2008/03/14 15:30:51 iamcamiel Exp $\n",
+  printf("%s: $Id: S3Trio64.cpp,v 1.17 2008/03/16 11:22:10 iamcamiel Exp $\n",
          devid_string);
 }
 

@@ -34,7 +34,13 @@
  * Contains code for the bx_gui_c base class used for interfacing with
  * SDL and other device interfaces.
  *
- * $Id: gui.cpp,v 1.8 2008/03/14 15:31:29 iamcamiel Exp $
+ * $Id: gui.cpp,v 1.9 2008/03/16 11:22:11 iamcamiel Exp $
+ *
+ * X-1.9        Camiel Vanderhoeven                             16-MAR-2008
+ *      Fixed threading problems with SDL (I hope).
+ *
+ * X-1.8        Camiel Vanderhoeven                             14-MAR-2008
+ *      Formatting.
  *
  * X-1.7        Camiel Vanderhoeven                             11-MAR-2008
  *      Named, debuggable mutexes.
@@ -56,6 +62,10 @@
  *      Initial version for ES40 emulator.
  *
  **/
+
+//#define DEBUG_LOCKS
+//#define NO_LOCK_TIMEOUTS
+
 #include "../StdAfx.h"
 
 #include <signal.h>

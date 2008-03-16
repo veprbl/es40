@@ -27,7 +27,13 @@
  * \file
  * Contains the code for the emulated Keyboard and mouse devices and controller.
  *
- * $Id: Keyboard.cpp,v 1.8 2008/03/14 15:30:51 iamcamiel Exp $
+ * $Id: Keyboard.cpp,v 1.9 2008/03/16 11:22:08 iamcamiel Exp $
+ *
+ * X-1.9        Camiel Vanderhoeven                             16-MAR-2008
+ *      Fixed threading problems with SDL (I hope).
+ *
+ * X-1.8        Camiel Vanderhoeven                             14-MAR-2008
+ *      Formatting.
  *
  * X-1.7        Camiel Vanderhoeven                             14-MAR-2008
  *   1. More meaningful exceptions replace throwing (int) 1.
@@ -137,7 +143,7 @@ void CKeyboard::init()
 
   myThread = 0;
 
-  printf("kbc: $Id: Keyboard.cpp,v 1.8 2008/03/14 15:30:51 iamcamiel Exp $\n");
+  printf("kbc: $Id: Keyboard.cpp,v 1.9 2008/03/16 11:22:08 iamcamiel Exp $\n");
 }
 
 void CKeyboard::start_threads()
@@ -1801,13 +1807,14 @@ void CKeyboard::execute()
 {
   unsigned  retval;
 
+/* -- moved to VGA card --
   if(bx_gui)
   {
     bx_gui->lock();
     bx_gui->handle_events();
     bx_gui->unlock();
   }
-
+*/
   retval = periodic();
 
   if(retval & 0x01)
