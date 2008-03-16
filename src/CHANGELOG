@@ -3,10 +3,17 @@
 
 \section c019 version 0.18 -> 0.18+
 
+ - Restored SDL functionality. (16-mar-2008, Camiel
+   Vanderhoeven)
+ - Better exception handling, restored Serial port menu 
+   functionality (14-mar-2008, Camiel Vanderhoeven)
+ - Ability to stop and restart threads, restored save/restore
+   state functionality. (13-mar-2008, Camiel Vanderhoeven)
  - Use separate threads for devices rather than crowding
    everything into one thread. Use Poco libraries for platform
    independent threading. NOTE: This patch breaks some 
-   functionality that we will need to regain in the future.
+   functionality that we will need to regain in the future. 
+   (05-mar-2008, Camiel Vanderhoeven)
  .
  
 \section c018 version 0.17 -> 0.18
