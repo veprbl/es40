@@ -27,7 +27,13 @@
  * \file
  * Contains code for the disk base class.
  *
- * $Id: Disk.cpp,v 1.29 2008/03/14 15:30:51 iamcamiel Exp $
+ * $Id: Disk.cpp,v 1.30 2008/03/17 20:10:28 iamcamiel Exp $
+ *
+ * X-1.30       Camiel Vanderhoeven                             16-MAR-2008
+ *      Always reset dati.read when setting dati.available.
+ *
+ * X-1.29       Camiel Vanderhoeven                             14-MAR-2008
+ *      Formatting.
  *
  * X-1.28       Camiel Vanderhoeven                             14-MAR-2008
  *   1. More meaningful exceptions replace throwing (int) 1.
@@ -937,6 +943,7 @@ int CDisk::do_scsi_command()
         break;
       }
 
+      state.scsi.dati.read = 0;
       state.scsi.dati.available = retlen; //  Restore size.
       pagecode = state.scsi.cmd.data[2] & 0x3f;
 
@@ -1207,6 +1214,7 @@ int CDisk::do_scsi_command()
     state.scsi.dati.data[6] = (u8) (get_block_size() >> 8) & 255;
     state.scsi.dati.data[7] = (u8) (get_block_size() >> 0) & 255;
 
+    state.scsi.dati.read = 0;
     state.scsi.dati.available = 8;
 
 #if defined(DEBUG_SCSI)
@@ -1295,6 +1303,7 @@ int CDisk::do_scsi_command()
     //  Return data:
     seek_block(ofs);
     read_blocks(state.scsi.dati.data, retlen);
+    state.scsi.dati.read = 0;
     state.scsi.dati.available = retlen * get_block_size();
 
 #if defined(DEBUG_SCSI)
@@ -1353,6 +1362,7 @@ int CDisk::do_scsi_command()
     read_blocks(state.scsi.dati.data, 1);
     for(unsigned int x1 = get_block_size(); x1 < retlen; x1++)
       state.scsi.dati.data[x1] = 0;             // set ECC bytes to 0.
+    state.scsi.dati.read = 0;
     state.scsi.dati.available = retlen;
     do_scsi_error(SCSI_OK);
     break;
