@@ -3,6 +3,8 @@
 
 \section c019 version 0.18 -> 0.18+
 
+ - Fixed some IDE CD-ROM issues that were introduced with the
+   multi-threading patch. (17-mar-2008, Brian Wheeler)
  - Restored SDL functionality. (16-mar-2008, Camiel
    Vanderhoeven)
  - Better exception handling, restored Serial port menu 

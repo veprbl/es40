@@ -3,31 +3,38 @@
  *
  * WWW    : http://sourceforge.net/projects/es40
  * E-mail : camiel@camicom.com
- * 
+ *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
  * of the License, or (at your option) any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
- * 
- * Although this is not required, the author would appreciate being notified of, 
- * and receiving any modifications you may make to the source code that might serve
- * the general public.
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 
+ * 02110-1301, USA.
+ *
+ * Although this is not required, the author would appreciate being
+ * notified of, and receiving any modifications you may make to the
+ * source code that might serve the general public.
  */
 
 /**
  * \file
  * Contains the code for the emulated Ali M1543C IDE chipset part.
- *		
- * $Id: AliM1543C_ide.cpp,v 1.28 2008/03/14 15:30:50 iamcamiel Exp $
+ *
+ * $Id: AliM1543C_ide.cpp,v 1.29 2008/03/17 19:55:38 iamcamiel Exp $
+ *
+ * X-1.29       Brian Wheeler                                   17-MAR-2008
+ *      Fix some CD-ROM issues.
+ *
+ * X-1.28       Camiel Vanderhoeven                             14-MAR-2008
+ *      Formatting.
  *
  * X-1.27       Camiel Vanderhoeven                             14-MAR-2008
  *   1. More meaningful exceptions replace throwing (int) 1.
@@ -119,7 +126,7 @@
  *   - ATAPI command 0x1e (media lock) implemented as no-op.
  *   - ATAPI command 0x43 (read TOC) implemented as a hack.
  *   - ATAPI read now uses get_block_size() for determining transfers.
- *   - ATAPI state machine goes from DP34 to DI immediately upon completion 
+ *   - ATAPI state machine goes from DP34 to DI immediately upon completion
  *     instead of redirecting through DP2.
  *   - Added ATA Command 0xc6 (Set Multiple).
  *   .
@@ -160,7 +167,7 @@
  *
  * X-1.11       Camiel Vanderhoeven                             28-DEC-2007
  *      Only delay IDE interrupts when NO_VMS is defined. (Need to fix this
- *		properly).
+ *                properly).
  *
  * X-1.10        Camiel Vanderhoeven                             20-DEC-2007
  *      More checks if disk exists.
@@ -313,12 +320,6 @@ void CAliM1543C_ide::init()
   mtBusMaster[0] = new CRWMutex("ide0-busmaster");
   mtBusMaster[1] = new CRWMutex("ide1-busmaster");
 
-  //  mtControl[0] = new CMutex("ide0-control");
-  //mtControl[1] = new CMutex("ide1-control");
-  // mtCommand[0] = new CMutex("ide0-command");
-  //mtCommand[1] = new CMutex("ide1-command");
-  //mtBusMaster[0] = new CMutex("ide0-busmaster");
-  //mtBusMaster[1] = new CMutex("ide1-busmaster");
   for(int i = 0; i < 2; i++)
   {
     semController[i] = new Poco::Semaphore(0, 1); // disk controller
@@ -504,7 +505,7 @@ u32 CAliM1543C_ide::ReadMem_Legacy(int index, u32 address, int dsize)
 
   case PRI_COMMAND:
     {
-      SCOPED_READ_LOCK(mtRegisters[channel]);
+      SCOPED_WRITE_LOCK(mtRegisters[channel]);
       return ide_command_read(channel, address, dsize);
     }
 
@@ -577,7 +578,7 @@ u32 CAliM1543C_ide::ReadMem_Bar(int func, int bar, u32 address, int dsize)
 
   case BAR_PRI_COMMAND:
     {
-      SCOPED_READ_LOCK(mtRegisters[channel]);
+      SCOPED_WRITE_LOCK(mtRegisters[channel]);
       return ide_command_read(channel, address, dsize);
     }
 
@@ -702,6 +703,11 @@ u32 CAliM1543C_ide::ide_command_read(int index, u32 address, int dsize)
         SEL_STATUS(index).busy = true;
         SEL_STATUS(index).drive_ready = false;
         semController[index]->set();  // wake up the controller.
+#if defined(DEBUG_IDE_MULTIPLE) || defined(DEBUG_IDE_PACKET)
+        printf("Command still in progress, waking up controller.\n");
+        printf("-- Packet Phase: %d\n", SEL_COMMAND(index).packet_phase);
+        ide_status(index);
+#endif
       }
     }
 
@@ -1167,8 +1173,11 @@ void CAliM1543C_ide::raise_interrupt(int index)
 #ifdef DEBUG_IDE_INTERRUPT
     printf("%%IDE-I-INTERRUPT: Interrupt raised on controller %d.\n", index);
 #endif
-    SCOPED_WRITE_LOCK(mtBusMaster[index]);
-    CONTROLLER(index).busmaster[2] |= 0x04;
+    {
+      SCOPED_WRITE_LOCK(mtBusMaster[index]);
+      CONTROLLER(index).busmaster[2] |= 0x04;
+    }
+
     theAli->pic_interrupt(1, 6 + index);
   }
 }
@@ -1709,7 +1718,7 @@ void CAliM1543C_ide::execute(int index)
 
     /*
        * case 0x40, 0x41: read verify sector(s) is mandatory for
-       * non-packet (no w/packet 
+       * non-packet (no w/packet
        */
     case 0x70:  // seek
       if(SEL_DISK(index)->cdrom())
@@ -1730,7 +1739,7 @@ void CAliM1543C_ide::execute(int index)
       break;
 
     /*
-       * 0x90: execute device diagnostic: mandatory 
+       * 0x90: execute device diagnostic: mandatory
        */
     case 0x91:  // initialize device parameters
       SEL_COMMAND(index).command_in_progress = false;
@@ -1823,12 +1832,12 @@ void CAliM1543C_ide::execute(int index)
           }
 
           /*
-           * This is the Packet I/O state machine. The gist of 
+           * This is the Packet I/O state machine. The gist of
            * it is this: we loop until yield==true, so we can
            * move from state to state in the same DoClock().
            * By the time we get here, we're in DP1 (Receive
            * Packet) and we're waiting for an actual packet to
-           * arrive. 
+           * arrive.
            */
 #ifdef DEBUG_IDE_PACKET
           printf("Entering Packet state machine %d\n", index);
@@ -1846,31 +1855,18 @@ void CAliM1543C_ide::execute(int index)
             switch(SEL_COMMAND(index).packet_phase)
             {
             case PACKET_DP1:  // receive packet
-              if(!SEL_STATUS(index).drq)
-              {
+              // we now have a full command packet.
+              if(scsi_get_phase(index) != SCSI_PHASE_COMMAND)
+                FAILURE(IllegalState, "SCSI command phase expected");
 
-                // we now have a full command packet.
-                if(scsi_get_phase(index) != SCSI_PHASE_COMMAND)
-                  FAILURE(IllegalState, "SCSI command phase expected");
+              memcpy(scsi_xfer_ptr(index, 12), CONTROLLER(index).data, 12);
+              memcpy(SEL_COMMAND(index).packet_command, CONTROLLER(index).data,
+                     12);
+              scsi_xfer_done(index);
 
-                void*   cmd_ptr = scsi_xfer_ptr(index, 12);
-                memcpy(cmd_ptr, CONTROLLER(index).data, 12);
-                scsi_xfer_done(index);
-
-                SEL_COMMAND(index).packet_phase = PACKET_DP2;
-                SEL_COMMAND(index).packet_buffersize = SEL_REGISTERS(index).cylinder_no;
-                SEL_STATUS(index).busy = true;
-              }
-              else
-              {
-
-                // yield to let the host finish writing
-                // the packet.
-                // XXX: We really shouldn't ever get
-                // here...right?
-                PAUSE("Waiting for CPU thread to write packet.\n");
-                yield = true;
-              }
+              SEL_COMMAND(index).packet_phase = PACKET_DP2;
+              SEL_COMMAND(index).packet_buffersize = SEL_REGISTERS(index).cylinder_no;
+              SEL_STATUS(index).busy = true;
               break;
 
             case PACKET_DP2:  // prepare b
@@ -1889,10 +1885,7 @@ void CAliM1543C_ide::execute(int index)
                     scsi_xfer_done(index);
                     SEL_COMMAND(index).packet_phase = PACKET_DP34;
                     SEL_REGISTERS(index).BYTE_COUNT = (int) num_bytes;
-                    CONTROLLER(index).data_size = (int) num_bytes / 2;  // word
-
-                    //
-                    // count.
+                    CONTROLLER(index).data_size = (int) num_bytes / 2;  // word count.
                     CONTROLLER(index).data_ptr = 0;
                   }
                   break;
@@ -1918,6 +1911,9 @@ void CAliM1543C_ide::execute(int index)
               {
 
                 // transition to an idle state
+#if defined(DEBUG_IDE_PACKET)
+                printf("Transition into idle state from DP2.\n");
+#endif
                 SEL_COMMAND(index).packet_phase = PACKET_DI;
               }
               break;
@@ -1949,6 +1945,10 @@ void CAliM1543C_ide::execute(int index)
               {
 
                 // send back via pio
+#ifdef DEBUG_IDE_PACKET
+                printf("Sending ATAPI data back via PIO.\n");
+#endif
+#if 0
                 if((!SEL_STATUS(index).drq) && (CONTROLLER(index).data_ptr == 0))
                 {
 
@@ -1982,6 +1982,26 @@ void CAliM1543C_ide::execute(int index)
                     yield = false;
                   }
                 }
+
+#else
+
+                // do the transfer
+                SEL_STATUS(index).drq = true;
+                SEL_STATUS(index).busy = false;
+                SEL_REGISTERS(index).REASON = IR_IO;
+                if(scsi_get_phase(index) != SCSI_PHASE_STATUS)
+                  FAILURE(IllegalState, "SCSI status phase expected");
+                scsi_xfer_ptr(index, scsi_expected_xfer(index));
+                scsi_xfer_done(index);
+                if(scsi_get_phase(index) != SCSI_PHASE_FREE)
+                  FAILURE(IllegalState, "SCSI Bus free phase expected");
+#ifdef DEBUG_IDE_PACKET
+                printf("Finished Transferring\n");
+#endif
+                raise_interrupt(index);
+                SEL_COMMAND(index).packet_phase = PACKET_DI;
+                yield = true;
+#endif
               }
               break;
 
@@ -2309,12 +2329,12 @@ void CAliM1543C_ide::execute(int index)
                                        SEL_REGISTERS(index).sector_count * 512,
                                        false);
         SEL_COMMAND(index).command_in_progress = false;
-        SEL_STATUS(index).busy = false;
         SEL_STATUS(index).drive_ready = true;
         SEL_STATUS(index).seek_complete = true;
         SEL_STATUS(index).fault = false;
         SEL_STATUS(index).drq = false;
         SEL_STATUS(index).err = false;
+        SEL_STATUS(index).busy = false;
       }
       break;
 
@@ -2359,12 +2379,12 @@ void CAliM1543C_ide::execute(int index)
           SEL_DISK(index)->write_blocks(&(CONTROLLER(index).data[0]),
                                         SEL_REGISTERS(index).sector_count);
           SEL_COMMAND(index).command_in_progress = false;
-          SEL_STATUS(index).busy = false;
           SEL_STATUS(index).drive_ready = true;
           SEL_STATUS(index).seek_complete = true;
           SEL_STATUS(index).fault = false;
           SEL_STATUS(index).drq = false;
           SEL_STATUS(index).err = false;
+          SEL_STATUS(index).busy = false;
         }
       }
       break;
@@ -2462,8 +2482,8 @@ void CAliM1543C_ide::execute(int index)
       break;
 
     /***
-	   * Special cases:  commands we don't support, but return success.
-	   ***/
+           * Special cases:  commands we don't support, but return success.
+           ***/
     case 0xe0:    // standby now
     case 0xe1:    // idle immediate
     case 0xe2:    // standby
@@ -2515,7 +2535,7 @@ int CAliM1543C_ide::do_dma_transfer(int index, u8*  buffer, u32 buffersize,
   u32     prd;
   semBusMaster[index]->wait();  // wait until the start bit is set.
   {
-    SCOPED_WRITE_LOCK(mtBusMaster[index]);
+    SCOPED_READ_LOCK(mtBusMaster[index]);
     prd = endian_32(*(u32 *) (&CONTROLLER(index).busmaster[4]));
   }
 
@@ -2581,14 +2601,21 @@ int CAliM1543C_ide::do_dma_transfer(int index, u8*  buffer, u32 buffersize,
   switch(status)
   {
   case 0:     // normal completion.
-    CONTROLLER(index).busmaster[2] &= 0xfe; // clear active.
+    {
+      SCOPED_WRITE_LOCK(mtBusMaster[index]);
+      CONTROLLER(index).busmaster[2] &= 0xfe; // clear active.
+    }
+
     raise_interrupt(index);
     break;
 
   case 1: // PRD is smaller than the data we have.
-    CONTROLLER(index).busmaster[2] &= 0xfe; // clear active.
+    {
+      SCOPED_WRITE_LOCK(mtBusMaster[index]);
+      CONTROLLER(index).busmaster[2] &= 0xfe; // clear active.
+    }
 
-    // not not raise an interrupt
+    // do not raise an interrupt
     break;
 
   case 2: // PRD is larger than the data we have.
