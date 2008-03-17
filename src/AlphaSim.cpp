@@ -27,7 +27,13 @@
  * \file
  * Defines the entry point for the application.
  *
- * $Id: AlphaSim.cpp,v 1.44 2008/03/14 15:30:50 iamcamiel Exp $
+ * $Id: AlphaSim.cpp,v 1.45 2008/03/17 20:20:39 iamcamiel Exp $
+ *
+ * X-1.45       Camiel Vanderhoeven                             17-MAR-2008
+ *      Always set volatile DPR rom contents.
+ *
+ * X-1.44       Camiel Vanderhoeven                             14-MAR-2008
+ *      Formatting.
  *
  * X-1.43       Camiel Vanderhoeven                             14-MAR-2008
  *   1. More meaningful exceptions replace throwing (int) 1.
@@ -318,9 +324,6 @@ int main (int argc, char*argv[])
     trc = new CTraceEngine(theSystem);
 #endif
     theSystem->LoadROM();
-
-    theSROM->RestoreStateF();
-    theDPR->RestoreStateF();
 
 #if defined(PROFILE)
     {

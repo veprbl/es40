@@ -27,7 +27,13 @@
  * \file
  * Contains the code for the emulated Flash ROM devices.
  *
- * $Id: Flash.cpp,v 1.17 2008/03/14 15:30:51 iamcamiel Exp $
+ * $Id: Flash.cpp,v 1.18 2008/03/17 20:20:39 iamcamiel Exp $
+ *
+ * X-1.18       Camiel Vanderhoeven                             17-MAR-2008
+ *      Always set volatile DPR rom contents.
+ *
+ * X-1.17       Camiel Vanderhoeven                             14-MAR-2008
+ *      Formatting.
  *
  * X-1.16       Camiel Vanderhoeven                             14-MAR-2008
  *   1. More meaningful exceptions replace throwing (int) 1.
@@ -108,9 +114,10 @@ CFlash::CFlash(CConfigurator* cfg, CSystem* c) : CSystemComponent(cfg, c)
   theSROM = this;
   c->RegisterMemory(this, 0, U64(0x0000080100000000), 0x8000000); // 2MB
   memset(state.Flash, 0xff, 2 * 1024 * 1024);
+  RestoreStateF();
   state.mode = MODE_READ;
 
-  printf("%s: $Id: Flash.cpp,v 1.17 2008/03/14 15:30:51 iamcamiel Exp $\n",
+  printf("%s: $Id: Flash.cpp,v 1.18 2008/03/17 20:20:39 iamcamiel Exp $\n",
          devid_string);
 }
 

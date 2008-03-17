@@ -27,7 +27,13 @@
  * \file
  * Contains the code for the emulated Dual Port Ram and RMC devices.
  *
- * $Id: DPR.cpp,v 1.20 2008/03/14 15:30:51 iamcamiel Exp $
+ * $Id: DPR.cpp,v 1.21 2008/03/17 20:20:39 iamcamiel Exp $
+ *
+ * X-1.21       Camiel Vanderhoeven                             17-MAR-2008
+ *      Always set volatile DPR rom contents.
+ *
+ * X-1.20       Camiel Vanderhoeven                             14-MAR-2008
+ *      Formatting.
  *
  * X-1.19       Camiel Vanderhoeven                             14-MAR-2008
  *   1. More meaningful exceptions replace throwing (int) 1.
@@ -117,45 +123,45 @@ CDPR::CDPR(CConfigurator* cfg, CSystem* c) : CSystemComponent(cfg, c)
  **/
 void CDPR::init()
 {
-  u8  i;
+  int  i;
 
-  memset(state.ram, 0, 16 * 1024);
+  memset(&state, 0, sizeof(state));
+  RestoreStateF();
 
-  int j = 0;
-  for(int j = 0; j < cSystem->get_cpu_num(); j++)
+  for(i = 0; i < cSystem->get_cpu_num(); i++)
   {
-    state.ram[j * 0x20 + 0x00] = 1; // EV6 BIST
-    state.ram[j * 0x20 + 0x01] = (j == 0) ? 0x80 : j; // SROM status
-    state.ram[j * 0x20 + 0x02] = 1;     // STR status
-    state.ram[j * 0x20 + 0x03] = 1;     // CSC status
-    state.ram[j * 0x20 + 0x04] = 1;     // Pchip0 status
-    state.ram[j * 0x20 + 0x05] = 1;     // Pchip1 status
-    state.ram[j * 0x20 + 0x06] = 1;     // DIMx status
-    state.ram[j * 0x20 + 0x07] = 1;     // TIG bus status
-    state.ram[j * 0x20 + 0x08] = 0xdd;  // DPR test started
-    state.ram[j * 0x20 + 0x09] = 1;     // DPR status
-    state.ram[j * 0x20 + 0x0a] = 0xff;  // CPU speed status
-    state.ram[j * 0x20 + 0x0b] = (cSystem->get_cpu(j)->get_speed() / 1000000) % 256;  //speed
-    state.ram[j * 0x20 + 0x0c] = (cSystem->get_cpu(j)->get_speed() / 1000000) / 256;  //speed
+    state.ram[i * 0x20 + 0x00] = 1; // EV6 BIST
+    state.ram[i * 0x20 + 0x01] = (i == 0) ? 0x80 : i; // SROM status
+    state.ram[i * 0x20 + 0x02] = 1;     // STR status
+    state.ram[i * 0x20 + 0x03] = 1;     // CSC status
+    state.ram[i * 0x20 + 0x04] = 1;     // Pchip0 status
+    state.ram[i * 0x20 + 0x05] = 1;     // Pchip1 status
+    state.ram[i * 0x20 + 0x06] = 1;     // DIMx status
+    state.ram[i * 0x20 + 0x07] = 1;     // TIG bus status
+    state.ram[i * 0x20 + 0x08] = 0xdd;  // DPR test started
+    state.ram[i * 0x20 + 0x09] = 1;     // DPR status
+    state.ram[i * 0x20 + 0x0a] = 0xff;  // CPU speed status
+    state.ram[i * 0x20 + 0x0b] = (cSystem->get_cpu(i)->get_speed() / 1000000) % 256;  //speed
+    state.ram[i * 0x20 + 0x0c] = (cSystem->get_cpu(i)->get_speed() / 1000000) / 256;  //speed
 
     // powerup time BCD:
     time_t      now = time(NULL);
     struct tm*  t = localtime(&now);
-    state.ram[j * 0x20 + 0x10] = ToBCD(t->tm_hour);
-    state.ram[j * 0x20 + 0x11] = ToBCD(t->tm_min);
-    state.ram[j * 0x20 + 0x12] = ToBCD(t->tm_sec);
-    state.ram[j * 0x20 + 0x13] = ToBCD(t->tm_mday);
-    state.ram[j * 0x20 + 0x14] = ToBCD(t->tm_mon + 1);
-    state.ram[j * 0x20 + 0x15] = ToBCD(t->tm_year - 100); // tm_year is based on 1900
+    state.ram[i * 0x20 + 0x10] = ToBCD(t->tm_hour);
+    state.ram[i * 0x20 + 0x11] = ToBCD(t->tm_min);
+    state.ram[i * 0x20 + 0x12] = ToBCD(t->tm_sec);
+    state.ram[i * 0x20 + 0x13] = ToBCD(t->tm_mday);
+    state.ram[i * 0x20 + 0x14] = ToBCD(t->tm_mon + 1);
+    state.ram[i * 0x20 + 0x15] = ToBCD(t->tm_year - 100); // tm_year is based on 1900
 #if defined(DEBUG_DPR)
     printf("%%DPR-I-BOOTDATE: %02x-%02x-%02x, %02x:%02x:%02x\n",
-           state.ram[j * 0x20 + 21], state.ram[j * 0x20 + 20],
-           state.ram[j * 0x20 + 19], state.ram[j * 0x20 + 16],
-           state.ram[j * 0x20 + 17], state.ram[j * 0x20 + 18]);
+           state.ram[i * 0x20 + 21], state.ram[i * 0x20 + 20],
+           state.ram[i * 0x20 + 19], state.ram[i * 0x20 + 16],
+           state.ram[i * 0x20 + 17], state.ram[i * 0x20 + 18]);
 #endif
-    state.ram[j * 0x20 + 0x16] = 0;     // no error
-    state.ram[j * 0x20 + 0x1e] = 0x80;  // CPU SROM sync moet 0x80 zijn; anders --> cpu0 startup failure
-    state.ram[j * 0x20 + 0x1f] = 8;     // cach size in MB
+    state.ram[i * 0x20 + 0x16] = 0;     // no error
+    state.ram[i * 0x20 + 0x1e] = 0x80;  // CPU SROM sync moet 0x80 zijn; anders --> cpu0 startup failure
+    state.ram[i * 0x20 + 0x1f] = 8;     // cach size in MB
   }
 
   state.ram[0xda] = 0xaa; // TIG load
@@ -377,7 +383,7 @@ void CDPR::init()
   //    3600:36FF 3600 SRM Reserved
   //    3700:37FF SRM Reserved
   //    3800:3AFF RMC RMC scratch space
-  printf("%s: $Id: DPR.cpp,v 1.20 2008/03/14 15:30:51 iamcamiel Exp $\n",
+  printf("%s: $Id: DPR.cpp,v 1.21 2008/03/17 20:20:39 iamcamiel Exp $\n",
          devid_string);
 }
 
