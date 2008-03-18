@@ -254,7 +254,7 @@
 				EnableIntrinsicFunctions="true"
 				FavorSizeOrSpeed="1"
 				WholeProgramOptimization="true"
-				AdditionalIncludeDirectories="c:\program files\winpcap\include;c:\program files\sdl\include"
+				AdditionalIncludeDirectories="c:\program files\poco\include;c:\program files\winpcap\include;c:\program files\sdl\include"
 				PreprocessorDefinitions="WIN32;NDEBUG;_CONSOLE;HAVE_SDL;HAVE_PCAP"
 				StringPooling="false"
 				MinimalRebuild="false"
@@ -285,11 +285,11 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				AdditionalDependencies="wpcap.lib ws2_32.lib sdl.lib sdlmain.lib"
+				AdditionalDependencies="pocofoundation.lib wpcap.lib ws2_32.lib sdl.lib sdlmain.lib"
 				OutputFile="bin/es40.exe"
 				LinkIncremental="1"
 				SuppressStartupBanner="true"
-				AdditionalLibraryDirectories="c:\Program Files\sdl\lib; c:\Program Files\winpcap\lib"
+				AdditionalLibraryDirectories="c:\program files\poco\lib;c:\Program Files\sdl\lib;c:\Program Files\winpcap\lib"
 				GenerateDebugInformation="true"
 				ProgramDatabaseFile=".\Release/es40.pdb"
 				SubSystem="1"
@@ -772,7 +772,7 @@
 				EnableIntrinsicFunctions="true"
 				FavorSizeOrSpeed="1"
 				WholeProgramOptimization="true"
-				AdditionalIncludeDirectories="c:\program files\sdl\include"
+				AdditionalIncludeDirectories="c:\program files\poco\include;c:\program files\sdl\include"
 				PreprocessorDefinitions="WIN32;NDEBUG;_CONSOLE;HAVE_SDL"
 				StringPooling="false"
 				MinimalRebuild="false"
@@ -803,11 +803,11 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				AdditionalDependencies="ws2_32.lib sdl.lib sdlmain.lib"
+				AdditionalDependencies="pocofoundation.lib ws2_32.lib sdl.lib sdlmain.lib"
 				OutputFile="bin/es40_nn.exe"
 				LinkIncremental="1"
 				SuppressStartupBanner="true"
-				AdditionalLibraryDirectories="c:\Program Files\sdl\lib"
+				AdditionalLibraryDirectories="c:\program files\poco\lib;c:\Program Files\sdl\lib"
 				GenerateDebugInformation="true"
 				ProgramDatabaseFile=".\Release NN/es40_nn.pdb"
 				SubSystem="1"
@@ -1185,7 +1185,7 @@
 				EnableIntrinsicFunctions="true"
 				FavorSizeOrSpeed="1"
 				WholeProgramOptimization="true"
-				AdditionalIncludeDirectories=""
+				AdditionalIncludeDirectories="c:\program files\poco\include"
 				PreprocessorDefinitions="WIN32;NDEBUG;_CONSOLE"
 				StringPooling="false"
 				MinimalRebuild="false"
@@ -1216,11 +1216,11 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				AdditionalDependencies="ws2_32.lib"
+				AdditionalDependencies="pocofoundation.lib ws2_32.lib"
 				OutputFile="bin/es40_nn_ns.exe"
 				LinkIncremental="1"
 				SuppressStartupBanner="true"
-				AdditionalLibraryDirectories=""
+				AdditionalLibraryDirectories="c:\program files\poco\lib"
 				GenerateDebugInformation="true"
 				ProgramDatabaseFile=".\Release NN NS/es40_nn_ns.pdb"
 				SubSystem="1"
@@ -1598,7 +1598,7 @@
 				EnableIntrinsicFunctions="true"
 				FavorSizeOrSpeed="1"
 				WholeProgramOptimization="true"
-				AdditionalIncludeDirectories="c:\program files\winpcap\include"
+				AdditionalIncludeDirectories="c:\program files\poco\include;c:\program files\winpcap\include"
 				PreprocessorDefinitions="WIN32;NDEBUG;_CONSOLE;HAVE_PCAP"
 				StringPooling="false"
 				MinimalRebuild="false"
@@ -1629,11 +1629,11 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				AdditionalDependencies="wpcap.lib ws2_32.lib"
+				AdditionalDependencies="pocofoundation.lib wpcap.lib ws2_32.lib"
 				OutputFile="bin/es40_ns.exe"
 				LinkIncremental="1"
 				SuppressStartupBanner="true"
-				AdditionalLibraryDirectories="c:\Program Files\winpcap\lib"
+				AdditionalLibraryDirectories="c:\program files\poco\lib;c:\Program Files\winpcap\lib"
 				GenerateDebugInformation="true"
 				ProgramDatabaseFile=".\Release NS/es40_ns.pdb"
 				SubSystem="1"
@@ -1857,6 +1857,10 @@
 			</File>
 			<File
 				RelativePath="..\Ethernet.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\Exception.cpp"
 				>
 			</File>
 			<File
@@ -2085,6 +2089,10 @@
 				>
 			</File>
 			<File
+				RelativePath="..\Exception.h"
+				>
+			</File>
+			<File
 				RelativePath="..\Flash.h"
 				>
 			</File>
@@ -2177,11 +2185,11 @@
 				>
 			</File>
 			<File
-				RelativePath="..\gui\vga.h"
+				RelativePath="..\VGA.h"
 				>
 			</File>
 			<File
-				RelativePath="..\VGA.h"
+				RelativePath="..\gui\vga.h"
 				>
 			</File>
 		</Filter>
