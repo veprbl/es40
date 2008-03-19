@@ -27,7 +27,11 @@
  * \file
  * Contains code to use a file as a disk image.
  *
- * $Id: DiskFile.cpp,v 1.20 2008/03/14 15:30:51 iamcamiel Exp $
+ * $Id: DiskFile.cpp,v 1.21 2008/03/19 12:39:07 iamcamiel Exp $
+ *
+ * X-1.20       Camiel Vanderhoeven                             19-MAR-2008
+ *      Use fopen_large to support files >2GB on linux. Macro was already 
+ *      defined, but never used. (doh!)
  *
  * X-1.19       Camiel Vanderhoeven                             14-MAR-2008
  *   1. More meaningful exceptions replace throwing (int) 1.
@@ -102,7 +106,7 @@ CDiskFile::CDiskFile(CConfigurator*  cfg, CSystem*  sys, CDiskController*  c,
   if(read_only)
     handle = fopen(filename, "rb");
   else
-    handle = fopen(filename, "rb+");
+    handle = fopen_large(filename, "rb+");
   if(!handle)
   {
     printf("%s: Could not open file %s!\n", devid_string, filename);
@@ -113,7 +117,7 @@ CDiskFile::CDiskFile(CConfigurator*  cfg, CSystem*  sys, CDiskController*  c,
                 devid_string);
 
     void*   crt_buf;
-    handle = fopen(filename, "wb");
+    handle = fopen_large(filename, "wb");
     if(!handle)
       FAILURE_1(Runtime, "%s: File does not exist and could not be created",
                 devid_string);
@@ -139,9 +143,9 @@ CDiskFile::CDiskFile(CConfigurator*  cfg, CSystem*  sys, CDiskController*  c,
     fclose(handle);
     free(crt_buf);
     if(read_only)
-      handle = fopen(filename, "rb");
+      handle = fopen_large(filename, "rb");
     else
-      handle = fopen(filename, "rb+");
+      handle = fopen_large(filename, "rb+");
     if(!handle)
     {
       FAILURE_1(Runtime, "%s: File created could not be opened", devid_string);
