@@ -27,7 +27,13 @@
  * \file 
  * Contains debugging macros used by AlphaCPU.cpp
  *
- * $Id: cpu_debug.h,v 1.27 2008/03/14 15:30:52 iamcamiel Exp $
+ * $Id: cpu_debug.h,v 1.28 2008/03/19 18:01:09 iamcamiel Exp $
+ *
+ * X-1.28       Camiel Vanderhoeven                             19-MAR-2008
+ *      IDB versions compileable again.
+ *
+ * X-1.27       Camiel Vanderhoeven                             13-MAR-2008
+ *      Formatting.
  *
  * X-1.26       Camiel Vanderhoeven                             14-MAR-2008
  *   1. More meaningful exceptions replace throwing (int) 1.
@@ -186,13 +192,13 @@ void          handle_debug_string(char* s);
         ) &~U64(0x3);                                                                 \
       while(state.pc < 0x600000 && cSystem->ReadMem(state.pc, 32, this) == 0)         \
         state.pc += 4;                                                                \
-      return 0;                                                                       \
+      return;                                                                       \
     }                                                                                 \
     else if(bListing && !strcmp(funcname, "!SKIP"))                                   \
     {                                                                                 \
       while(state.pc < 0x600000 && cSystem->ReadMem(state.pc, 32, this) == 0)         \
         state.pc += 4;                                                                \
-      return 0;                                                                       \
+      return;                                                                       \
     }                                                                                 \
     else if(bListing && !strncmp(funcname, "!CHAR-", 6))                              \
     {                                                                                 \
@@ -209,7 +215,7 @@ void          handle_debug_string(char* s);
           while(state.pc < xx_upto && cSystem->ReadMem(state.pc, 8, this) == 0)       \
             state.pc++;                                                               \
         }                                                                             \
-        return 0;                                                                     \
+        return;                                                                     \
       }                                                                               \
     }                                                                                 \
     else if(bListing && !strncmp(funcname, "!LCHAR-", 7))                             \
@@ -232,7 +238,7 @@ void          handle_debug_string(char* s);
           while(state.pc < xx_upto && cSystem->ReadMem(state.pc, 8, this) == 0)       \
             state.pc++;                                                               \
         }                                                                             \
-        return 0;                                                                     \
+        return;                                                                     \
       }                                                                               \
     }                                                                                 \
     else if(bListing && !strncmp(funcname, "!X64-", 5))                               \
@@ -249,7 +255,7 @@ void          handle_debug_string(char* s);
                cSystem->ReadMem(state.pc, 64, this));                                 \
         state.pc += 8;                                                                \
       }                                                                               \
-      return 0;                                                                       \
+      return;                                                                       \
     }                                                                                 \
     else if(bListing && !strncmp(funcname, "!X32-", 5))                               \
     {                                                                                 \
@@ -265,7 +271,7 @@ void          handle_debug_string(char* s);
                cSystem->ReadMem(state.pc, 32, this));                                 \
         state.pc += 4;                                                                \
       }                                                                               \
-      return 0;                                                                       \
+      return;                                                                       \
     }                                                                                 \
     else if(!strncmp(funcname, ":", 1))                                               \
     {                                                                                 \
@@ -297,7 +303,7 @@ void          handle_debug_string(char* s);
   sprintf(dbg_strptr, "Unknown opcode: %02x   ", opcode); \
   dbg_strptr += strlen(dbg_strptr);                       \
   handle_debug_string(dbg_string);                        \
-  return 0;
+  return;
 
 #define UNKNOWN2  if(bDisassemble)                                       \
   {                                                                      \
@@ -306,7 +312,7 @@ void          handle_debug_string(char* s);
   sprintf(dbg_strptr, "Unknown opcode: %02x.%02x   ", opcode, function); \
   dbg_strptr += strlen(dbg_strptr);                                      \
   handle_debug_string(dbg_string);                                       \
-  return 0;
+  return;
 
 #define POST_X64(a)                           \
   if(bDisassemble)                            \

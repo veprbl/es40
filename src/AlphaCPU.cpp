@@ -27,7 +27,10 @@
  * \file 
  * Contains the code for the emulated DecChip 21264CB EV68 Alpha processor.
  *
- * $Id: AlphaCPU.cpp,v 1.77 2008/03/15 17:50:42 iamcamiel Exp $
+ * $Id: AlphaCPU.cpp,v 1.78 2008/03/19 18:01:08 iamcamiel Exp $
+ *
+ * X-1.78       Camiel Vanderhoeven                             19-MAR-2008
+ *      IDB versions compileable again.
  *
  * X-1.77       Camiel Vanderhoeven                             15-MAR-2008
  *      Remove confusing outer for-loop in CAlphaCPU::run().
@@ -410,7 +413,7 @@ void CAlphaCPU::init()
 
   state.r[22] = state.r[22 + 32] = state.iProcNum;
 
-  printf("%s(%d): $Id: AlphaCPU.cpp,v 1.77 2008/03/15 17:50:42 iamcamiel Exp $\n",
+  printf("%s(%d): $Id: AlphaCPU.cpp,v 1.78 2008/03/19 18:01:08 iamcamiel Exp $\n",
          devid_string, state.iProcNum);
 }
 
@@ -1312,7 +1315,7 @@ void CAlphaCPU::listing(u64 from, u64 to, u64 mark)
   bListing = true;
   for(state.pc = from; state.pc <= to;)
   {
-    DoClock();
+    execute();
     if(state.pc == mark)
       printf("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n");
   }
