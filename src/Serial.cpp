@@ -27,7 +27,10 @@
  * \file
  * Contains the code for the emulated Serial Port devices.
  *
- * $Id: Serial.cpp,v 1.45 2008/03/14 21:24:18 iamcamiel Exp $
+ * $Id: Serial.cpp,v 1.46 2008/03/19 14:24:43 iamcamiel Exp $
+ *
+ * X-1.46       Camiel Vanderhoeven                             19-MAR-2008
+ *      Initialize breakHit.
  *
  * X-1.45       Camiel Vanderhoeven                             13-MAR-2008
  *      Fixed FAILURE macro's for Unix.
@@ -196,6 +199,7 @@ int iCounter = 0;
 CSerial::CSerial(CConfigurator* cfg, CSystem* c, u16 number) : CSystemComponent(cfg, c)
 {
   state.iNumber = number;
+  breakHit = false;
 }
 
 /**
@@ -272,7 +276,7 @@ void CSerial::init()
   state.irq_active = false;
   myThread = 0;
 
-  printf("%s: $Id: Serial.cpp,v 1.45 2008/03/14 21:24:18 iamcamiel Exp $\n",
+  printf("%s: $Id: Serial.cpp,v 1.46 2008/03/19 14:24:43 iamcamiel Exp $\n",
          devid_string);
 }
 
