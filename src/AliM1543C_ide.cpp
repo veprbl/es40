@@ -28,7 +28,19 @@
  * \file
  * Contains the code for the emulated Ali M1543C IDE chipset part.
  *
- * $Id: AliM1543C_ide.cpp,v 1.29 2008/03/17 19:55:38 iamcamiel Exp $
+ * $Id: AliM1543C_ide.cpp,v 1.30 2008/03/20 11:40:47 iamcamiel Exp $
+ *
+ * X-1.30       Brian Wheeler                                   20-MAR-2008
+ *   1. Improved locking by a) Removing all of the general register 
+ *      locking; b) Busmaster locking is still in place, but it might not
+ *      be needed, this locking is pretty fine grained so nothing should
+ *      time out waiting for it; c) Creating an alt_status variable which
+ *      gets updated when the real status becomes stable (i.e. at the end
+ *      of the execute() run, after the drq status is changed, etc),
+ *      access to this variable is locked; d) Everything else is a free
+ *      for all.
+ *   3. Implement an optional delayed interrupt. The OSes still lose
+ *      interrupts sometimes.
  *
  * X-1.29       Brian Wheeler                                   17-MAR-2008
  *      Fix some CD-ROM issues.
@@ -504,28 +516,19 @@ u32 CAliM1543C_ide::ReadMem_Legacy(int index, u32 address, int dsize)
     channel = 1;
 
   case PRI_COMMAND:
-    {
-      SCOPED_WRITE_LOCK(mtRegisters[channel]);
-      return ide_command_read(channel, address, dsize);
-    }
+    return ide_command_read(channel, address, dsize);
 
   case SEC_CONTROL:
     channel = 1;
 
   case PRI_CONTROL:
-    {
-      SCOPED_READ_LOCK(mtRegisters[channel]);
-      return ide_control_read(channel, address);
-    }
+    return ide_control_read(channel, address);
 
   case SEC_BUSMASTER:
     channel = 1;
 
   case PRI_BUSMASTER:
-    {
-      SCOPED_READ_LOCK(mtBusMaster[channel]);
-      return ide_busmaster_read(channel, address, dsize);
-    }
+    return ide_busmaster_read(channel, address, dsize);
   }
 
   return 0;
@@ -540,30 +543,21 @@ void CAliM1543C_ide::WriteMem_Legacy(int index, u32 address, int dsize, u32 data
     channel = 1;
 
   case PRI_COMMAND:
-    {
-      SCOPED_WRITE_LOCK(mtRegisters[channel]);
-      ide_command_write(channel, address, dsize, data);
-    }
+    ide_command_write(channel, address, dsize, data);
     break;
 
   case SEC_CONTROL:
     channel = 1;
 
   case PRI_CONTROL:
-    {
-      SCOPED_WRITE_LOCK(mtRegisters[channel]);
-      ide_control_write(channel, address, data);
-    }
+    ide_control_write(channel, address, data);
     break;
 
   case SEC_BUSMASTER:
     channel = 1;
 
   case PRI_BUSMASTER:
-    {
-      SCOPED_WRITE_LOCK(mtBusMaster[channel]);
-      ide_busmaster_write(channel, address, dsize, data);
-    }
+    ide_busmaster_write(channel, address, dsize, data);
     break;
   }
 }
@@ -577,10 +571,7 @@ u32 CAliM1543C_ide::ReadMem_Bar(int func, int bar, u32 address, int dsize)
     channel = 1;
 
   case BAR_PRI_COMMAND:
-    {
-      SCOPED_WRITE_LOCK(mtRegisters[channel]);
-      return ide_command_read(channel, address, dsize);
-    }
+    return ide_command_read(channel, address, dsize);
 
   case BAR_SEC_CONTROL:
     channel = 1;
@@ -588,22 +579,13 @@ u32 CAliM1543C_ide::ReadMem_Bar(int func, int bar, u32 address, int dsize)
   case BAR_PRI_CONTROL:
 
     // we have to offset by two because the BAR starts at 3f4 vs 3f6
-    {
-      SCOPED_READ_LOCK(mtRegisters[channel]);
-      return ide_control_read(channel, address - 2);
-    }
+    return ide_control_read(channel, address - 2);
 
   case BAR_BUSMASTER:
     if(address < 8)
-    {
-      SCOPED_READ_LOCK(mtBusMaster[0]);
       return ide_busmaster_read(0, address, dsize);
-    }
     else
-    {
-      SCOPED_READ_LOCK(mtBusMaster[1]);
       return ide_busmaster_read(1, address - 8, dsize);
-    }
   }
 
   return 0;
@@ -619,37 +601,22 @@ void CAliM1543C_ide::WriteMem_Bar(int func, int bar, u32 address, int dsize,
     channel = 1;
 
   case BAR_PRI_COMMAND:
-    {
-      SCOPED_WRITE_LOCK(mtRegisters[channel]);
-      ide_command_write(channel, address, dsize, data);
-      return;
-    }
+    ide_command_write(channel, address, dsize, data);
+    return;
 
   case BAR_SEC_CONTROL:
     channel = 1;
 
   case BAR_PRI_CONTROL:
-    {
-      SCOPED_WRITE_LOCK(mtRegisters[channel]);
-
-      // we have to offset by two because the BAR starts at 3f4 vs 3f6
-      ide_control_write(channel, address - 2, data);
-      return;
-    }
+    // we have to offset by two because the BAR starts at 3f4 vs 3f6
+    ide_control_write(channel, address - 2, data);
+    return;
 
   case BAR_BUSMASTER:
     if(address < 8)
-    {
-      SCOPED_WRITE_LOCK(mtBusMaster[0]);
       return ide_busmaster_write(0, address, data, dsize);
-    }
     else
-    {
-      SCOPED_WRITE_LOCK(mtBusMaster[1]);
       return ide_busmaster_write(1, address - 8, data, dsize);
-    }
-
-    return;
   }
 }
 
@@ -702,6 +669,7 @@ u32 CAliM1543C_ide::ide_command_read(int index, u32 address, int dsize)
       {
         SEL_STATUS(index).busy = true;
         SEL_STATUS(index).drive_ready = false;
+	UPDATE_ALT_STATUS(index);
         semController[index]->set();  // wake up the controller.
 #if defined(DEBUG_IDE_MULTIPLE) || defined(DEBUG_IDE_PACKET)
         printf("Command still in progress, waking up controller.\n");
@@ -716,6 +684,7 @@ u32 CAliM1543C_ide::ide_command_read(int index, u32 address, int dsize)
       printf("%%IDE-W-OVERFLOW: data pointer past end of buffer,  setting to 0.\n");
       CONTROLLER(index).data_ptr = 0;
       SEL_STATUS(index).drq = false;
+      UPDATE_ALT_STATUS(index);
     }
     break;
 
@@ -750,7 +719,7 @@ u32 CAliM1543C_ide::ide_command_read(int index, u32 address, int dsize)
     data = get_status(index);
     theAli->pic_deassert(1, 6 + index);
 #ifdef DEBUG_IDE_INTERRUPT
-    printf("%%IDE-I-INTERRUPT: Interrupt Acknowledged.\n");
+    printf("%%IDE-I-INTERRUPT: Interrupt Acknowledged on %d.\n",index);
 #endif
     break;
   }
@@ -810,6 +779,7 @@ void CAliM1543C_ide::ide_command_write(int index, u32 address, int dsize,
       // we don't want any more.
       SEL_STATUS(index).drq = false;
       SEL_STATUS(index).busy = true;
+      UPDATE_ALT_STATUS(index);
       semController[index]->set();      // wake the controller up.
     }
 
@@ -818,6 +788,7 @@ void CAliM1543C_ide::ide_command_write(int index, u32 address, int dsize,
       printf("%%IDE-W-OVERFLOW: data pointer overflow,  setting to 0.\n");
       CONTROLLER(index).data_ptr = 0;
       SEL_STATUS(index).drq = false;
+      UPDATE_ALT_STATUS(index);
     }
     break;
 
@@ -887,13 +858,18 @@ void CAliM1543C_ide::ide_command_write(int index, u32 address, int dsize,
 
     SEL_COMMAND(index).command_in_progress = false;
     SEL_COMMAND(index).current_command = data;
+#ifdef DEBUG_IDE_CMD
+    printf("%%IDE-I-CMD: Command %02x issued on controller %d, disk %d.\n",data,index, CONTROLLER(index).selected);
+#endif
     SEL_COMMAND(index).command_cycle = 0;
     SEL_STATUS(index).drq = false;
+    UPDATE_ALT_STATUS(index);
     CONTROLLER(index).data_ptr = 0;
 
     if(data != 0x00)
     {
       SEL_STATUS(index).busy = true;
+      UPDATE_ALT_STATUS(index);
       SEL_COMMAND(index).command_in_progress = true;
       SEL_COMMAND(index).packet_phase = PACKET_NONE;
       semController[index]->set();      // wake up the controller.
@@ -916,7 +892,10 @@ u32 CAliM1543C_ide::ide_control_read(int index, u32 address)
   switch(address)
   {
   case 0:
-    data = get_status(index);
+    {
+      SCOPED_READ_LOCK(mtRegisters[index]);
+      data = SEL_STATUS(index).alt_status;
+    }
 #ifdef DEBUG_IDE_REG_CONTROL
     static u32  last_data = 0;
     if(last_data != data)
@@ -1173,12 +1152,17 @@ void CAliM1543C_ide::raise_interrupt(int index)
 #ifdef DEBUG_IDE_INTERRUPT
     printf("%%IDE-I-INTERRUPT: Interrupt raised on controller %d.\n", index);
 #endif
+
+#if !defined(IDE_YIELD_INTERRUPTS)
     {
       SCOPED_WRITE_LOCK(mtBusMaster[index]);
       CONTROLLER(index).busmaster[2] |= 0x04;
     }
-
+    UPDATE_ALT_STATUS(index);
     theAli->pic_interrupt(1, 6 + index);
+#else
+    CONTROLLER(index).interrupt_pending=true;
+#endif
   }
 }
 
@@ -1418,6 +1402,7 @@ void CAliM1543C_ide::command_aborted(int index, u8 command)
   SEL_REGISTERS(index).error |= 0x04; // command ABORTED
   CONTROLLER(index).data_ptr = 0;
   SEL_COMMAND(index).command_in_progress = false;
+  UPDATE_ALT_STATUS(index);
   raise_interrupt(index);
 }
 
@@ -1427,9 +1412,9 @@ void CAliM1543C_ide::ide_status(int index)
 {
   printf("IDE %d.%d: [busy: %d, drdy: %d, flt: %d, drq: %d, err: %d]\n"
          "         [c: %d, h: %d, s: %d, #: %d, f: %x, lba: %d]\n"
-       "         [ptr: %d, size: %d, error: %d, cmd: %x, in progress: %d]\n"
-     "         [cycle: %d, pkt phase: %d, pkt cmd: %x, dma: %d]\n"
-   "         [bm-cmd: %x  bm-stat: %x]\n", index,
+	 "         [ptr: %d, size: %d, error: %d, cmd: %x, in progress: %d]\n"
+	 "         [cycle: %d, pkt phase: %d, pkt cmd: %x, dma: %d]\n"
+	 "         [bm-cmd: %x  bm-stat: %x]\n", index,
          CONTROLLER(index).selected, SEL_STATUS(index).busy,
          SEL_STATUS(index).drive_ready, SEL_STATUS(index).fault,
          SEL_STATUS(index).drq, SEL_STATUS(index).err,
@@ -1964,7 +1949,6 @@ void CAliM1543C_ide::execute(int index)
                 {
                   if(!SEL_STATUS(index).drq)
                   {
-
                     // all of the data has been read
                     // from the buffer.
                     // for now I assume that it is
@@ -2538,7 +2522,6 @@ int CAliM1543C_ide::do_dma_transfer(int index, u8*  buffer, u32 buffersize,
     SCOPED_READ_LOCK(mtBusMaster[index]);
     prd = endian_32(*(u32 *) (&CONTROLLER(index).busmaster[4]));
   }
-
   do
   {
     u32 base;
@@ -2617,7 +2600,7 @@ int CAliM1543C_ide::do_dma_transfer(int index, u8*  buffer, u32 buffersize,
 
     // do not raise an interrupt
     break;
-
+      
   case 2: // PRD is larger than the data we have.
     // leave active set.
     raise_interrupt(index);
@@ -2645,9 +2628,20 @@ void CAliM1543C_ide::run()
         printf("Thread %d: \n", index);
         ide_status(index);
 #endif
-        SCOPED_WRITE_LOCK(mtRegisters[index]);
         if(SEL_COMMAND(index).command_in_progress)
           execute(index);
+	UPDATE_ALT_STATUS(index);
+
+#ifdef IDE_YIELD_INTERRUPTS  
+	if(CONTROLLER(index).interrupt_pending) {
+	  {
+	    SCOPED_WRITE_LOCK(mtBusMaster[index]);
+	    CONTROLLER(index).busmaster[2] |= 0x04;
+	  }
+	  theAli->pic_interrupt(1, 6 + index);
+	}
+#endif
+
       }
     }
   }

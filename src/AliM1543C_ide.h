@@ -27,7 +27,29 @@
  * \file
  * Contains the definitions for the emulated Ali M1543C IDE chipset part.
  *
- * $Id: AliM1543C_ide.h,v 1.19 2008/03/14 15:30:50 iamcamiel Exp $
+ * $Id: AliM1543C_ide.h,v 1.20 2008/03/20 11:40:48 iamcamiel Exp $
+ *
+ * X-1.20       Brian Wheeler                                   20-MAR-2008
+ *   1. Improved locking by a) Removing all of the general register 
+ *      locking; b) Busmaster locking is still in place, but it might not
+ *      be needed, this locking is pretty fine grained so nothing should
+ *      time out waiting for it; c) Creating an alt_status variable which
+ *      gets updated when the real status becomes stable (i.e. at the end
+ *      of the execute() run, after the drq status is changed, etc),
+ *      access to this variable is locked; d) Everything else is a free
+ *      for all.
+ *   3. Implement an optional delayed interrupt. The OSes still lose
+ *      interrupts sometimes.
+ *
+ * X-1.19       Brian Wheeler                                   17-MAR-2008
+ *      Fix some CD-ROM issues.
+ *
+ * X-1.18       Camiel Vanderhoeven                             14-MAR-2008
+ *      Formatting.
+ *
+ * X-1.17       Camiel Vanderhoeven                             14-MAR-2008
+ *   1. More meaningful exceptions replace throwing (int) 1.
+ *   2. U64 macro replaces X64 macro.
  *
  * X-1.16       Camiel Vanderhoeven                             13-MAR-2008
  *      Create init(), start_threads() and stop_threads() functions.
@@ -202,7 +224,11 @@ class CAliM1543C_ide : public CDiskController, public CSCSIDevice, public Poco::
           // debugging
           u8    debug_last_status;
           bool  debug_status_update;
+
+	  u8 alt_status; // this is the latched status.
         } status;
+
+
 
         struct
         {
@@ -257,9 +283,12 @@ class CAliM1543C_ide : public CDiskController, public CSCSIDevice, public Poco::
         u16                 data[IDE_BUFFER_SIZE];
         int                 data_ptr;
         int                 data_size;
+
+	bool                interrupt_pending;
       } controller[2];
     }
     state;
+
 };
 
 #define SEL_STATUS(a)            \
@@ -277,6 +306,9 @@ class CAliM1543C_ide : public CDiskController, public CSCSIDevice, public Poco::
 #define REGISTERS(a, b)   state.controller[a].drive[b].registers
 #define PER_DRIVE(a, b)   state.controller[a].drive[b]
 #define CONTROLLER(a)     state.controller[a]
+
+
+#define UPDATE_ALT_STATUS(a) { SCOPED_WRITE_LOCK(mtRegisters[a]); SEL_STATUS(a).alt_status=get_status(a); }
 
 extern CAliM1543C_ide*  theIDE;
 
