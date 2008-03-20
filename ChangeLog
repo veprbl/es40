@@ -3,6 +3,14 @@
 
 \section c019 version 0.18 -> 0.18+
 
+ - Improved IDE locking by a) Removing all of the general register locking; b) Busmaster locking
+   is still in place, but it might not be needed, this locking is pretty fine grained so nothing
+   should time out waiting for it; c) Creating an alt_status variable which gets updated when the
+   real status becomes stable (i.e. at the end of the execute() run, after the drq status is
+   changed, etc), access to this variable is locked; d) Everything else is a free for all.
+   (20-mar-2008, Brian Wheeler)
+ - Implement an optional delayed IDE interrupt. The OSes still lose interrupts sometimes. 
+   (20-mar-2008, Brian Wheeler)
  - Create configuration files to use GNU's Autotools. (20-mar-2008, Camiel Vanderhoeven)
  - Support disk image files >2GB on linux. (19-mar-2008, Camiel Vanderhoeven)
  - Fixed some IDE CD-ROM issues that were introduced with the multi-threading patch. (17-mar-2008,
