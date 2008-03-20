@@ -3,6 +3,7 @@
 
 \section c019 version 0.18 -> 0.18+
 
+ - Create configuration files to use GNU's Autotools. (20-mar-2008, Camiel Vanderhoeven)
  - Support disk image files >2GB on linux. (19-mar-2008, Camiel Vanderhoeven)
  - Fixed some IDE CD-ROM issues that were introduced with the multi-threading patch. (17-mar-2008,
    Brian Wheeler)
