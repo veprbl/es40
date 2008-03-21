@@ -1,3 +1,4 @@
+#!/bin/sh
 ################################################################################
 # ES40 emulator.
 # Copyright (C) 2007-2008 by the ES40 Emulator Project
@@ -26,15 +27,15 @@
 #
 ################################################################################
 #
-# $Id: reconf,v 1.1 2008/03/20 07:49:53 iamcamiel Exp $
+# $Id: reconf,v 1.2 2008/03/21 14:14:39 iamcamiel Exp $
 #
 # X-1.1	     Camiel Vanderhoeven                      20-MAR-2008
 #      File Created.
 #
 ################################################################################
 
-#!/bin/sh
-rm -f config.cache
+
+rm -f config.cache configure configure_2.sh configure_1.sh
 echo "- aclocal."
 aclocal -I m4
 echo "- autoconf."
@@ -43,4 +44,13 @@ echo "- autoheader."
 autoheader
 echo "- automake."
 automake -a
+echo "- housekeeping."
+mv configure configure_2.sh
+m4 <configure_1.m4 >configure_1.sh
+cat >configure <<EOF
+#! /bin/sh
+./configure_1.sh
+./configure_2.sh $@
+EOF
+chmod u+x configure configure_1.sh configure_2.sh
 exit

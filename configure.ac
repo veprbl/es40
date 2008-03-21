@@ -1,3 +1,4 @@
+#                                               -*- Autoconf -*-
 ################################################################################
 # ES40 emulator.
 # Copyright (C) 2007-2008 by the ES40 Emulator Project
@@ -26,7 +27,7 @@
 #
 ################################################################################
 #
-# $Id: configure.ac,v 1.1 2008/03/20 07:49:53 iamcamiel Exp $
+# $Id: configure.ac,v 1.2 2008/03/21 14:14:39 iamcamiel Exp $
 #
 # X-1.1	     Camiel Vanderhoeven                      20-MAR-2008
 #      File Created.
