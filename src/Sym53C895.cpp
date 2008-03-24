@@ -27,7 +27,7 @@
  * \file
  * Contains the code for the emulated Symbios SCSI controller.
  *
- * $Id: Sym53C895.cpp,v 1.28 2008/03/14 15:30:52 iamcamiel Exp $
+ * $Id: Sym53C895.cpp,v 1.29 2008/03/24 20:30:08 iamcamiel Exp $
  *
  * X-1.27       Camiel Vanderhoeven                             14-MAR-2008
  *   1. More meaningful exceptions replace throwing (int) 1.
@@ -348,131 +348,108 @@
 #define R16(a)            state.regs.reg16[R_##a / 2]
 #define R32(a)            state.regs.reg32[R_##a / 4]
 
-// test bit in register
+/**
+ * Test bit in register
+ *
+ * \param a is the name of the register
+ * \param b is the name of the bit
+ **/
 #define TB_R8(a, b) ((R8(a) & R_##a##_##b) == R_##a##_##b)
 
-//set bit in register
+/**
+ * Set bit in register.
+ *
+ * \param a is the name of the register
+ * \param b is the name of the bit
+ * \param c is the value for the bit
+ **/
 #define SB_R8(a, b, c)  R8(a) = (R8(a) &~R_##a##_##b) | (c ? R_##a##_##b : 0)
 
-// write with mask
+/**
+ * Write to a register, using a mask
+ *
+ * \param a is the name of the register
+ * \param b is the value to write.
+ *
+ * Only those bits that are set to 1 in <regname>_MASK will be changed.
+ **/
 #define WRM_R8(a, b)  R8(a) = (R8(a) &~a##_MASK) | ((b) & a##_MASK)
 
-// write with mask and write-1-to-clear
+/**
+ * Write to a register, using a mask, and using write-1-to-clear bits
+ *
+ * \param a is the name of the register
+ * \param b is the value to write.
+ *
+ * Only those bits that are set to 1 in <regname>_MASK will be changed.
+ * In addition, bits that are set to 1 in <regname>_W1C will be cleared 
+ * in the register if they are set to 1 in the value.
+ **/
 #define WRMW1C_R8(a, b)                    \
     R8(a) = (R8(a) &~a##_MASK &~a##_W1C) | \
     ((b) & a##_MASK) |                     \
     (R8(a) &~(b) & a##_W1C)
+
+/**
+ * Raise an interrupt
+ *
+ * \param a is the name of the interrupt register
+ * \param b is the name of the bit to set
+ **/
 #define RAISE(a, b) set_interrupt(R_##a, R_##a##_##b)
+
+/**
+ * Clear read-to-clear-bits
+ *
+ * \param a is the name of the register
+ *
+ * Clear bits that are set to 1 in <regname>_RC
+ **/
 #define RDCLR_R8(a) R8(a) &= ~a##_RC
 
+/**
+ * Get the SCSI destination ID from the SDID register
+ **/
 #define GET_DEST()  (R8(SDID) & R_SCID_ID)
+
+/**
+ * Set the SCSI destination ID in the SDID register
+ **/
 #define SET_DEST(a) R8(SDID) = (a) & R_SCID_ID
 
+/**
+ * Get the value of the DBC register (24-bits)
+ **/
 #define GET_DBC()   (R32(DBC) & 0x00ffffff)
+
+/**
+ * Set the value of the DBC register (24-bits)
+ **/
 #define SET_DBC(a)                       \
     R32(DBC) = (R32(DBC) & 0xff000000) | \
     ((a) & 0x00ffffff)
-#define PT  state.per_target[GET_DEST()]
-#define PTD get_disk(0, GET_DEST())
 
-  u32 sym_cfg_data[64] =
-  {
-
-    /*00*/
-    0x000c1000,       // CFID: vendor + device
-
-  /*04*/
-  0x02000001,         // CFCS: command + status
-
-  /*08*/
-  0x01000000,         // CFRV: class + revision
-
-  /*0c*/
-  0x00000000,         // CFLT: latency timer + cache line size
-
-  /*10*/
-  0x00000001,         // BAR0: IO Space
-
-  /*14*/
-  0x00000000,         // BAR1: Memory space
-
-  /*18*/
-  0x00000000,         // BAR2: RAM space
-
-  /*1c*/
-  0x00000000,         // BAR3:
-
-  /*20*/
-  0x00000000,         // BAR4:
-
-  /*24*/
-  0x00000000,         // BAR5:
-
-  /*28*/
-  0x00000000,         // CCIC: CardBus
-
-  /*2c*/
-  0x00000000,         // CSID: subsystem + vendor
-
-  /*30*/
-  0x00000000,         // BAR6: expansion rom base
-
-  /*34*/
-  0x00000000,         // CCAP: capabilities pointer
-
-  /*38*/
-  0x00000000,
-
-  /*3c*/
-  0x401101ff,         // CFIT: interrupt configuration
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0
+u32 sym_cfg_data[64] =
+{
+  /*00*/  0x000c1000,         // CFID: vendor + device
+  /*04*/  0x02000001,         // CFCS: command + status
+  /*08*/  0x01000000,         // CFRV: class + revision
+  /*0c*/  0x00000000,         // CFLT: latency timer + cache line size
+  /*10*/  0x00000001,         // BAR0: IO Space
+  /*14*/  0x00000000,         // BAR1: Memory space
+  /*18*/  0x00000000,         // BAR2: RAM space
+  /*1c*/  0x00000000,         // BAR3:
+  /*20*/  0x00000000,         // BAR4:
+  /*24*/  0x00000000,         // BAR5:
+  /*28*/  0x00000000,         // CCIC: CardBus
+  /*2c*/  0x00000000,         // CSID: subsystem + vendor
+  /*30*/  0x00000000,         // BAR6: expansion rom base
+  /*34*/  0x00000000,         // CCAP: capabilities pointer
+  /*38*/  0x00000000,
+  /*3c*/  0x401101ff,         // CFIT: interrupt configuration
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
 };
 
 u32 sym_cfg_mask[64] = {
@@ -552,7 +529,7 @@ void CSym53C895::init()
 
   myThread = 0;
 
-  printf("%s: $Id: Sym53C895.cpp,v 1.28 2008/03/14 15:30:52 iamcamiel Exp $\n",
+  printf("%s: $Id: Sym53C895.cpp,v 1.29 2008/03/24 20:30:08 iamcamiel Exp $\n",
          devid_string);
 }
 
@@ -1368,6 +1345,9 @@ void CSym53C895::check_state()
   }
 }
 
+/**
+ * Execute one SCRIPTS instruction.
+ **/
 void CSym53C895::execute()
 {
   int optype;
@@ -1382,24 +1362,79 @@ void CSym53C895::execute()
   }
 
 #if defined(DEBUG_SYM_SCRIPTS)
-
-  //    printf("SYM: EXECUTING SCRIPT\n");
-  //    printf("SYM: INS @ %x, %x   \n",R32(DSP), R32(DSP)+4);
+      printf("SYM: INS @ %x   \n",R32(DSP));
 #endif
+
+  /* DSP (DMA Scripts Pointer) contains the address of the next instruction.
+   * For each instruction, two DWORDS are read into the 8-bit DCMD (DMA Command),
+   * 24-bit DBC (DMA Byte Counter), and 32-bit DSPS (DMA Scripts Pointer Save)
+   * registers. For some commands, a third DWORD is read into the 32-bit TEMP
+   * register:
+   *
+   *        +--------+------------------------+
+   * DSP  : |  DCMD  |          DBC           |
+   *        +--------+------------------------+
+   * DSP+4: |              DSPS               |
+   *        +---------------------------------+
+   * DSP+8: |/ / / / / / / TEMP  / / / / / / /|
+   *        +---------------------------------+
+   */
+
+  // Read 2 DWORDS into the DCMD, DBC and DSPS registers.
   do_pci_read(R32(DSP), &R32(DBC), 4, 1);
   do_pci_read(R32(DSP) + 4, &R32(DSPS), 4, 1);
 
+  // Increase DSP to point to the next instruction
   R32(DSP) += 8;
 
 #if defined(DEBUG_SYM_SCRIPTS)
-
-  //printf("SYM: INS @ %" LL "x, %" LL "x   \n",cmda0, cmda1);
   printf("SYM: INS = %x, %x, %x   \n", R8(DCMD), GET_DBC(), R32(DSPS));
 #endif
+  /* The two most significant bits of the DCMD register determine the operation
+   * type. These are:
+   *   00: Block Move
+   *   01: I/O or R/W
+   *   10: Transfer Control
+   *   11: Memory Move or Load And Store
+   */
   optype = (R8(DCMD) >> 6) & 3;
   switch(optype)
   {
   case 0:
+    /* Block Move instruction
+     * 
+     * The Block Move instruction moves data between system memory and the
+     * SCSI Bus. This is a two DWORD instruction. The instruction format in
+     * the DCMD register is as follows:
+     *
+     * +---+-+-+-+-----+
+     * |7 6|5|4|3|2 1 0| DCMD Register
+     * +---+-+-+-+-----+
+     *   ^  ^ ^ ^   ^  
+     *   |  | | |   |          
+     *   |  | | |   +- 0..2: SCSI Phase (I/O, C/D and MSG/ signals):
+     *   |  | | |            The data transfer only occurs if these
+     *   |  | | |            bits match the actual SCSI bus phase.
+     *   |  | | +- 3: Op Code: IGNORED
+     *   |  | +- 4: Table Indirect Adressing:
+     *   |  |         0: The DSPS register contains the address of the
+     *   |  |            data, and the DBC register contains the number 
+     *   |  |            of bytes to transfer.
+     *   |  |         1: The DSPS register contains a 24-bit signed offset
+     *   |  |            that is added to the DSA register to get a pointer
+     *   |  |            to a data structure that contains the address and
+     *   |  |            byte count. This structure looks as follows:
+     *   |  |                           +----+------------+
+     *   |  |               DSA+DSPS:   | 00 | Byte Count |
+     *   |  |                           +----+------------+
+     *   |  |               DSA+DSPS+4: |  Data Address   |
+     *   |  |                           +-----------------+
+     *   |  +- Indirect Addressing:
+     *   |       0: The DSPS register contains the address of the data
+     *   |       1: The DSPS register contains the address of a 32-bit
+     *   |          pointer to the data.
+     *   +- Instruction Type: 00 = Block Move
+     */
     {
       bool  indirect = (R8(DCMD) >> 5) & 1;
       bool  table_indirect = (R8(DCMD) >> 4) & 1;
@@ -1531,7 +1566,6 @@ void CSym53C895::execute()
         bool  sc_ack = (GET_DBC() >> 6) & 1;
         bool  sc_atn = (GET_DBC() >> 3) & 1;
 
-        //HACK?? DOCS UNCLEAR: TRY-THIS
         R32(DNAD) = R32(DSPS);
 
         u32 dest_addr = R32(DNAD);
@@ -2041,11 +2075,36 @@ void CSym53C895::execute()
 
   FAILURE(Logic, "SCSI should never get here");
 }
-
+/**
+ * Set an interrupt bit.
+ *
+ * This function checks if any other interrupt bits are active, if so,
+ * the interrupt bit is set in the stacked interrupt registers. Otherwise
+ * it goes straight to the respective interrupt register.
+ *
+ * According to the datasheet:
+ * "The SYM53C895 stacks interrupts if they occur one after another. If the SIP or DIP
+ * bits in the ISTAT register are set (first level), then there is already at least one
+ * pending interrupt, and any future interrupts will be stacked in extra registers
+ * behind the SIST0, SIST1, and DSTAT registers (second level). When two interrupts
+ * have occurred and the two levels of the stack are full, any further interrupts will
+ * set additional bits in the extra registers behind SIST0, SIST1 and DSTAT. When the
+ * first level of interrupts are cleared, all the interrupts that came in afterward
+ * will move into the SIST0, SIST1 and DSTAT. After the first interrupt is cleared by
+ * reading the appropriate register, the IRQ/ pin will be deasserted for a minimum of
+ * three CLKs; the stacked interrupt(s) will move into the SIST0, SIST1 or DSTAT; and
+ * the IRQ/ pin will be asserted once again.
+ *
+ * Since a masked non-fatal interrupt will not set the SIP or DIP bits, interrupt
+ * stacking will not occur. A masked, non-fatal interrupt will still post the
+ * interrupt in SIST0, but will not assert the IRQ/ pin. Since no interrupt is
+ * generated, future interrupts will move right into the SIST0 or SIST1 instead of
+ * being stacked behind another interrupt. When another condition occurs that generates
+ * an interrupt, the bit corresponding to the earlier masked non-fatal interrupt will
+ * still be set."
+ **/
 void CSym53C895::set_interrupt(int reg, u8 interrupt)
 {
-
-  //
   //printf("set interrupt %02x, %02x.\n",reg,interrupt);
   switch(reg)
   {
@@ -2110,11 +2169,29 @@ void CSym53C895::set_interrupt(int reg, u8 interrupt)
   //printf("<-- eval_int\n");
 }
 
+/**
+ * Evaluate interrupt status.
+ *
+ * Check interrupt registers, and determine if an interrupt should be generated.
+ **/
 void CSym53C895::eval_interrupts()
 {
+  // will_assert: when this boolean value is true at the end of this function, an
+  // interrupt will be signalled to the system.
   bool  will_assert = false;
+  
+  // will_halt: when this boolean value is true at the end of this function,
+  // program execution will be halted. (fatal interrupt)
   bool  will_halt = false;
 
+  // Check current interrupt status. If no interrupt is active, move interrupt
+  // flags from the interrupt stack down.
+  //
+  // (When an interrupt is signalled, but another interrupt bit is already active,
+  // the interrupt doesn't go to the interrupt register, but to the interrupt 
+  // stack. The interrupt stack, however, doesn't keep track of the order in which
+  // interrupts come in, so when the interrupt stack is moved down into the 
+  // interrupt registers, multiple interrupt bits may become active.)
   if(!R8(SIST0) && !R8(SIST1) && !R8(DSTAT))
   {
     R8(SIST0) |= state.sist0_stack;
@@ -2125,12 +2202,19 @@ void CSym53C895::eval_interrupts()
     state.dstat_stack = 0;
   }
 
+  // Check for DMA interrupts.
   if(R8(DSTAT) & DSTAT_FATAL)
   {
+    // DMA interrupt conditions always halt execution (always fatal)
     will_halt = true;
 
     //printf("  will halt(DSTAT).\n");
+
+    // Set the DMA interrupt pending bit.
     SB_R8(ISTAT, DIP, true);
+
+    // If the interrupt is also enabled in the DIEN register, it will
+    // be signalled to the system.
     if(R8(DSTAT) & R8(DIEN) & DSTAT_FATAL)
     {
       will_assert = true;
@@ -2139,17 +2223,27 @@ void CSym53C895::eval_interrupts()
     }
   }
   else
+  {
+    // Reset the DMA interrupt pending bit. (It may still be set).
     SB_R8(ISTAT, DIP, false);
+  }
 
+  // Check for SCSI engine interrupts
   if(R8(SIST0) || R8(SIST1))
   {
+    // Set the SCSI interrupt pending bit.
     SB_R8(ISTAT, SIP, true);
+
+    //Check if the interrupt is either fatal, or enabled.
     if((R8(SIST0) & (SIST0_FATAL | R8(SIEN0)))
      || (R8(SIST1) & (SIST1_FATAL | R8(SIEN1))))
     {
+      // In either case, stop execution.
       will_halt = true;
 
       //printf("  will halt(SIST).\n");
+
+      // If the interrupt is enabled, signal it to the system.
       if((R8(SIST0) & R8(SIEN0)) || (R8(SIST1) & R8(SIEN1)))
       {
         will_assert = true;
@@ -2159,15 +2253,21 @@ void CSym53C895::eval_interrupts()
     }
   }
   else
+  {
+    // Reset the SCSI interrupt pending bit (It may still be set).
     SB_R8(ISTAT, SIP, false);
+  }
 
+  // Check the interrupt on the fly bit.
   if(TB_R8(ISTAT, INTF))
   {
+    // Signal this to the system
     will_assert = true;
 
     //printf("  will assert(INTF).\n");
   }
 
+  // If interrupts are disabled, don't signal any interrupt to the system.
   if(TB_R8(DCNTL, IRQD))
   {
     will_assert = false;
@@ -2175,9 +2275,11 @@ void CSym53C895::eval_interrupts()
     //printf("  won't assert(IRQD).\n");
   }
 
+  // Halt execution if will_halt is true.
   if(will_halt)
     state.executing = false;
 
+  // Assert or de-assert the interrupt line as needed
   if(will_assert != state.irq_asserted)
   {
 
