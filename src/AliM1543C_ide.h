@@ -27,7 +27,10 @@
  * \file
  * Contains the definitions for the emulated Ali M1543C IDE chipset part.
  *
- * $Id: AliM1543C_ide.h,v 1.20 2008/03/20 11:40:48 iamcamiel Exp $
+ * $Id: AliM1543C_ide.h,v 1.21 2008/03/24 21:37:46 iamcamiel Exp $
+ *
+ * X-1.21       Camiel Vanderhoeven                             24-MAR-2008
+ *      Comments.
  *
  * X-1.20       Brian Wheeler                                   20-MAR-2008
  *   1. Improved locking by a) Removing all of the general register 
@@ -123,6 +126,7 @@
 #if !defined(INCLUDED_ALIM1543C_IDE_H_)
 #define INCLUDED_ALIM1543C_IDE_H_
 
+// If DEBUG_IDE is defined, define all IDE debugging flags.
 #ifdef DEBUG_IDE
 #define DEBUG_IDE_BUSMASTER
 #define DEBUG_IDE_COMMAND
@@ -133,6 +137,7 @@
 #define DEBUG_IDE_PACKET
 #define DEBUG_IDE_MULTIPLE
 #endif
+
 #include "DiskController.h"
 #include "Configurator.h"
 #include "SCSIDevice.h"
@@ -228,8 +233,6 @@ class CAliM1543C_ide : public CDiskController, public CSCSIDevice, public Poco::
 	  u8 alt_status; // this is the latched status.
         } status;
 
-
-
         struct
         {
           bool  lba_mode;
@@ -291,26 +294,45 @@ class CAliM1543C_ide : public CDiskController, public CSCSIDevice, public Poco::
 
 };
 
+/// Status for selected drive on controller a
 #define SEL_STATUS(a)            \
     state.controller[a].drive[state.controller[a].selected].status
+
+/// Command for selected drive on controller a
 #define SEL_COMMAND(a)             \
     state.controller[a].drive[state.controller[a].selected].command
+
+/// Registers for selected drive on controller a
 #define SEL_REGISTERS(a)               \
     state.controller[a].drive[state.controller[a].selected].registers
 
+/// Selected drive on controller a
 #define SEL_DISK(a)       get_disk(a, state.controller[a].selected)
+
+/// Per-drive data for selected drive on controller a
 #define SEL_PER_DRIVE(a)  state.controller[a].drive[state.controller[a].selected]
 
+// Status for drive b on controller a
 #define STATUS(a, b)      state.controller[a].drive[b].status
+
+// Command for drive b on controller a
 #define COMMAND(a, b)     state.controller[a].drive[b].command
+
+// Registers for drive b on controller a
 #define REGISTERS(a, b)   state.controller[a].drive[b].registers
+
+// Per-drive data for drive b on controller a
 #define PER_DRIVE(a, b)   state.controller[a].drive[b]
+
+// Data for controller a
 #define CONTROLLER(a)     state.controller[a]
 
-
-#define UPDATE_ALT_STATUS(a) { SCOPED_WRITE_LOCK(mtRegisters[a]); SEL_STATUS(a).alt_status=get_status(a); }
-
-extern CAliM1543C_ide*  theIDE;
+// Update alt-status for controller a with locking
+#define UPDATE_ALT_STATUS(a)                        \
+        {                                           \
+          SCOPED_WRITE_LOCK(mtRegisters[a]);        \
+          SEL_STATUS(a).alt_status=get_status(a);   \
+        }
 
 /* memory region ids */
 #define PRI_COMMAND   1
@@ -390,4 +412,8 @@ static char*  packet_states[] = {
 #define SENSE_BLANK_CHECK     0x08
 #define SENSE_ABORT_COMMAND   0x0b
 #define SENSE_MISCOMPARE      0x0e
+
+
+extern CAliM1543C_ide*  theIDE;
+
 #endif
