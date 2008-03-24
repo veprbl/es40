@@ -27,7 +27,10 @@
  * \file
  * Contains the code for the emulated Flash ROM devices.
  *
- * $Id: Flash.cpp,v 1.18 2008/03/17 20:20:39 iamcamiel Exp $
+ * $Id: Flash.cpp,v 1.19 2008/03/24 22:11:50 iamcamiel Exp $
+ *
+ * X-1.19       Camiel Vanderhoeven                             24-MAR-2008
+ *      Comments.
  *
  * X-1.18       Camiel Vanderhoeven                             17-MAR-2008
  *      Always set volatile DPR rom contents.
@@ -91,6 +94,7 @@
 #include "System.h"
 #include "AlphaCPU.h"
 
+// These are the modes for our flash-state-machine.
 #define MODE_READ         0
 #define MODE_STEP1        1
 #define MODE_STEP2        2
@@ -117,7 +121,7 @@ CFlash::CFlash(CConfigurator* cfg, CSystem* c) : CSystemComponent(cfg, c)
   RestoreStateF();
   state.mode = MODE_READ;
 
-  printf("%s: $Id: Flash.cpp,v 1.18 2008/03/17 20:20:39 iamcamiel Exp $\n",
+  printf("%s: $Id: Flash.cpp,v 1.19 2008/03/24 22:11:50 iamcamiel Exp $\n",
          devid_string);
 }
 
@@ -130,7 +134,7 @@ CFlash::~CFlash()
 /**
  * Read a byte from flashmemory.
  * Normally, this returns one byte from flash, however, after some commands
- * sent to the flash-rom, this returns identification of status information.
+ * sent to the flash-rom, this returns identification or status information.
  **/
 u64 CFlash::ReadMem(int index, u64 address, int dsize)
 {
@@ -169,6 +173,46 @@ u64 CFlash::ReadMem(int index, u64 address, int dsize)
 
 /**
  * Write command or programming data to flash-rom.
+ *
+ * The state machine for this looks like this:
+ * \code
+ *         |
+ *         v
+ *     MODE_READ <---------------------------+
+ *         | write 0x5555:0xaa               |
+ *         v                                 |
+ *     MODE_STEP1 ---------------------------+
+ *         | write 0x2aaa:0x55               |
+ *         v                                 |
+ *     ==MODE_STEP2= ------------------------+
+ * 0x80| 0xa0| 0x90| write 0x5555            | 
+ *     |     |     v                         |
+ *     |     | MODE_AUTOSEL (read device id)-+
+ *     |     v                               |
+ *     | MODE_PROGRAM                        |
+ *     |     | write data byte               |
+ *     |     +-------------------------------+
+ *     v                                     |
+ *  MODE_ERASE_STEP3 ------------------------+
+ *     | write 0x5555:0xaa                   |
+ *     v                                     |
+ *  MODE_ERASE_STEP4 ------------------------+
+ *     | write 0x2aaa:0x55                   |
+ *     v                                     |
+ *  MODE_ERASE_STEP4 ------------------------+
+ *   | write 0x30  | write 0x5555:0x10       |
+ *   | anywhere    v                         |
+ *   v           ERASE ENTIRE FLASH          |
+ * ERASE BLOCK     |                         |
+ *       |         |                         |
+ *       v         v                         |
+ *      MODE_CONFIRM1                        |
+ *          | read 0x80                      |
+ *          v                                |
+ *      MODE_CONFIRM2                        |
+ *          | read 0x80                      |
+ *          +--------------------------------+
+ * \endcode
  **/
 void CFlash::WriteMem(int index, u64 address, int dsize, u64 data)
 {
