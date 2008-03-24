@@ -27,7 +27,13 @@
  * \file
  * Contains the code for the VGA base class.
  *
- * $Id: VGA.cpp,v 1.5 2008/03/14 15:30:52 iamcamiel Exp $
+ * $Id: VGA.cpp,v 1.6 2008/03/24 11:38:15 iamcamiel Exp $
+ *
+ * X-1.6        Camiel Vanderhoeven                             24-MAR-2008
+ *      Added comments.
+ *
+ * X-1.5        Camiel Vanderhoeven                             14-MAR-2008
+ *      Formatting.
  *
  * X-1.4        Camiel Vanderhoeven                             14-MAR-2008
  *   1. More meaningful exceptions replace throwing (int) 1.
@@ -45,6 +51,11 @@
 #include "StdAfx.h"
 #include "VGA.h"
 
+/**
+ * Constructor.
+ *
+ * Checks if more than one VGA card is present. If so, throws a failure.
+ **/
 CVGA::CVGA(class CConfigurator* cfg, class CSystem* c, int pcibus, int pcidev) : CPCIDevice(cfg, c, pcibus, pcidev)
 {
   if(theVGA != 0)
@@ -52,6 +63,13 @@ CVGA::CVGA(class CConfigurator* cfg, class CSystem* c, int pcibus, int pcidev) :
   theVGA = this;
 }
 
+/**
+ * Destructor.
+ **/
 CVGA::~CVGA(void)
 { }
+
+/**
+ * Variable pointer to the one and only VGA card.
+ **/
 CVGA*   theVGA = 0;
