@@ -28,7 +28,13 @@
  * \file
  * Contains the definitions for the emulated DecChip 21264CB EV68 Alpha processor.
  *
- * $Id: AlphaCPU.h,v 1.56 2008/03/14 15:30:50 iamcamiel Exp $
+ * $Id: AlphaCPU.h,v 1.57 2008/03/24 21:47:50 iamcamiel Exp $
+ *
+ * X-1.57       Camiel Vanderhoeven                             24-MAR-2008
+ *      Comments.
+ *
+ * X-1.56       Camiel Vanderhoeven                             14-MAR-2008
+ *      Formatting.
  *
  * X-1.55       Camiel Vanderhoeven                             14-MAR-2008
  *   1. More meaningful exceptions replace throwing (int) 1.
@@ -209,11 +215,18 @@
 #include "System.h"
 #include "cpu_defs.h"
 
+/// Number of entries in the Instruction Cache
 #define ICACHE_ENTRIES    1024
-#define ICACHE_LINE_SIZE  512 // in dwords
+// Size of Instruction Cache entries in DWORDS (instructions)
+#define ICACHE_LINE_SIZE  512
+/** These bits should match to have an Instruction Cache hit.
+    This includes bit 0, because it indicates PALmode . */
 #define ICACHE_MATCH_MASK (u64) (U64(0x1) - (ICACHE_LINE_SIZE * 4))
+/// DWORD (instruction) number of an address in an ICache entry.
 #define ICACHE_INDEX_MASK (u64) (ICACHE_LINE_SIZE - U64(0x1))
+/// Byte numer of an address in an ICache entry.
 #define ICACHE_BYTE_MASK  (u64) (ICACHE_INDEX_MASK << 2)
+/// Number of entries in each Translation Buffer
 #define TB_ENTRIES        16
 
 /**
@@ -269,7 +282,6 @@ class CAlphaCPU : public CSystemComponent, public Poco::Runnable
 
     u64           get_speed() { return cpu_hz; };
 
-    //  CTranslationBuffer * get_tb(bool bIBOX);
     u64           va_form(u64 address, bool bIBOX);
 
 #if defined(IDB)
@@ -464,11 +476,11 @@ class CAlphaCPU : public CSystemComponent, public Poco::Runnable
       u64   current_pc;   /**< Virtual address of current instruction */
 
       /**
-     * \brief Instruction cache entry.
-     *
-     * An instruction cache entry contains the address and address space number
-     * (ASN) + 16 32-bit instructions. [HRM 2-11]
-     **/
+       * \brief Instruction cache entry.
+       *
+       * An instruction cache entry contains the address and address space number
+       * (ASN) + 16 32-bit instructions. [HRM 2-11]
+       **/
       struct SICache
       {
         int   asn;        /**< Address Space Number */
@@ -482,10 +494,10 @@ class CAlphaCPU : public CSystemComponent, public Poco::Runnable
       int last_found_icache;    /**< Number of last cache entry found */
 
       /**
-     * \brief Translation Buffer Entry.
-     *
-     * A translation buffer entry provides the mapping from a page of virtual memory to a page of physical memory.
-     **/
+       * \brief Translation Buffer Entry.
+       *
+       * A translation buffer entry provides the mapping from a page of virtual memory to a page of physical memory.
+       **/
       struct STBEntry
       {
         u64   virt;         /**< Virtual address of page*/
@@ -498,6 +510,7 @@ class CAlphaCPU : public CSystemComponent, public Poco::Runnable
         int   fault[3];     /**< Fault on access [read/write/execute]*/
         bool  valid;        /**< Valid entry*/
       } tb[2][TB_ENTRIES];  /**< Translation buffer entries */
+
       int   next_tb[2];     /**< Number of next translation buffer entry to use */
       int   last_found_tb[2][2];  /**< Number of last translation buffer entry found */
       u32   rem_ins_in_page;      /**< Number of instructions remaining in current page */
@@ -518,6 +531,9 @@ class CAlphaCPU : public CSystemComponent, public Poco::Runnable
 #endif
 };
 
+/** Translate raw register (0..31) number to a number that takes PALshadow
+    registers into consideration (0..63). Considers the program counter
+    (to determine if we're in PALmode), and the SDE (Shadow Enable) bit. */
 #define RREG(a)                                                          \
     (                                                                    \
       ((a) & 0x1f) +                                                     \
@@ -891,6 +907,9 @@ inline u64 CAlphaCPU::get_hwpcb(void)
 }
 
 #if defined(IDB)
+/**
+ * Return the last instruction executed.
+ **/
 inline u32 CAlphaCPU::get_last_instruction(void)
 {
   return last_instruction;
