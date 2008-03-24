@@ -27,8 +27,16 @@
  * \file
  * Contains the code for the emulated Symbios SCSI controller.
  *
- * $Id: Sym53C895.cpp,v 1.29 2008/03/24 20:30:08 iamcamiel Exp $
+ * $Id: Sym53C895.cpp,v 1.30 2008/03/24 21:30:26 iamcamiel Exp $
  *
+ * X-1.30       Camiel Vanderhoeven                             24-MAR-2008
+ *      Comments.
+ *
+ * X-1.29       Camiel Vanderhoeven                             24-MAR-2008
+ *      Comments.
+ *
+ * X-1.28       Camiel Vanderhoeven                             14-MAR-2008
+ *      Formatting.
  * X-1.27       Camiel Vanderhoeven                             14-MAR-2008
  *   1. More meaningful exceptions replace throwing (int) 1.
  *   2. U64 macro replaces X64 macro.
@@ -122,6 +130,7 @@
 #include "Disk.h"
 #include "SCSIBus.h"
 
+/// Register 00: SCNTL0: SCSI Control 0
 #define R_SCNTL0          0x00
 #define R_SCNTL0_ARB1     0x80
 #define R_SCNTL0_ARB0     0x40
@@ -132,11 +141,13 @@
 #define R_SCNTL0_TRG      0x01
 #define SCNTL0_MASK       0xFB
 
+/// Register 01: SCNTL1: SCSI Control 1
 #define R_SCNTL1          0x01
 #define R_SCNTL1_CON      0x10
 #define R_SCNTL1_RST      0x08
 #define R_SCNTL1_IARB     0x02
 
+/// Register 02: SCNTL2: SCSI Control 2
 #define R_SCNTL2          0x02
 #define R_SCNTL2_SDU      0x80
 #define R_SCNTL2_CHM      0x40
@@ -149,32 +160,41 @@
 #define SCNTL2_MASK       0xF2
 #define SCNTL2_W1C        0x09
 
+/// Register 03: SCNTL3: SCSI Control 3
 #define R_SCNTL3          0x03
 #define R_SCNTL3_EWS      0x08
 
+/// Register 04: SCID: SCSI Chip ID
 #define R_SCID            0x04
 #define R_SCID_ID         0x0F
 #define SCID_MASK         0x6F
 
+/// Register 05: SXFER: SCSI Transfer
 #define R_SXFER           0x05
 
+/// Register 06: SDID: SCSI Destination ID
 #define R_SDID            0x06
 #define R_SDID_ID         0x0F
 #define SDID_MASK         0x0F
 
+/// Register 07: GPREG: General Purpose
 #define R_GPREG           0x07
 #define GPREG_MASK        0x1F
 
+/// Register 08: SFBR: SCSI First Byte REceived
 #define R_SFBR            0x08
 
+/// Register 09: SOCL: SCSI Output Control Latch
 #define R_SOCL            0x09
 #define R_SOCL_ACK        0x40
 #define R_SOCL_ATN        0x20
 
+/// Register 0A: SSID: SCSI Selector ID
 #define R_SSID            0x0A
 #define R_SSID_VAL        0x80
 #define R_SSID_ID         0x0F
 
+/// Register 0B: SBCL: SCSI Bus Control Lines
 #define R_SBCL            0x0B
 #define R_SBCL_REQ        0x80
 #define R_SBCL_ACK        0x40
@@ -186,6 +206,7 @@
 #define R_SBCL_IO         0x01
 #define R_SBCL_PHASE      0x07
 
+/// Register 0C: DSTAT: DMA Status
 #define R_DSTAT           0x0C
 #define R_DSTAT_DFE       0x80
 #define R_DSTAT_MDPE      0x40
@@ -197,18 +218,23 @@
 #define DSTAT_RC          0x7D
 #define DSTAT_FATAL       0x7D
 
+/// Register 0D: SSTAT0: SCSI Status 0
 #define R_SSTAT0          0x0D
 #define R_SSTAT0_RST      0x02
 #define R_SSTAT0_SDP0     0x01
 
+/// Register 0E: SSTAT1: SCSI Status 1
 #define R_SSTAT1          0x0E
 #define R_SSTAT1_SDP1     0x01
 
+/// Register 0F: SSTAT2: SCSI Status 2
 #define R_SSTAT2          0x0F
 #define R_SSTAT2_LDSC     0x02
 
+/// Register 10..13: DSA: Data Structure Address
 #define R_DSA             0x10
 
+/// Register 14: ISTAT: Interrupt Status
 #define R_ISTAT           0x14
 #define R_ISTAT_ABRT      0x80
 #define R_ISTAT_SRST      0x40
@@ -221,12 +247,15 @@
 #define ISTAT_MASK        0xF0
 #define ISTAT_W1C         0x04
 
+/// Register 18: CTEST0: Chip Test 0
 #define R_CTEST0          0x18
 
+/// Register 19: CTEST1: Chip Test 1
 #define R_CTEST1          0x19
 #define R_CTEST1_FMT      0xF0
 #define R_CTEST1_FFL      0x0F
 
+/// Register 1A: CTEST2: Chip Test 2
 #define R_CTEST2          0x1A
 #define R_CTEST2_DDIR     0x80
 #define R_CTEST2_SIGP     0x40
@@ -237,6 +266,8 @@
 #define R_CTEST2_DREQ     0x02
 #define R_CTEST2_DACK     0x01
 #define CTEST2_MASK       0x08
+
+/// Register 1B: CTEST3: Chip Test 3
 #define R_CTEST3          0x1B
 #define R_CTEST3_REV      0xf0
 #define R_CTEST3_FLF      0x08
@@ -244,30 +275,54 @@
 #define R_CTEST3_FM       0x02
 #define CTEST3_MASK       0x0B
 
+/// Register 1C..1F: TEMP: Temporary
 #define R_TEMP            0x1C
+
+/// Register 20: DFIFO: DMA FIFO
 #define R_DFIFO           0x20
+
+/// Register 21: CTEST4: Chip Test 4
 #define R_CTEST4          0x21
 
+/// Register 22: CTEST5: Chip Test 5
 #define R_CTEST5          0x22
 #define R_CTEST5_ADCK     0x80
 #define R_CTEST5_BBCK     0x40
 #define CTEST5_MASK       0x3F
 
+/// Register 23: CTEST6: Chip Test 6
+#define R_CTEST6          0x23
+
+/// Register 24..26: DBC: DMA Byte Counter
 #define R_DBC             0x24
+
+/// Register 27: DCMD: DMA Command
 #define R_DCMD            0x27
+
+/// Register 28..2B: DNAD: DMA Next Address 
 #define R_DNAD            0x28
+
+/// Register 2C..2F: DSP: DMA SCRIPTS Pointer
 #define R_DSP             0x2C
+
+/// Register 30..33: DSPS: DMA SCRIPTS Pointer Save
 #define R_DSPS            0x30
+
+/// Register 34..37: SCRATCHA: Scratch Register A
 #define R_SCRATCHA        0x34
 
+/// Register 38: DMODE: DMA Mode
 #define R_DMODE           0x38
 #define R_DMODE_MAN       0x01
 
+/// Register 39: DIEN: DMA Interrupt Enable
 #define R_DIEN            0x39
 #define DIEN_MASK         0x7D
 
+/// Register 3A: SBR: Scratch Byte Register
 #define R_SBR             0x3A
 
+/// Register 3B: DCNTL: DMA Control
 #define R_DCNTL           0x3B
 #define R_DCNTL_SSM       0x10
 #define R_DCNTL_STD       0x04
@@ -275,13 +330,18 @@
 #define R_DCNTL_COM       0x01
 #define DCNTL_MASK        0xFB
 
+/// Register 3C..37: ADDER: Adder Sum Output
 #define R_ADDER           0x3C
 
+/// Register 40: SIEN0: SCSI Interrupt Enable 0
 #define R_SIEN0           0x40
 #define SIEN0_MASK        0xFF
+
+/// Register 41: SIEN1: SCSI Interrupt Enable 1
 #define R_SIEN1           0x41
 #define SIEN1_MASK        0x17
 
+/// Register 42: SIST0: SCSI Interrupt Status 0
 #define R_SIST0           0x42
 #define R_SIST0_MA        0x80
 #define R_SIST0_CMP       0x40
@@ -294,6 +354,7 @@
 #define SIST0_RC          0xFF
 #define SIST0_FATAL       0x8F
 
+/// Register 43: SIST1: SCSI Interrupt Status 1
 #define R_SIST1           0x43
 #define R_SIST1_SBMC      0x10
 #define R_SIST1_STO       0x04
@@ -302,20 +363,38 @@
 #define SIST1_RC          0x17
 #define SIST1_FATAL       0x14
 
+/// Register 44: SLPAR: SCSI Longitudinal Parity
+#define R_SLPAR           0x44
+
+/// Register 45: SWIDE: SCSI Wide Residue
+#define R_SWIDE           0x45
+
+/// Register 46: MACNTL: Memory Access Control
 #define R_MACNTL          0x46
 #define MACNTL_MASK       0x0F
+
+/// Register 47: GPCNTL: General Purpose Pin Control
 #define R_GPCNTL          0x47
+
+/// Register 48: STIME0: SCSI Timer 0
 #define R_STIME0          0x48
+
+/// Register 49: STIME1: SCSI Timer 1
 #define R_STIME1          0x49
 #define R_STIME1_GEN      0x0F
 #define STIME1_MASK       0x7F
 
+/// Register 4A..4B: RESPID: SCSI Response ID
 #define R_RESPID          0x4A
 
+/// Register 4C: STEST0: SCSI Test 0
 #define R_STEST0          0x4C
+
+/// Register 4D: STEST1: SCSI Test 1
 #define R_STEST1          0x4D
 #define STEST1_MASK       0xCC
 
+/// Register 4E: STEST2: SCSI Test 2
 #define R_STEST2          0x4E
 #define R_STEST2_SCE      0x80
 #define R_STEST2_ROF      0x40
@@ -327,6 +406,7 @@
 #define R_STEST2_LOW      0x01
 #define STEST2_MASK       0xBF
 
+/// Register 4F: STEST3: SCSI Test 3
 #define R_STEST3          0x4F
 #define R_STEST3_TE       0x80
 #define R_STEST3_STR      0x40
@@ -338,14 +418,31 @@
 #define R_STEST3_STW      0x01
 #define STEST3_MASK       0xFF
 
+/// Register 50..51: SIDL: SCSI Input Data Latch
+#define R_SIDL            0x50
+
+/// Register 52: STEST4: SCSI Test 4
 #define R_STEST4          0x52
 
+/// Register 54..55: SODL: SCSI Output Data Latch
+#define R_SODL            0x54
+
+/// Register 58..59: SBDL: SCSI Bus Data Lines
 #define R_SBDL            0x58
+
+/// Registers 5C..5F: SCRATCHB: Scratch Register B
 #define R_SCRATCHB        0x5C
+
+/// Register 60..7F: SCRATCHC..SCRATCHJ: Scratch Register C..J
 #define R_SCRATCHC        0x60
 
+/// Acces an 8-byte register
 #define R8(a)             state.regs.reg8[R_##a]
+
+/// Acces a 16-byte register
 #define R16(a)            state.regs.reg16[R_##a / 2]
+
+/// Access a 32-byte register
 #define R32(a)            state.regs.reg32[R_##a / 4]
 
 /**
@@ -429,6 +526,9 @@
     R32(DBC) = (R32(DBC) & 0xff000000) | \
     ((a) & 0x00ffffff)
 
+/**
+ * PCI Configuration Data Block
+ **/
 u32 sym_cfg_data[64] =
 {
   /*00*/  0x000c1000,         // CFID: vendor + device
@@ -452,6 +552,9 @@ u32 sym_cfg_data[64] =
   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
 };
 
+/**
+ * PCI Configuration Mask Block
+ **/
 u32 sym_cfg_mask[64] = {
   /*00*/ 0x00000000,  // CFID: vendor + device
   /*04*/ 0x00000157,  // CFCS: command + status
@@ -476,6 +579,11 @@ u32 sym_cfg_mask[64] = {
 
 /**
  * Thread entry point.
+ *
+ * Repeat:
+ *   - Waiting until the semaphore is set
+ *   - Executing SCRIPTS code until execution ends.
+ *   .
  **/
 void CSym53C895::run()
 {
@@ -505,6 +613,9 @@ void CSym53C895::run()
 
 /**
  * Constructor.
+ *
+ * Set up the SCSI bus, and defer the rest of initialization to 
+ * CSym53C895::init.
  **/
 CSym53C895::CSym53C895(CConfigurator* cfg, CSystem* c, int pcibus, int pcidev) : CDiskController(cfg, c, pcibus, pcidev, 1, 16), mySemaphore(0, 1)
 {
@@ -516,6 +627,8 @@ CSym53C895::CSym53C895(CConfigurator* cfg, CSystem* c, int pcibus, int pcidev) :
 
 /**
  * Initialize the Symbios device.
+ *
+ * Reset PCI structures, reset the chipset, and set up locks.
  **/
 void CSym53C895::init()
 {
@@ -529,10 +642,13 @@ void CSym53C895::init()
 
   myThread = 0;
 
-  printf("%s: $Id: Sym53C895.cpp,v 1.29 2008/03/24 20:30:08 iamcamiel Exp $\n",
+  printf("%s: $Id: Sym53C895.cpp,v 1.30 2008/03/24 21:30:26 iamcamiel Exp $\n",
          devid_string);
 }
 
+/**
+ * Create the thread, and start executing it.
+ **/
 void CSym53C895::start_threads()
 {
   if(!myThread)
@@ -546,6 +662,9 @@ void CSym53C895::start_threads()
   }
 }
 
+/**
+ * Stop and destroy the thread.
+ **/
 void CSym53C895::stop_threads()
 {
   StopThread = true;
@@ -559,12 +678,22 @@ void CSym53C895::stop_threads()
   }
 }
 
+/**
+ * Destructor.
+ *
+ * Kill thread if still running, and destroy the SCSI bus.
+ **/
 CSym53C895::~CSym53C895()
 {
   stop_threads();
   delete scsi_bus[0];
 }
 
+/**
+ * Reset the chipset.
+ *
+ * Initialize all registers to their default values.
+ **/
 void CSym53C895::chip_reset()
 {
   state.executing = false;
@@ -584,13 +713,20 @@ void CSym53C895::chip_reset()
   R8(STEST0) = 0x03;  // 810
 }
 
+/**
+ * Register a disk
+ *
+ * Attach the disk to the SCSI bus.
+ **/
 void CSym53C895::register_disk(class CDisk* dsk, int bus, int dev)
 {
   CDiskController::register_disk(dsk, bus, dev);
   dsk->scsi_register(0, scsi_bus[0], dev);
 }
 
+/// Magic number 1 for save/restore state
 static u32  sym_magic1 = 0x53C895CC;
+/// Magic number 2 for save/restore state
 static u32  sym_magic2 = 0xCC53C895;
 
 /**
@@ -676,6 +812,9 @@ int CSym53C895::RestoreState(FILE* f)
   return 0;
 }
 
+/**
+ * write data to one of the PCI BAR (relocatable) address ranges.
+ **/
 void CSym53C895::WriteMem_Bar(int func, int bar, u32 address, int dsize, u32 data)
 {
   void*   p;
@@ -876,6 +1015,9 @@ void CSym53C895::WriteMem_Bar(int func, int bar, u32 address, int dsize, u32 dat
   }
 }
 
+/**
+ * Read data from one of the PCI BAR (relocatable) address ranges.
+ **/
 u32 CSym53C895::ReadMem_Bar(int func, int bar, u32 address, int dsize)
 {
   u32     data = 0;
@@ -1036,6 +1178,12 @@ u32 CSym53C895::ReadMem_Bar(int func, int bar, u32 address, int dsize)
   return data;
 }
 
+/**
+ * Override PCI Configuration Space read action.
+ *
+ * Lower 80 bytes are normal, upper 80 bytes reflect into the
+ * register space.
+ **/
 u32 CSym53C895::config_read_custom(int func, u32 address, int dsize, u32 data)
 {
   if(address >= 0x80)
@@ -1044,6 +1192,12 @@ u32 CSym53C895::config_read_custom(int func, u32 address, int dsize, u32 data)
     return data;
 }
 
+/**
+ * Override PCI Configuration Space write action.
+ *
+ * Lower 80 bytes are normal, upper 80 bytes reflect into the
+ * register space.
+ **/
 void CSym53C895::config_write_custom(int func, u32 address, int dsize,
                                      u32 old_data, u32 new_data, u32 data)
 {
@@ -1051,6 +1205,14 @@ void CSym53C895::config_write_custom(int func, u32 address, int dsize,
     WriteMem_Bar(func, 1, address - 0x80, dsize, data);
 }
 
+/**
+ * Write a byte to the SCSI Control 0 register.
+ *
+ * This is a normal masked write operation; implemented as a separate
+ * function, because there are some bits in here (START and TRG) that
+ * we should do something with if a driver sets these, but that we
+ * don't implement.
+ **/
 void CSym53C895::write_b_scntl0(u8 value)
 {
   bool  old_start = TB_R8(SCNTL0, START);
