@@ -27,7 +27,10 @@
  * \file
  * Contains the definitions for the emulated Symbios SCSI controller.
  *
- * $Id: Sym53C895.h,v 1.16 2008/03/14 15:30:52 iamcamiel Exp $
+ * $Id: Sym53C895.h,v 1.17 2008/03/25 15:44:13 iamcamiel Exp $
+ *
+ * X-1.16       Camiel Vanderhoeven                             25-MAR-2008
+ *      Separate CSym53C895::check_phase() function.
  *
  * X-1.15       Camiel Vanderhoeven                             13-MAR-2008
  *      Create init(), start_threads() and stop_threads() functions.
@@ -135,6 +138,7 @@ class CSym53C895 : public CDiskController, public CSCSIDevice, public Poco::Runn
 
     void  post_dsp_write();
 
+    int check_phase(int chk_phase);
     void  execute();
 
     void  eval_interrupts();

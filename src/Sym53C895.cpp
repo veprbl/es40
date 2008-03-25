@@ -27,7 +27,10 @@
  * \file
  * Contains the code for the emulated Symbios SCSI controller.
  *
- * $Id: Sym53C895.cpp,v 1.31 2008/03/25 15:32:43 iamcamiel Exp $
+ * $Id: Sym53C895.cpp,v 1.32 2008/03/25 15:44:13 iamcamiel Exp $
+ *
+ * X-1.32       Camiel Vanderhoeven                             25-MAR-2008
+ *      Separate CSym53C895::check_phase() function.
  *
  * X-1.31       Camiel Vanderhoeven                             25-MAR-2008
  *      Comments.
@@ -645,7 +648,7 @@ void CSym53C895::init()
 
   myThread = 0;
 
-  printf("%s: $Id: Sym53C895.cpp,v 1.31 2008/03/25 15:32:43 iamcamiel Exp $\n",
+  printf("%s: $Id: Sym53C895.cpp,v 1.32 2008/03/25 15:44:13 iamcamiel Exp $\n",
          devid_string);
 }
 
@@ -1668,6 +1671,43 @@ void CSym53C895::check_state()
 }
 
 /**
+ * Check SCSI Bus Phase.
+ *
+ * Returns -1 on timeout or similar, 0 on different phase, and 1 on same phase
+ **/
+
+int CSym53C895::check_phase(int chk_phase)
+{
+  int real_phase = scsi_get_phase(0);
+
+  if(real_phase == SCSI_PHASE_ARBITRATION)
+  {
+#if defined(DEBUG_SYM_SCRIPTS)
+    printf("Phase check... selection time-out!\n");
+#endif
+    RAISE(SIST1, STO);  // select time-out
+    scsi_free(0);
+    state.select_timeout = false;
+    return -1;
+  }
+
+  if(real_phase == SCSI_PHASE_FREE && state.disconnected)
+  {
+#if defined(DEBUG_SYM_SCRIPTS)
+    printf("Phase check... disconnected!\n");
+#endif
+    state.disconnected = 1;
+    R32(DSP) -= 8;
+    return -1;
+  }
+
+  if (real_phase == chk_phase)
+    return 1;
+  else
+    return 0;
+}
+
+/**
  * Execute one SCRIPTS instruction.
  **/
 void CSym53C895::execute()
@@ -1760,40 +1800,13 @@ void CSym53C895::execute()
       bool  table_indirect = (R8(DCMD) >> 4) & 1;
       int   opcode = (R8(DCMD) >> 3) & 1;
       int   scsi_phase = (R8(DCMD) >> 0) & 7;
-      int   real_phase = scsi_get_phase(0);
 
 #if defined(DEBUG_SYM_SCRIPTS)
       printf("SYM: INS = Block Move (i %d, t %d, opc %d, phase %d\n", indirect,
              table_indirect, opcode, scsi_phase);
 #endif
       // Compare phase
-      //
-      // This also needs to deal with timeouts etc. Perhaps this should
-      // be moved into a separate function?
-      if(real_phase == SCSI_PHASE_ARBITRATION)
-      {
-
-        // selection timeout...?
-#if defined(DEBUG_SYM_SCRIPTS)
-        printf("Phase check... selection time-out!\n");
-#endif
-        RAISE(SIST1, STO);    // select time-out
-        scsi_free(0);
-        state.select_timeout = false;
-        return;
-      }
-
-      if(real_phase == SCSI_PHASE_FREE && state.disconnected)
-      {
-#if defined(DEBUG_SYM_SCRIPTS)
-        printf("Phase check... disconnected!\n");
-#endif
-        state.disconnected = 1;
-        R32(DSP) -= 8;
-        return;
-      }
-
-      if(real_phase == scsi_phase)
+      if(check_phase(scsi_phase)>0)
       {
 #if defined(DEBUG_SYM_SCRIPTS)
         printf("SYM: Ready for transfer.\n");
@@ -2376,37 +2389,10 @@ void CSym53C895::execute()
         if(cmp_phase)
         {
           // Compare phase
-          //
-          // This also needs to deal with timeouts etc. Perhaps this should
-          // be moved into a separate function?
-          int real_phase = scsi_get_phase(0);
 #if defined(DEBUG_SYM_SCRIPTS)
           printf("(phase %s %d)", jump_if ? "==" : "!=", scsi_phase);
 #endif
-          if(real_phase == SCSI_PHASE_ARBITRATION)
-          {
-
-            // selection timeout...?
-#if defined(DEBUG_SYM_SCRIPTS)
-            printf("Phase check... selection time-out!\n");
-#endif
-            RAISE(SIST1, STO);  // select time-out
-            scsi_free(0);
-            state.select_timeout = false;
-            return;
-          }
-
-          if(real_phase == SCSI_PHASE_FREE && state.disconnected)
-          {
-#if defined(DEBUG_SYM_SCRIPTS)
-            printf("Phase check... disconnected!\n");
-#endif
-            state.disconnected = 1;
-            R32(DSP) -= 8;
-            return;
-          }
-
-          if((real_phase == scsi_phase) != jump_if)
+          if((check_phase(scsi_phase)>0) != jump_if)
             do_it = false;
         }
       }
