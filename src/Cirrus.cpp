@@ -27,7 +27,10 @@
  * \file
  * Contains the code for the emulated Cirrus CL GD-5434 Video Card device.
  *
- * $Id: Cirrus.cpp,v 1.20 2008/03/24 11:38:33 iamcamiel Exp $
+ * $Id: Cirrus.cpp,v 1.21 2008/03/25 08:41:32 iamcamiel Exp $
+ *
+ * X-1.21       Pepito Grillo                                   25-MAR-2008
+ *      Fixed a typo in the last patch.
  *
  * X-1.20       Camiel Vanderhoeven                             24-MAR-2008
  *      Added comments on VGA registers.
@@ -328,7 +331,7 @@ void CCirrus::init()
   state.vga_mem_updated = 1;
 
   myThread = 0;
-  printf("%s: $Id: Cirrus.cpp,v 1.20 2008/03/24 11:38:33 iamcamiel Exp $\n",
+  printf("%s: $Id: Cirrus.cpp,v 1.21 2008/03/25 08:41:32 iamcamiel Exp $\n",
          devid_string);
 }
 
@@ -1393,7 +1396,7 @@ void CCirrus::write_b_3c5(u8 value)
 #if defined(DEBUG_VGA)
     printf("io write 3c5=%02x: clocking mode reg: ignoring   \n",
            (unsigned) value);
-#endi
+#endif
     state.sequencer.reg1 = value & 0x3f;
     state.x_dotclockdiv2 = ((value & 0x08) > 0);
     break;
