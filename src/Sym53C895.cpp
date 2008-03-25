@@ -27,7 +27,10 @@
  * \file
  * Contains the code for the emulated Symbios SCSI controller.
  *
- * $Id: Sym53C895.cpp,v 1.32 2008/03/25 15:44:13 iamcamiel Exp $
+ * $Id: Sym53C895.cpp,v 1.33 2008/03/25 16:05:30 iamcamiel Exp $
+ *
+ * X-1.33       Camiel Vanderhoeven                             25-MAR-2008
+ *      Separate functions for different instructions.
  *
  * X-1.32       Camiel Vanderhoeven                             25-MAR-2008
  *      Separate CSym53C895::check_phase() function.
@@ -648,7 +651,7 @@ void CSym53C895::init()
 
   myThread = 0;
 
-  printf("%s: $Id: Sym53C895.cpp,v 1.32 2008/03/25 15:44:13 iamcamiel Exp $\n",
+  printf("%s: $Id: Sym53C895.cpp,v 1.33 2008/03/25 16:05:30 iamcamiel Exp $\n",
          devid_string);
 }
 
@@ -1708,39 +1711,898 @@ int CSym53C895::check_phase(int chk_phase)
 }
 
 /**
+ * Execute one SCRIPTS Block Move instruction
+ * 
+ * The Block Move instruction moves data between system memory and the
+ * SCSI Bus. This is a two DWORD instruction. The instruction format in
+ * the DCMD register is as follows:
+ *
+ * \code
+ * +---+-+-+-+-----+
+ * |7 6|5|4|3|2 1 0| DCMD Register
+ * +---+-+-+-+-----+
+ *   |  | | |   +- 0..2: SCSI Phase (I/O, C/D and MSG/ signals):
+ *   |  | | |            The data transfer only occurs if these bits
+ *   |  | | |            match the actual SCSI bus phase.
+ *   |  | | +- 3: Op Code: IGNORED
+ *   |  | +- 4: Table Indirect Adressing:
+ *   |  |         0: The DSPS register contains the address of the data,
+ *   |  |            and the DBC register contains the number of bytes to
+ *   |  |            transfer.
+ *   |  |         1: The DSPS register contains a 24-bit signed offset
+ *   |  |            that is added to the DSA register to get a pointer
+ *   |  |            to a data structure that contains the address and
+ *   |  |            byte count. This structure looks as follows:
+ *   |  |                           +----+------------+
+ *   |  |               DSA+DSPS:   | 00 | Byte Count |
+ *   |  |                           +----+------------+
+ *   |  |               DSA+DSPS+4: |  Data Address   |
+ *   |  |                           +-----------------+
+ *   |  +- 5: Indirect Addressing:
+ *   |          0: The DSPS register contains the address of the data
+ *   |          1: The DSPS register contains the address of a 32-bit
+ *   |             pointer to the data.
+ *   +- 6..7: Instruction Type: 00 = Block Move
+ * \endcode
+ **/
+void CSym53C895::execute_bm_op()
+{
+  bool  indirect = (R8(DCMD) >> 5) & 1;
+  bool  table_indirect = (R8(DCMD) >> 4) & 1;
+  int   opcode = (R8(DCMD) >> 3) & 1;
+  int   scsi_phase = (R8(DCMD) >> 0) & 7;
+
+#if defined(DEBUG_SYM_SCRIPTS)
+  printf("SYM: INS = Block Move (i %d, t %d, opc %d, phase %d\n", indirect,
+         table_indirect, opcode, scsi_phase);
+#endif
+  // Compare phase
+  if(check_phase(scsi_phase)>0)
+  {
+#if defined(DEBUG_SYM_SCRIPTS)
+    printf("SYM: Ready for transfer.\n");
+#endif
+
+    u32 start;
+    u32 count;
+
+    if(table_indirect)
+    {
+      u32 add = R32(DSA) + sext_u32_24(R32(DSPS));
+
+      add &= ~0x03;       // 810
+#if defined(DEBUG_SYM_SCRIPTS)
+      printf("SYM: Reading table at DSA(%08x)+DSPS(%08x) = %08x.\n",
+             R32(DSA), R32(DSPS), add);
+#endif
+      do_pci_read(add, &count, 4, 1);
+      count &= 0x00ffffff;
+      do_pci_read(add + 4, &start, 4, 1);
+    }
+    else if(indirect)
+    {
+      FAILURE(NotImplemented, "SYM: Unsupported: indirect addressing");
+    }
+    else
+    {
+      start = R32(DSPS);
+      count = GET_DBC();
+    }
+
+#if defined(DEBUG_SYM_SCRIPTS)
+    printf("SYM: %08x: MOVE Start/count %x, %x\n", R32(DSP) - 8, start,
+           count);
+#endif
+    R32(DNAD) = start;
+    SET_DBC(count);       // page 5-32
+    if(count == 0)
+    {
+
+      //printf("SYM: Count equals zero!\n");
+      RAISE(DSTAT, IID);  // page 5-32
+      return;
+    }
+
+    if((size_t) count > scsi_expected_xfer(0))
+    {
+#if defined(DEBUG_SYM_SCRIPTS)
+      printf("SYM: xfer %d bytes, max %d expected, in phase %d.\n", count,
+             scsi_expected_xfer(0), scsi_phase);
+#endif
+      count = (u32) scsi_expected_xfer(0);
+    }
+
+    u8*   scsi_data_ptr = (u8*) scsi_xfer_ptr(0, count);
+    u8*   org_sdata_ptr = scsi_data_ptr;
+
+    switch(scsi_phase)
+    {
+    case SCSI_PHASE_COMMAND:
+    case SCSI_PHASE_DATA_OUT:
+    case SCSI_PHASE_MSG_OUT:
+      do_pci_read(R32(DNAD), scsi_data_ptr, 1, count);
+      R32(DNAD) += count;
+      break;
+
+    case SCSI_PHASE_STATUS:
+    case SCSI_PHASE_DATA_IN:
+    case SCSI_PHASE_MSG_IN:
+      do_pci_write(R32(DNAD), scsi_data_ptr, 1, count);
+      R32(DNAD) += count;
+      break;
+    }
+
+    R8(SFBR) = *org_sdata_ptr;
+    scsi_xfer_done(0);
+    return;
+  }
+}
+
+/* Execute one SCRIPTS I/O instruction
+ * 
+ * The I/O instructions perform common SCSI hardware sequences, like
+ * Selection and reselection. The instruction format in
+ * the DCMD and DBC register is as follows:
+ *
+ * \code
+ * +---+-----+-+-+-+
+ * |7 6|5 4 3|2|1|0| DCMD Register
+ * +---+-----+-+-+-+
+ *   |    |   | | +- 0: Select with ATN/:
+ *   |    |   | |       Valid only for Select instruction. Assert ATN/ during 
+ *   |    |   | |       selection
+ *   |    |   | +- 1: Table Indirect Mode:
+ *   |    |   |         0: All information is taken from the instruction,
+ *   |    |   |            and the contents of the SCNTL3 and SXFER registers.
+ *   |    |   |         1: The DSPS register contains a 24-bit signed offset
+ *   |    |   |            that is added to the DSA register to get a pointer
+ *   |    |   |            to a data structure that contains the destination
+ *   |    |   |            ID, SCNTL3 bits, and SXFER bits. This structure 
+ *   |    |   |            is 32 bits long and looks as follows:
+ *   |    |   |                        +--------+--------+--------+--------+
+ *   |    |   |            DSA+DSPS:   | SCNTL3 | ID     | SXFER  |        |
+ *   |    |   |                        +--------+--------+--------+--------+
+ *   |    |   +- 2: Relative Addrressing:
+ *   |    |           0: The value in the DNAD register is an absolute address.
+ *   |    |           1: The value in the DNAD register is a 24-bit signed
+ *   |    |              displacement from the current DSP address.
+ *   |    +- 3..5: Op Code
+ *   +- 6..7 Instruction Type: 01 = I/O
+ *
+ * +-------+-------++--------+--+-+-++-+-+---+-+-----+
+ * |       |19   16||        |10|9| || |6|   |3|     | DBC Register
+ * +-------+-------++--------+--+-+-++-+-+---+-+-----+
+ *             |              |  |      |     +- 3: Set/Clear ATN
+ *             |              |  |      +- 6: Set/Clear ACK
+ *             |              |  +- 9: Set/Clear Target Mode
+ *             |              +- 10: Set/Clear Carry
+ *             +- 16..19: Destination ID
+ * \endcode
+ *
+ * The Opcode determines the actual instruction:
+ * \code
+ * +-----+-----------------+-------------+
+ * | OPC | Initiator mode  | Target Mode |
+ * +-----+-----------------+-------------+
+ * | 000 | Select          | Reselect    |
+ * | 001 | Wait Disconnect | Disconnect  |
+ * | 010 | Wait Reselect   | Wait Select |
+ * | 011 | Set             | Set         |
+ * | 100 | Clear           | Clear       |
+ * +-----+-----------------+-------------+
+ * \endcode
+ *
+ * Select:
+ *   - Arbitrate for the SCSI bus until arbitration is won.
+ *   - If arbitration is won, try to select the destination ID
+ *   - If the controller is selected or reselected before winning
+ *     arbitration, jump to the address in the DNAD register.
+ *   .
+ *
+ * Wait Disconnect:
+ *   - Wait for the target to disconnect from the SCSI bus.
+ *   .
+ *
+ * Wait Reselect:
+ *   - If the controller is reselected, go to the next instruction.
+ *   - If the controller is selected before being reselected, or if
+ *     the CPU sets the SIGP flag, jump to the address in the DNAD 
+ *     register
+ *   .
+ *
+ * Set/Clear:
+ *   - Set or Clear the flags whose Set/Clear bits are set in the
+ *     instruction.
+ *   .
+ **/
+void CSym53C895::execute_io_op()
+{
+  int   opcode = (R8(DCMD) >> 3) & 7;
+  bool  relative = (R8(DCMD) >> 2) & 1;
+  bool  table_indirect = (R8(DCMD) >> 1) & 1;
+  bool  atn = (R8(DCMD) >> 0) & 1;
+  int   destination = (GET_DBC() >> 16) & 0x0f;
+  bool  sc_carry = (GET_DBC() >> 10) & 1;
+  bool  sc_target = (GET_DBC() >> 9) & 1;
+  bool  sc_ack = (GET_DBC() >> 6) & 1;
+  bool  sc_atn = (GET_DBC() >> 3) & 1;
+
+  R32(DNAD) = R32(DSPS);
+
+  u32 dest_addr = R32(DNAD);
+
+  if(relative)
+    dest_addr = R32(DSP) + sext_u32_24(R32(DNAD));
+
+#if defined(DEBUG_SYM_SCRIPTS)
+  printf("SYM: INS = I/O (opc %d, r %d, t %d, a %d, dest %d, sc %d%d%d%d\n",
+         opcode, relative, table_indirect, atn, destination, sc_carry,
+         sc_target, sc_ack, sc_atn);
+#endif
+  if(table_indirect)
+  {
+    u32 io_addr = R32(DSA) + sext_u32_24(GET_DBC());
+    io_addr &= ~3;      //810
+#if defined(DEBUG_SYM_SCRIPTS)
+    printf("SYM: Reading table at DSA(%08x)+DBC(%08x) = %08x.\n",
+           R32(DSA), sext_u32_24(GET_DBC()), io_addr);
+#endif
+
+    u32 io_struc;
+    do_pci_read(io_addr, &io_struc, 4, 1);
+    destination = (io_struc >> 16) & 0x0f;
+#if defined(DEBUG_SYM_SCRIPTS)
+    printf("SYM: table indirect. io_struct = %08x, new dest = %d.\n",
+           io_struc, destination);
+#endif
+  }
+
+  switch(opcode)
+  {
+  case 0:
+#if defined(DEBUG_SYM_SCRIPTS)
+    printf("SYM: %08x: SELECT %d.\n", R32(DSP) - 8, destination);
+#endif
+    SET_DEST(destination);
+    if(!scsi_arbitrate(0))
+    {
+
+      // scsi bus busy, try again next clock...
+      printf("scsi bus busy...\n");
+      R32(DSP) -= 8;
+      return;
+    }
+
+    state.select_timeout = !scsi_select(0, destination);
+    if(!state.select_timeout)   // select ok
+      SB_R8(SCNTL2, SDU, true); // don't expect a disconnect
+    return;
+
+  case 1:
+#if defined(DEBUG_SYM_SCRIPTS)
+    printf("SYM: %08x: WAIT DISCONNECT\n", R32(DSP) - 8);
+#endif
+
+    // maybe we need to do more??
+    scsi_free(0);
+    return;
+
+  case 2:
+#if defined(DEBUG_SYM_SCRIPTS)
+    printf("SYM: %08x: WAIT RESELECT\n", R32(DSP) - 8);
+#endif
+    if(TB_R8(ISTAT, SIGP))
+    {
+#if defined(DEBUG_SYM_SCRIPTS)
+      printf("SYM: SIGP set before wait reselect; jumping!\n");
+#endif
+      R32(DSP) = dest_addr;
+    }
+    else
+    {
+      state.wait_reselect = true;
+      state.wait_jump = dest_addr;
+      state.executing = false;
+    }
+
+    return;
+
+  case 3:
+#if defined(DEBUG_SYM_SCRIPTS)
+    printf("SYM: %08x: SET %s%s%s%s\n", R32(DSP) - 8,
+           sc_carry ? "carry " : "", sc_target ? "target " : "",
+           sc_ack ? "ack " : "", sc_atn ? "atn " : "");
+#endif
+    if(sc_ack)
+      SB_R8(SOCL, ACK, true);
+    if(sc_atn)
+    {
+      if(!TB_R8(SOCL, ATN))
+      {
+        SB_R8(SOCL, ATN, true);
+
+        //printf("SET ATN.\n");
+        //printf(">");
+        //getchar();
+      }
+    }
+
+    if(sc_target)
+      SB_R8(SCNTL0, TRG, true);
+    if(sc_carry)
+      state.alu.carry = true;
+    return;
+
+  case 4:
+#if defined(DEBUG_SYM_SCRIPTS)
+    printf("SYM: %08x: CLEAR %s%s%s%s\n", R32(DSP) - 8,
+           sc_carry ? "carry " : "", sc_target ? "target " : "",
+           sc_ack ? "ack " : "", sc_atn ? "atn " : "");
+#endif
+    if(sc_ack)
+      SB_R8(SOCL, ACK, false);
+    if(sc_atn)
+    {
+      if(TB_R8(SOCL, ATN))
+      {
+        SB_R8(SOCL, ATN, false);
+
+        //printf("RESET ATN.\n");
+        //printf(">");
+        //getchar();
+      }
+    }
+
+    if(sc_target)
+      SB_R8(SCNTL0, TRG, false);
+    if(sc_carry)
+      state.alu.carry = false;
+    return;
+
+    break;
+  }
+}
+
+/**
+ * Execute one SCRIPTS R/W instruction
+ * 
+ * The R/W instructions perform arithmetic or logic operations on
+ * registers. The instruction format in the DCMD and DBC register is as follows:
+ *
+ * \code
+ * +---+-----+-----+
+ * |7 6|5 4 3|2 1 0| DCMD Register
+ * +---+-----+-----+
+ *   |    |     +- 2..0: operator:
+ *   |    |                000: data8
+ *   |    |                001: reg << 1
+ *   |    |                010: reg | data8
+ *   |    |                011: reg ^ data8
+ *   |    |                100: reg & data8
+ *   |    |                101: reg >> 1
+ *   |    |                110: reg + data8
+ *   |    |                111: reg + data8 + carry
+ *   |    +- 3..5: Op Code
+ *   |               101: regA = operator(SFBR, data8)
+ *   |               110: SFBR = operator(RegA, data8)
+ *   |               111: regA = operator(RegA, data8)
+ *   +- 6..7 Instruction Type: 01 = R/W
+ *
+ * +--+------------++---------------++-+-------------+
+ * |23|22        16||15            8||7|             | DBC Register
+ * +--+------------++---------------++-+-------------+
+ *  |  A6--------A0         |         A7                         
+ *  |        +--------------|---------+- 7,22..16: RegA address
+ *  |                       |
+ *  |                       +- 15..8: Immediate data  
+ *  +- 23: Use data8/SFBR
+ *         0: data8 = Immediate data
+ *         1: data8 = SFBR
+ * \endcode
+ */
+void CSym53C895::execute_rw_op()
+{
+  int   opcode = (R8(DCMD) >> 3) & 7;
+  int   oper = (R8(DCMD) >> 0) & 7;
+  bool  use_data8_sfbr = (GET_DBC() >> 23) & 1;
+  int   reg_address = ((GET_DBC() >> 16) & 0x7f); //| (GET_DBC() & 0x80); // manual is unclear about bit 7.
+  u8    imm_data = (u8) (GET_DBC() >> 8) & 0xff;
+  u8    op_data;
+
+#if defined(DEBUG_SYM_SCRIPTS)
+  printf("SYM: INS = R/W (opc %d, oper %d, use %d, add %d, imm %02x\n",
+         opcode, oper, use_data8_sfbr, reg_address, imm_data);
+#endif
+  if(use_data8_sfbr)
+    imm_data = R8(SFBR);
+
+  if(oper != 0)
+  {
+    if(opcode == 5 || reg_address == 0x08)
+    {
+      op_data = R8(SFBR);
+#if defined(DEBUG_SYM_SCRIPTS)
+      printf("SYM: %08x: sfbr (%02x) ", R32(DSP) - 8, op_data);
+#endif
+    }
+    else
+    {
+      op_data = (u8) ReadMem_Bar(0, 1, reg_address, 8);
+#if defined(DEBUG_SYM_SCRIPTS)
+      printf("SYM: %08x: reg%02x (%02x) ", R32(DSP) - 8, reg_address,
+             op_data);
+#endif
+    }
+  }
+
+  u16 tmp16;
+
+  switch(oper)
+  {
+  case 0:
+    op_data = imm_data;
+#if defined(DEBUG_SYM_SCRIPTS)
+    printf("SYM: %08x: %02x ", R32(DSP) - 8, imm_data);
+#endif
+    break;
+
+  case 1:
+    tmp16 = (op_data << 1) + (state.alu.carry ? 1 : 0);
+    state.alu.carry = (tmp16 >> 8) & 1;
+    op_data = tmp16 & 0xff;
+#if defined(DEBUG_SYM_SCRIPTS)
+    printf("<< 1 = %02x ", op_data);
+#endif
+    break;
+
+  case 2:
+    op_data |= imm_data;
+#if defined(DEBUG_SYM_SCRIPTS)
+    printf("| %02x = %02x ", imm_data, op_data);
+#endif
+    break;
+
+  case 3:
+    op_data ^= imm_data;
+#if defined(DEBUG_SYM_SCRIPTS)
+    printf("^ %02x = %02x ", imm_data, op_data);
+#endif
+    break;
+
+  case 4:
+    op_data &= imm_data;
+#if defined(DEBUG_SYM_SCRIPTS)
+    printf("& %02x = %02x ", imm_data, op_data);
+#endif
+    break;
+
+  case 5:
+    tmp16 = (op_data >> 1) + (state.alu.carry ? 0x80 : 0x00);
+    state.alu.carry = op_data & 1;
+    op_data = tmp16 & 0xff;
+#if defined(DEBUG_SYM_SCRIPTS)
+    printf(">> 1 = %02x ", op_data);
+#endif
+    break;
+
+  case 6:
+    tmp16 = op_data + imm_data;
+    state.alu.carry = (tmp16 > 0xff);
+    op_data = tmp16 & 0xff;
+#if defined(DEBUG_SYM_SCRIPTS)
+    printf("+ %02x = %02x (carry %d) ", imm_data, op_data, state.alu.carry);
+#endif
+    break;
+
+  case 7:
+    tmp16 = op_data + imm_data + (state.alu.carry ? 1 : 0);
+    state.alu.carry = (tmp16 > 0xff);
+    op_data = tmp16 & 0xff;
+#if defined(DEBUG_SYM_SCRIPTS)
+    printf("+ %02x (w/carry) = %02x (carry %d) ", imm_data, op_data,
+           state.alu.carry);
+#endif
+    break;
+  }
+
+  if(opcode == 6 || reg_address == 0x08)
+  {
+#if defined(DEBUG_SYM_SCRIPTS)
+    printf("-> sfbr.\n");
+#endif
+    R8(SFBR) = op_data;
+  }
+  else
+  {
+#if defined(DEBUG_SYM_SCRIPTS)
+    printf("-> reg%02x.\n", reg_address);
+#endif
+    WriteMem_Bar(0, 1, reg_address, 8, op_data);
+  }
+}
+
+/**
+ * Execute one SCRIPTS Transfer Control instruction
+ * 
+ * The Transfer Control instructions perform conditional jumps, calls,
+ * returns and interrupts. The instruction format in the DCMD and DBC
+ * registers is as follows:
+ *
+ * \code
+ * +---+-----+-----+
+ * |7 6|5 4 3|2 1 0| DCMD Register
+ * +---+-----+-----+
+ *   |    |     +- 0..2: SCSI Phase (I/O, C/D and MSG/ signals):
+ *   |    |              The actual SCSI phase is compared against these
+ *   |    |              bits.
+ *   |    +- 3..5: Op Code
+ *   |               000: Jump
+ *   |               001: Call
+ *   |               010: Return
+ *   |               011: Interrupt
+ *   |               1xx: reserved
+ *   +- 6..7 Instruction Type: 10 = Transfer Control
+ *
+ * +--+-+--+--+--+--+--+--++---------------++---------------+
+ * |23| |21|20|19|18|17|16||15            8||7             0| DBC Register
+ * +--+-+--+--+--+--+--+--++---------------++---------------+
+ *  |    |  |  |  |  |  |          |             +- 7..0: Data to compare 
+ *  |    |  |  |  |  |  |          |                      against SFBR
+ *  |    |  |  |  |  |  |          +- 15..8: Mask that determines what bits
+ *  |    |  |  |  |  |  |                    to compare against SFBR.
+ *  |    |  |  |  |  |  +- 16: Wait for valid SCSI phase
+ *  |    |  |  |  |  +- 17: Compare Phase
+ *  |    |  |  |  +- 18: Compare SFBR data
+ *  |    |  |  +- Jump if:
+ *  |    |  |       0: Jump/Call/return/Interrupt if the equation is true
+ *  |    |  |       0: Jump/Call/return/Interrupt if the equation is false
+ *  |    |  +- Interrupt on the Fly
+ *  |    +- Carry Test
+ *  +- relative Addressing:
+ *       0: The value in the DSPS register is an absolute address.
+ *       1: The value in the DSPS register is a 24-bit signed
+ *          displacement from the current DSP address.
+ * \endcode
+ *
+ * The equation evaluated is one of the following:
+ *   - the value of the carry bit (if the Carry Test bit is set)
+ *   - equality comparisons of SCSI phase and/or SFBR register data
+ *   - true (if none of the compare/carry test bits are set)
+ *   .
+ *
+ * An action is taken when the equation evaluates to either true or false
+ * as determined by the "Jump if" bit.
+ * 
+ * Jump:
+ *   - Jump to the instruction addressed by the DSPS register.
+ *   .
+ *
+ * Call:
+ *   - Store the current DSP register value to the TEMP register.
+ *   - Jump to the instruction addressed by the DSPS register.
+ *   .
+ *
+ * Return:
+ *   - Jump to the instruction addressed by the TEMP register.
+ *   .
+ *
+ * Interrupt:
+ *   - If the Interrupt on the Fly bit is set, raise the INTF interrupt.
+ *   - Otherwise:
+ *       - Raise the SIR interrupt
+ *       - Terminate SCRIPTS execution
+ *       - The DSPS value is used as an interrupt vector for the driver.
+ *       .
+ *   .
+ **/
+void CSym53C895::execute_tc_op()
+{
+  int   opcode = (R8(DCMD) >> 3) & 7;
+  int   scsi_phase = (R8(DCMD) >> 0) & 7;
+  bool  relative = (GET_DBC() >> 23) & 1;
+  bool  carry_test = (GET_DBC() >> 21) & 1;
+  bool  interrupt_fly = (GET_DBC() >> 20) & 1;
+  bool  jump_if = (GET_DBC() >> 19) & 1;
+  bool  cmp_data = (GET_DBC() >> 18) & 1;
+  bool  cmp_phase = (GET_DBC() >> 17) & 1;
+  int   cmp_mask = (GET_DBC() >> 8) & 0xff;
+  int   cmp_dat = (GET_DBC() >> 0) & 0xff;
+  u32   dest_addr;
+
+  // wait_valid can be safely ignored, phases are always valid in this ideal world...
+  // bool wait_valid = (GET_DBC()>>16) & 1;
+
+  // We'll keep modifying this variable until we know what the result of the comparisons is.
+  bool  do_it;
+
+  // Relative jump or not? (no effect on Return or Interrupt)
+  if(relative)
+    dest_addr = R32(DSP) + sext_u32_24(R32(DSPS));
+  else
+    dest_addr = R32(DSPS);
+
+#if defined(DEBUG_SYM_SCRIPTS)
+  printf("SYM: %08x: if (", R32(DSP) - 8);
+#endif
+  if(carry_test)
+  {
+    // All we need to check is the CARRY flag
+#if defined(DEBUG_SYM_SCRIPTS)
+    printf("(%scarry)", jump_if ? "" : "!");
+#endif
+    do_it = (state.alu.carry == jump_if);
+  }
+  else if(cmp_data || cmp_phase)
+  {
+    // We need to compare data and/or phase
+    do_it = true;
+    if(cmp_data)
+    {
+      // compare data
+#if defined(DEBUG_SYM_SCRIPTS)
+      printf("((data & 0x%02x) %s 0x%02x)", (~cmp_mask) & 0xff,
+             jump_if ? "==" : "!=", cmp_dat &~cmp_mask);
+#endif
+      if(((R8(SFBR) &~cmp_mask) == (cmp_dat &~cmp_mask)) != jump_if)
+        do_it = false;
+#if defined(DEBUG_SYM_SCRIPTS)
+      if(cmp_phase)
+        printf(" && ");
+#endif
+    }
+
+    if(cmp_phase)
+    {
+      // Compare phase
+#if defined(DEBUG_SYM_SCRIPTS)
+      printf("(phase %s %d)", jump_if ? "==" : "!=", scsi_phase);
+#endif
+      if((check_phase(scsi_phase)>0) != jump_if)
+        do_it = false;
+    }
+  }
+  else
+  {
+
+    // no comparison
+    do_it = jump_if;
+  }
+
+#if defined(DEBUG_SYM_SCRIPTS)
+  printf(") ");
+#endif
+  switch(opcode)
+  {
+  case 0:
+#if defined(DEBUG_SYM_SCRIPTS)
+    printf("jump %x\n", R32(DSPS));
+#endif
+    if(do_it)
+    {
+#if defined(DEBUG_SYM_SCRIPTS)
+      printf("SYM: Jumping %08x...\n", dest_addr);
+#endif
+      R32(DSP) = dest_addr;
+    }
+
+    return;
+    break;
+
+  case 1:
+#if defined(DEBUG_SYM_SCRIPTS)
+    printf("call %d\n", R32(DSPS));
+#endif
+    if(do_it)
+    {
+#if defined(DEBUG_SYM_SCRIPTS)
+      printf("SYM: Calling %08x...\n", dest_addr);
+#endif
+      R32(TEMP) = R32(DSP);
+      R32(DSP) = dest_addr;
+    }
+
+    return;
+    break;
+
+  case 2:
+#if defined(DEBUG_SYM_SCRIPTS)
+    printf("return %d\n", R32(DSPS));
+#endif
+    if(do_it)
+    {
+#if defined(DEBUG_SYM_SCRIPTS)
+      printf("SYM: Returning %08x...\n", R32(TEMP));
+#endif
+      R32(DSP) = R32(TEMP);
+    }
+
+    return;
+    break;
+
+  case 3:
+#if defined(DEBUG_SYM_SCRIPTS)
+    printf("interrupt%s.\n", interrupt_fly ? " on the fly" : "");
+#endif
+    if(do_it)
+    {
+#if defined(DEBUG_SYM_SCRIPTS)
+      printf("SYM: Interrupt with vector %x...\n", R32(DSPS));
+#endif
+      if(interrupt_fly)
+        RAISE(ISTAT, INTF);
+      else
+        RAISE(DSTAT, SIR);
+    }
+
+    return;
+    break;
+
+  default:
+    FAILURE_1(NotImplemented,
+              "SYM: Transfer Control Instruction with opcode %d is RESERVED.\n",
+              opcode);
+  }
+}
+
+/**
+ * Execute one SCRIPTS Load/Store instruction
+ * 
+ * The Load/Store instruction moves data between registers and memory.
+ * The memory range could very well map back to the registers through
+ * the PCI bus! The instruction format in the DCMD and DBC registers 
+ * is as follows:
+ *
+ * \code
+ * +-----+-+---+-+-+
+ * |7 6 5|4|   |1|0| DCMD Register
+ * +-----+-+---+-+-+
+ *    |   |     | +- 0: Load/Store
+ *    |   |     |         0: Store (register -> memory)
+ *    |   |     |         1: Load (memory -> register)
+ *    |   |     +- 1: No Flush (no effect)
+ *    |   +- 4: DSA Relative
+ *    |           0: The value in the DSPS register is absolute.
+ *    |           1: The value in the DSPS register is a 24-bit
+ *    |              signed offset from DSA.
+ *    +- 7..5 Instruction Type: 111 = Load/Store
+ *
+ * +---------------++---------------++---------------+
+ * |23           16||               ||         |2   0| DBC Register
+ * +---------------++---------------++---------------+
+ *          |                                     +- 2..0: Byte Count
+ *          +- 23..16: Register Address
+ * \endcode
+ *
+ * This instructions moves up to 4 bytes between registers and memory.
+ **/
+void CSym53C895::execute_ls_op()
+{
+  bool  is_load = (R8(DCMD) >> 0) & 1;
+  bool  no_flush = (R8(DCMD) >> 1) & 1;
+  bool  dsa_relative = (R8(DCMD) >> 4) & 1;
+  int   regaddr = (GET_DBC() >> 16) & 0x7f;
+  int   byte_count = (GET_DBC() >> 0) & 7;
+  u32   memaddr;
+
+  // Relative Addressing
+  if(dsa_relative)
+    memaddr = R32(DSA) + sext_u32_24(R32(DSPS));
+  else
+    memaddr = R32(DSPS);
+
+#if defined(DEBUG_SYM_SCRIPTS)
+  printf("SYM: dsa_rel: %d, DSA: %04x, DSPS: %04x, mem %04x.\n",
+         dsa_relative, R32(DSA), R32(DSPS), memaddr);
+#endif
+  if(is_load)
+  {
+#if defined(DEBUG_SYM_SCRIPTS)
+    printf("SYM: %08x: Load reg%02x", R32(DSP) - 8, regaddr);
+    if(byte_count > 1)
+      printf("..%02x", regaddr + byte_count - 1);
+    printf("from %x.\n", memaddr);
+#endif
+    // Perform Load Operation
+    for(int i = 0; i < byte_count; i++)
+    {
+      u8  dat;
+      do_pci_read(memaddr + i, &dat, 1, 1);
+#if defined(DEBUG_SYM_SCRIPTS)
+      printf("SYM: %02x -> reg%02x\n", dat, regaddr + i);
+#endif
+      WriteMem_Bar(0, 1, regaddr + i, 8, dat);
+    }
+  }
+  else
+  {
+#if defined(DEBUG_SYM_SCRIPTS)
+    printf("SYM: %08x: Store reg%02x", R32(DSP) - 8, regaddr);
+    if(byte_count > 1)
+      printf("..%02x", regaddr + byte_count - 1);
+    printf("to %x.\n", memaddr);
+#endif
+    // Perform Store Operation
+    for(int i = 0; i < byte_count; i++)
+    {
+      u8  dat = (u8) ReadMem_Bar(0, 1, regaddr + i, 8);
+#if defined(DEBUG_SYM_SCRIPTS)
+      printf("SYM: %02x <- reg%02x\n", dat, regaddr + i);
+#endif
+      do_pci_write(memaddr + i, &dat, 1, 1);
+    }
+  }
+}
+
+/**
+ * Execute one SCRIPTS Memory Move instruction
+ * 
+ * The Memory Move instruction is used to transfer data from one
+ * region in host memory to another region through the SCSI
+ * controller's. DMA. The instruction format in the DCMD register
+ * is as follows:
+ *
+ * \code
+ * +-----+-------+-+
+ * |7 6 5|       |0| DCMD Register
+ * +-----+-------+-+
+ *    |           +- No Flush (no effect)
+ *    +- 7..5 Instruction Type: 110 = Memory Move
+ * \endcode
+ *
+ * This is a 3-DWORD instruction.
+ *
+ * The DBC register holds the number of bytes to be moved.
+ * The DSPS register holds the source address.
+ * The TEMP register holds the destination address.
+ */
+void CSym53C895::execute_mm_op()
+{
+  u32 temp_shadow;
+  do_pci_read(R32(DSP), &temp_shadow, 4, 1);
+  R32(DSP) += 4;
+
+#if defined(DEBUG_SYM_SCRIPTS)
+  printf("SYM: %08x: Memory Move %06x bytes from %08x to %08x.\n",
+         R32(DSP) - 12, GET_DBC(), R32(DSPS), temp_shadow);
+#endif
+
+  // To speed things up, we set up a buffer and read all data
+  // at once, followed by writing all data at once.
+  void*   buf = malloc(GET_DBC());
+  do_pci_read(R32(DSPS), buf, 1, GET_DBC());
+  do_pci_write(temp_shadow, buf, 1, GET_DBC());
+  free(buf);
+  return;
+}
+
+/**
  * Execute one SCRIPTS instruction.
+ *
+ * DSP (DMA Scripts Pointer) contains the address of the next instruction.
+ * For each instruction, two DWORDS are read into the 8-bit DCMD (DMA Command),
+ * 24-bit DBC (DMA Byte Counter), and 32-bit DSPS (DMA Scripts Pointer Save)
+ * registers. For some commands, a third DWORD is read into the 32-bit TEMP
+ * register:
+ *
+ * \code
+ *        +--------+------------------------+
+ * DSP  : |  DCMD  |          DBC           |
+ *        +--------+------------------------+
+ * DSP+4: |              DSPS               |
+ *        +---------------------------------+
+ * DSP+8: |/ / / / / / / TEMP  / / / / / / /|
+ *        +---------------------------------+
+ * \endcode
  **/
 void CSym53C895::execute()
 {
   int optype;
-
-  // single step mode
-  if(TB_R8(DCNTL, SSM))
-  {
-#if defined(DEBUG_SYM_SCRIPTS)
-    printf("SYM: Single step...\n");
-#endif
-    RAISE(DSTAT, SSI);
-  }
+  int opcode;
+  bool is_load_store;
 
 #if defined(DEBUG_SYM_SCRIPTS)
       printf("SYM: INS @ %x   \n",R32(DSP));
 #endif
-
-  /* DSP (DMA Scripts Pointer) contains the address of the next instruction.
-   * For each instruction, two DWORDS are read into the 8-bit DCMD (DMA Command),
-   * 24-bit DBC (DMA Byte Counter), and 32-bit DSPS (DMA Scripts Pointer Save)
-   * registers. For some commands, a third DWORD is read into the 32-bit TEMP
-   * register:
-   *
-   *        +--------+------------------------+
-   * DSP  : |  DCMD  |          DBC           |
-   *        +--------+------------------------+
-   * DSP+4: |              DSPS               |
-   *        +---------------------------------+
-   * DSP+8: |/ / / / / / / TEMP  / / / / / / /|
-   *        +---------------------------------+
-   */
 
   // Read 2 DWORDS into the DCMD, DBC and DSPS registers.
   do_pci_read(R32(DSP), &R32(DBC), 4, 1);
@@ -1763,855 +2625,38 @@ void CSym53C895::execute()
   switch(optype)
   {
   case 0:
-    /* Block Move instruction
-     * 
-     * The Block Move instruction moves data between system memory and the
-     * SCSI Bus. This is a two DWORD instruction. The instruction format in
-     * the DCMD register is as follows:
-     *
-     * +---+-+-+-+-----+
-     * |7 6|5|4|3|2 1 0| DCMD Register
-     * +---+-+-+-+-----+
-     *   |  | | |   +- 0..2: SCSI Phase (I/O, C/D and MSG/ signals):
-     *   |  | | |            The data transfer only occurs if these bits
-     *   |  | | |            match the actual SCSI bus phase.
-     *   |  | | +- 3: Op Code: IGNORED
-     *   |  | +- 4: Table Indirect Adressing:
-     *   |  |         0: The DSPS register contains the address of the data,
-     *   |  |            and the DBC register contains the number of bytes to
-     *   |  |            transfer.
-     *   |  |         1: The DSPS register contains a 24-bit signed offset
-     *   |  |            that is added to the DSA register to get a pointer
-     *   |  |            to a data structure that contains the address and
-     *   |  |            byte count. This structure looks as follows:
-     *   |  |                           +----+------------+
-     *   |  |               DSA+DSPS:   | 00 | Byte Count |
-     *   |  |                           +----+------------+
-     *   |  |               DSA+DSPS+4: |  Data Address   |
-     *   |  |                           +-----------------+
-     *   |  +- 5: Indirect Addressing:
-     *   |          0: The DSPS register contains the address of the data
-     *   |          1: The DSPS register contains the address of a 32-bit
-     *   |             pointer to the data.
-     *   +- 6..7: Instruction Type: 00 = Block Move
-     */
-    {
-      bool  indirect = (R8(DCMD) >> 5) & 1;
-      bool  table_indirect = (R8(DCMD) >> 4) & 1;
-      int   opcode = (R8(DCMD) >> 3) & 1;
-      int   scsi_phase = (R8(DCMD) >> 0) & 7;
-
-#if defined(DEBUG_SYM_SCRIPTS)
-      printf("SYM: INS = Block Move (i %d, t %d, opc %d, phase %d\n", indirect,
-             table_indirect, opcode, scsi_phase);
-#endif
-      // Compare phase
-      if(check_phase(scsi_phase)>0)
-      {
-#if defined(DEBUG_SYM_SCRIPTS)
-        printf("SYM: Ready for transfer.\n");
-#endif
-
-        u32 start;
-        u32 count;
-
-        if(table_indirect)
-        {
-          u32 add = R32(DSA) + sext_u32_24(R32(DSPS));
-
-          add &= ~0x03;       // 810
-#if defined(DEBUG_SYM_SCRIPTS)
-          printf("SYM: Reading table at DSA(%08x)+DSPS(%08x) = %08x.\n",
-                 R32(DSA), R32(DSPS), add);
-#endif
-          do_pci_read(add, &count, 4, 1);
-          count &= 0x00ffffff;
-          do_pci_read(add + 4, &start, 4, 1);
-        }
-        else if(indirect)
-        {
-          FAILURE(NotImplemented, "SYM: Unsupported: indirect addressing");
-        }
-        else
-        {
-          start = R32(DSPS);
-          count = GET_DBC();
-        }
-
-#if defined(DEBUG_SYM_SCRIPTS)
-        printf("SYM: %08x: MOVE Start/count %x, %x\n", R32(DSP) - 8, start,
-               count);
-#endif
-        R32(DNAD) = start;
-        SET_DBC(count);       // page 5-32
-        if(count == 0)
-        {
-
-          //printf("SYM: Count equals zero!\n");
-          RAISE(DSTAT, IID);  // page 5-32
-          return;
-        }
-
-        if((size_t) count > scsi_expected_xfer(0))
-        {
-#if defined(DEBUG_SYM_SCRIPTS)
-          printf("SYM: xfer %d bytes, max %d expected, in phase %d.\n", count,
-                 scsi_expected_xfer(0), scsi_phase);
-#endif
-          count = (u32) scsi_expected_xfer(0);
-        }
-
-        u8*   scsi_data_ptr = (u8*) scsi_xfer_ptr(0, count);
-        u8*   org_sdata_ptr = scsi_data_ptr;
-
-        switch(scsi_phase)
-        {
-        case SCSI_PHASE_COMMAND:
-        case SCSI_PHASE_DATA_OUT:
-        case SCSI_PHASE_MSG_OUT:
-          do_pci_read(R32(DNAD), scsi_data_ptr, 1, count);
-          R32(DNAD) += count;
-          break;
-
-        case SCSI_PHASE_STATUS:
-        case SCSI_PHASE_DATA_IN:
-        case SCSI_PHASE_MSG_IN:
-          do_pci_write(R32(DNAD), scsi_data_ptr, 1, count);
-          R32(DNAD) += count;
-          break;
-        }
-
-        R8(SFBR) = *org_sdata_ptr;
-        scsi_xfer_done(0);
-        return;
-      }
-    }
+    execute_bm_op();
     break;
 
   case 1:
-    {
-      int opcode = (R8(DCMD) >> 3) & 7;
-
-      if(opcode < 5)
-      {
-        /* I/O instructions
-         * 
-         * The I/O instructions perform common SCSI hardware sequences, like
-         * Selection and reselection. The instruction format in
-         * the DCMD and DBC register is as follows:
-         *
-         * +---+-----+-+-+-+
-         * |7 6|5 4 3|2|1|0| DCMD Register
-         * +---+-----+-+-+-+
-         *   |    |   | | +- 0: Select with ATN/:
-         *   |    |   | |       Valid only for Select instruction. Assert ATN/ during 
-         *   |    |   | |       selection
-         *   |    |   | +- 1: Table Indirect Mode:
-         *   |    |   |         0: All information is taken from the instruction,
-         *   |    |   |            and the contents of the SCNTL3 and SXFER registers.
-         *   |    |   |         1: The DSPS register contains a 24-bit signed offset
-         *   |    |   |            that is added to the DSA register to get a pointer
-         *   |    |   |            to a data structure that contains the destination
-         *   |    |   |            ID, SCNTL3 bits, and SXFER bits. This structure 
-         *   |    |   |            is 32 bits long and looks as follows:
-         *   |    |   |                        +--------+--------+--------+--------+
-         *   |    |   |            DSA+DSPS:   | SCNTL3 | ID     | SXFER  |        |
-         *   |    |   |                        +--------+--------+--------+--------+
-         *   |    |   +- 2: Relative Addrressing:
-         *   |    |           0: The value in the DNAD register is an absolute address.
-         *   |    |           1: The value in the DNAD register is a 24-bit signed
-         *   |    |              displacement from the current DSP address.
-         *   |    +- 3..5: Op Code
-         *   +- 6..7 Instruction Type: 01 = I/O
-         *
-         * +-------+-------++--------+--+-+-++-+-+---+-+-----+
-         * |       |19   16||        |10|9| || |6|   |3|     | DBC Register
-         * +-------+-------++--------+--+-+-++-+-+---+-+-----+
-         *             |              |  |      |     +- 3: Set/Clear ATN
-         *             |              |  |      +- 6: Set/Clear ACK
-         *             |              |  +- 9: Set/Clear Target Mode
-         *             |              +- 10: Set/Clear Carry
-         *             +- 16..19: Destination ID
-         *
-         * The Opcode determines the actual instruction:
-         * +-----+-----------------+-------------+
-         * | OPC | Initiator mode  | Target Mode |
-         * +-----+-----------------+-------------+
-         * | 000 | Select          | Reselect    |
-         * | 001 | Wait Disconnect | Disconnect  |
-         * | 010 | Wait Reselect   | Wait Select |
-         * | 011 | Set             | Set         |
-         * | 100 | Clear           | Clear       |
-         * +-----+-----------------+-------------+
-         * 
-         * Select:
-         *   - Arbitrate for the SCSI bus until arbitration is won.
-         *   - If arbitration is won, try to select the destination ID
-         *   - If the controller is selected or reselected before winning
-         *     arbitration, jump to the address in the DNAD register.
-         *
-         * Wait Disconnect:
-         *   - Wait for the target to disconnect from the SCSI bus.
-         *
-         * Wait Reselect:
-         *   - If the controller is reselected, go to the next instruction.
-         *   - If the controller is selected before being reselected, or if
-         *     the CPU sets the SIGP flag, jump to the address in the DNAD 
-         *     register
-         *   
-         * Set/Clear:
-         *   - Set or Clear the flags whose Set/Clear bits are set in the
-         *     instruction.
-         */
-        bool  relative = (R8(DCMD) >> 2) & 1;
-        bool  table_indirect = (R8(DCMD) >> 1) & 1;
-        bool  atn = (R8(DCMD) >> 0) & 1;
-        int   destination = (GET_DBC() >> 16) & 0x0f;
-        bool  sc_carry = (GET_DBC() >> 10) & 1;
-        bool  sc_target = (GET_DBC() >> 9) & 1;
-        bool  sc_ack = (GET_DBC() >> 6) & 1;
-        bool  sc_atn = (GET_DBC() >> 3) & 1;
-
-        R32(DNAD) = R32(DSPS);
-
-        u32 dest_addr = R32(DNAD);
-
-        if(relative)
-          dest_addr = R32(DSP) + sext_u32_24(R32(DNAD));
-
-#if defined(DEBUG_SYM_SCRIPTS)
-        printf("SYM: INS = I/O (opc %d, r %d, t %d, a %d, dest %d, sc %d%d%d%d\n",
-               opcode, relative, table_indirect, atn, destination, sc_carry,
-               sc_target, sc_ack, sc_atn);
-#endif
-        if(table_indirect)
-        {
-          u32 io_addr = R32(DSA) + sext_u32_24(GET_DBC());
-          io_addr &= ~3;      //810
-#if defined(DEBUG_SYM_SCRIPTS)
-          printf("SYM: Reading table at DSA(%08x)+DBC(%08x) = %08x.\n",
-                 R32(DSA), sext_u32_24(GET_DBC()), io_addr);
-#endif
-
-          u32 io_struc;
-          do_pci_read(io_addr, &io_struc, 4, 1);
-          destination = (io_struc >> 16) & 0x0f;
-#if defined(DEBUG_SYM_SCRIPTS)
-          printf("SYM: table indirect. io_struct = %08x, new dest = %d.\n",
-                 io_struc, destination);
-#endif
-        }
-
-        switch(opcode)
-        {
-        case 0:
-#if defined(DEBUG_SYM_SCRIPTS)
-          printf("SYM: %08x: SELECT %d.\n", R32(DSP) - 8, destination);
-#endif
-          SET_DEST(destination);
-          if(!scsi_arbitrate(0))
-          {
-
-            // scsi bus busy, try again next clock...
-            printf("scsi bus busy...\n");
-            R32(DSP) -= 8;
-            return;
-          }
-
-          state.select_timeout = !scsi_select(0, destination);
-          if(!state.select_timeout)   // select ok
-            SB_R8(SCNTL2, SDU, true); // don't expect a disconnect
-          return;
-
-        case 1:
-#if defined(DEBUG_SYM_SCRIPTS)
-          printf("SYM: %08x: WAIT DISCONNECT\n", R32(DSP) - 8);
-#endif
-
-          // maybe we need to do more??
-          scsi_free(0);
-          return;
-
-        case 2:
-#if defined(DEBUG_SYM_SCRIPTS)
-          printf("SYM: %08x: WAIT RESELECT\n", R32(DSP) - 8);
-#endif
-          if(TB_R8(ISTAT, SIGP))
-          {
-#if defined(DEBUG_SYM_SCRIPTS)
-            printf("SYM: SIGP set before wait reselect; jumping!\n");
-#endif
-            R32(DSP) = dest_addr;
-          }
-          else
-          {
-            state.wait_reselect = true;
-            state.wait_jump = dest_addr;
-            state.executing = false;
-          }
-
-          return;
-
-        case 3:
-#if defined(DEBUG_SYM_SCRIPTS)
-          printf("SYM: %08x: SET %s%s%s%s\n", R32(DSP) - 8,
-                 sc_carry ? "carry " : "", sc_target ? "target " : "",
-                 sc_ack ? "ack " : "", sc_atn ? "atn " : "");
-#endif
-          if(sc_ack)
-            SB_R8(SOCL, ACK, true);
-          if(sc_atn)
-          {
-            if(!TB_R8(SOCL, ATN))
-            {
-              SB_R8(SOCL, ATN, true);
-
-              //printf("SET ATN.\n");
-              //printf(">");
-              //getchar();
-            }
-          }
-
-          if(sc_target)
-            SB_R8(SCNTL0, TRG, true);
-          if(sc_carry)
-            state.alu.carry = true;
-          return;
-
-        case 4:
-#if defined(DEBUG_SYM_SCRIPTS)
-          printf("SYM: %08x: CLEAR %s%s%s%s\n", R32(DSP) - 8,
-                 sc_carry ? "carry " : "", sc_target ? "target " : "",
-                 sc_ack ? "ack " : "", sc_atn ? "atn " : "");
-#endif
-          if(sc_ack)
-            SB_R8(SOCL, ACK, false);
-          if(sc_atn)
-          {
-            if(TB_R8(SOCL, ATN))
-            {
-              SB_R8(SOCL, ATN, false);
-
-              //printf("RESET ATN.\n");
-              //printf(">");
-              //getchar();
-            }
-          }
-
-          if(sc_target)
-            SB_R8(SCNTL0, TRG, false);
-          if(sc_carry)
-            state.alu.carry = false;
-          return;
-
-          break;
-        }
-      }
-      else
-      {
-        /* R/W instructions
-         * 
-         * The R/W instructions perform arithmetic or logic operations on
-         * registers. The instruction format in the DCMD and DBC register is as follows:
-         *
-         * +---+-----+-----+
-         * |7 6|5 4 3|2 1 0| DCMD Register
-         * +---+-----+-----+
-         *   |    |     +- 2..0: operator:
-         *   |    |                000: data8
-         *   |    |                001: reg << 1
-         *   |    |                010: reg | data8
-         *   |    |                011: reg ^ data8
-         *   |    |                100: reg & data8
-         *   |    |                101: reg >> 1
-         *   |    |                110: reg + data8
-         *   |    |                111: reg + data8 + carry
-         *   |    +- 3..5: Op Code
-         *   |               101: regA = operator(SFBR, data8)
-         *   |               110: SFBR = operator(RegA, data8)
-         *   |               111: regA = operator(RegA, data8)
-         *   +- 6..7 Instruction Type: 01 = R/W
-         *
-         * +--+------------++---------------++-+-------------+
-         * |23|22        16||15            8||7|             | DBC Register
-         * +--+------------++---------------++-+-------------+
-         *  |  A6--------A0         |         A7                         
-         *  |        +--------------|---------+- 7,22..16: RegA address
-         *  |                       |
-         *  |                       +- 15..8: Immediate data  
-         *  +- 23: Use data8/SFBR
-         *         0: data8 = Immediate data
-         *         1: data8 = SFBR
-         */
-        int   oper = (R8(DCMD) >> 0) & 7;
-        bool  use_data8_sfbr = (GET_DBC() >> 23) & 1;
-        int   reg_address = ((GET_DBC() >> 16) & 0x7f); //| (GET_DBC() & 0x80); // manual is unclear about bit 7.
-        u8    imm_data = (u8) (GET_DBC() >> 8) & 0xff;
-        u8    op_data;
-
-#if defined(DEBUG_SYM_SCRIPTS)
-        printf("SYM: INS = R/W (opc %d, oper %d, use %d, add %d, imm %02x\n",
-               opcode, oper, use_data8_sfbr, reg_address, imm_data);
-#endif
-        if(use_data8_sfbr)
-          imm_data = R8(SFBR);
-
-        if(oper != 0)
-        {
-          if(opcode == 5 || reg_address == 0x08)
-          {
-            op_data = R8(SFBR);
-#if defined(DEBUG_SYM_SCRIPTS)
-            printf("SYM: %08x: sfbr (%02x) ", R32(DSP) - 8, op_data);
-#endif
-          }
-          else
-          {
-            op_data = (u8) ReadMem_Bar(0, 1, reg_address, 8);
-#if defined(DEBUG_SYM_SCRIPTS)
-            printf("SYM: %08x: reg%02x (%02x) ", R32(DSP) - 8, reg_address,
-                   op_data);
-#endif
-          }
-        }
-
-        u16 tmp16;
-
-        switch(oper)
-        {
-        case 0:
-          op_data = imm_data;
-#if defined(DEBUG_SYM_SCRIPTS)
-          printf("SYM: %08x: %02x ", R32(DSP) - 8, imm_data);
-#endif
-          break;
-
-        case 1:
-          tmp16 = (op_data << 1) + (state.alu.carry ? 1 : 0);
-          state.alu.carry = (tmp16 >> 8) & 1;
-          op_data = tmp16 & 0xff;
-#if defined(DEBUG_SYM_SCRIPTS)
-          printf("<< 1 = %02x ", op_data);
-#endif
-          break;
-
-        case 2:
-          op_data |= imm_data;
-#if defined(DEBUG_SYM_SCRIPTS)
-          printf("| %02x = %02x ", imm_data, op_data);
-#endif
-          break;
-
-        case 3:
-          op_data ^= imm_data;
-#if defined(DEBUG_SYM_SCRIPTS)
-          printf("^ %02x = %02x ", imm_data, op_data);
-#endif
-          break;
-
-        case 4:
-          op_data &= imm_data;
-#if defined(DEBUG_SYM_SCRIPTS)
-          printf("& %02x = %02x ", imm_data, op_data);
-#endif
-          break;
-
-        case 5:
-          tmp16 = (op_data >> 1) + (state.alu.carry ? 0x80 : 0x00);
-          state.alu.carry = op_data & 1;
-          op_data = tmp16 & 0xff;
-#if defined(DEBUG_SYM_SCRIPTS)
-          printf(">> 1 = %02x ", op_data);
-#endif
-          break;
-
-        case 6:
-          tmp16 = op_data + imm_data;
-          state.alu.carry = (tmp16 > 0xff);
-          op_data = tmp16 & 0xff;
-#if defined(DEBUG_SYM_SCRIPTS)
-          printf("+ %02x = %02x (carry %d) ", imm_data, op_data, state.alu.carry);
-#endif
-          break;
-
-        case 7:
-          tmp16 = op_data + imm_data + (state.alu.carry ? 1 : 0);
-          state.alu.carry = (tmp16 > 0xff);
-          op_data = tmp16 & 0xff;
-#if defined(DEBUG_SYM_SCRIPTS)
-          printf("+ %02x (w/carry) = %02x (carry %d) ", imm_data, op_data,
-                 state.alu.carry);
-#endif
-          break;
-        }
-
-        if(opcode == 6 || reg_address == 0x08)
-        {
-#if defined(DEBUG_SYM_SCRIPTS)
-          printf("-> sfbr.\n");
-#endif
-          R8(SFBR) = op_data;
-        }
-        else
-        {
-#if defined(DEBUG_SYM_SCRIPTS)
-          printf("-> reg%02x.\n", reg_address);
-#endif
-          WriteMem_Bar(0, 1, reg_address, 8, op_data);
-        }
-
-        return;
-      }
-    }
+    opcode = (R8(DCMD) >> 3) & 7;
+    if(opcode < 5)
+      execute_io_op();
+    else
+      execute_rw_op();
     break;
 
   case 2:
-    /* Transfer Control instruction
-     * 
-     * The Transfer Control instructions perform conditional jumps, calls,
-     * returns and interrupts. The instruction format in the DCMD and DBC
-     * register is as follows:
-     *
-     * +---+-----+-----+
-     * |7 6|5 4 3|2 1 0| DCMD Register
-     * +---+-----+-----+
-     *   |    |     +- 0..2: SCSI Phase (I/O, C/D and MSG/ signals):
-     *   |    |              The actual SCSI phase is compared against these
-     *   |    |              bits.
-     *   |    +- 3..5: Op Code
-     *   |               000: Jump
-     *   |               001: Call
-     *   |               010: Return
-     *   |               011: Interrupt
-     *   |               1xx: reserved
-     *   +- 6..7 Instruction Type: 10 = Transfer Control
-     *
-     * +--+-+--+--+--+--+--+--++---------------++---------------+
-     * |23| |21|20|19|18|17|16||15            8||7             0| DBC Register
-     * +--+-+--+--+--+--+--+--++---------------++---------------+
-     *  |    |  |  |  |  |  |          |             +- 7..0: Data to compare 
-     *  |    |  |  |  |  |  |          |                      against SFBR
-     *  |    |  |  |  |  |  |          +- 15..8: Mask that determines what bits
-     *  |    |  |  |  |  |  |                    to compare against SFBR.
-     *  |    |  |  |  |  |  +- 16: Wait for valid SCSI phase
-     *  |    |  |  |  |  +- 17: Compare Phase
-     *  |    |  |  |  +- 18: Compare SFBR data
-     *  |    |  |  +- Jump if:
-     *  |    |  |       0: Jump/Call/return/Interrupt if the equation is true
-     *  |    |  |       0: Jump/Call/return/Interrupt if the equation is false
-     *  |    |  +- Interrupt on the Fly
-     *  |    +- Carry Test
-     *  +- relative Addressing:
-     *       0: The value in the DSPS register is an absolute address.
-     *       1: The value in the DSPS register is a 24-bit signed
-     *          displacement from the current DSP address.
-     * 
-     * The equation evaluated is one of the following:
-     *   - the value of the carry bit (if the Carry Test bit is set)
-     *   - equality comparisons of SCSI phase and/or SFBR register data
-     *   - true (if none of the compare/carry test bits are set)
-     *
-     * An action is taken when the equation evaluates to either true or false
-     * as determined by the "Jump if" bit.
-     * 
-     * Jump:
-     *   - Jump to the instruction addressed by the DSPS register.
-     *
-     * Call:
-     *   - Store the current DSP register value to the TEMP register.
-     *   - Jump to the instruction addressed by the DSPS register.
-     *
-     * Return:
-     *   - Jump to the instruction addressed by the TEMP register.
-     *
-     * Interrupt:
-     *   - If the Interrupt on the Fly bit is set, raise the INTF interrupt.
-     *   - Otherwise:
-     *       - Raise the SIR interrupt
-     *       - Terminate SCRIPTS execution
-     *       - The DSPS value is used as an interrupt vector for the driver.
-     */
-    {
-      int   opcode = (R8(DCMD) >> 3) & 7;
-      int   scsi_phase = (R8(DCMD) >> 0) & 7;
-      bool  relative = (GET_DBC() >> 23) & 1;
-      bool  carry_test = (GET_DBC() >> 21) & 1;
-      bool  interrupt_fly = (GET_DBC() >> 20) & 1;
-      bool  jump_if = (GET_DBC() >> 19) & 1;
-      bool  cmp_data = (GET_DBC() >> 18) & 1;
-      bool  cmp_phase = (GET_DBC() >> 17) & 1;
-      int   cmp_mask = (GET_DBC() >> 8) & 0xff;
-      int   cmp_dat = (GET_DBC() >> 0) & 0xff;
-      u32   dest_addr;
-
-      // wait_valid can be safely ignored, phases are always valid in this ideal world...
-      // bool wait_valid = (GET_DBC()>>16) & 1;
- 
-      // We'll keep modifying this variable until we know what the result of the comparisons is.
-      bool  do_it;
-
-      // Relative jump or not? (no effect on Return or Interrupt)
-      if(relative)
-        dest_addr = R32(DSP) + sext_u32_24(R32(DSPS));
-      else
-        dest_addr = R32(DSPS);
-
-#if defined(DEBUG_SYM_SCRIPTS)
-      printf("SYM: %08x: if (", R32(DSP) - 8);
-#endif
-      if(carry_test)
-      {
-        // All we need to check is the CARRY flag
-#if defined(DEBUG_SYM_SCRIPTS)
-        printf("(%scarry)", jump_if ? "" : "!");
-#endif
-        do_it = (state.alu.carry == jump_if);
-      }
-      else if(cmp_data || cmp_phase)
-      {
-        // We need to compare data and/or phase
-        do_it = true;
-        if(cmp_data)
-        {
-          // compare data
-#if defined(DEBUG_SYM_SCRIPTS)
-          printf("((data & 0x%02x) %s 0x%02x)", (~cmp_mask) & 0xff,
-                 jump_if ? "==" : "!=", cmp_dat &~cmp_mask);
-#endif
-          if(((R8(SFBR) &~cmp_mask) == (cmp_dat &~cmp_mask)) != jump_if)
-            do_it = false;
-#if defined(DEBUG_SYM_SCRIPTS)
-          if(cmp_phase)
-            printf(" && ");
-#endif
-        }
-
-        if(cmp_phase)
-        {
-          // Compare phase
-#if defined(DEBUG_SYM_SCRIPTS)
-          printf("(phase %s %d)", jump_if ? "==" : "!=", scsi_phase);
-#endif
-          if((check_phase(scsi_phase)>0) != jump_if)
-            do_it = false;
-        }
-      }
-      else
-      {
-
-        // no comparison
-        do_it = jump_if;
-      }
-
-#if defined(DEBUG_SYM_SCRIPTS)
-      printf(") ");
-#endif
-      switch(opcode)
-      {
-      case 0:
-#if defined(DEBUG_SYM_SCRIPTS)
-        printf("jump %x\n", R32(DSPS));
-#endif
-        if(do_it)
-        {
-#if defined(DEBUG_SYM_SCRIPTS)
-          printf("SYM: Jumping %08x...\n", dest_addr);
-#endif
-          R32(DSP) = dest_addr;
-        }
-
-        return;
-        break;
-
-      case 1:
-#if defined(DEBUG_SYM_SCRIPTS)
-        printf("call %d\n", R32(DSPS));
-#endif
-        if(do_it)
-        {
-#if defined(DEBUG_SYM_SCRIPTS)
-          printf("SYM: Calling %08x...\n", dest_addr);
-#endif
-          R32(TEMP) = R32(DSP);
-          R32(DSP) = dest_addr;
-        }
-
-        return;
-        break;
-
-      case 2:
-#if defined(DEBUG_SYM_SCRIPTS)
-        printf("return %d\n", R32(DSPS));
-#endif
-        if(do_it)
-        {
-#if defined(DEBUG_SYM_SCRIPTS)
-          printf("SYM: Returning %08x...\n", R32(TEMP));
-#endif
-          R32(DSP) = R32(TEMP);
-        }
-
-        return;
-        break;
-
-      case 3:
-#if defined(DEBUG_SYM_SCRIPTS)
-        printf("interrupt%s.\n", interrupt_fly ? " on the fly" : "");
-#endif
-        if(do_it)
-        {
-#if defined(DEBUG_SYM_SCRIPTS)
-          printf("SYM: Interrupt with vector %x...\n", R32(DSPS));
-#endif
-          if(interrupt_fly)
-            RAISE(ISTAT, INTF);
-          else
-            RAISE(DSTAT, SIR);
-        }
-
-        return;
-        break;
-
-      default:
-        FAILURE_1(NotImplemented,
-                  "SYM: Transfer Control Instruction with opcode %d is RESERVED.\n",
-                  opcode);
-      }
-    }
+    execute_tc_op();
+    break;
 
   case 3:
-    {
-      bool  load_store = (R8(DCMD) >> 5) & 1;
-      if(load_store)
-      {
-        /* Load/Store instruction
-         * 
-         * The Load/Store instruction moves data between registers and memory.
-         * The memory range could very well map back to the registers through
-         * the PCI bus! The instruction format in the DCMD and DBC registers 
-         * is as follows:
-         *
-         * +-----+-+---+-+-+
-         * |7 6 5|4|   |1|0| DCMD Register
-         * +-----+-+---+-+-+
-         *    |   |     | +- 0: Load/Store
-         *    |   |     |         0: Store (register -> memory)
-         *    |   |     |         1: Load (memory -> register)
-         *    |   |     +- 1: No Flush (no effect)
-         *    |   +- 4: DSA Relative
-         *    |           0: The value in the DSPS register is absolute.
-         *    |           1: The value in the DSPS register is a 24-bit
-         *    |              signed offset from DSA.
-         *    +- 7..5 Instruction Type: 111 = Load/Store
-         *
-         * +---------------++---------------++---------------+
-         * |23           16||               ||         |2   0| DBC Register
-         * +---------------++---------------++---------------+
-         *          |                                     +- 2..0: Byte Count
-         *          +- 23..16: Register Address
-         * 
-         * This instructions moves up to 4 bytes between registers and memory.
-         */
-        bool  is_load = (R8(DCMD) >> 0) & 1;
-        bool  no_flush = (R8(DCMD) >> 1) & 1;
-        bool  dsa_relative = (R8(DCMD) >> 4) & 1;
-        int   regaddr = (GET_DBC() >> 16) & 0x7f;
-        int   byte_count = (GET_DBC() >> 0) & 7;
-        u32   memaddr;
-
-        // Relative Addressing
-        if(dsa_relative)
-          memaddr = R32(DSA) + sext_u32_24(R32(DSPS));
-        else
-          memaddr = R32(DSPS);
-
-#if defined(DEBUG_SYM_SCRIPTS)
-        printf("SYM: dsa_rel: %d, DSA: %04x, DSPS: %04x, mem %04x.\n",
-               dsa_relative, R32(DSA), R32(DSPS), memaddr);
-#endif
-        if(is_load)
-        {
-#if defined(DEBUG_SYM_SCRIPTS)
-          printf("SYM: %08x: Load reg%02x", R32(DSP) - 8, regaddr);
-          if(byte_count > 1)
-            printf("..%02x", regaddr + byte_count - 1);
-          printf("from %x.\n", memaddr);
-#endif
-          // Perform Load Operation
-          for(int i = 0; i < byte_count; i++)
-          {
-            u8  dat;
-            do_pci_read(memaddr + i, &dat, 1, 1);
-#if defined(DEBUG_SYM_SCRIPTS)
-            printf("SYM: %02x -> reg%02x\n", dat, regaddr + i);
-#endif
-            WriteMem_Bar(0, 1, regaddr + i, 8, dat);
-          }
-        }
-        else
-        {
-#if defined(DEBUG_SYM_SCRIPTS)
-          printf("SYM: %08x: Store reg%02x", R32(DSP) - 8, regaddr);
-          if(byte_count > 1)
-            printf("..%02x", regaddr + byte_count - 1);
-          printf("to %x.\n", memaddr);
-#endif
-          // Perform Store Operation
-          for(int i = 0; i < byte_count; i++)
-          {
-            u8  dat = (u8) ReadMem_Bar(0, 1, regaddr + i, 8);
-#if defined(DEBUG_SYM_SCRIPTS)
-            printf("SYM: %02x <- reg%02x\n", dat, regaddr + i);
-#endif
-            do_pci_write(memaddr + i, &dat, 1, 1);
-          }
-        }
-
-        return;
-      }
-      else
-      {
-        /* Memory Move instruction
-         * 
-         * The Memory Move instruction is used to transfer data from one
-         * region in host memory to another region through the SCSI
-         * controller's. DMA. The instruction format in the DCMD register
-         * is as follows:
-         *
-         * +-----+-------+-+
-         * |7 6 5|       |0| DCMD Register
-         * +-----+-------+-+
-         *    |           +- No Flush (no effect)
-         *    +- 7..5 Instruction Type: 110 = Memory Move
-         *
-         * This is a 3-DWORD instruction.
-         *
-         * The DBC register holds the number of bytes to be moved.
-         * The DSPS register holds the source address.
-         * The TEMP register holds the destination address.
-         */
-        u32 temp_shadow;
-        do_pci_read(R32(DSP), &temp_shadow, 4, 1);
-        R32(DSP) += 4;
-
-#if defined(DEBUG_SYM_SCRIPTS)
-        printf("SYM: %08x: Memory Move %06x bytes from %08x to %08x.\n",
-               R32(DSP) - 12, GET_DBC(), R32(DSPS), temp_shadow);
-#endif
-
-        // To speed things up, we set up a buffer and read all data
-        // at once, followed by writing all data at once.
-        void*   buf = malloc(GET_DBC());
-        do_pci_read(R32(DSPS), buf, 1, GET_DBC());
-        do_pci_write(temp_shadow, buf, 1, GET_DBC());
-        free(buf);
-        return;
-      }
-    }
+    is_load_store = (R8(DCMD) >> 5) & 1;
+    if(is_load_store)
+      execute_ls_op();
+    else
+      execute_mm_op();
     break;
   }
 
-  FAILURE(Logic, "SCSI should never get here");
+  // single step mode
+  if(TB_R8(DCNTL, SSM))
+  {
+#if defined(DEBUG_SYM_SCRIPTS)
+    printf("SYM: Single step...\n");
+#endif
+    RAISE(DSTAT, SSI);
+  }
 }
 
 /**
