@@ -24,11 +24,14 @@
  */
 
 /**
- * \file 
+ * @file 
  * Contains the code for the CPU tracing engine.
  * This will become the debugging engine (interactive debugger) soon.
  *
- * $Id: TraceEngine.cpp,v 1.35 2008/03/14 15:30:52 iamcamiel Exp $
+ * $Id: TraceEngine.cpp,v 1.36 2008/03/25 20:13:09 iamcamiel Exp $
+ *
+ * X-1.36       Camiel Vanderhoeven                             25-MAR-2008
+ *      Comments.
  *
  * X-1.35       Camiel Vanderhoeven                             14-MAR-2008
  *   1. More meaningful exceptions replace throwing (int) 1.
@@ -145,8 +148,6 @@
  *
  * X-1.1        Camiel Vanderhoeven                             19-JAN-2007
  *      Initial version in CVS.
- *
- * \author Camiel Vanderhoeven (camiel@camicom.com / www.camicom.com)
  **/
 #include "StdAfx.h"
 
@@ -161,6 +162,14 @@
 
 CTraceEngine*   trc;
 
+/**
+ * Convert a string to a new string that contains only printable characters.
+ *
+ * The maximum length of the resulting string is 100 characters.
+ *
+ * @param dest Destination string
+ * @param org  Source string
+ **/
 inline void write_printable_s(char* dest, char* org)
 {
   int cnt = 100;
@@ -172,6 +181,11 @@ inline void write_printable_s(char* dest, char* org)
   *dest = '\0';
 }
 
+/**
+ * Get the physical address that matches a given virtual address.
+ *
+ * This never generates a CPU exception.
+ **/
 inline u64 real_address(u64 address, CAlphaCPU* c, bool bIBOX)
 {
   bool  b;
@@ -192,6 +206,9 @@ inline u64 real_address(u64 address, CAlphaCPU* c, bool bIBOX)
       ) & (bIBOX ? U64(0xfffffffffffffffc) : U64(0xffffffffffffffff));
 }
 
+/**
+ * Constructor.
+ **/
 CTraceEngine::CTraceEngine(CSystem* sys)
 {
   int i;
@@ -207,6 +224,9 @@ CTraceEngine::CTraceEngine(CSystem* sys)
   bBreakPoint = false;
 }
 
+/**
+ * Destructor.
+ **/
 CTraceEngine::~CTraceEngine(void)
 {
   int i;
@@ -214,19 +234,37 @@ CTraceEngine::~CTraceEngine(void)
     fclose(asPRBRs[i].f);
 }
 
+/**
+ * Trace function calling.
+ *
+ * @param cpu   Pointer to the CPU that jumps
+ * @param f     Address of the current instruction
+ * @param t     Address being jumped to
+ * @param down  This could be a function call
+ * @param up    This could be a return from a call
+ * @param x     Optional printf argument that describes what happens (eg "GO PAL %0x")
+ * @param y     Optional extra argument for the printf statement.
+ **/
 void CTraceEngine::trace(CAlphaCPU*  cpu, u64 f, u64 t, bool down, bool up,
                          const char*  x, int y)
 {
+  // Not a real jump.
   if((t == f + 4) || (t == f))
     return;
 
+  // p = new process context
   int p = get_prbr(cpu->get_prbr(), cpu->get_hwpcb());
+
+  // o = old process context
   int o = asCPUs[cpu->get_cpuid()].last_prbr;
 
+  // Check for process context switch
   if(p != o)
   {
     if(o != -1)
     {
+      /* Process context switch has happened. Print this in the trace files for
+         both the old and the new process context. */
       fprintf(asPRBRs[o].f, "\n==>   Switch to PRBR %08"LL "x %08"LL "x (%s)\n",
               asPRBRs[p].prbr, asPRBRs[p].hwpcb, asPRBRs[p].procname);
       fprintf(asPRBRs[p].f, "        This is PRBR %08"LL "x %08"LL "x (%s)\n",
@@ -235,121 +273,202 @@ void CTraceEngine::trace(CAlphaCPU*  cpu, u64 f, u64 t, bool down, bool up,
               asPRBRs[o].prbr, asPRBRs[o].hwpcb, asPRBRs[o].procname);
     }
 
+    // save process context in cpu record
     asCPUs[cpu->get_cpuid()].last_prbr = p;
   }
 
+  // Has tracing been temporarily disabled for this process?
   if(asPRBRs[p].trc_waitfor)
   {
+    // Have we reached the point where tracing should be re-enabled?
     if((t &~U64(0x3)) == asPRBRs[p].trc_waitfor)
       asPRBRs[p].trc_waitfor = 0;
+
+    // Don't trace for now.
     return;
   }
 
+  // Get the physical to/from addresses.
   u64 pc_f = real_address(f, cpu, true);
   u64 pc_t = real_address(f, cpu, true);
 
+  /* This is where it gets tricky...
+   *
+   * If the up parameter is true, we check if the to address of this trace is equal 
+   * to the from address of a previous trace (that was a function call), or equal to 
+   * that from address + 4 (next instruction). If this is the case, we consider this
+   * a function return. (decreasing the trace level).
+   *
+   * If this is not the case, we then check if tracing is hidden at this level. If 
+   * this is the case, we don't trace this call.
+   *
+   * Next, we check if the down parameter is false, if this is the case, we handle
+   * the trace through trace_br.
+   *
+   * Otherwise, we treat the trace as a function call (increasing the trace level).
+   * We will then check if the to address is a known function address. In either
+   * case we will print the address or the function name and either the formatted
+   * function list or the first few function argument registers.
+   */
   int oldlvl = asPRBRs[p].trclvl;
   int i;
   int j;
 
   if(up)
   {
+    // Check if this is a function return
     for(i = oldlvl - 1; i >= 0; i--)
     {
+      // Is this a return to an old "from" address?
       if((asPRBRs[p].trcadd[i] == (pc_t - 4)) || (asPRBRs[p].trcadd[i] == (pc_t)))
       {
+        // Yes, return to this address' tracelevel
         asPRBRs[p].trclvl = i;
+        // Should we stop hiding the trace again?
         if(asPRBRs[p].trchide > i)
           asPRBRs[p].trchide = -1;
 
+        // Is tracing hidden at this level?
         if(asPRBRs[p].trchide != -1)
           return;
 
+        // Indent to the pevious (higher) trace level
         for(j = 0; j < oldlvl; j++)
           fprintf(asPRBRs[p].f, " ");
+        
+        // And print the from address, and the value of the r0 register (return value)
         fprintf(asPRBRs[p].f, "%016"LL "x(%08"LL "x) ($r0 = %"LL "x)\n", f,
                 pc_f, cpu->get_r(0, true));
 
+        // Indent to the new (lower) trace level
         for(j = 0; j < asPRBRs[p].trclvl; j++)
           fprintf(asPRBRs[p].f, " ");
 
+        // Print the to address
         fprintf(asPRBRs[p].f, "%016"LL "x(%08"LL "x) <--\n", t, pc_t);
         return;
       }
     }
   }
 
+  // Are traces hidden at this level?
   if(asPRBRs[p].trchide != -1)
     return;
 
   if(!down)
   {
+    // If we're not allowed to consider this a function call, handle the trace through trace_br
     trace_br(cpu, f, t);
     return;
   }
 
+  // Maximum trace level reached?
   if(oldlvl < 700)
     asPRBRs[p].trclvl = oldlvl + 1;
+
+  // Set the from address for the old (lower) trace level
   asPRBRs[p].trcadd[oldlvl] = pc_f;
 
+  // Is there a special message to print?
   if(x)
   {
+    // Indent to the old (lower) trace level
     for(i = 0; i < oldlvl; i++)
       fprintf(asPRBRs[p].f, " ");
+
+    // Print the special message
     fprintf(asPRBRs[p].f, x, y);
     fprintf(asPRBRs[p].f, "\n");
   }
 
+  // Indent to the old (lower) trace level
   for(i = 0; i < oldlvl; i++)
     fprintf(asPRBRs[p].f, " ");
+
+  // Print the from address
   fprintf(asPRBRs[p].f, "%016"LL "x(%08"LL "x) -->\n", f, pc_f);
 
+  // Indent to the new (higher) trace level
   for(i = 0; i < asPRBRs[p].trclvl; i++)
     fprintf(asPRBRs[p].f, " ");
 
+  // Check if this is a known function
   for(i = 0; i < iNumFunctions; i++)
   {
     if(asFunctions[i].address == pc_t)
     {
+      // Function found
+
+      // Print function name
       fprintf(asPRBRs[p].f, "%016"LL "x(%s)", t, asFunctions[i].fn_name);
+
+      // And print the argument list
       write_arglist(cpu, asPRBRs[p].f, asFunctions[i].fn_arglist);
       fprintf(asPRBRs[p].f, "\n");
+
+      // If this is a "step-over" function, we hide tracing for higher levels.
       if(asFunctions[i].step_over)
         asPRBRs[p].trchide = asPRBRs[p].trclvl;
       return;
     }
   }
 
+  // No known function
+
+  // Print the to address
   fprintf(asPRBRs[p].f, "%016"LL "x(%08"LL "x)", t, pc_t);
+
+  // Print a default argument list
   write_arglist(cpu, asPRBRs[p].f, "(%s|16%, %s|17%, %s|18%, %s|19%)");
   fprintf(asPRBRs[p].f, "\n");
 }
 
+/**
+ * Trace a branch.
+ *
+ * This can't be a function call or return; stay at the same trace level.
+ *
+ * @param cpu   Pointer to the CPU that jumps
+ * @param f     Address of the current instruction
+ * @param t     Address being jumped to
+ **/
 void CTraceEngine::trace_br(CAlphaCPU* cpu, u64 f, u64 t)
 {
   int p;
-
   int o;
+
+  // Get the physical to/from addresses.
   u64 pc_f = real_address(f, cpu, true);
   u64 pc_t = real_address(t, cpu, true);
 
+  // p = new process context
   p = get_prbr(cpu->get_prbr(), cpu->get_hwpcb());
+
+  // o = old process context
   o = asCPUs[cpu->get_cpuid()].last_prbr;
 
+  // Has tracing been temporarily disabled for this process?
   if(asPRBRs[p].trc_waitfor)
   {
+    // Have we reached the point where tracing should be re-enabled?
     if((t &~U64(0x3)) == asPRBRs[p].trc_waitfor)
       asPRBRs[p].trc_waitfor = 0;
+
+    // Don't trace for now
     return;
   }
 
+  // Is tracing hidden at this level?
   if(asPRBRs[p].trchide != -1)
     return;
 
+  // Check for process context switch
   if(p != o)
   {
     if(o != -1)
     {
+      /* Process context switch has happened. Print this in the trace files for
+         both the old and the new process context. */
       fprintf(asPRBRs[o].f, "\n==>   Switch to PRBR %08"LL "x %08"LL "x (%s)\n",
               asPRBRs[p].prbr, asPRBRs[p].hwpcb, asPRBRs[p].procname);
       fprintf(asPRBRs[p].f, "        This is PRBR %08"LL "x %08"LL "x (%s)\n",
@@ -358,36 +477,55 @@ void CTraceEngine::trace_br(CAlphaCPU* cpu, u64 f, u64 t)
               asPRBRs[o].prbr, asPRBRs[o].hwpcb, asPRBRs[o].procname);
     }
 
+    // save process context in cpu record
     asCPUs[cpu->get_cpuid()].last_prbr = p;
   }
 
   int i;
 
+  // Is this a real jump?
   if((pc_t > pc_f + 4) || (pc_t < pc_f))
   {
+    // Indent to the trace level
     for(i = 0; i < asPRBRs[p].trclvl; i++)
       fprintf(asPRBRs[p].f, " ");
+    
+    // Print from address
     fprintf(asPRBRs[p].f, "%016"LL "x(%08"LL "x) --+\n", f, pc_f);
+
+    // Indent to the trace level
     for(i = 0; i < asPRBRs[p].trclvl; i++)
       fprintf(asPRBRs[p].f, " ");
 
+    // Is this a known function?
     for(i = 0; i < iNumFunctions; i++)
     {
       if(asFunctions[i].address == pc_t)
       {
+        // Yes, this is a known function
+
+        // Print the function name
         fprintf(asPRBRs[p].f, "%016"LL "x(%s)", t, asFunctions[i].fn_name);
+
+        // Print the argument list
         write_arglist(cpu, asPRBRs[p].f, asFunctions[i].fn_arglist);
         fprintf(asPRBRs[p].f, " <-+\n");
+
+        // If this is a "step-over" function, we hide tracing for higher levels.
         if(asFunctions[i].step_over)
           asPRBRs[p].trchide = asPRBRs[p].trclvl;
         return;
       }
     }
 
+    // Print the to address. (No function call, so, no argument list)
     fprintf(asPRBRs[p].f, "%016"LL "x(%08"LL "x) <-+\n", t, pc_t);
   }
 }
 
+/**
+ * Add a function to the database of known functions.
+ **/
 void CTraceEngine::add_function(u64 address, char*  fn_name, char*  fn_arglist,
                                 bool step_over)
 {
@@ -398,6 +536,9 @@ void CTraceEngine::add_function(u64 address, char*  fn_name, char*  fn_arglist,
   iNumFunctions++;
 }
 
+/**
+ * Suspend tracing until the given address is reached.
+ **/
 void CTraceEngine::set_waitfor(CAlphaCPU* cpu, u64 address)
 {
   int p;
@@ -407,6 +548,9 @@ void CTraceEngine::set_waitfor(CAlphaCPU* cpu, u64 address)
     asPRBRs[p].trc_waitfor = address &~U64(0x3);
 }
 
+/**
+ * See if a function name is known for a given address.
+ **/
 bool CTraceEngine::get_fnc_name(CAlphaCPU* c, u64 address, char ** p_fn_name)
 {
   int i;
@@ -426,6 +570,9 @@ bool CTraceEngine::get_fnc_name(CAlphaCPU* c, u64 address, char ** p_fn_name)
   return false;
 }
 
+/**
+ * Get process context record for a PRBR/HWPCB combination
+ **/
 int CTraceEngine::get_prbr(u64 prbr, u64 hwpcb)
 {
   int   i;
@@ -475,6 +622,10 @@ int CTraceEngine::get_prbr(u64 prbr, u64 hwpcb)
   return i;
 }
 
+/**
+ * Parse the argument list string a, get the necessary registers from CPU c,
+ * and print the formatted argument list to file fl.
+ **/
 void CTraceEngine::write_arglist(CAlphaCPU* c, FILE* fl, char* a)
 {
   char    o[500];
@@ -552,6 +703,10 @@ void CTraceEngine::write_arglist(CAlphaCPU* c, FILE* fl, char* a)
   fprintf(fl, "%s", o);
 }
 
+/**
+ * Read a procfile. This file contains lines of the form:
+ * <address>;<function name>;<argument list>;<step over>
+ **/
 void CTraceEngine::read_procfile(char* filename)
 {
   FILE*   f;
@@ -606,16 +761,25 @@ void CTraceEngine::read_procfile(char* filename)
   }
 }
 
+/**
+ * Print a string to the current trace file.
+ **/
 void CTraceEngine::trace_dev(const char* text)
 {
   fprintf(current_trace_file, "%s", text);
 }
 
+/**
+ * Get file handle for current trace file.
+ **/
 FILE* CTraceEngine::trace_file()
 {
   return current_trace_file;
 }
 
+/**
+ * Run an IDB script, or prompt user for input.
+ **/
 void CTraceEngine::run_script(char* filename)
 {
   char    s[100][100];
@@ -710,6 +874,9 @@ void CTraceEngine::run_script(char* filename)
 #endif
 }
 
+/**
+ * Parse an IDB command
+ **/
 int CTraceEngine::parse(char command[100][100])
 {
   int i = 0;
@@ -1378,6 +1545,9 @@ struct sRegion
   struct sRegion*   pNext;
 };
 
+/**
+ * List all memory contents. Try to leave out memory that is only 00's, ef's or ff's.
+ **/
 void CTraceEngine::list_all()
 {
   struct sRegion*   pR = NULL;
