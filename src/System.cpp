@@ -27,7 +27,13 @@
  * \file 
  * Contains the code for the emulated Typhoon Chipset devices.
  *
- * $Id: System.cpp,v 1.73 2008/03/14 15:30:52 iamcamiel Exp $
+ * $Id: System.cpp,v 1.74 2008/03/25 08:44:19 iamcamiel Exp $
+ *
+ * X-1.74       Pepito Grillo                                   25-MAR-2008
+ *      Fixed a typo.
+ *
+ * X-1.73       Camiel Vanderhoeven                             14-MAR-2008
+ *      Formatting.
  *
  * X-1.72       Camiel Vanderhoeven                             14-MAR-2008
  *   1. More meaningful exceptions replace throwing (int) 1.
@@ -366,7 +372,7 @@ CSystem::CSystem(CConfigurator* cfg)
 
   cpu_lock_mutex = new CFastMutex("cpu-locking-lock");
 
-  printf("%s(%s): $Id: System.cpp,v 1.73 2008/03/14 15:30:52 iamcamiel Exp $\n",
+  printf("%s(%s): $Id: System.cpp,v 1.74 2008/03/25 08:44:19 iamcamiel Exp $\n",
          cfg->get_myName(), cfg->get_myValue());
 }
 
@@ -2151,7 +2157,7 @@ u64 CSystem::PCI_Phys(int pcibus, u32 address)
   for(j = 0; j < 4; j++)
   {
     printf("WSBA%d: %016"LL "x WSM: %016"LL "x TBA: %016"LL "x\n", j,
-           state.pctl[pcibus].wsba[j], state.pchip[pcibus].wsm[j],
+           state.pchip[pcibus].wsba[j], state.pchip[pcibus].wsm[j],
            state.pchip[pcibus].tba[j]);
   }
 
