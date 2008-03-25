@@ -27,7 +27,10 @@
  * \file
  * Contains the code for the emulated Symbios SCSI controller.
  *
- * $Id: Sym53C895.cpp,v 1.30 2008/03/24 21:30:26 iamcamiel Exp $
+ * $Id: Sym53C895.cpp,v 1.31 2008/03/25 15:32:43 iamcamiel Exp $
+ *
+ * X-1.31       Camiel Vanderhoeven                             25-MAR-2008
+ *      Comments.
  *
  * X-1.30       Camiel Vanderhoeven                             24-MAR-2008
  *      Comments.
@@ -642,7 +645,7 @@ void CSym53C895::init()
 
   myThread = 0;
 
-  printf("%s: $Id: Sym53C895.cpp,v 1.30 2008/03/24 21:30:26 iamcamiel Exp $\n",
+  printf("%s: $Id: Sym53C895.cpp,v 1.31 2008/03/25 15:32:43 iamcamiel Exp $\n",
          devid_string);
 }
 
@@ -1212,6 +1215,13 @@ void CSym53C895::config_write_custom(int func, u32 address, int dsize,
  * function, because there are some bits in here (START and TRG) that
  * we should do something with if a driver sets these, but that we
  * don't implement.
+ *
+ * START: When this bit is set, the controller should start the
+ * arbitration seqence indicated by the arbitration mode bits. Used
+ * only in low-level mode. UNIMPLEMENTED.
+ *
+ * TRG: When this bit is set, the controller is a target device.
+ * UNIMPLEMENTED.
  **/
 void CSym53C895::write_b_scntl0(u8 value)
 {
@@ -1226,6 +1236,22 @@ void CSym53C895::write_b_scntl0(u8 value)
     FAILURE(NotImplemented, "SYM: Don't know how to operate in target mode");
 }
 
+/**
+ * Write a byte to the SCSI Control 1 register.
+ *
+ * This is implemented as a separate function, because there are
+ * quite a few side-effects that occur when writing to this register
+ *
+ * CON (Connected): This bit is automatically set any time the
+ * controller is connected to the SCSI bus. The CPU can force a 
+ * connection or disconnection by setting or clearing this bit.
+ * UNIMPLEMENTED.
+ *
+ * RST: Asserts the SCSI RST/ signal. Has the "side-effect" of
+ * resetting the SCSI bus. This effects a couple of other registers.
+ *
+ * \todo: Implement real reset of the SCSI bus.
+ **/
 void CSym53C895::write_b_scntl1(u8 value)
 {
   bool  old_iarb = TB_R8(SCNTL1, IARB);
@@ -1249,20 +1275,40 @@ void CSym53C895::write_b_scntl1(u8 value)
     if(!old_rst)
       RAISE(SIST0, RST);
   }
-
-  if(TB_R8(SCNTL1, IARB) && !old_iarb)
-    FAILURE(NotImplemented,
-            "SYM: Don't know how to start immediate arbitration sequence.\n");
 }
 
+/**
+ * Write a byte to the SCSI Control 3 register.
+ *
+ * The Enable Wide SCSI bit has a side-effect on the SCSI Control 2
+ * register.
+ **/
 void CSym53C895::write_b_scntl3(u8 value)
 {
   R8(SCNTL3) = value;
 
+  /* If Wide SCSI is disabled, the Wide SCSI Receive flag can't
+     be set. */
   if(!TB_R8(SCNTL3, EWS))
     SB_R8(SCNTL2, WSR, false);
 }
 
+/**
+ * Write a byte to the SCSI Interrupt Status.
+ *
+ * This is implemented as a separate function, because there are
+ * quite a few side-effects that occur when writing to this register
+ *
+ * ABRT (Abort Operation): Aborts the currently executing SCRIP, and
+ * generate an interrupt.
+ *
+ * SRST (Software Reset): Resets the SCSI chipset.
+ *
+ * SIGP (Signal Process): Aborts a Wait for (Re)Selection instruction
+ * by jumping to the alternate address immediately.
+ *
+ * Since interrupt state is affected, call eval_interrupts.
+ **/
 void CSym53C895::write_b_istat(u8 value)
 {
   bool  old_srst = TB_R8(ISTAT, SRST);
@@ -1305,6 +1351,18 @@ void CSym53C895::write_b_istat(u8 value)
   eval_interrupts();
 }
 
+/**
+ * Reads a byte from the Chip Test 2 register.
+ *
+ * This is implemented as a separate function, because:
+ *   - The SIGP flag read by this register comes from the ISTAT
+ *     register.
+ *   - The CIO (configured as I/O) and CM (configured as memory)
+ *     flags are determined from PCI Configuration space.
+ *   - Reading this register has the side effect of clearing the 
+ *     SIGP flag.
+ *   .
+ **/
 u8 CSym53C895::read_b_ctest2()
 {
   SB_R8(CTEST2, CIO, pci_state.config_data[0][4] != 0);
@@ -1316,6 +1374,19 @@ u8 CSym53C895::read_b_ctest2()
   return R8(CTEST2);
 }
 
+/**
+ * Write a byte to the Chip Test 3 register.
+ *
+ * This is implemented as a separate function, because there are
+ * some unimplemented bits that probably should have a function if
+ * a driver ever decides to use these.
+ *
+ * FM (Fetch Pin Mode): When set, this bit causes the FETCH/ pin to
+ * deassert during indirect and table indirect read operations.
+ * FETCH/ will only be active during the op codde portion of an
+ * instruction fetch. This allows SCRIPTS to be stored in a PROM
+ * while data tables are stored in RAM. UNIMPLEMENTED.
+ **/
 void CSym53C895::write_b_ctest3(u8 value)
 {
   WRM_R8(CTEST3, value);
@@ -1328,6 +1399,16 @@ void CSym53C895::write_b_ctest3(u8 value)
     FAILURE(NotImplemented, "SYM: Don't know how to handle FM mode");
 }
 
+/**
+ * Write a byte to the Chip Test 4 register.
+ *
+ * This is implemented as a separate function, because there are
+ * some unimplemented bits that probably should have a function if
+ * a driver ever decides to use these.
+ *
+ * SRTM: Shadow Register Test Mode. Access shadow copies of TEMP and
+ * DSA. Used for manufacturing diagnostics only. UNIMPLEMENTED.
+ **/
 void CSym53C895::write_b_ctest4(u8 value)
 {
   R8(CTEST4) = value;
@@ -1336,6 +1417,24 @@ void CSym53C895::write_b_ctest4(u8 value)
     FAILURE(NotImplemented, "SYM: Don't know how to handle SRTM mode");
 }
 
+/**
+ * Write a byte to the Chip Test 5 register.
+ *
+ * This is implemented as a separate function, because there are
+ * some unimplemented bits that probably should have a function if
+ * a driver ever decides to use these.
+ *
+ * ADCK (Clock Address Incrementor): Setting this bit increments the
+ * DNAD register. The DNAD register is incremented based on the DNAD
+ * contents and the current DBC value. This bit automatically clears
+ * itself after incrementing the  DNAD register. UNIMPLEMENTED.
+ *
+ * BBCK (Clock Byte Counter): Setting this bit decrements the byte
+ * count contained in the 24-bit DBC register. It is decremented
+ * based on the DBC contents and the current DNAD value. This bit
+ * automatically clears itself after decrementing the DBC register.
+ * UNIMPLEMENTED.
+ **/
 void CSym53C895::write_b_ctest5(u8 value)
 {
   WRM_R8(CTEST5, value);
@@ -1348,6 +1447,12 @@ void CSym53C895::write_b_ctest5(u8 value)
             "SYM: Don't know how to do Clock Byte Counter decrement");
 }
 
+/**
+ * Read a byte from the DSTAT register.
+ *
+ * This is implemented as a separate function, because it requires
+ * interrupt re-evaluation.
+ **/
 u8 CSym53C895::read_b_dstat()
 {
   u8  retval = R8(DSTAT);
@@ -1361,6 +1466,12 @@ u8 CSym53C895::read_b_dstat()
   return retval;
 }
 
+/**
+ * Read a byte from the SIST0 or SIST1 register.
+ *
+ * This is implemented as a separate function, because it requires
+ * interrupt re-evaluation.
+ **/
 u8 CSym53C895::read_b_sist(int id)
 {
   u8  retval = state.regs.reg8[R_SIST0 + id];
@@ -1375,6 +1486,18 @@ u8 CSym53C895::read_b_sist(int id)
   return retval;
 }
 
+/**
+ * Write a byte to the DMA Control register.
+ *
+ * This is implemented as a separate function, because there are
+ * some side-effects.
+ *
+ * STD (Start DMA Operation): Start executing SCSI SCRIPT. Needs to
+ * wake the thread.
+ *
+ * IRQD (IRQ Disable): disables the IRQ pin. Requires interrupt
+ * re-evaluation.
+ **/
 void CSym53C895::write_b_dcntl(u8 value)
 {
   WRM_R8(DCNTL, value);
@@ -1390,6 +1513,13 @@ void CSym53C895::write_b_dcntl(u8 value)
   eval_interrupts();
 }
 
+/**
+ * Read a byte from the Scratch Register A.
+ *
+ * This is implemented as a separate function, because depending on
+ * the SRTCH bit in CTEST2, the data comes from either the Scratch
+ * Register A, or the memory mapped base address of the registers.
+ **/
 u8 CSym53C895::read_b_scratcha(int reg)
 {
   if(TB_R8(CTEST2, SRTCH))
@@ -1402,6 +1532,13 @@ u8 CSym53C895::read_b_scratcha(int reg)
     return state.regs.reg8[R_SCRATCHA + reg];
 }
 
+/**
+ * Read a byte from the Scratch Register B.
+ *
+ * This is implemented as a separate function, because depending on
+ * the SRTCH bit in CTEST2, the data comes from either the Scratch
+ * Register B, or the memory mapped base address of the internal RAM.
+ **/
 u8 CSym53C895::read_b_scratchb(int reg)
 {
   if(TB_R8(CTEST2, SRTCH))
@@ -1414,6 +1551,17 @@ u8 CSym53C895::read_b_scratchb(int reg)
     return state.regs.reg8[R_SCRATCHB + reg];
 }
 
+/**
+ * Write a byte to the SCSI Test 2 register.
+ *
+ * This is implemented as a separate function, because there are
+ * some unimplemented bits that probably should have a function if
+ * a driver ever decides to use these.
+ *
+ * LOW (Low-level-mode). Switches the SCSI controller to low-level
+ * mode operation. No SCRIPTS processor, but raw manipulation of
+ * SCSI registers. Yuck. UNIMPLEMENTED.
+ **/
 void CSym53C895::write_b_stest2(u8 value)
 {
   WRM_R8(STEST2, value);
@@ -1424,6 +1572,13 @@ void CSym53C895::write_b_stest2(u8 value)
     FAILURE(NotImplemented, "SYM: I don't like LOW level mode");
 }
 
+/**
+ * Write a byte to the SCSI Test 3 register.
+ *
+ * This is implemented as a separate function, because there are
+ * some unimplemented bits that probably should have a function if
+ * a driver ever decides to use these.
+ **/
 void CSym53C895::write_b_stest3(u8 value)
 {
   WRM_R8(STEST3, value);
@@ -1432,6 +1587,11 @@ void CSym53C895::write_b_stest3(u8 value)
   //    printf("SYM: Don't know how to clear the SCSI fifo.\n");
 }
 
+/**
+ * Called after the DMA Scripts Pointer register has been written.
+ *
+ * Start executing SCSI SCRIPT. Needs to wake the thread.
+ **/
 void CSym53C895::post_dsp_write()
 {
   if(!TB_R8(DMODE, MAN))
@@ -1572,16 +1732,14 @@ void CSym53C895::execute()
      * +---+-+-+-+-----+
      * |7 6|5|4|3|2 1 0| DCMD Register
      * +---+-+-+-+-----+
-     *   ^  ^ ^ ^   ^  
-     *   |  | | |   |          
      *   |  | | |   +- 0..2: SCSI Phase (I/O, C/D and MSG/ signals):
-     *   |  | | |            The data transfer only occurs if these
-     *   |  | | |            bits match the actual SCSI bus phase.
+     *   |  | | |            The data transfer only occurs if these bits
+     *   |  | | |            match the actual SCSI bus phase.
      *   |  | | +- 3: Op Code: IGNORED
      *   |  | +- 4: Table Indirect Adressing:
-     *   |  |         0: The DSPS register contains the address of the
-     *   |  |            data, and the DBC register contains the number 
-     *   |  |            of bytes to transfer.
+     *   |  |         0: The DSPS register contains the address of the data,
+     *   |  |            and the DBC register contains the number of bytes to
+     *   |  |            transfer.
      *   |  |         1: The DSPS register contains a 24-bit signed offset
      *   |  |            that is added to the DSA register to get a pointer
      *   |  |            to a data structure that contains the address and
@@ -1591,11 +1749,11 @@ void CSym53C895::execute()
      *   |  |                           +----+------------+
      *   |  |               DSA+DSPS+4: |  Data Address   |
      *   |  |                           +-----------------+
-     *   |  +- Indirect Addressing:
-     *   |       0: The DSPS register contains the address of the data
-     *   |       1: The DSPS register contains the address of a 32-bit
-     *   |          pointer to the data.
-     *   +- Instruction Type: 00 = Block Move
+     *   |  +- 5: Indirect Addressing:
+     *   |          0: The DSPS register contains the address of the data
+     *   |          1: The DSPS register contains the address of a 32-bit
+     *   |             pointer to the data.
+     *   +- 6..7: Instruction Type: 00 = Block Move
      */
     {
       bool  indirect = (R8(DCMD) >> 5) & 1;
@@ -1608,6 +1766,10 @@ void CSym53C895::execute()
       printf("SYM: INS = Block Move (i %d, t %d, opc %d, phase %d\n", indirect,
              table_indirect, opcode, scsi_phase);
 #endif
+      // Compare phase
+      //
+      // This also needs to deal with timeouts etc. Perhaps this should
+      // be moved into a separate function?
       if(real_phase == SCSI_PHASE_ARBITRATION)
       {
 
@@ -1719,6 +1881,75 @@ void CSym53C895::execute()
 
       if(opcode < 5)
       {
+        /* I/O instructions
+         * 
+         * The I/O instructions perform common SCSI hardware sequences, like
+         * Selection and reselection. The instruction format in
+         * the DCMD and DBC register is as follows:
+         *
+         * +---+-----+-+-+-+
+         * |7 6|5 4 3|2|1|0| DCMD Register
+         * +---+-----+-+-+-+
+         *   |    |   | | +- 0: Select with ATN/:
+         *   |    |   | |       Valid only for Select instruction. Assert ATN/ during 
+         *   |    |   | |       selection
+         *   |    |   | +- 1: Table Indirect Mode:
+         *   |    |   |         0: All information is taken from the instruction,
+         *   |    |   |            and the contents of the SCNTL3 and SXFER registers.
+         *   |    |   |         1: The DSPS register contains a 24-bit signed offset
+         *   |    |   |            that is added to the DSA register to get a pointer
+         *   |    |   |            to a data structure that contains the destination
+         *   |    |   |            ID, SCNTL3 bits, and SXFER bits. This structure 
+         *   |    |   |            is 32 bits long and looks as follows:
+         *   |    |   |                        +--------+--------+--------+--------+
+         *   |    |   |            DSA+DSPS:   | SCNTL3 | ID     | SXFER  |        |
+         *   |    |   |                        +--------+--------+--------+--------+
+         *   |    |   +- 2: Relative Addrressing:
+         *   |    |           0: The value in the DNAD register is an absolute address.
+         *   |    |           1: The value in the DNAD register is a 24-bit signed
+         *   |    |              displacement from the current DSP address.
+         *   |    +- 3..5: Op Code
+         *   +- 6..7 Instruction Type: 01 = I/O
+         *
+         * +-------+-------++--------+--+-+-++-+-+---+-+-----+
+         * |       |19   16||        |10|9| || |6|   |3|     | DBC Register
+         * +-------+-------++--------+--+-+-++-+-+---+-+-----+
+         *             |              |  |      |     +- 3: Set/Clear ATN
+         *             |              |  |      +- 6: Set/Clear ACK
+         *             |              |  +- 9: Set/Clear Target Mode
+         *             |              +- 10: Set/Clear Carry
+         *             +- 16..19: Destination ID
+         *
+         * The Opcode determines the actual instruction:
+         * +-----+-----------------+-------------+
+         * | OPC | Initiator mode  | Target Mode |
+         * +-----+-----------------+-------------+
+         * | 000 | Select          | Reselect    |
+         * | 001 | Wait Disconnect | Disconnect  |
+         * | 010 | Wait Reselect   | Wait Select |
+         * | 011 | Set             | Set         |
+         * | 100 | Clear           | Clear       |
+         * +-----+-----------------+-------------+
+         * 
+         * Select:
+         *   - Arbitrate for the SCSI bus until arbitration is won.
+         *   - If arbitration is won, try to select the destination ID
+         *   - If the controller is selected or reselected before winning
+         *     arbitration, jump to the address in the DNAD register.
+         *
+         * Wait Disconnect:
+         *   - Wait for the target to disconnect from the SCSI bus.
+         *
+         * Wait Reselect:
+         *   - If the controller is reselected, go to the next instruction.
+         *   - If the controller is selected before being reselected, or if
+         *     the CPU sets the SIGP flag, jump to the address in the DNAD 
+         *     register
+         *   
+         * Set/Clear:
+         *   - Set or Clear the flags whose Set/Clear bits are set in the
+         *     instruction.
+         */
         bool  relative = (R8(DCMD) >> 2) & 1;
         bool  table_indirect = (R8(DCMD) >> 1) & 1;
         bool  atn = (R8(DCMD) >> 0) & 1;
@@ -1865,6 +2096,40 @@ void CSym53C895::execute()
       }
       else
       {
+        /* R/W instructions
+         * 
+         * The R/W instructions perform arithmetic or logic operations on
+         * registers. The instruction format in the DCMD and DBC register is as follows:
+         *
+         * +---+-----+-----+
+         * |7 6|5 4 3|2 1 0| DCMD Register
+         * +---+-----+-----+
+         *   |    |     +- 2..0: operator:
+         *   |    |                000: data8
+         *   |    |                001: reg << 1
+         *   |    |                010: reg | data8
+         *   |    |                011: reg ^ data8
+         *   |    |                100: reg & data8
+         *   |    |                101: reg >> 1
+         *   |    |                110: reg + data8
+         *   |    |                111: reg + data8 + carry
+         *   |    +- 3..5: Op Code
+         *   |               101: regA = operator(SFBR, data8)
+         *   |               110: SFBR = operator(RegA, data8)
+         *   |               111: regA = operator(RegA, data8)
+         *   +- 6..7 Instruction Type: 01 = R/W
+         *
+         * +--+------------++---------------++-+-------------+
+         * |23|22        16||15            8||7|             | DBC Register
+         * +--+------------++---------------++-+-------------+
+         *  |  A6--------A0         |         A7                         
+         *  |        +--------------|---------+- 7,22..16: RegA address
+         *  |                       |
+         *  |                       +- 15..8: Immediate data  
+         *  +- 23: Use data8/SFBR
+         *         0: data8 = Immediate data
+         *         1: data8 = SFBR
+         */
         int   oper = (R8(DCMD) >> 0) & 7;
         bool  use_data8_sfbr = (GET_DBC() >> 23) & 1;
         int   reg_address = ((GET_DBC() >> 16) & 0x7f); //| (GET_DBC() & 0x80); // manual is unclear about bit 7.
@@ -1988,6 +2253,71 @@ void CSym53C895::execute()
     break;
 
   case 2:
+    /* Transfer Control instruction
+     * 
+     * The Transfer Control instructions perform conditional jumps, calls,
+     * returns and interrupts. The instruction format in the DCMD and DBC
+     * register is as follows:
+     *
+     * +---+-----+-----+
+     * |7 6|5 4 3|2 1 0| DCMD Register
+     * +---+-----+-----+
+     *   |    |     +- 0..2: SCSI Phase (I/O, C/D and MSG/ signals):
+     *   |    |              The actual SCSI phase is compared against these
+     *   |    |              bits.
+     *   |    +- 3..5: Op Code
+     *   |               000: Jump
+     *   |               001: Call
+     *   |               010: Return
+     *   |               011: Interrupt
+     *   |               1xx: reserved
+     *   +- 6..7 Instruction Type: 10 = Transfer Control
+     *
+     * +--+-+--+--+--+--+--+--++---------------++---------------+
+     * |23| |21|20|19|18|17|16||15            8||7             0| DBC Register
+     * +--+-+--+--+--+--+--+--++---------------++---------------+
+     *  |    |  |  |  |  |  |          |             +- 7..0: Data to compare 
+     *  |    |  |  |  |  |  |          |                      against SFBR
+     *  |    |  |  |  |  |  |          +- 15..8: Mask that determines what bits
+     *  |    |  |  |  |  |  |                    to compare against SFBR.
+     *  |    |  |  |  |  |  +- 16: Wait for valid SCSI phase
+     *  |    |  |  |  |  +- 17: Compare Phase
+     *  |    |  |  |  +- 18: Compare SFBR data
+     *  |    |  |  +- Jump if:
+     *  |    |  |       0: Jump/Call/return/Interrupt if the equation is true
+     *  |    |  |       0: Jump/Call/return/Interrupt if the equation is false
+     *  |    |  +- Interrupt on the Fly
+     *  |    +- Carry Test
+     *  +- relative Addressing:
+     *       0: The value in the DSPS register is an absolute address.
+     *       1: The value in the DSPS register is a 24-bit signed
+     *          displacement from the current DSP address.
+     * 
+     * The equation evaluated is one of the following:
+     *   - the value of the carry bit (if the Carry Test bit is set)
+     *   - equality comparisons of SCSI phase and/or SFBR register data
+     *   - true (if none of the compare/carry test bits are set)
+     *
+     * An action is taken when the equation evaluates to either true or false
+     * as determined by the "Jump if" bit.
+     * 
+     * Jump:
+     *   - Jump to the instruction addressed by the DSPS register.
+     *
+     * Call:
+     *   - Store the current DSP register value to the TEMP register.
+     *   - Jump to the instruction addressed by the DSPS register.
+     *
+     * Return:
+     *   - Jump to the instruction addressed by the TEMP register.
+     *
+     * Interrupt:
+     *   - If the Interrupt on the Fly bit is set, raise the INTF interrupt.
+     *   - Otherwise:
+     *       - Raise the SIR interrupt
+     *       - Terminate SCRIPTS execution
+     *       - The DSPS value is used as an interrupt vector for the driver.
+     */
     {
       int   opcode = (R8(DCMD) >> 3) & 7;
       int   scsi_phase = (R8(DCMD) >> 0) & 7;
@@ -1997,24 +2327,28 @@ void CSym53C895::execute()
       bool  jump_if = (GET_DBC() >> 19) & 1;
       bool  cmp_data = (GET_DBC() >> 18) & 1;
       bool  cmp_phase = (GET_DBC() >> 17) & 1;
+      int   cmp_mask = (GET_DBC() >> 8) & 0xff;
+      int   cmp_dat = (GET_DBC() >> 0) & 0xff;
+      u32   dest_addr;
 
       // wait_valid can be safely ignored, phases are always valid in this ideal world...
       // bool wait_valid = (GET_DBC()>>16) & 1;
-      int   cmp_mask = (GET_DBC() >> 8) & 0xff;
-      int   cmp_dat = (GET_DBC() >> 0) & 0xff;
-
-      u32   dest_addr = R32(DSPS);
-
+ 
+      // We'll keep modifying this variable until we know what the result of the comparisons is.
       bool  do_it;
 
+      // Relative jump or not? (no effect on Return or Interrupt)
       if(relative)
         dest_addr = R32(DSP) + sext_u32_24(R32(DSPS));
+      else
+        dest_addr = R32(DSPS);
 
 #if defined(DEBUG_SYM_SCRIPTS)
       printf("SYM: %08x: if (", R32(DSP) - 8);
 #endif
       if(carry_test)
       {
+        // All we need to check is the CARRY flag
 #if defined(DEBUG_SYM_SCRIPTS)
         printf("(%scarry)", jump_if ? "" : "!");
 #endif
@@ -2022,9 +2356,11 @@ void CSym53C895::execute()
       }
       else if(cmp_data || cmp_phase)
       {
+        // We need to compare data and/or phase
         do_it = true;
         if(cmp_data)
         {
+          // compare data
 #if defined(DEBUG_SYM_SCRIPTS)
           printf("((data & 0x%02x) %s 0x%02x)", (~cmp_mask) & 0xff,
                  jump_if ? "==" : "!=", cmp_dat &~cmp_mask);
@@ -2039,6 +2375,10 @@ void CSym53C895::execute()
 
         if(cmp_phase)
         {
+          // Compare phase
+          //
+          // This also needs to deal with timeouts etc. Perhaps this should
+          // be moved into a separate function?
           int real_phase = scsi_get_phase(0);
 #if defined(DEBUG_SYM_SCRIPTS)
           printf("(phase %s %d)", jump_if ? "==" : "!=", scsi_phase);
@@ -2158,6 +2498,34 @@ void CSym53C895::execute()
       bool  load_store = (R8(DCMD) >> 5) & 1;
       if(load_store)
       {
+        /* Load/Store instruction
+         * 
+         * The Load/Store instruction moves data between registers and memory.
+         * The memory range could very well map back to the registers through
+         * the PCI bus! The instruction format in the DCMD and DBC registers 
+         * is as follows:
+         *
+         * +-----+-+---+-+-+
+         * |7 6 5|4|   |1|0| DCMD Register
+         * +-----+-+---+-+-+
+         *    |   |     | +- 0: Load/Store
+         *    |   |     |         0: Store (register -> memory)
+         *    |   |     |         1: Load (memory -> register)
+         *    |   |     +- 1: No Flush (no effect)
+         *    |   +- 4: DSA Relative
+         *    |           0: The value in the DSPS register is absolute.
+         *    |           1: The value in the DSPS register is a 24-bit
+         *    |              signed offset from DSA.
+         *    +- 7..5 Instruction Type: 111 = Load/Store
+         *
+         * +---------------++---------------++---------------+
+         * |23           16||               ||         |2   0| DBC Register
+         * +---------------++---------------++---------------+
+         *          |                                     +- 2..0: Byte Count
+         *          +- 23..16: Register Address
+         * 
+         * This instructions moves up to 4 bytes between registers and memory.
+         */
         bool  is_load = (R8(DCMD) >> 0) & 1;
         bool  no_flush = (R8(DCMD) >> 1) & 1;
         bool  dsa_relative = (R8(DCMD) >> 4) & 1;
@@ -2165,6 +2533,7 @@ void CSym53C895::execute()
         int   byte_count = (GET_DBC() >> 0) & 7;
         u32   memaddr;
 
+        // Relative Addressing
         if(dsa_relative)
           memaddr = R32(DSA) + sext_u32_24(R32(DSPS));
         else
@@ -2182,6 +2551,7 @@ void CSym53C895::execute()
             printf("..%02x", regaddr + byte_count - 1);
           printf("from %x.\n", memaddr);
 #endif
+          // Perform Load Operation
           for(int i = 0; i < byte_count; i++)
           {
             u8  dat;
@@ -2200,6 +2570,7 @@ void CSym53C895::execute()
             printf("..%02x", regaddr + byte_count - 1);
           printf("to %x.\n", memaddr);
 #endif
+          // Perform Store Operation
           for(int i = 0; i < byte_count; i++)
           {
             u8  dat = (u8) ReadMem_Bar(0, 1, regaddr + i, 8);
@@ -2214,8 +2585,25 @@ void CSym53C895::execute()
       }
       else
       {
-
-        // memory move
+        /* Memory Move instruction
+         * 
+         * The Memory Move instruction is used to transfer data from one
+         * region in host memory to another region through the SCSI
+         * controller's. DMA. The instruction format in the DCMD register
+         * is as follows:
+         *
+         * +-----+-------+-+
+         * |7 6 5|       |0| DCMD Register
+         * +-----+-------+-+
+         *    |           +- No Flush (no effect)
+         *    +- 7..5 Instruction Type: 110 = Memory Move
+         *
+         * This is a 3-DWORD instruction.
+         *
+         * The DBC register holds the number of bytes to be moved.
+         * The DSPS register holds the source address.
+         * The TEMP register holds the destination address.
+         */
         u32 temp_shadow;
         do_pci_read(R32(DSP), &temp_shadow, 4, 1);
         R32(DSP) += 4;
@@ -2225,6 +2613,8 @@ void CSym53C895::execute()
                R32(DSP) - 12, GET_DBC(), R32(DSPS), temp_shadow);
 #endif
 
+        // To speed things up, we set up a buffer and read all data
+        // at once, followed by writing all data at once.
         void*   buf = malloc(GET_DBC());
         do_pci_read(R32(DSPS), buf, 1, GET_DBC());
         do_pci_write(temp_shadow, buf, 1, GET_DBC());
@@ -2237,6 +2627,7 @@ void CSym53C895::execute()
 
   FAILURE(Logic, "SCSI should never get here");
 }
+
 /**
  * Set an interrupt bit.
  *
