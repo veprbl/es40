@@ -30,7 +30,13 @@
  * \file 
  * Contains the definitions for the packet queue and other NIC support routines.
  *
- * $Id: Ethernet.h,v 1.2 2008/03/14 15:30:51 iamcamiel Exp $
+ * $Id: Ethernet.h,v 1.3 2008/03/26 19:13:35 iamcamiel Exp $
+ *
+ * X-1.3        Camiel Vanderhoeven                             26-MAR-2008
+ *      Fix compiler warnings.
+ *
+ * X-1.2        Camiel Vanderhoeven                             14-MAR-2008
+ *      Formatting.
  *
  * X-1.1        David Hittner                                   26-FEB-2008
  *      File creation.                    
@@ -65,7 +71,7 @@ class CPacketQueue
 
   //private:
   public:
-    char*         name;       // queue name
+    const char*         name;       // queue name
     int           max;        // maximum items allowed in queue
     int           head;       // first item in queue
     int           tail;       // last item in queue
@@ -84,7 +90,7 @@ class CPacketQueue
     bool        add_tail(const u8*  packet_data, int packet_len, bool calc_crc,
                          bool need_crc);      // adds pcap packet to queue
     bool        get_head(eth_packet& packet); // get packet at head
-    CPacketQueue(char* name, int max);        // constructor
+    CPacketQueue(const char* name, int max);        // constructor
     ~           CPacketQueue(); // destructor
 };
 #endif // !defined(INCLUDED_ETHERNET_H)
