@@ -34,7 +34,13 @@
  * Contains the code for the bx_keymap_c class used for keyboard
  * interfacing with SDL and other device interfaces.
  *
- * $Id: keymap.cpp,v 1.8 2008/03/14 15:31:29 iamcamiel Exp $
+ * $Id: keymap.cpp,v 1.9 2008/03/26 19:19:53 iamcamiel Exp $
+ *
+ * X-1.9        Camiel Vanderhoeven                             26-MAR-2008
+ *      Fix compiler warnings.
+ *
+ * X-1.8        Camiel Vanderhoeven                             14-MAR-2008
+ *      Formatting.
  *
  * X-1.4        Camiel Vanderhoeven                             02-JAN-2008
  *      Comments.
@@ -54,7 +60,7 @@
 #include "keymap.h"
 #include "../System.h"
 
-char*         bx_key_symbol[BX_KEY_NBKEYS] = {
+const char*         bx_key_symbol[BX_KEY_NBKEYS] = {
   "BX_KEY_CTRL_L",         "BX_KEY_SHIFT_L",        "BX_KEY_F1",
   "BX_KEY_F2",             "BX_KEY_F3",             "BX_KEY_F4",
   "BX_KEY_F5",             "BX_KEY_F6",             "BX_KEY_F7",
@@ -403,7 +409,7 @@ BXKeyEntry* bx_keymap_c::findAsciiChar(u8 ch)
   return NULL;
 }
 
-char* bx_keymap_c::getBXKeyName(u32 key)
+const char* bx_keymap_c::getBXKeyName(u32 key)
 {
   return bx_key_symbol[key & 0x7fffffff];
 }

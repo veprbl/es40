@@ -34,7 +34,10 @@
  * Contains code for the bx_gui_c base class used for interfacing with
  * SDL and other device interfaces.
  *
- * $Id: gui.cpp,v 1.9 2008/03/16 11:22:11 iamcamiel Exp $
+ * $Id: gui.cpp,v 1.10 2008/03/26 19:19:53 iamcamiel Exp $
+ *
+ * X-1.10       Camiel Vanderhoeven                             26-MAR-2008
+ *      Fix compiler warnings.
  *
  * X-1.9        Camiel Vanderhoeven                             16-MAR-2008
  *      Fixed threading problems with SDL (I hope).
@@ -79,7 +82,7 @@ bx_gui_c*   bx_gui = NULL;
 
 typedef struct
 {
-  char*   key;
+  const char*   key;
   u32     symbol;
 } user_key_t;
 

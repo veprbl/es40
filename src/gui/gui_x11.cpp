@@ -34,7 +34,10 @@
  * \file
  * X-Windows GUI implementation. Allows use of gfx without SDL on Linux.
  *
- * $Id: gui_x11.cpp,v 1.4 2008/03/15 17:25:03 iamcamiel Exp $
+ * $Id: gui_x11.cpp,v 1.5 2008/03/26 19:19:53 iamcamiel Exp $
+ *
+ * X-1.5        Camiel Vanderhoeven                             26-MAR-2008
+ *      Fix compiler warnings.
  *
  * X-1.4        Pepito Grillo                                   15-MAR-2008
  *      Fixed FAILURE macro
@@ -107,9 +110,6 @@ class bx_x11_gui_c : public bx_gui_c
                                                                 unsigned y,
                                                                 unsigned w,
                                                                 unsigned h);
-
-    virtual void                  beep_on(float frequency);
-    virtual void                  beep_off();
     virtual void                  get_capabilities(u16*  xres, u16*  yres,
                                                    u16*  bpp);
   private:
@@ -315,6 +315,7 @@ static unsigned x_tilesize, y_tilesize;
 //BxEvent *x11_notify_callback (void *unused, BxEvent *event);
 //bxevent_handler old_callback = NULL;
 //void *old_callback_arg = NULL;
+
 // Try to allocate NCOLORS at once in the colormap provided.  If it can
 // be done, return true.  If not, return false.  (In either case, free
 // up the color cells so that we don't add to the problem!)  This is used
@@ -332,7 +333,7 @@ static bool test_alloc_colors(Colormap cmap, u32 n_tries)
   for(i = 0; i < n_tries; i++)
   {
 
-    // choose wierd color values that are unlikely to already be in the
+    // choose weird color values that are unlikely to already be in the
     // colormap.
     color.red = ((i + 41) % MAX_VGA_COLORS) << 8;
     color.green = ((i + 42) % MAX_VGA_COLORS) << 8;
@@ -429,8 +430,8 @@ void bx_x11_gui_c::specific_init(unsigned tilewidth, unsigned tileheight)
 
     // try to use default colormap.  If not enough colors are available,
     // then switch to private colormap despite the user setting.  There
-    // are too many cases when no colors are available and Bochs simply
-    // draws everything in black on black.
+    // are too many cases when no colors are available and ES40 Emulator
+    // simply draws everything in black on black.
     if(!test_alloc_colors(default_cmap, 16))
     {
       printf("xxx: I can't allocate 16 colors\n");
@@ -498,11 +499,13 @@ void bx_x11_gui_c::specific_init(unsigned tilewidth, unsigned tileheight)
    * override these settings.  Note that in a real
    * application if size or position were set by the user
    * the flags would be UPosition and USize, and these would
-   * override the window manager's preferences for this window. */
+   * override the window manager's preferences for this window. 
+   */
 
   /* x, y, width, and height hints are now taken from
    * the actual settings of the window when mapped. Note
-   * that PPosition and PSize must be specified anyway. */
+   * that PPosition and PSize must be specified anyway. 
+   */
   size_hints.flags = PPosition | PSize | PMinSize | PMaxSize;
   size_hints.max_width = size_hints.min_width = dimension_x;
   size_hints.max_height = size_hints.min_height = dimension_y;
@@ -511,11 +514,13 @@ void bx_x11_gui_c::specific_init(unsigned tilewidth, unsigned tileheight)
     XClassHint    class_hints;
 
     /* format of the window name and icon name
-   * arguments has changed in R4 */
+     * arguments has changed in R4 
+     */
     XTextProperty windowName;
 
     /* format of the window name and icon name
-   * arguments has changed in R4 */
+     * arguments has changed in R4 
+     */
     XTextProperty iconName;
 
     /* These calls store window_name and icon_name into
@@ -534,7 +539,7 @@ void bx_x11_gui_c::specific_init(unsigned tilewidth, unsigned tileheight)
     wm_hints.initial_state = NormalState;
     wm_hints.input = True;
     class_hints.res_name = progname;
-    class_hints.res_class = (char*) "Bochs";
+    class_hints.res_class = (char*) "ES40 Emulator";
 
     XSetWMProperties(bx_x_display, win, &windowName, &iconName, NULL /*argv*/,
                      0 /*argc*/, &size_hints, &wm_hints, &class_hints);
@@ -614,11 +619,6 @@ void bx_x11_gui_c::specific_init(unsigned tilewidth, unsigned tileheight)
   //  win, None, CurrentTime );
   XFlush(bx_x_display);
 
-  // redirect notify callback to X11 specific code
-  //  SIM->get_notify_callback (&old_callback, &old_callback_arg);
-  //  if (old_callback == NULL)
-  //    FAILURE(Runtime,"old_callback = null");
-  //  SIM->set_notify_callback (x11_notify_callback, NULL);
   // loads keymap for x11
   x_keymapping = myCfg->get_bool_value("keyboard.use_mapping", false);
   if(x_keymapping)
@@ -657,6 +657,9 @@ void bx_x11_gui_c::mouse_enabled_changed_specific(bool val)
   }
 }
 
+/**
+ * Create a bitmap for VGA font data
+ **/
 void create_internal_vga_font(void)
 {
 
@@ -1945,16 +1948,6 @@ static u32 convertStringToXKeysym(const char* string)
     return BX_KEYMAP_UNKNOWN;
 
   return((u32) keysym);
-}
-
-void bx_x11_gui_c::beep_on(float frequency)
-{
-  BX_INFO(("X11 Beep ON (frequency=%.2f)", frequency));
-}
-
-void bx_x11_gui_c::beep_off()
-{
-  BX_INFO(("X11 Beep OFF"));
 }
 
 void bx_x11_gui_c::get_capabilities(u16* xres, u16* yres, u16* bpp)
