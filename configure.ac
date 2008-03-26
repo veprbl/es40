@@ -27,7 +27,7 @@
 #
 ################################################################################
 #
-# $Id: configure.ac,v 1.2 2008/03/21 14:14:39 iamcamiel Exp $
+# $Id: configure.ac,v 1.3 2008/03/26 19:01:38 iamcamiel Exp $
 #
 # X-1.1	     Camiel Vanderhoeven                      20-MAR-2008
 #      File Created.
@@ -67,7 +67,7 @@ AM_PATH_X11(
 # Checks for header files.
 AC_HEADER_STDC
 AC_HEADER_SYS_WAIT
-AC_CHECK_HEADERS([arpa/inet.h fcntl.h inttypes.h malloc.h netinet/in.h stdint.h stdlib.h string.h sys/param.h sys/socket.h sys/time.h unistd.h])
+AC_CHECK_HEADERS([arpa/inet.h arpa/telnet.h ctype.h errno.h fcntl.h in.h inet.h inttypes.h malloc.h netinet/in.h process.h pthread.h signal.h socket.h stdint.h stdlib.h string.h sys/param.h sys/socket.h sys/time.h unistd.h windows.h winsock2.h ws2tcpip.h])
 
 # Checks for typedefs, structures, and compiler characteristics.
 AC_HEADER_STDBOOL
@@ -94,6 +94,6 @@ AC_FUNC_MALLOC
 AC_FUNC_REALLOC
 AC_FUNC_SELECT_ARGTYPES
 AC_TYPE_SIGNAL
-AC_CHECK_FUNCS([alarm atexit memset pow select socket sqrt strcasecmp strchr strdup strncasecmp strspn])
+AC_CHECK_FUNCS([alarm atexit fopen fopen64 fseek fseeko fseeko64 _fseeki64 ftell ftello ftello64 _ftelli64 gmtime_s inet_aton isblank memset pow select socket sqrt strcasecmp _stricmp strchr strdup _strdup strncasecmp _stricasecmp strspn])
 
 AC_OUTPUT(Makefile doc/Makefile m4/Makefile src/Makefile)

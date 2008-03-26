@@ -4796,7 +4796,7 @@ rm -f conftest.err conftest.$ac_ext
 echo "${ECHO_T}$i" >&6; }
           X11_CFLAGS=" -I$i"
           break
-	fi
+ 	    fi
       done
     fi
   else
@@ -5407,7 +5407,19 @@ done
 
 
 
-for ac_header in arpa/inet.h fcntl.h inttypes.h malloc.h netinet/in.h stdint.h stdlib.h string.h sys/param.h sys/socket.h sys/time.h unistd.h
+
+
+
+
+
+
+
+
+
+
+
+
+for ac_header in arpa/inet.h arpa/telnet.h ctype.h errno.h fcntl.h in.h inet.h inttypes.h malloc.h netinet/in.h process.h pthread.h signal.h socket.h stdint.h stdlib.h string.h sys/param.h sys/socket.h sys/time.h unistd.h windows.h winsock2.h ws2tcpip.h
 do
 as_ac_Header=`echo "ac_cv_header_$ac_header" | $as_tr_sh`
 if { as_var=$as_ac_Header; eval "test \"\${$as_var+set}\" = set"; }; then
@@ -8307,7 +8319,23 @@ _ACEOF
 
 
 
-for ac_func in alarm atexit memset pow select socket sqrt strcasecmp strchr strdup strncasecmp strspn
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+for ac_func in alarm atexit fopen fopen64 fseek fseeko fseeko64 _fseeki64 ftell ftello ftello64 _ftelli64 gmtime_s inet_aton isblank memset pow select socket sqrt strcasecmp _stricmp strchr strdup _strdup strncasecmp _stricasecmp strspn
 do
 as_ac_var=`echo "ac_cv_func_$ac_func" | $as_tr_sh`
 { echo "$as_me:$LINENO: checking for $ac_func" >&5

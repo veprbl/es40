@@ -6,17 +6,65 @@
 /* Define to 1 if you have the <arpa/inet.h> header file. */
 #undef HAVE_ARPA_INET_H
 
+/* Define to 1 if you have the <arpa/telnet.h> header file. */
+#undef HAVE_ARPA_TELNET_H
+
 /* Define to 1 if you have the `atexit' function. */
 #undef HAVE_ATEXIT
+
+/* Define to 1 if you have the <ctype.h> header file. */
+#undef HAVE_CTYPE_H
+
+/* Define to 1 if you have the <errno.h> header file. */
+#undef HAVE_ERRNO_H
 
 /* Define to 1 if you have the <fcntl.h> header file. */
 #undef HAVE_FCNTL_H
 
+/* Define to 1 if you have the `fopen' function. */
+#undef HAVE_FOPEN
+
+/* Define to 1 if you have the `fopen64' function. */
+#undef HAVE_FOPEN64
+
 /* Define to 1 if you have the `fork' function. */
 #undef HAVE_FORK
 
+/* Define to 1 if you have the `fseek' function. */
+#undef HAVE_FSEEK
+
+/* Define to 1 if you have the `fseeko' function. */
+#undef HAVE_FSEEKO
+
+/* Define to 1 if you have the `fseeko64' function. */
+#undef HAVE_FSEEKO64
+
+/* Define to 1 if you have the `ftell' function. */
+#undef HAVE_FTELL
+
+/* Define to 1 if you have the `ftello' function. */
+#undef HAVE_FTELLO
+
+/* Define to 1 if you have the `ftello64' function. */
+#undef HAVE_FTELLO64
+
+/* Define to 1 if you have the `gmtime_s' function. */
+#undef HAVE_GMTIME_S
+
+/* Define to 1 if you have the `inet_aton' function. */
+#undef HAVE_INET_ATON
+
+/* Define to 1 if you have the <inet.h> header file. */
+#undef HAVE_INET_H
+
 /* Define to 1 if you have the <inttypes.h> header file. */
 #undef HAVE_INTTYPES_H
+
+/* Define to 1 if you have the <in.h> header file. */
+#undef HAVE_IN_H
+
+/* Define to 1 if you have the `isblank' function. */
+#undef HAVE_ISBLANK
 
 /* Define to 1 if your system has a GNU libc compatible `malloc' function, and
    to 0 otherwise. */
@@ -37,6 +85,12 @@
 /* Define to 1 if you have the `pow' function. */
 #undef HAVE_POW
 
+/* Define to 1 if you have the <process.h> header file. */
+#undef HAVE_PROCESS_H
+
+/* Define to 1 if you have the <pthread.h> header file. */
+#undef HAVE_PTHREAD_H
+
 /* Define to 1 if your system has a GNU libc compatible `realloc' function,
    and to 0 otherwise. */
 #undef HAVE_REALLOC
@@ -44,8 +98,14 @@
 /* Define to 1 if you have the `select' function. */
 #undef HAVE_SELECT
 
+/* Define to 1 if you have the <signal.h> header file. */
+#undef HAVE_SIGNAL_H
+
 /* Define to 1 if you have the `socket' function. */
 #undef HAVE_SOCKET
+
+/* Define to 1 if you have the <socket.h> header file. */
+#undef HAVE_SOCKET_H
 
 /* Define to 1 if you have the `sqrt' function. */
 #undef HAVE_SQRT
@@ -110,14 +170,38 @@
 /* Define to 1 if you have the <vfork.h> header file. */
 #undef HAVE_VFORK_H
 
+/* Define to 1 if you have the <windows.h> header file. */
+#undef HAVE_WINDOWS_H
+
+/* Define to 1 if you have the <winsock2.h> header file. */
+#undef HAVE_WINSOCK2_H
+
 /* Define to 1 if `fork' works. */
 #undef HAVE_WORKING_FORK
 
 /* Define to 1 if `vfork' works. */
 #undef HAVE_WORKING_VFORK
 
+/* Define to 1 if you have the <ws2tcpip.h> header file. */
+#undef HAVE_WS2TCPIP_H
+
 /* Define to 1 if the system has the type `_Bool'. */
 #undef HAVE__BOOL
+
+/* Define to 1 if you have the `_fseeki64' function. */
+#undef HAVE__FSEEKI64
+
+/* Define to 1 if you have the `_ftelli64' function. */
+#undef HAVE__FTELLI64
+
+/* Define to 1 if you have the `_strdup' function. */
+#undef HAVE__STRDUP
+
+/* Define to 1 if you have the `_stricasecmp' function. */
+#undef HAVE__STRICASECMP
+
+/* Define to 1 if you have the `_stricmp' function. */
+#undef HAVE__STRICMP
 
 /* Name of package */
 #undef PACKAGE

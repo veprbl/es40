@@ -26,7 +26,7 @@
 #
 ################################################################################
 #
-# $Id: Makefile.am,v 1.1 2008/03/20 07:49:51 iamcamiel Exp $
+# $Id: Makefile.am,v 1.2 2008/03/26 19:01:39 iamcamiel Exp $
 #
 # X-1.1	     Camiel Vanderhoeven                      20-MAR-2008
 #      File Created.
@@ -83,8 +83,8 @@ es40_idb_SOURCES = $(es40_SOURCES)
 es40_lss_SOURCES = $(es40_SOURCES)
 es40_lsm_SOURCES = $(es40_SOURCES)
 
-es40_idb_CXXFLAGS = "-DIDB"
-es40_lss_CXXFLAGS = "-DIDB -DLSS"
-es40_lsm_CXXFLAGS = "-DIDB -DLSM"
+es40_idb_CXXFLAGS = -DIDB
+es40_lss_CXXFLAGS = -DIDB -DLSS
+es40_lsm_CXXFLAGS = -DIDB -DLSM
 
 LDADD = -lPocoFoundation
