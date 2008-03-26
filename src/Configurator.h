@@ -27,7 +27,13 @@
  * \file
  * Contains the definitions for the configuration file interpreter.
  *
- * $Id: Configurator.h,v 1.15 2008/03/14 15:30:50 iamcamiel Exp $
+ * $Id: Configurator.h,v 1.16 2008/03/26 19:09:02 iamcamiel Exp $
+ *
+ * X-1.16       Camiel Vanderhoeven                             26-MAR-2008
+ *      Fix compiler warnings.
+ *
+ * X-1.15       Camiel Vanderhoeven                             14-MAR-2008
+ *      Formatting.
  *
  * X-1.14       Camiel Vanderhoeven                             13-MAR-2008
  *      Create init() start_threads() and stop_threads() functions.
@@ -121,7 +127,7 @@ class CConfigurator
     void    add_value(char* n, char* v);
 
     char*   get_text_value(const char* n) { return get_text_value(n, (char*) 0); };
-    char*   get_text_value(const char* n, char* def);
+    char*   get_text_value(const char* n, const char* def);
 
     bool    get_bool_value(const char* n) { return get_bool_value(n, false); };
     bool    get_bool_value(const char* n, bool def);

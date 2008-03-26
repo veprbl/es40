@@ -27,7 +27,13 @@
  * \file
  * Contains the code for the configuration file interpreter.
  *
- * $Id: Configurator.cpp,v 1.26 2008/03/14 15:30:50 iamcamiel Exp $
+ * $Id: Configurator.cpp,v 1.27 2008/03/26 19:09:02 iamcamiel Exp $
+ *
+ * X-1.27       Camiel Vanderhoeven                             26-MAR-2008
+ *      Fix compiler warnings.
+ *
+ * X-1.26       Camiel Vanderhoeven                             14-MAR-2008
+ *      Formatting.
  *
  * X-1.25       Camiel Vanderhoeven                             14-MAR-2008
  *   1. More meaningful exceptions replace throwing (int) 1.
@@ -530,7 +536,7 @@ void CConfigurator::add_value(char* n, char* v)
  * Return a text value, if the name of the value can't be found in
  * our list of values, return def.
  **/
-char* CConfigurator::get_text_value(const char* n, char* def)
+char* CConfigurator::get_text_value(const char* n, const char* def)
 {
   int i;
   for(i = 0; i < iNumValues; i++)
@@ -539,7 +545,7 @@ char* CConfigurator::get_text_value(const char* n, char* def)
       return pValues[i].value;
   }
 
-  return def;
+  return (char *)def;
 }
 
 /**
@@ -668,7 +674,7 @@ u64 CConfigurator::get_num_value(const char* n, bool decimal, u64 def)
 #define N_P       2048  // no parent
 typedef struct
 {
-  char*   name;
+  const char*   name;
   classid id;
   int     flags;
 } classinfo;
