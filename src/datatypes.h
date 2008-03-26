@@ -27,7 +27,13 @@
  * \file
  * Contains the datatype definitions for use with Microsoft Visual C++ and Linux.
  *
- * $Id: datatypes.h,v 1.19 2008/03/14 15:30:52 iamcamiel Exp $
+ * $Id: datatypes.h,v 1.20 2008/03/26 19:25:40 iamcamiel Exp $
+ *
+ * X-1.20       Camiel Vanderhoeven                             26-MAR-2008
+ *      Use config.h information.
+ *
+ * X-1.19       Camiel Vanderhoeven                             14-MAR-2008
+ *      Formatting.
  *
  * X-1.18       Camiel Vanderhoeven                             14-MAR-2008
  *   1. More meaningful exceptions replace throwing (int) 1.
@@ -91,26 +97,27 @@
 #if !defined(INCLUDED_DATATYPES_H)
 #define INCLUDED_DATATYPES_H
 
-#if defined(_WIN32) && !defined(__GNUWIN32__)
-typedef unsigned __int8   u8;
-typedef unsigned __int16  u16;
-typedef unsigned __int32  u32;
-typedef unsigned __int64  u64;
+#if defined(HAVE_STDINT_H)
+#include <stdint.h>
+#endif
 
-typedef signed __int8     s8;
-typedef signed __int16    s16;
-typedef signed __int32    s32;
-typedef signed __int64    s64;
+#if defined(HAVE_INTTYPES_H)
+#include <inttypes.h>
+#endif
+
+#if defined(_WIN32) && !defined(__GNUWIN32__)
 
 #define U64(a)  a##ui64
 #define LL      "I64"
 
 #else // defined(_WIN32)
-#if defined(__VMS)
-#include <inttypes.h>
-#else
-#include <stdint.h>
-#endif
+
+#define U64(a)  a##ll
+#define LL      "ll"
+
+#endif // defined(_WIN32)
+
+
 typedef uint8_t   u8;
 typedef uint16_t  u16;
 typedef uint32_t  u32;
@@ -121,23 +128,10 @@ typedef int16_t   s16;
 typedef int32_t   s32;
 typedef int64_t   s64;
 
-#define U64(a)  a##ll
-#define LL      "ll"
-#endif // defined(_WIN32)
 typedef u8  u_int8_t;
 typedef u16 u_int16_t;
 typedef u32 u_int32_t;
 typedef u64 u_int64_t;
-
-typedef u8  uint8_t;
-typedef u16 uint16_t;
-typedef u32 uint32_t;
-typedef u64 uint64_t;
-
-typedef s8  int8_t;
-typedef s16 int16_t;
-typedef s32 int32_t;
-typedef s64 int64_t;
 
 #define HAVE_U_INT8_T   1
 #define HAVE_INT8_T     1
@@ -147,10 +141,6 @@ typedef s64 int64_t;
 #define HAVE_INT32_T    1
 #define HAVE_U_INT64_T  1
 #define HAVE_INT64_T    1
-
-//#define X32(a) 0x##a
-//#define X16(a) 0x##a
-//#define X8(a) 0x##a
 
 /**
  * Sign-extend an 8-bit value to 64 bits.

@@ -762,7 +762,7 @@
 				Name="VCCLCompilerTool"
 				Optimization="4"
 				FavorSizeOrSpeed="1"
-				AdditionalIncludeDirectories="c:\program files\winpcap\include,c:\program files\sdl\include"
+				AdditionalIncludeDirectories="c:\program files\winpcap\include,c:\program files\sdl\include;c:\program files\poco\include"
 				PreprocessorDefinitions="WIN32;NDEBUG;_CONSOLE;IDB;HAVE_PCAP;HAVE_SDL"
 				RuntimeLibrary="0"
 				PrecompiledHeaderFile=".\Release IDB/es40.pch"
@@ -785,11 +785,11 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				AdditionalDependencies="odbc32.lib odbccp32.lib ws2_32.lib wpcap.lib sdl.lib sdlmain.lib"
+				AdditionalDependencies="odbc32.lib odbccp32.lib ws2_32.lib wpcap.lib sdl.lib sdlmain.lib pocofoundation.lib"
 				OutputFile="bin/es40_idb.exe"
 				LinkIncremental="1"
 				SuppressStartupBanner="true"
-				AdditionalLibraryDirectories="c:\program files\sdl\lib,c:\program files\winpcap\lib"
+				AdditionalLibraryDirectories="c:\program files\sdl\lib,c:\program files\winpcap\lib,c:\program files\poco\lib"
 				ProgramDatabaseFile=".\Release IDB/es40_idb.pdb"
 				SubSystem="1"
 				TargetMachine="1"
@@ -6732,11 +6732,11 @@
 				>
 			</File>
 			<File
-				RelativePath="..\VGA.h"
+				RelativePath="..\gui\vga.h"
 				>
 			</File>
 			<File
-				RelativePath="..\gui\vga.h"
+				RelativePath="..\VGA.h"
 				>
 			</File>
 		</Filter>

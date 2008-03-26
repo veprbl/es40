@@ -30,7 +30,13 @@
  * miss certain functions or macro's we need. In this file, we try to take 
  * away most of these differences.
  *
- * $Id: telnet.h,v 1.11 2008/03/14 15:30:53 iamcamiel Exp $
+ * $Id: telnet.h,v 1.12 2008/03/26 19:25:40 iamcamiel Exp $
+ *
+ * X-1.12       Camiel Vanderhoeven                             26-MAR-2008
+ *      Use config.h information.
+ *
+ * X-1.11       Camiel Vanderhoeven                             14-MAR-2008
+ *      Formatting.
  *
  * X-1.10       Alex                                            20-FEB-2008
  *      GNU compiler support on Windows.
@@ -67,25 +73,68 @@
 #if !defined(INCLUDED_TELNET_H)
 #define INCLUDED_TELNET_H
 
-#if defined(_WIN32)
+#if defined(HAVE_WINSOCK2_H)
 #include <winsock2.h>
-#if defined(__GNUWIN32__)
+#endif
+
+#if defined(HAVE_WS2TCPIP_H)
 #include <ws2tcpip.h>
-#else
+#endif
+
+#if defined(HAVE_SYS_SOCKET_H)
+#include <sys/socket.h>
+#endif
+
+#if defined(HAVE_SOCKET_H)
+#include <socket.h>
+#endif
+
+#if defined(HAVE_IN_H)
+#include <in.h>
+#endif
+
+#if defined(HAVE_INET_H)
+#include <inet.h>
+#endif
+
+#if defined(HAVE_ARPA_INET_H)
+#include <arpa/inet.h>
+#endif
+
+#if defined(HAVE_ARPA_TELNET_H)
+#include <arpa/telnet.h>
+#endif
+
+#if defined(HAVE_NETINET_IN_H)
+#include <netinet/in.h>
+#endif
+
+#if defined(HAVE_SYS_SELECT_H)
+#include <sys/select.h>
+#endif
+
+#if defined(HAVE_ERRNO_H)
+#include <errno.h>
+#endif
+
+#if defined(HAVE_FCNTL_H)
+#include <fcntl.h>
+#endif
+
+#if defined(HAVE_SIGNAL_H)
+#include <signal.h>
+#endif
+
+#if defined(_WIN32) && !defined(__GNUWIN32__)
 typedef size_t        ssize_t;
 typedef int           socklen_t;
-#endif // __GNUWIN32__
 #endif // _WIN32
-#if defined(__APPLE__)
-#include <sys/socket.h>
-#endif // __APPLE__
+
 #if defined(__VMS)
-#include <socket.h>
-#include <in.h>
-#include <inet.h>
 #define INVALID_SOCKET  - 1
 typedef unsigned int  socklen_t;
 #endif // __VMS
+
 #if defined(_WIN32) || defined(__VMS)
 #define IAC           255 /* interpret as command: */
 #define DONT          254 /* you are not to use option */
@@ -115,13 +164,6 @@ typedef unsigned int  socklen_t;
 #define TELOPT_LFLOW  33  /* remote flow control */
 
 #else // defined(_WIN32) || defined(__VMS)
-#include <arpa/inet.h>
-#include <arpa/telnet.h>
-#include <netinet/in.h>
-#include <sys/select.h>
-#include <errno.h>
-#include <fcntl.h>
-#include <signal.h>
 #define INVALID_SOCKET  1
 #endif // defined (_WIN32) || defined(__VMS)
 
@@ -133,7 +175,7 @@ typedef unsigned int  socklen_t;
    *
    * Copyright (C) 2003 Matthias Andree <matthias.andree@gmx.de>
    */
-#ifndef HAVE_INET_ATON
+#if !defined(HAVE_INET_ATON)
 inline int inet_aton(const char* name, struct in_addr* addr)
 {
   unsigned long a = inet_addr(name);

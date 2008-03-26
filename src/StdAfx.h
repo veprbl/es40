@@ -30,7 +30,10 @@
  * or project specific include files that are used frequently, but
  * are changed infrequently.
  *
- * $Id: StdAfx.h,v 1.32 2008/03/21 14:14:40 iamcamiel Exp $
+ * $Id: StdAfx.h,v 1.33 2008/03/26 19:25:40 iamcamiel Exp $
+ *
+ * X-1.33       Camiel Vanderhoeven                             26-MAR-2008
+ *      Use config.h information.
  *
  * X-1.32       Camiel Vanderhoeven                             21-MAR-2008
  *      Added inclusion of config_debug.h.
@@ -140,43 +143,93 @@
 // Include generated file with debugging flags (defines)
 #include "config_debug.h"
 
+#if defined(HAVE_CONFIG_H)
+#include "config.h"
+#elif defined(_WIN32)
+#include "config_win32.h"
+#else
+#error "Need a config.h"
+#endif
+
 #include "datatypes.h"
 
-#if defined(_WIN32)
-#ifndef _WIN32_WINNT
-#define _WIN32_WINNT  0x400
-#endif
-#define WIN32_LEAN_AND_MEAN // Exclude rarely-used stuff from Windows headers
-#define _CRT_SECURE_NO_DEPRECATE  1
-#if _MSC_VER < 1400
-#define WINVER  0x0400
-#else
-#define WINVER  0x0501
-#endif
+#if defined(HAVE_WINDOWS_H)
 #include <windows.h>
-#define strcasecmp(a, b)      _stricmp(a, b)
+#endif
+
+#if !defined(HAVE_STRCASECMP)
+#if defined(HAVE__STRICMP)
+#define strcasecmp(a, b)  _stricmp(a, b)
+#else
+#error "Need strcasecmp"
+#endif
+#endif // !defined(HAVE_STRCASECMP)
+
+#if !defined(HAVE_STRNCASECMP)
+#if defined(HAVE__STRNICMP)
 #define strncasecmp(a, b, c)  _strnicmp(a, b, c)
+#else
+#error "Need strncasecmp"
+#endif
+#endif // !defined(HAVE_STRNCASECMP)
+
+#if defined(HAVE_PROCESS_H)
 #include <process.h>
-#else // not windows
-#define _strdup strdup
+#endif
+
+#if !defined(HAVE__STRDUP)
+#if defined(HAVE_STRDUP)
+#define _strdup(a)  strdup(a)
+#else
+#error "Need strdup"
+#endif
+#endif // !defined(HAVE__STRDUP)
+
+#if defined (HAVE_SYS_TIME_H)
 #include <sys/time.h>
-#include <stdlib.h>
+#endif
+
+#if defined (HAVE_UNISTD_H)
 #include <unistd.h>
-#include "pthread.h"
-#include "signal.h"
+#endif
+
+#if defined (HAVE_PTHREAD_H)
+#include <pthread.h>
+#endif
+
+#if defined(HAVE_SIGNAL_H)
+#include <signal.h>
+#endif
+
+#if defined(HAVE_SYS_WAIT_H)
 #include <sys/wait.h>
 #endif
+
+#if defined(HAVE_STDLIB_H)
 #include <stdlib.h>
+#endif
+
+#if defined(HAVE_STDIO_H)
 #include <stdio.h>
+#endif
+
+#if defined(HAVE_STRING_H)
 #include <string.h>
-#if !defined(__APPLE__) && !defined(__FreeBSD__)
+#endif
+
+#if defined(HAVE_MALLOC_H)
 #include <malloc.h>
 #endif
-#include <time.h>
-#include <ctype.h>
 
-#if (defined(_MSC_VER) && (_MSC_VER < 1400)) || !defined(_WIN32) || defined \
-    (__GNUWIN32__)
+#if defined(HAVE_TIME_H)
+#include <time.h>
+#endif
+
+#if defined(HAVE_CTYPE_H)
+#include <ctype.h>
+#endif
+
+#if !defined(HAVE_GMTIME_S)
 inline void gmtime_s(struct tm* t1, time_t* t2)
 {
   struct tm*  t3;
@@ -184,7 +237,8 @@ inline void gmtime_s(struct tm* t1, time_t* t2)
   memcpy(t1, t3, sizeof(struct tm));
 }
 #endif
-#if defined(_WIN32) || defined(__DECCXX)
+
+#if !defined(HAVE_ISBLANK)
 inline bool isblank(char c)
 {
   if(c == ' ' || c == '\t' || c == '\n' || c == '\r')
@@ -192,6 +246,7 @@ inline bool isblank(char c)
   return false;
 }
 #endif
+
 inline char printable(char c)
 {
   if(isprint((unsigned char) c))
@@ -200,25 +255,40 @@ inline char printable(char c)
 }
 
 // Different OS'es define different functions to access 64-bit files
-#if defined(_WIN32)
-
-// Windows obviously does things differently...
+#if defined(HAVE_FOPEN64)
+#define fopen_large fopen64
+#elif defined(HAVE_FOPEN)
 #define fopen_large fopen
+#else
+#error "Need fopen"
+#endif
+
+#if defined(HAVE__FSEEKI64)
 #define fseek_large _fseeki64
+#elif defined(HAVE_FSEEKO64)
+#define fseek_large fseeko64
+#elif defined(HAVE_FSEEKO)
+#define fseek_large fseeko
+#elif defined(HAVE_FSEEK)
+#define fseek_large fseek
+#else
+#error "Need fseek"
+#endif
+
+#if defined(HAVE__FTELLI64)
 #define ftell_large _ftelli64
 #define off_t_large __int64
-#elif defined(__APPLE__) || defined(__FreeBSD__)
-
-// OS X and FreeBSD do 64-bit access by default, and don't have the 64-bit versions
-#define fopen_large fopen
-#define fseek_large fseeko
-#define ftell_large ftello
-#define off_t_large off_t
-#else
-#define fopen_large fopen64
-#define fseek_large fseeko64
+#elif defined(HAVE_FTELLO64)
 #define ftell_large ftello64
 #define off_t_large off64_t
+#elif defined(HAVE_FTELLO)
+#define ftell_large ftello
+#define off_t_large off_t
+#elif defined(HAVE_FTELL)
+#define ftell_large ftell
+#define off_t_large off_t
+#else
+#error "Need ftell"
 #endif
 
 #include <typeinfo>
