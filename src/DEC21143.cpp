@@ -30,7 +30,13 @@
  * \file 
  * Contains the code for the emulated DEC 21143 NIC device.
  *
- * $Id: DEC21143.cpp,v 1.34 2008/03/14 15:30:50 iamcamiel Exp $
+ * $Id: DEC21143.cpp,v 1.35 2008/03/26 19:11:01 iamcamiel Exp $
+ *
+ * X-1.35       Camiel Vanderhoeven                             26-MAR-2008
+ *      Fix compiler warnings.
+ *
+ * X-1.34       Camiel Vanderhoeven                             14-MAR-2008
+ *      Formatting.
  *
  * X-1.33       Camiel Vanderhoeven                             14-MAR-2008
  *   1. More meaningful exceptions replace throwing (int) 1.
@@ -408,7 +414,7 @@ void CDEC21143::init()
 
   myThread = 0;
 
-  printf("%s: $Id: DEC21143.cpp,v 1.34 2008/03/14 15:30:50 iamcamiel Exp $\n",
+  printf("%s: $Id: DEC21143.cpp,v 1.35 2008/03/26 19:11:01 iamcamiel Exp $\n",
          devid_string);
 }
 
@@ -522,7 +528,7 @@ u32 CDEC21143::nic_read(u32 address, int dsize)
     data = state.reg[regnr];
   }
   else
-    fatal("[ dec21143: WARNING! unaligned access (0x%x) ]\n", (int) address);
+    printf("dec21143: WARNING! unaligned access (0x%x) \n", (int) address);
 #if defined(DEBUG_NIC)
   printf("21143: nic_read - CSR(%d), value: %08x\n", regnr, data);
 #endif
@@ -560,7 +566,7 @@ void CDEC21143::nic_write(u32 address, int dsize, u32 data)
     }
   }
   else
-    fatal("[ dec21143: WARNING! unaligned access (0x%x) ]\n", (int) address);
+    printf("[ dec21143: WARNING! unaligned access (0x%x) ]\n", (int) address);
 
   switch(address)
   {
@@ -591,7 +597,7 @@ void CDEC21143::nic_write(u32 address, int dsize, u32 data)
   case CSR_RXLIST:        /*  csr3  */
     /* debug("[ dec21143: setting RXLIST to 0x%x ]\n", (int)data); */
     if(data & 0x3)
-      fatal("[ dec21143: WARNING! RXLIST not aligned? (0x%x) ]\n", data);
+      printf("[ dec21143: WARNING! RXLIST not aligned? (0x%x) ]\n", data);
     data &= ~0x3;
     state.rx.cur_addr = data;
     break;
@@ -599,7 +605,7 @@ void CDEC21143::nic_write(u32 address, int dsize, u32 data)
   case CSR_TXLIST:        /*  csr4  */
     /* debug("[ dec21143: setting TXLIST to 0x%x ]\n", (int)data); */
     if(data & 0x3)
-      fatal("[ dec21143: WARNING! TXLIST not aligned? (0x%x) ]\n", data);
+      printf("[ dec21143: WARNING! TXLIST not aligned? (0x%x) ]\n", data);
     data &= ~0x3;
     state.tx.cur_addr = data;
     break;
@@ -689,7 +695,7 @@ void CDEC21143::nic_write(u32 address, int dsize, u32 data)
     //                  state.tx.idling = state.tx.idling_threshold;
     //              }
     //              if (data != 0) {
-    //                      fatal("[ dec21143: UNIMPLEMENTED OPMODE bits: 0x%08x ]\n", (int)data);
+    //                      printf("[ dec21143: UNIMPLEMENTED OPMODE bits: 0x%08x ]\n", (int)data);
     //              }
     //              DoClock();
     break;
@@ -756,7 +762,7 @@ void CDEC21143::nic_write(u32 address, int dsize, u32 data)
     break;
 
   default:
-    fatal("[ dec21143: write to unimplemented 0x%02x: 0x%02x ]\n", (int) address,
+    printf("[ dec21143: write to unimplemented 0x%02x: 0x%02x ]\n", (int) address,
           (int) data);
   }
 }
@@ -802,17 +808,17 @@ void CDEC21143::mii_access(uint32_t oldreg, uint32_t idata)
   if(idata & MIIROM_MDC && oldreg & MIIROM_MDC)
     return;
 
-  /*  fatal("[ mii_access(): 0x%08x ]\n", (int)idata);  */
+  /*  printf("[ mii_access(): 0x%08x ]\n", (int)idata);  */
   if(idata & MIIROM_BR)
   {
-    fatal("[ mii_access(): MIIROM_BR: TODO ]\n");
+    printf("[ mii_access(): MIIROM_BR: TODO ]\n");
     return;
   }
 
   obit = idata & MIIROM_MDO ? 1 : 0;
 
   if(state.mii.state >= MII_STATE_START_WAIT
-   && state.mii.state <= MII_STATE_READ_PHYADDR_REGADDR && idata & MIIROM_MIIDIR) fatal("[ mii_access(): bad dir? ]\n");
+   && state.mii.state <= MII_STATE_READ_PHYADDR_REGADDR && idata & MIIROM_MIIDIR) printf("[ mii_access(): bad dir? ]\n");
 
   switch(state.mii.state)
   {
@@ -824,7 +830,7 @@ void CDEC21143::mii_access(uint32_t oldreg, uint32_t idata)
     if(idata & MIIROM_MIIDIR)
       return;
 
-    /*  fatal("[ mii_access(): got a 0 delimiter ]\n");  */
+    /*  printf("[ mii_access(): got a 0 delimiter ]\n");  */
     state.mii.state = MII_STATE_START_WAIT;
     state.mii.opcode = 0;
     state.mii.phyaddr = 0;
@@ -842,7 +848,7 @@ void CDEC21143::mii_access(uint32_t oldreg, uint32_t idata)
       return;
     }
 
-    /*  fatal("[ mii_access(): got a 1 delimiter ]\n");  */
+    /*  printf("[ mii_access(): got a 1 delimiter ]\n");  */
     state.mii.state = MII_STATE_READ_OP;
     state.mii.bit = 0;
     break;
@@ -852,13 +858,13 @@ void CDEC21143::mii_access(uint32_t oldreg, uint32_t idata)
     {
       state.mii.opcode = obit << 1;
 
-      /*  fatal("[ mii_access(): got first opcode bit (%i) ]\n", obit);  */
+      /*  printf("[ mii_access(): got first opcode bit (%i) ]\n", obit);  */
     }
     else
     {
       state.mii.opcode |= obit;
 
-      /*  fatal("[ mii_access(): got opcode = %i ]\n", state.mii.opcode);  */
+      /*  printf("[ mii_access(): got opcode = %i ]\n", state.mii.opcode);  */
       state.mii.state = MII_STATE_READ_PHYADDR_REGADDR;
     }
 
@@ -867,7 +873,7 @@ void CDEC21143::mii_access(uint32_t oldreg, uint32_t idata)
 
   case MII_STATE_READ_PHYADDR_REGADDR:
 
-    /*  fatal("[ mii_access(): got phy/reg addr bit nr %i (%i)"
+    /*  printf("[ mii_access(): got phy/reg addr bit nr %i (%i)"
        " ]\n", state.mii.bit - 2, obit);  */
     if(state.mii.bit <= 6)
       state.mii.phyaddr |= obit << (6 - state.mii.bit);
@@ -877,7 +883,7 @@ void CDEC21143::mii_access(uint32_t oldreg, uint32_t idata)
     if(state.mii.bit >= 12)
     {
 
-      /*  fatal("[ mii_access(): phyaddr=0x%x regaddr=0x"
+      /*  printf("[ mii_access(): phyaddr=0x%x regaddr=0x"
          "%x ]\n", state.mii.phyaddr, state.mii.regaddr);  */
       state.mii.state = MII_STATE_A;
     }
@@ -897,7 +903,7 @@ void CDEC21143::mii_access(uint32_t oldreg, uint32_t idata)
       break;
 
     default:
-      debug("[ mii_access(): UNIMPLEMENTED MII opcode %i (probably just a bug in GXemul's MII data stream handling) ]\n",
+      printf("[ mii_access(): UNIMPLEMENTED MII opcode %i (probably just a bug in GXemul's MII data stream handling) ]\n",
           state.mii.opcode);
       state.mii.state = MII_STATE_RESET;
     }
@@ -910,7 +916,7 @@ void CDEC21143::mii_access(uint32_t oldreg, uint32_t idata)
     {
     case MII_COMMAND_WRITE:
       if(idata & MIIROM_MIIDIR)
-        fatal("[ mii_access(): write: bad dir? ]\n");
+        printf("[ mii_access(): write: bad dir? ]\n");
       obit = obit ? (0x8000 >> (state.mii.bit - 14)) : 0;
       tmp = state.mii.phy_reg[(state.mii.phyaddr << 5) + state.mii.regaddr] | obit;
       if(state.mii.bit >= 29)
@@ -1036,7 +1042,7 @@ void CDEC21143::srom_access(uint32_t oldreg, uint32_t idata)
       break;
 
     default:
-      fatal("[ dec21243: unimplemented SROM/EEPROM opcode %i ]\n",
+      printf("[ dec21243: unimplemented SROM/EEPROM opcode %i ]\n",
             state.srom.opcode);
     }
 
@@ -1168,7 +1174,7 @@ int CDEC21143::dec21143_rx()
   bufsize = buf1_size ? buf1_size : buf2_size;
 
   //state.reg[CSR_STATUS/8] &= ~STATUS_RS; // dth: wrong, this is receive state stopped
-  //  fatal("{ dec21143_rx: base = 0x%08x }\n", (int)addr);
+  //  printf("{ dec21143_rx: base = 0x%08x }\n", (int)addr);
   //      debug("{ RX (%llx): 0x%08x 0x%08x 0x%x 0x%x: buf %i bytes at 0x%x }\n",
   //          (long long)addr, rdes0, rdes1, rdes2, rdes3, bufsize, (int)bufaddr);
   // Turn off all status bits, and give up ownership
@@ -1275,7 +1281,7 @@ int CDEC21143::dec21143_tx()
   tdes2 = descr[8] + (descr[9] << 8) + (descr[10] << 16) + (descr[11] << 24);
   tdes3 = descr[12] + (descr[13] << 8) + (descr[14] << 16) + (descr[15] << 24);
 
-  /*  fatal("{ dec21143_tx: base=0x%08x, tdes0=0x%08x }\n", (int)addr, (int)tdes0);  */
+  /*  printf("{ dec21143_tx: base=0x%08x, tdes0=0x%08x }\n", (int)addr, (int)tdes0);  */
 
   /*  Only process packets owned by the 21143:  */
   if(!(tdes0 & TDSTAT_OWN))
@@ -1309,7 +1315,7 @@ int CDEC21143::dec21143_tx()
   }
 
   /*
-     fatal("{ TX (%llx): 0x%08x 0x%08x 0x%x 0x%x: buf %i bytes at 0x%x }\n",
+     printf("{ TX (%llx): 0x%08x 0x%08x 0x%x 0x%x: buf %i bytes at 0x%x }\n",
      (long long)addr, tdes0, tdes1, tdes2, tdes3, bufsize, (int)bufaddr);
    */
 
@@ -1334,9 +1340,9 @@ int CDEC21143::dec21143_tx()
      *  TODO. For now, just ignore it, and pretend it worked.
      */
 
-    //              fatal("{ TX: setup packet }\n");
+    //              printf("{ TX: setup packet }\n");
     if(bufsize != 192)
-      fatal("[ dec21143: setup packet len = %i, should be 192! ]\n",
+      printf("[ dec21143: setup packet len = %i, should be 192! ]\n",
             (int) bufsize);
     do_pci_read(bufaddr, state.setup_filter, 1, 192);
     SetupFilter();
@@ -1357,13 +1363,13 @@ int CDEC21143::dec21143_tx()
      *  Data Packet.
      */
 
-    //              fatal("{ TX: data packet: ");
+    //              printf("{ TX: data packet: ");
     if(tdes1 & TDCTL_Tx_FS)
     {
 
       /*  First segment. Let's allocate a new buffer:  */
 
-      /*  fatal("new frame }\n");  */
+      /*  printf("new frame }\n");  */
 
       //CHECK_ALLOCATION(state.tx.cur_buf = (unsigned char *)malloc(bufsize));
       state.tx.cur_buf_len = 0;
@@ -1373,9 +1379,9 @@ int CDEC21143::dec21143_tx()
 
       /*  Not first segment. Increase the length of the current buffer:  */
 
-      /*  fatal("continuing last frame }\n");  */
+      /*  printf("continuing last frame }\n");  */
       if(state.tx.cur_buf == NULL)
-        fatal("[ dec21143: WARNING! tx: middle segment, but no first segment?! ]\n");
+        printf("[ dec21143: WARNING! tx: middle segment, but no first segment?! ]\n");
 
       //CHECK_REALLOCATION(state.tx.cur_buf, realloc(state.tx.cur_buf, state.tx.cur_buf_len + bufsize), unsigned char);
     }
@@ -1389,7 +1395,7 @@ int CDEC21143::dec21143_tx()
     if(tdes1 & TDCTL_Tx_LS)
     {
 
-      /*  fatal("{ TX: data frame complete. }\n");  */
+      /*  printf("{ TX: data frame complete. }\n");  */
 
       // if not in internal loopback mode, transmit packet to wire
       if(!(state.reg[CSR_OPMODE / 8] & OPMODE_OM_INTLOOP))
@@ -1397,7 +1403,7 @@ int CDEC21143::dec21143_tx()
 
         // printf("pcap send: %d bytes   \n", state.tx.cur_buf_len);
         if(pcap_sendpacket(fp, state.tx.cur_buf, state.tx.cur_buf_len))
-          fatal("Error sending the packet: %s\n", pcap_geterr);
+          printf("Error sending the packet: %s\n", pcap_geterr);
       }
 
       // if in internal or external loopback mode, add packet to read queue
