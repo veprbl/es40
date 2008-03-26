@@ -27,7 +27,10 @@
  * \file
  * Contains the definitions for the emulated Ali M1543C IDE chipset part.
  *
- * $Id: AliM1543C_ide.h,v 1.21 2008/03/24 21:37:46 iamcamiel Exp $
+ * $Id: AliM1543C_ide.h,v 1.22 2008/03/26 19:04:41 iamcamiel Exp $
+ *
+ * X-1.22       Camiel Vanderhoeven                             26-MAR-2008
+ *      Fix compiler warnings.
  *
  * X-1.21       Camiel Vanderhoeven                             24-MAR-2008
  *      Comments.
@@ -361,7 +364,7 @@ class CAliM1543C_ide : public CDiskController, public CSCSIDevice, public Poco::
 #define REG_COMMAND_STATUS        7
 #define REG_COMMAND_COMMAND       7
 
-static char*  register_names[] = {
+static const char*  register_names[] = {
   "DATA",
   "ERROR/FEATURES",
   "SECTOR_COUNT/PKT REASON",
@@ -385,7 +388,7 @@ static char*  register_names[] = {
 #define IR_REL      0x04
 
 /* Packet protocol states */
-static char*  packet_states[] = {
+static const char*  packet_states[] = {
   "DP0: Prepare A",
   "DP1: Receive Packet",
   "DP2: Prepare B",
