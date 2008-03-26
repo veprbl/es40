@@ -27,7 +27,10 @@
  * \file
  * Contains the code for the emulated Serial Port devices.
  *
- * $Id: Serial.cpp,v 1.46 2008/03/19 14:24:43 iamcamiel Exp $
+ * $Id: Serial.cpp,v 1.47 2008/03/26 19:18:03 iamcamiel Exp $
+ *
+ * X-1.47       Camiel Vanderhoeven                             26-MAR-2008
+ *      Fix compiler warnings.
  *
  * X-1.46       Camiel Vanderhoeven                             19-MAR-2008
  *      Initialize breakHit.
@@ -276,7 +279,7 @@ void CSerial::init()
   state.irq_active = false;
   myThread = 0;
 
-  printf("%s: $Id: Serial.cpp,v 1.46 2008/03/19 14:24:43 iamcamiel Exp $\n",
+  printf("%s: $Id: Serial.cpp,v 1.47 2008/03/26 19:18:03 iamcamiel Exp $\n",
          devid_string);
 }
 
@@ -471,7 +474,7 @@ void CSerial::eval_interrupts()
   }
 }
 
-void CSerial::write(char* s)
+void CSerial::write(const char* s)
 {
   int val = send(connectSocket, s, (int) strlen(s) + 1, 0);
 }
@@ -791,7 +794,7 @@ void CSerial::WaitForConnection()
 {
   struct sockaddr_in  Address;
   socklen_t           nAddressSize = sizeof(struct sockaddr_in);
-  char*               telnet_options = "%c%c%c";
+  const char*               telnet_options = "%c%c%c";
   char                buffer[8];
   char                s[1000];
   char*               nargv = s;

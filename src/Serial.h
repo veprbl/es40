@@ -27,7 +27,13 @@
  * \file 
  * Contains the definitions for the emulated Serial Port devices.
  *
- * $Id: Serial.h,v 1.19 2008/03/14 15:30:52 iamcamiel Exp $
+ * $Id: Serial.h,v 1.20 2008/03/26 19:18:03 iamcamiel Exp $
+ *
+ * X-1.20       Camiel Vanderhoeven                             26-MAR-2008
+ *      Fix compiler warnings.
+ *
+ * X-1.19       Camiel Vanderhoeven                             14-MAR-2008
+ *      Formatting.
  *
  * X-1.18       Camiel Vanderhoeven                             13-MAR-2008
  *      Create init(), start_threads() and stop_threads() functions.
@@ -98,7 +104,7 @@
 class CSerial : public CSystemComponent, public Poco::Runnable
 {
   public:
-    void          write(char* s);
+    void          write(const char* s);
     virtual void  WriteMem(int index, u64 address, int dsize, u64 data);
     virtual u64   ReadMem(int index, u64 address, int dsize);
     CSerial(CConfigurator* cfg, CSystem* c, u16 number);
