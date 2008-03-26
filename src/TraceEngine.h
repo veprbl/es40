@@ -27,7 +27,13 @@
  * \file 
  * Contains the definitions for the CPU tracing engine.
  *
- * $Id: TraceEngine.h,v 1.19 2008/03/14 15:30:52 iamcamiel Exp $
+ * $Id: TraceEngine.h,v 1.20 2008/03/26 19:15:05 iamcamiel Exp $
+ *
+ * X-1.20       Camiel Vanderhoeven                             26-MAR-2008
+ *      Fix compiler warnings.
+ *
+ * X-1.19       Camiel Vanderhoeven                             14-MAR-2008
+ *      Formatting.
  *
  * X-1.18       Brian Wheeler                                   29-FEB-2008
  *      Add BREAKPOINT INSTRUCTION command to IDB.
@@ -127,20 +133,20 @@ struct STraceCPU
 class CTraceEngine
 {
   public:
-    void    read_procfile(char* filename);
+    void    read_procfile(const char* filename);
     CTraceEngine(class CSystem* sys);
     ~       CTraceEngine(void);
     void    trace(class CAlphaCPU*  cpu, u64 f, u64 t, bool down, bool up,
                   const char*  x, int y);
     void    trace_br(class CAlphaCPU* cpu, u64 f, u64 t);
-    void    add_function(u64 address, char*  fn_name, char*  fn_arglist,
+    void    add_function(u64 address, const char*  fn_name, const char*  fn_arglist,
                          bool step_over);
     bool    get_fnc_name(class CAlphaCPU* cpu, u64 address, char ** p_fn_name);
     void    set_waitfor(class CAlphaCPU* cpu, u64 address);
     FILE*   trace_file();
     void    trace_dev(const char* text);
     int     parse(char command[100][100]);
-    void    run_script(char* filename);
+    void    run_script(const char* filename);
     void    list_all();
   protected:
     class CSystem*        cSystem;
@@ -151,7 +157,7 @@ class CTraceEngine
     struct STraceCPU      asCPUs[4];
     struct STracePRBR     asPRBRs[1000];
     int                   get_prbr(u64 prbr, u64 hwpcb);
-    void                  write_arglist(CAlphaCPU* c, FILE* f, char* a);
+    void                  write_arglist(CAlphaCPU* c, FILE* f, const char* a);
     FILE*                 current_trace_file;
     u64                   iBreakPoint;
     int                   iBreakPointMode;

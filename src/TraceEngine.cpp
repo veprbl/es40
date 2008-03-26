@@ -28,7 +28,10 @@
  * Contains the code for the CPU tracing engine.
  * This will become the debugging engine (interactive debugger) soon.
  *
- * $Id: TraceEngine.cpp,v 1.36 2008/03/25 20:13:09 iamcamiel Exp $
+ * $Id: TraceEngine.cpp,v 1.37 2008/03/26 19:15:05 iamcamiel Exp $
+ *
+ * X-1.37       Camiel Vanderhoeven                             26-MAR-2008
+ *      Fix compiler warnings.
  *
  * X-1.36       Camiel Vanderhoeven                             25-MAR-2008
  *      Comments.
@@ -170,7 +173,7 @@ CTraceEngine*   trc;
  * @param dest Destination string
  * @param org  Source string
  **/
-inline void write_printable_s(char* dest, char* org)
+inline void write_printable_s(char* dest, const char* org)
 {
   int cnt = 100;
   while(*org && cnt--)
@@ -526,7 +529,7 @@ void CTraceEngine::trace_br(CAlphaCPU* cpu, u64 f, u64 t)
 /**
  * Add a function to the database of known functions.
  **/
-void CTraceEngine::add_function(u64 address, char*  fn_name, char*  fn_arglist,
+void CTraceEngine::add_function(u64 address, const char*  fn_name, const char*  fn_arglist,
                                 bool step_over)
 {
   asFunctions[iNumFunctions].address = (u32) address &~3;
@@ -626,11 +629,11 @@ int CTraceEngine::get_prbr(u64 prbr, u64 hwpcb)
  * Parse the argument list string a, get the necessary registers from CPU c,
  * and print the formatted argument list to file fl.
  **/
-void CTraceEngine::write_arglist(CAlphaCPU* c, FILE* fl, char* a)
+void CTraceEngine::write_arglist(CAlphaCPU* c, FILE* fl, const char* a)
 {
   char    o[500];
   char*   op = o;
-  char*   ap = a;
+  const char*   ap = a;
   char    f[20];
   char*   fp;
   char*   rp;
@@ -707,7 +710,7 @@ void CTraceEngine::write_arglist(CAlphaCPU* c, FILE* fl, char* a)
  * Read a procfile. This file contains lines of the form:
  * <address>;<function name>;<argument list>;<step over>
  **/
-void CTraceEngine::read_procfile(char* filename)
+void CTraceEngine::read_procfile(const char* filename)
 {
   FILE*   f;
   u64     address;
@@ -780,7 +783,7 @@ FILE* CTraceEngine::trace_file()
 /**
  * Run an IDB script, or prompt user for input.
  **/
-void CTraceEngine::run_script(char* filename)
+void CTraceEngine::run_script(const char* filename)
 {
   char    s[100][100];
   int     i;
