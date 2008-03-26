@@ -27,7 +27,10 @@
  * \file 
  * Contains the code for the emulated Typhoon Chipset devices.
  *
- * $Id: System.cpp,v 1.74 2008/03/25 08:44:19 iamcamiel Exp $
+ * $Id: System.cpp,v 1.75 2008/03/26 19:16:33 iamcamiel Exp $
+ *
+ * X-1.75       Camiel Vanderhoeven                             26-MAR-2008
+ *      Fix compiler warnings.
  *
  * X-1.74       Pepito Grillo                                   25-MAR-2008
  *      Fixed a typo.
@@ -372,7 +375,7 @@ CSystem::CSystem(CConfigurator* cfg)
 
   cpu_lock_mutex = new CFastMutex("cpu-locking-lock");
 
-  printf("%s(%s): $Id: System.cpp,v 1.74 2008/03/25 08:44:19 iamcamiel Exp $\n",
+  printf("%s(%s): $Id: System.cpp,v 1.75 2008/03/26 19:16:33 iamcamiel Exp $\n",
          cfg->get_myName(), cfg->get_myValue());
 }
 
@@ -2381,7 +2384,7 @@ void CSystem::stop_threads()
 /**
  * Save system state to a state file.
  **/
-void CSystem::SaveState(char* fn)
+void CSystem::SaveState(const char* fn)
 {
   FILE*         f;
   int           i;
@@ -2441,7 +2444,7 @@ void CSystem::SaveState(char* fn)
 /**
  * Restore system state from a state file.
  **/
-void CSystem::RestoreState(char* fn)
+void CSystem::RestoreState(const char* fn)
 {
   FILE*         f;
   int           i;
