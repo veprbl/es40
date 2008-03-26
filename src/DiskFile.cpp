@@ -27,7 +27,13 @@
  * \file
  * Contains code to use a file as a disk image.
  *
- * $Id: DiskFile.cpp,v 1.21 2008/03/19 12:39:07 iamcamiel Exp $
+ * $Id: DiskFile.cpp,v 1.22 2008/03/26 19:20:59 iamcamiel Exp $
+ *
+ * X-1.22       Camiel Vanderhoeven                             26-MAR-2008
+ *      Support OpenVMS path names.
+ *
+ * X-1.21       Camiel Vanderhoeven                             14-MAR-2008
+ *      Formatting.
  *
  * X-1.20       Camiel Vanderhoeven                             19-MAR-2008
  *      Use fopen_large to support files >2GB on linux. Macro was already 
@@ -170,8 +176,10 @@ CDiskFile::CDiskFile(CConfigurator*  cfg, CSystem*  sys, CDiskController*  c,
 
   // skip to the filename portion of the path.
   char*   p = model_number;
-#ifdef _WIN32
+#if defined(_WIN32)
   char    x = '\\';
+#elif defined(__VMS)
+  char    x = ']';
 #else
   char    x = '/';
 #endif
