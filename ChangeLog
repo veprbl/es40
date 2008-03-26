@@ -3,6 +3,8 @@
 
 \section c019 version 0.18 -> 0.18+
 
+ - Support OpenVMS file paths. (26-mar-2008, Camiel Vanderhoeven)
+ - Use the config.h data created by the configure script. (26-mar-2008, Camiel Vanderhoeven)
  - Improved IDE locking by a) Removing all of the general register locking; b) Busmaster locking
    is still in place, but it might not be needed, this locking is pretty fine grained so nothing
    should time out waiting for it; c) Creating an alt_status variable which gets updated when the
