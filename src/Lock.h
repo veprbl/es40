@@ -27,7 +27,10 @@
  * \file 
  * Contains the definitions for the different locking structures for multi-threading.
  *
- * $Id: Lock.h,v 1.9 2008/03/16 11:22:10 iamcamiel Exp $
+ * $Id: Lock.h,v 1.10 2008/03/26 19:12:16 iamcamiel Exp $
+ *
+ * X-1.10       Camiel Vanderhoeven                             26-MAR-2008
+ *      Fix compiler warnings.
  *
  * X-1.9        Camiel Vanderhoeven                             16-MAR-2008
  *      Fixed threading problems with SDL (I hope). Standard locking
@@ -99,7 +102,7 @@ class CMutex : public Poco::MutexImpl
 {
   public:
     typedef CScopedLock<CMutex> ScopedLock;
-    CMutex(char* lName)                   { lockName = strdup(lName); };
+    CMutex(const char* lName)                   { lockName = strdup(lName); };
     ~                           CMutex()  { free(lockName); };
     void                        lock();
     void                        lock(long milliseconds);
@@ -114,7 +117,7 @@ class CFastMutex : public Poco::FastMutexImpl
 {
   public:
     typedef CScopedLock<CFastMutex> ScopedLock;
-    CFastMutex(char* lName)                       { lockName = strdup(lName); };
+    CFastMutex(const char* lName)                       { lockName = strdup(lName); };
     ~                               CFastMutex()  { free(lockName); };
     void                            lock();
     void                            lock(long milliseconds);
@@ -130,7 +133,7 @@ class CRWMutex : public Poco::RWLockImpl
 {
   public:
     typedef CScopedRWLock ScopedLock;
-    CRWMutex(char* lName)             { lockName = strdup(lName); };
+    CRWMutex(const char* lName)             { lockName = strdup(lName); };
     ~                     CRWMutex()  { free(lockName); };
 
     void                  readLock();
