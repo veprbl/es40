@@ -27,7 +27,10 @@
  * \file 
  * Contains debugging macros used by AlphaCPU.cpp
  *
- * $Id: cpu_debug.h,v 1.28 2008/03/19 18:01:09 iamcamiel Exp $
+ * $Id: cpu_debug.h,v 1.29 2008/03/26 19:06:49 iamcamiel Exp $
+ *
+ * X-1.29       Camiel Vanderhoeven                             26-MAR-2008
+ *      Fix compiler warnings.
  *
  * X-1.28       Camiel Vanderhoeven                             19-MAR-2008
  *      IDB versions compileable again.
@@ -130,8 +133,8 @@
  *      File created. Contains code previously found in AlphaCPU.h
  **/
 #if defined(IDB)
-extern char*  PAL_NAME[];
-extern char*  IPR_NAME[];
+extern const char*  PAL_NAME[];
+extern const char*  IPR_NAME[];
 
 extern char   dbg_string[1000];
 #if !defined(LS_MASTER) && !defined(LS_SLAVE)

@@ -27,7 +27,10 @@
  * \file 
  * Contains the code for the emulated DecChip 21264CB EV68 Alpha processor.
  *
- * $Id: AlphaCPU.cpp,v 1.78 2008/03/19 18:01:08 iamcamiel Exp $
+ * $Id: AlphaCPU.cpp,v 1.79 2008/03/26 19:06:49 iamcamiel Exp $
+ *
+ * X-1.79       Camiel Vanderhoeven                             26-MAR-2008
+ *      Fix compiler warnings.
  *
  * X-1.78       Camiel Vanderhoeven                             19-MAR-2008
  *      IDB versions compileable again.
@@ -413,7 +416,7 @@ void CAlphaCPU::init()
 
   state.r[22] = state.r[22 + 32] = state.iProcNum;
 
-  printf("%s(%d): $Id: AlphaCPU.cpp,v 1.78 2008/03/19 18:01:08 iamcamiel Exp $\n",
+  printf("%s(%d): $Id: AlphaCPU.cpp,v 1.79 2008/03/26 19:06:49 iamcamiel Exp $\n",
          devid_string, state.iProcNum);
 }
 
@@ -2075,7 +2078,7 @@ void CAlphaCPU::restore_icache()
 }
 
 #if defined(IDB)
-char*   PAL_NAME[] = {
+const char*   PAL_NAME[] = {
   "HALT", "CFLUSH", "DRAINA", "LDQP", "STQP", "SWPCTX", "MFPR_ASN",
   "MTPR_ASTEN",
   "MTPR_ASTSR", "CSERVE", "SWPPAL", "MFPR_FEN", "MTPR_FEN", "MTPR_IPIR",
@@ -2112,7 +2115,7 @@ char*   PAL_NAME[] = {
   "BC", "BD", "BE", "BF"
 };
 
-char*   IPR_NAME[] = {
+const char*   IPR_NAME[] = {
   "ITB_TAG", "ITB_PTE", "ITB_IAP", "ITB_IA", "ITB_IS", "PMPC", "EXC_ADDR",
   "IVA_FORM",
   "IER_CM", "CM", "IER", "IER_CM", "SIRR", "ISUM", "HW_INT_CLR", "EXC_SUM",
