@@ -27,13 +27,16 @@
  * \file
  * Configuration file creator.
  *
- * $Id: es40-cfg.cpp,v 1.1 2008/03/28 21:57:00 iamcamiel Exp $
+ * $Id: es40-cfg.cpp,v 1.2 2008/03/28 22:03:21 iamcamiel Exp $
+ *
+ * X-1.2        Camiel Vanderhoeven                             28-MAR-2008
+ *     Properly capitalized "StdAfx.h".
  *
  * X-1.1        Camiel Vanderhoeven                             28-MAR-2008
  *      File created.
  **/
 
-#include "stdafx.h"
+#include "StdAfx.h"
 
 // C++ includes
 #include <string>
