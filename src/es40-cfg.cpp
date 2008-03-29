@@ -27,7 +27,10 @@
  * \file
  * Configuration file creator.
  *
- * $Id: es40-cfg.cpp,v 1.4 2008/03/29 18:25:50 iamcamiel Exp $
+ * $Id: es40-cfg.cpp,v 1.5 2008/03/29 19:19:49 iamcamiel Exp $
+ *
+ * X-1.5        Camiel Vanderhoeven                             29-MAR-2008
+ *      Fix VGA console value.
  *
  * X-1.4        Camiel Vanderhoeven                             29-MAR-2008
  *      Fill in NIC section.
@@ -800,7 +803,7 @@ int main(int argc, char* argv[])
   os << "  pci0.7 = ali\n";
   os << "  {\n";
   os << "    mouse.enabled = " << mouse_q.getAnswer() << ";\n";
-  os << "    vga_console = " << vga_q.getAnswer() << ";\n";
+  os << "    vga_console = " << vgacons_q.getAnswer() << ";\n";
   if (lpt_q.getAnswer() != "")
     os << "    lpt.outfile = \"" << lpt_q.getAnswer() << "\"\n";
   os << "  }\n\n";
