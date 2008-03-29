@@ -27,7 +27,10 @@
  * \file
  * Configuration file creator.
  *
- * $Id: es40-cfg.cpp,v 1.3 2008/03/28 22:09:15 iamcamiel Exp $
+ * $Id: es40-cfg.cpp,v 1.4 2008/03/29 18:25:50 iamcamiel Exp $
+ *
+ * X-1.4        Camiel Vanderhoeven                             29-MAR-2008
+ *      Fill in NIC section.
  *
  * X-1.3        Camiel Vanderhoeven                             28-MAR-2008
  *      Fixed CD-ROM question behaviour.
@@ -48,6 +51,10 @@
 #include <fstream>
 #include <sstream>
 #include <algorithm>
+
+#if defined(HAVE_PCAP)
+#include <pcap.h>
+#endif
 
 using namespace std;
 
@@ -665,6 +672,45 @@ int main(int argc, char* argv[])
        * Remove it from the list of choices.
        */
       card_q.dropChoice("nic");
+
+#if defined(HAVE_PCAP)
+      MultipleChoiceQuestion if_q;
+      if_q.setQuestion("What host network interface should we connect to (answer ? for a list)?");
+      if_q.setExplanation("Choose 'list' to get a list at run-time.");
+      if_q.addAnswer("list","","Get a list at run-time");
+
+      /* Get a list of network interfaces and
+       * add them to the list.
+       */
+      pcap_if_t*  alldevs;
+      pcap_if_t *d;
+      char        errbuf[PCAP_ERRBUF_SIZE];
+
+      if(pcap_findalldevs(&alldevs, errbuf) == -1)
+      {
+        /* No devices to add.
+         */
+        printf("Error in pcap_findalldevs_ex: %s", errbuf);
+      }
+      else
+      {
+        int i = 1;
+        for(d = alldevs; d; d = d->next)
+        {
+          if_q.addAnswer(i2s(i),d->name, string(d->name) + "(" + string(d->description) + ")");
+          i++;
+        }
+      }
+
+      if (if_q.ask() != "")
+        os << "    adapter = \"" << if_q.getAnswer() << "\";\n";
+
+      FreeTextQuestion mac_q;
+      mac_q.setQuestion("What should the NIC's MAC address be?");
+      mac_q.setExplanation("This should be unique on your network.");
+      mac_q.setDefault("08-00-2B-E5-40-00");
+      os << "    mac = \"" << mac_q.ask() << "\";\n";
+#endif
     }
     else if (card_q.getAnswer() == "sym53c810")
     {
