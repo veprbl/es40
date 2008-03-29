@@ -115,7 +115,7 @@
 			/>
 			<Tool
 				Name="VCCLCompilerTool"
-				AdditionalIncludeDirectories="c:\program files\poco\include"
+				AdditionalIncludeDirectories="c:\program files\poco\include; c:\program files\winpcap\include"
 				PreprocessorDefinitions="WIN32;NDEBUG;_CONSOLE;HAVE_PCAP;HAVE_SDL"
 				RuntimeLibrary="2"
 				UsePrecompiledHeader="0"
@@ -134,8 +134,9 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
+				AdditionalDependencies="wpcap.lib"
 				LinkIncremental="1"
-				AdditionalLibraryDirectories="c:\program files\poco\lib"
+				AdditionalLibraryDirectories="c:\program files\poco\lib; c:\program files\winpcap\lib"
 				GenerateDebugInformation="true"
 				SubSystem="1"
 				OptimizeReferences="2"

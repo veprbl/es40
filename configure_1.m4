@@ -1,6 +1,7 @@
 define(ES_ASK_Q, 
   while true; do
-    read -p "$1? [$2]: " ac_tmp 
+    echo -n " $1? [$2]: "
+    read ac_tmp 
     if test "X$ac_tmp" = "X"; then
       ac_tmp="$2"
     fi
