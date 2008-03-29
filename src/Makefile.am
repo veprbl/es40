@@ -26,14 +26,14 @@
 #
 ################################################################################
 #
-# $Id: Makefile.am,v 1.2 2008/03/26 19:01:39 iamcamiel Exp $
+# $Id: Makefile.am,v 1.3 2008/03/29 09:16:14 iamcamiel Exp $
 #
 # X-1.1	     Camiel Vanderhoeven                      20-MAR-2008
 #      File Created.
 #
 ################################################################################
 
-bin_PROGRAMS = es40 es40_idb es40_lss es40_lsm
+bin_PROGRAMS = es40 es40_idb es40_lss es40_lsm es40_cfg
 
 es40_SOURCES = AliM1543C.cpp \
        AliM1543C_ide.cpp \
@@ -86,5 +86,7 @@ es40_lsm_SOURCES = $(es40_SOURCES)
 es40_idb_CXXFLAGS = -DIDB
 es40_lss_CXXFLAGS = -DIDB -DLSS
 es40_lsm_CXXFLAGS = -DIDB -DLSM
+
+es40_cfg_SOURCES = es40-cfg.cpp
 
 LDADD = -lPocoFoundation

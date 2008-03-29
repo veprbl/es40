@@ -42,7 +42,7 @@
 #
 ################################################################################
 #
-# $Id: Makefile.in,v 1.2 2008/03/26 19:01:39 iamcamiel Exp $
+# $Id: Makefile.in,v 1.3 2008/03/29 09:16:14 iamcamiel Exp $
 #
 # X-1.1	     Camiel Vanderhoeven                      20-MAR-2008
 #      File Created.
@@ -66,7 +66,7 @@ NORMAL_UNINSTALL = :
 PRE_UNINSTALL = :
 POST_UNINSTALL = :
 bin_PROGRAMS = es40$(EXEEXT) es40_idb$(EXEEXT) es40_lss$(EXEEXT) \
-	es40_lsm$(EXEEXT)
+	es40_lsm$(EXEEXT) es40_cfg$(EXEEXT)
 subdir = src
 DIST_COMMON = $(srcdir)/Makefile.am $(srcdir)/Makefile.in \
 	$(srcdir)/config.h.in
@@ -102,6 +102,10 @@ am_es40_OBJECTS = AliM1543C.$(OBJEXT) AliM1543C_ide.$(OBJEXT) \
 es40_OBJECTS = $(am_es40_OBJECTS)
 es40_LDADD = $(LDADD)
 es40_DEPENDENCIES =
+am_es40_cfg_OBJECTS = es40-cfg.$(OBJEXT)
+es40_cfg_OBJECTS = $(am_es40_cfg_OBJECTS)
+es40_cfg_LDADD = $(LDADD)
+es40_cfg_DEPENDENCIES =
 am__objects_1 = es40_idb-AliM1543C.$(OBJEXT) \
 	es40_idb-AliM1543C_ide.$(OBJEXT) \
 	es40_idb-AliM1543C_usb.$(OBJEXT) es40_idb-AlphaCPU.$(OBJEXT) \
@@ -203,10 +207,10 @@ CXXCOMPILE = $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) \
 CXXLD = $(CXX)
 CXXLINK = $(CXXLD) $(AM_CXXFLAGS) $(CXXFLAGS) $(AM_LDFLAGS) $(LDFLAGS) \
 	-o $@
-SOURCES = $(es40_SOURCES) $(es40_idb_SOURCES) $(es40_lsm_SOURCES) \
-	$(es40_lss_SOURCES)
-DIST_SOURCES = $(es40_SOURCES) $(es40_idb_SOURCES) $(es40_lsm_SOURCES) \
-	$(es40_lss_SOURCES)
+SOURCES = $(es40_SOURCES) $(es40_cfg_SOURCES) $(es40_idb_SOURCES) \
+	$(es40_lsm_SOURCES) $(es40_lss_SOURCES)
+DIST_SOURCES = $(es40_SOURCES) $(es40_cfg_SOURCES) $(es40_idb_SOURCES) \
+	$(es40_lsm_SOURCES) $(es40_lss_SOURCES)
 ETAGS = etags
 CTAGS = ctags
 DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
@@ -356,6 +360,7 @@ es40_lsm_SOURCES = $(es40_SOURCES)
 es40_idb_CXXFLAGS = -DIDB
 es40_lss_CXXFLAGS = -DIDB -DLSS
 es40_lsm_CXXFLAGS = -DIDB -DLSM
+es40_cfg_SOURCES = es40-cfg.cpp
 LDADD = -lPocoFoundation
 all: config.h
 	$(MAKE) $(AM_MAKEFLAGS) all-am
@@ -434,6 +439,9 @@ clean-binPROGRAMS:
 es40$(EXEEXT): $(es40_OBJECTS) $(es40_DEPENDENCIES) 
 	@rm -f es40$(EXEEXT)
 	$(CXXLINK) $(es40_OBJECTS) $(es40_LDADD) $(LIBS)
+es40_cfg$(EXEEXT): $(es40_cfg_OBJECTS) $(es40_cfg_DEPENDENCIES) 
+	@rm -f es40_cfg$(EXEEXT)
+	$(CXXLINK) $(es40_cfg_OBJECTS) $(es40_cfg_LDADD) $(LIBS)
 es40_idb$(EXEEXT): $(es40_idb_OBJECTS) $(es40_idb_DEPENDENCIES) 
 	@rm -f es40_idb$(EXEEXT)
 	$(es40_idb_LINK) $(es40_idb_OBJECTS) $(es40_idb_LDADD) $(LIBS)
@@ -486,6 +494,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/SystemComponent.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/TraceEngine.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/VGA.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/es40-cfg.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/es40_debug.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/es40_idb-AliM1543C.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/es40_idb-AliM1543C_ide.Po@am__quote@
