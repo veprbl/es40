@@ -27,7 +27,10 @@
  * \file 
  * Contains the definitions for the different locking structures for multi-threading.
  *
- * $Id: Lock.h,v 1.10 2008/03/26 19:12:16 iamcamiel Exp $
+ * $Id: Lock.h,v 1.11 2008/03/31 19:13:28 iamcamiel Exp $
+ *
+ * X-1.11       Camiel Vanderhoeven                             31-MAR-2008
+ *      Moved Poco-includes to StdAfx.h
  *
  * X-1.10       Camiel Vanderhoeven                             26-MAR-2008
  *      Fix compiler warnings.
@@ -70,9 +73,6 @@
 #define LOCK_TIMEOUT_MS 5000
 #endif
 #endif
-
-#include <Poco/Mutex.h>
-#include <Poco/RWLock.h>
 
 /**
  * This Macro finds out what the current Poco::Thread object is, and returns it's name. If there's no

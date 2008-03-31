@@ -26,14 +26,14 @@
 #
 ################################################################################
 #
-# $Id: make_vms.sh,v 1.1 2008/03/30 15:53:19 iamcamiel Exp $
+# $Id: make_vms.sh,v 1.2 2008/03/31 19:13:28 iamcamiel Exp $
 #
 # X-1.1	     Camiel Vanderhoeven                      20-MAR-2008
 #      File Created.
 #
 ################################################################################
 
-es40_SOURCES="AliM1543C.cpp AliM1543C_ide.cpp AliM1543C_usb.cpp AlphaCPU.cpp AlphaCPU_ieeefloat.cpp AlphaCPU_vaxfloat.cpp AlphaCPU_vmspal.cpp AlphaSim.cpp Cirrus.cpp Configurator.cpp  DEC21143.cpp Disk.cpp DiskController.cpp DiskDevice.cpp DiskFile.cpp DiskRam.cpp DMA.cpp DPR.cpp es40_debug.cpp Ethernet.cpp Exception.cpp Flash.cpp FloppyController.cpp Keyboard.cpp lockstep.cpp PCIDevice.cpp Port80.cpp S3Trio64.cpp SCSIBus.cpp SCSIDevice.cpp Serial.cpp StdAfx.cpp Sym53C810.cpp Sym53C895.cpp SystemComponent.cpp System.cpp TraceEngine.cpp VGA.cpp gui/gui.cpp gui/gui_x11.cpp gui/keymap.cpp gui/scancodes.cpp gui/sdl.cpp"
+es40_SOURCES="AliM1543C.cpp AliM1543C_ide.cpp AliM1543C_usb.cpp AlphaCPU.cpp AlphaCPU_ieeefloat.cpp AlphaCPU_vaxfloat.cpp AlphaCPU_vmspal.cpp AlphaSim.cpp Cirrus.cpp Configurator.cpp  DEC21143.cpp Disk.cpp DiskController.cpp DiskDevice.cpp DiskFile.cpp DiskRam.cpp DMA.cpp DPR.cpp es40_debug.cpp Ethernet.cpp Exception.cpp Flash.cpp FloppyController.cpp Keyboard.cpp lockstep.cpp PCIDevice.cpp Port80.cpp S3Trio64.cpp SCSIBus.cpp SCSIDevice.cpp Serial.cpp StdAfx.cpp Sym53C810.cpp Sym53C895.cpp SystemComponent.cpp System.cpp TraceEngine.cpp VGA.cpp gui/gui.cpp gui/gui_x11.cpp gui/keymap.cpp gui/scancodes.cpp gui/sdl.cpp vms/Event.cpp vms/Exception.cpp vms/Mutex.cpp vms/Runnable.cpp vms/RWLock.cpp vms/Semaphore.cpp vms/Thread.cpp vms/ErrorHandler.cpp vms/Bugcheck.cpp vms/Debugger.cpp vms/ThreadLocal.cpp vms/Timestamp.cpp vms/RefCountedObject.cpp"
 
 es40_CONFIGS="es40 es40_idb es40_lss es40_lsm es40_cfg"
 
@@ -47,11 +47,14 @@ cat > make_vms.com << VMS_EOF
 \$! for more information.
 \$!
 \$ SAY = "WRITE SYS\$OUTPUT"
+\$!
+\$ ES40_ROOT = "/CAM1\\\$DKC0/USERS/IAMCAMIEL/ES40"
+\$!
 VMS_EOF
 for current_CONFIG in $es40_CONFIGS; do
 
-  es40_DEFINES=ES40
-  es40_INCLUDE="[]"
+  es40_DEFINES=ES40,__USE_STD_IOSTREAM
+  es40_INCLUDE="\"''ES40_ROOT'/SRC/GUI\",\"''ES40_ROOT'/SRC/VMS'\""
   es40_OPTIMIZE="LEVEL=4,INLINE=SPEED,TUNE=HOST"
   es40_ARCH="HOST"
   es40_STANDARD="GNU"
@@ -77,27 +80,52 @@ VMS_EOF
 
   es40_OBJECTS=""
   for source_FILE in $es40_SOURCES; do
-    object_FILE=${source_FILE#gui/}
-    object_FILE=${object_FILE%.cpp}.obj
-    object_FILE=${current_CONFIG}_${object_FILE}
 
     if test "${source_FILE:0:4}" = "gui/"; then
       source_FILE=${source_FILE#gui/}
+      object_FILE="gui_$source_FILE"
       source_FILE="[.gui]$source_FILE"
+    elif test "${source_FILE:0:4}" = "vms/"; then
+      source_FILE=${source_FILE#vms/}
+      object_FILE="vms_$source_FILE"
+      source_FILE="[.vms]$source_FILE"
+    else
+      object_FILE=$source_FILE
     fi
+
+    object_FILE=${current_CONFIG}_${object_FILE%.cpp}.obj
+
     cat >> make_vms.com << VMS_EOF
 \$!
+\$! Check if $object_FILE is up-to-date...
+\$!
+\$ SRCTIME = F\$CVTIME(F\$FILE_ATTRIBUTES("$source_FILE","RDT"),"COMPARISON")
+\$ OBJFILE = F\$SEARCH("$object_FILE")
+\$ IF OBJFILE .NES. ""
+\$ THEN
+\$   OBJTIME = F\$CVTIME(F\$FILE_ATTRIBUTES("$object_FILE","RDT"),"COMPARISON")
+\$ ELSE
+\$   OBJTIME = F\$CVTIME("01-JAN-1970 00:00:00.00","COMPARISON")
+\$ ENDIF
+\$!
 \$! Compile $source_FILE to $object_FILE
-\$ CXX $source_FILE -
-       /DEFINE=($es40_DEFINES) -
-       /INCLUDE=($es40_INCLUDE) -
-       /STANDARD=$es40_STANDARD -
-       /ARCHITECTURE=$es40_ARCH -
-       /OPTIMIZE=($es40_OPTIMIZE) -
-       /OUTPUT=$object_FILE
+\$ IF SRCTIME .GTS. OBJTIME
+\$ THEN
+\$   CXX $source_FILE -
+         /DEFINE=($es40_DEFINES) -
+         /INCLUDE=($es40_INCLUDE) -
+         /STANDARD=$es40_STANDARD -
+         /ARCHITECTURE=$es40_ARCH -
+         /OPTIMIZE=($es40_OPTIMIZE) -
+         /OBJECT=$object_FILE
+\$ ENDIF
 VMS_EOF
 
-    es40_OBJECTS="$es40_OBJECTS $object_FILE"
+    if test "X$es40_OBJECTS" = "X"; then
+      es40_OBJECTS="$object_FILE"
+    else
+      es40_OBJECTS="$es40_OBJECTS,$object_FILE"
+    fi
   done
 
   es40_OUTPUT=${current_CONFIG}.exe

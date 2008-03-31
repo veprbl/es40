@@ -29,14 +29,11 @@
 /**
  * \file 
  * Contains configuration definitions (similar to produced by the configure 
- * script on other OS'es) to build ES40 emulator on Windows.
+ * script on other OS'es) to build ES40 emulator on OpenVMS.
  *
- * $Id: config_win32.h,v 1.2 2008/03/31 19:13:28 iamcamiel Exp $
+ * $Id: config_vms.h,v 1.1 2008/03/31 19:13:28 iamcamiel Exp $
  *
- * X-1.2        Camiel Vanderhoeven                             31-MAR-2008
- *      More comments.
- *
- * X-1.1        Camiel Vanderhoeven                             26-MAR-2008
+ * X-1.1        Camiel Vanderhoeven                             31-MAR-2008
  *      File creation.                    
  **/
 
@@ -46,70 +43,56 @@
 /* Define to 1 if you have the <arpa/inet.h> header file. */
 //#define HAVE_ARPA_INET_H 1
 
-/* Define to 1 if you have the <arpa/telnet.h> header file. */
 //#define HAVE_ARPA_TELNET_H 1
 
 /* Define to 1 if you have the `atexit' function. */
 #define HAVE_ATEXIT 1
 
-/* Define to 1 if you have the <ctype.h> header file. */
-//#define HAVE_CTYPE_H 1
+#define HAVE_CTYPE_H 1
 
-/* Define to 1 if you have the <errno.h> header file. */
 #define HAVE_ERRNO_H 1
 
 /* Define to 1 if you have the <fcntl.h> header file. */
 #define HAVE_FCNTL_H 1
 
-/* Define to 1 if you have the `fopen' function. */
 #define HAVE_FOPEN 1
 
-/* Define to 1 if you have the `fopen64' function. */
-//#define HAVE_FOPEN64 1
+// #define HAVE_FOPEN64 1
+
+#define HAVE_FTELL 1
+
+#define HAVE_FTELLO 1
+
+// #define HAVE_FTELLO64 1
+
+// #define HAVE__FTELLI64 1
+
+#define HAVE_FSEEK 1
+
+#define HAVE_FSEEKO 1
+
+// #define HAVE_FSEEKO64 1
+
+// #define HAVE__FSEEKI64 1
 
 /* Define to 1 if you have the `fork' function. */
 #define HAVE_FORK 1
 
-/* Define to 1 if you have the `fseek' function. */
-#define HAVE_FSEEK 1
+/* Defint to 1 if you have the 'gmtime_s' function. */
+//#define HAVE_GMTIME_S 1
 
-/* Define to 1 if you have the `fseeko' function. */
-//#define HAVE_FSEEKO 1
-
-/* Define to 1 if you have the `fseeko64' function. */
-//#define HAVE_FSEEKO64 1
-
-/* Define to 1 if you have the `_fseeki64' function. */
-#define HAVE__FSEEKI64 1
-
-/* Define to 1 if you have the `ftell' function. */
-#define HAVE_FTELL 1
-
-/* Define to 1 if you have the `ftello' function. */
-//#define HAVE_FTELLO 1
-
-/* Define to 1 if you have the `ftello64' function. */
-//#define HAVE_FTELLO64 1
-
-/* Define to 1 if you have the `_ftelli64' function. */
-#define HAVE__FTELLI64 1
-
-/* Define to 1 if you have the `gmtime_s' function. */
-#define HAVE_GMTIME_S 1
-
-/* Define to 1 if you have the `inet_aton' function. */
-#define HAVE_INET_ATON 1
+/* Define to 1 if you have the <in.h> header file. */
+#define HAVE_IN_H 1
 
 /* Define to 1 if you have the <inet.h> header file. */
-//#define HAVE_INET_H 1
+#define HAVE_INET_H 1
+
+#define HAVE_INET_ATON 1
 
 /* Define to 1 if you have the <inttypes.h> header file. */
 //#define HAVE_INTTYPES_H 1
 
-/* Define to 1 if you have the <in.h> header file. */
-// #define HAVE_IN_H 1
-
-/* Define to 1 if you have the `isblank' function. */
+/* Define to 1 if you have the 'isblank' function. */
 #define HAVE_ISBLANK 1
 
 /* Define to 1 if your system has a GNU libc compatible `malloc' function, and
@@ -117,7 +100,7 @@
 #define HAVE_MALLOC 1
 
 /* Define to 1 if you have the <malloc.h> header file. */
-#define HAVE_MALLOC_H 1
+//#define HAVE_MALLOC_H 1
 
 /* Define to 1 if you have the <memory.h> header file. */
 #define HAVE_MEMORY_H 1
@@ -132,7 +115,7 @@
 #define HAVE_POW 1
 
 /* Define to 1 if you have the <process.h> header file. */
-#define HAVE_PROCESS_H 1
+//#define HAVE_PROCESS_H 1
 
 /* Define to 1 if you have the <pthread.h> header file. */
 //#define HAVE_PTHREAD_H 1
@@ -151,7 +134,7 @@
 #define HAVE_SOCKET 1
 
 /* Define to 1 if you have the <socket.h> header file. */
-//#define HAVE_SOCKET_H 1
+#define HAVE_SOCKET_H 1
 
 /* Define to 1 if you have the `sqrt' function. */
 #define HAVE_SQRT 1
@@ -166,10 +149,10 @@
 #define HAVE_STDLIB_H 1
 
 /* Define to 1 if you have the `strcasecmp' function. */
-//#define HAVE_STRCASECMP 1
+#define HAVE_STRCASECMP 1
 
 /* Define to 1 if you have the '_stricmp' function. */
-#define HAVE__STRICMP 1
+//#define HAVE__STRICMP 1
 
 /* Define to 1 if you have the `strchr' function. */
 #define HAVE_STRCHR 1
@@ -181,16 +164,16 @@
 #define HAVE__STRDUP 1
 
 /* Define to 1 if you have the <strings.h> header file. */
-//#define HAVE_STRINGS_H 1
+#define HAVE_STRINGS_H 1
 
 /* Define to 1 if you have the <string.h> header file. */
 #define HAVE_STRING_H 1
 
 /* Define to 1 if you have the `strncasecmp' function. */
-//#define HAVE_STRNCASECMP 1
+#define HAVE_STRNCASECMP 1
 
 /* Define to 1 if you have the '_strnicmp' function. */
-#define HAVE__STRNICMP 1
+//#define HAVE__STRNICMP 1
 
 /* Define to 1 if you have the `strspn' function. */
 #define HAVE_STRSPN 1
@@ -208,7 +191,7 @@
 #define HAVE_SYS_STAT_H 1
 
 /* Define to 1 if you have the <sys/time.h> header file. */
-//#define HAVE_SYS_TIME_H 1
+#define HAVE_SYS_TIME_H 1
 
 /* Define to 1 if you have the <sys/types.h> header file. */
 #define HAVE_SYS_TYPES_H 1
@@ -226,12 +209,11 @@
 /* #undef HAVE_VFORK_H */
 
 /* Define to 1 if you have the <windows.h> header file. */
-#define HAVE_WINDOWS_H 1
+//#define HAVE_WINDOWS_H 1
 
-/* Define to 1 if you have the <winsock2.h> header file. */
-#define HAVE_WINSOCK2_H 1
+//#define HAVE_WINSOCK2_H 1
 
-/* Define to 1 if you have the <ws2tcpip.h> header file. */
+//#define HAVE_WS2TCPIP_H 1
 
 /* Define to 1 if `fork' works. */
 #define HAVE_WORKING_FORK 1
@@ -358,16 +340,3 @@ typedef unsigned __int8 uint8_t;
 /* Define as `fork' if `vfork' does not work. */
 /* #undef vfork */
 
-#ifndef _WIN32_WINNT
-#define _WIN32_WINNT  0x400
-#endif
-
-#define WIN32_LEAN_AND_MEAN // Exclude rarely-used stuff from Windows headers
-
-#define _CRT_SECURE_NO_DEPRECATE  1
-
-#if _MSC_VER < 1400
-#define WINVER  0x0400
-#else
-#define WINVER  0x0501
-#endif

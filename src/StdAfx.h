@@ -30,7 +30,10 @@
  * or project specific include files that are used frequently, but
  * are changed infrequently.
  *
- * $Id: StdAfx.h,v 1.33 2008/03/26 19:25:40 iamcamiel Exp $
+ * $Id: StdAfx.h,v 1.34 2008/03/31 19:13:28 iamcamiel Exp $
+ *
+ * X-1.34       Camiel Vanderhoeven                             31-MAR-2008
+ *      Moved Poco-includes to StdAfx.h, include config_vms.h on VMS.
  *
  * X-1.33       Camiel Vanderhoeven                             26-MAR-2008
  *      Use config.h information.
@@ -147,6 +150,8 @@
 #include "config.h"
 #elif defined(_WIN32)
 #include "config_win32.h"
+#elif defined(__VMS)
+#include "config_vms.h"
 #else
 #error "Need a config.h"
 #endif
@@ -294,11 +299,22 @@ inline char printable(char c)
 #include <typeinfo>
 
 #define POCO_NO_UNWINDOWS
+
+#if defined(__VMS)
+#include "VMS/Thread.h"
+#include "VMS/Runnable.h"
+#include "VMS/Semaphore.h"
+#include "VMS/Mutex.h"
+#include "VMS/Timestamp.h"
+#include "VMS/RWLock.h"
+#else
 #include <Poco/Thread.h>
 #include <Poco/Runnable.h>
 #include <Poco/Semaphore.h>
 #include <Poco/Mutex.h>
 #include <Poco/Timestamp.h>
+#include <Poco/RWLock.h>
+#endif
 
 #include "es40_debug.h"
 
