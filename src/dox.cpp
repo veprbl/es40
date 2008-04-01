@@ -16,11 +16,12 @@
  * 
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
+ * 02110-1301, USA.
  * 
- * Although this is not required, the author would appreciate being notified of, 
- * and receiving any modifications you may make to the source code that might serve
- * the general public.
+ * Although this is not required, the author would appreciate being
+ * notified of, and receiving any modifications you may make to the
+ * source code that might serve the general public.
  */
 
 /**
@@ -30,7 +31,7 @@
  * You could read the documentation from this file; but it would probably
  * be easier to go to http://es40.sourceforge.net.
  *
- * $Id: dox.cpp,v 1.17 2008/03/20 07:49:50 iamcamiel Exp $
+ * $Id: dox.cpp,v 1.18 2008/04/01 14:21:34 iamcamiel Exp $
  **/
 
 /**
@@ -40,9 +41,8 @@
  * Welcome to the documentation for the ES40 Emulator Project. For the
  * main project page, goto http://sourceforge.net/projects/es40.
  *
- * On these pages here, you can find the documented source code. In the future,
- * you might also find release notes, installation instructions, and compilation
- * instructions here.
+ * On these pages here, you can find the documented source code, the change
+ * log, compilation & installation instructions, and more.
  **/
 
 /**
@@ -227,6 +227,73 @@
  *   .
  * When booting CDROM-type media with the ali_ide device,
  * set the disk is cdrom=false.
+ **/
+
+/**
+ * \page build_guide Building and Installation Guide
+ *
+ * \section unix UNIX, BSD and Linux
+ * These instructions are valid for most UNIX-like operating systems, including BSD and
+ * Linux variants.
+ *
+ * \subsection unix_pr Prerequisites
+ * The following prerequisites are required:
+ *   - A bourne shell (/bin/sh) that is capable of running the supplied configure script.
+ *   - The GNU C++ compiler or another supported C++ compiler.
+ *   - The make program.
+ *   - The Poco C++ libraries, version 1.3.2 or higher.
+ *   .
+ *
+ * \subsection unix_bi Building and Installation
+ *   - Download the ES40 Emulator sources.
+ *   - Extract the source tree to a clean directory.
+ *   - Run the configure script, and answer the questions asked.
+ *   - Run make.
+ *   - Run make install
+ *   .
+ * \code
+ *       $ ./configure
+ *       $ make
+ *       $ make install
+ * \endcode
+ *
+ * \section vms OpenVMS
+ * These instructions are for building the ES40 Emulator on OpenVMS Alpha and OpenVMS
+ * Itanium.
+ *
+ * \subsection vms_pr Prerequisites
+ * The following prerequisites are required:
+ *   - The DEC C++ compiler (CXX).
+ *   - GNV version 2.1 (get this from the HP site, the Sourceforge site is no longer
+ *     kept up-to-date.
+ *   .
+ *
+ * \subsection vms_b Building
+ *   - Download the ES40 Emulator sources.
+ *   - Extract the source tree to a clean directory.
+ *   - Run the make_vms script, and answer the questions asked.
+ *   .
+ * \code
+ *       $ @MAKE_VMS.COM
+ * \endcode
+ *
+ * \section win Microsoft Windows
+ * These instructions are for building the ES40 Emulator on Microsoft Windows.
+ *
+ * \subsection win_pr Prerequisites
+ * The following prerequisites are required:
+ *   - Microsoft Visual C++ 2005 or higher.
+ *   - The Poco C++ libraries, version 1.3.2 or higher.
+ *   .
+ *
+ * \subsection win_b Building
+ *   - Download the ES40 Emulator sources.
+ *   - Extract the source tree to a clean directory.
+ *   - Go to the directory src/build_win* that matches your Visual C++ version,
+ *     and processor-word-size (32 or 64 bit) of your Windows version, and open
+ *     the project file found there.
+ *   - Build the configurations you need.
+ *   .
  **/
 
 /**
