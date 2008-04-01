@@ -26,14 +26,24 @@
 #
 ################################################################################
 #
-# $Id: make_vms.sh,v 1.2 2008/03/31 19:13:28 iamcamiel Exp $
+# $Id: make_vms.sh,v 1.3 2008/04/01 18:37:40 iamcamiel Exp $
+#
+# X-1.3      Camiel Vanderhoeven                      01-APR-2008
+#      Files taken automatically from Makefile.am.
+#
+# X-1.2	     Camiel Vanderhoeven		      31-MAR-2008
+#      VMS-specific files added.
 #
 # X-1.1	     Camiel Vanderhoeven                      20-MAR-2008
 #      File Created.
 #
 ################################################################################
 
-es40_SOURCES="AliM1543C.cpp AliM1543C_ide.cpp AliM1543C_usb.cpp AlphaCPU.cpp AlphaCPU_ieeefloat.cpp AlphaCPU_vaxfloat.cpp AlphaCPU_vmspal.cpp AlphaSim.cpp Cirrus.cpp Configurator.cpp  DEC21143.cpp Disk.cpp DiskController.cpp DiskDevice.cpp DiskFile.cpp DiskRam.cpp DMA.cpp DPR.cpp es40_debug.cpp Ethernet.cpp Exception.cpp Flash.cpp FloppyController.cpp Keyboard.cpp lockstep.cpp PCIDevice.cpp Port80.cpp S3Trio64.cpp SCSIBus.cpp SCSIDevice.cpp Serial.cpp StdAfx.cpp Sym53C810.cpp Sym53C895.cpp SystemComponent.cpp System.cpp TraceEngine.cpp VGA.cpp gui/gui.cpp gui/gui_x11.cpp gui/keymap.cpp gui/scancodes.cpp gui/sdl.cpp vms/Event.cpp vms/Exception.cpp vms/Mutex.cpp vms/Runnable.cpp vms/RWLock.cpp vms/Semaphore.cpp vms/Thread.cpp vms/ErrorHandler.cpp vms/Bugcheck.cpp vms/Debugger.cpp vms/ThreadLocal.cpp vms/Timestamp.cpp vms/RefCountedObject.cpp"
+#
+# List files here that are only part of the OpenVMS port, and that are not in
+# Makefile.am
+#
+es40_VMS_SOURCES="vms/Event.cpp vms/Exception.cpp vms/Mutex.cpp vms/Runnable.cpp vms/RWLock.cpp vms/Semaphore.cpp vms/Thread.cpp vms/ErrorHandler.cpp vms/Bugcheck.cpp vms/Debugger.cpp vms/ThreadLocal.cpp vms/Timestamp.cpp vms/RefCountedObject.cpp"
 
 es40_CONFIGS="es40 es40_idb es40_lss es40_lsm es40_cfg"
 
@@ -51,6 +61,53 @@ cat > make_vms.com << VMS_EOF
 \$ ES40_ROOT = "/CAM1\\\$DKC0/USERS/IAMCAMIEL/ES40"
 \$!
 VMS_EOF
+
+#
+# Read normal sources from Makefile.am
+#
+es40_REG_SOURCES=`
+  for z in "z"; do
+    started="no"
+    result=""
+    while read line_a line_b line_c line_d; do
+      if test "$started" = "no" -a "$line_a" = "es40_SOURCES"; then
+        started="yes"
+        line_a=$line_c
+      fi
+      if test "$started" = "yes"; then
+        if test "X$line_b" = "X"; then
+          started="end"
+        else
+          result="$result $line_a"
+        fi
+      fi
+    done
+    echo "$result"
+  done < Makefile.am
+`
+es40_CFG_SOURCES=`
+  for z in "z"; do
+    started="no"
+    result=""
+    while read line_a line_b line_c line_d; do
+      if test "$started" = "no" -a "$line_a" = "es40_cfg_SOURCES"; then
+        started="yes"
+        line_a=$line_c
+      fi
+      if test "$started" = "yes"; then
+        if test "X$line_b" = "X"; then
+          started="end"
+        else
+          result="$result $line_a"
+        fi
+      fi
+    done
+    echo "$result"
+  done < Makefile.am
+`
+
+es40_SOURCES="${es40_VMS_SOURCES}${es40_REG_SOURCES}"
+
 for current_CONFIG in $es40_CONFIGS; do
 
   es40_DEFINES=ES40,__USE_STD_IOSTREAM
@@ -66,7 +123,7 @@ for current_CONFIG in $es40_CONFIGS; do
   elif test "$current_CONFIG" = "es40_lsm"; then
     es40_DEFINES=$es40_DEFINES,IDB,LSM
   elif test "$current_CONFIG" = "es40_cfg"; then
-    es40_SOURCES="es40-cfg.cpp"
+    es40_SOURCES="${es40_VMS_SOURCES}${es40_CFG_SOURCES}"
   fi
 
   cat >> make_vms.com << VMS_EOF
