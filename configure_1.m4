@@ -1,37 +1,156 @@
-define(ES_ASK_Q, 
-  while true; do
-    echo -n " $1? [$2]: "
-    read ac_tmp 
-    if test "X$ac_tmp" = "X"; then
-      ac_tmp="$2"
+#! /bin/sh
+
+################################################################################
+# ES40 emulator.
+# Copyright (C) 2007-2008 by the ES40 Emulator Project
+#
+# Website: http://sourceforge.net/projects/es40
+# E-mail : camiel@camicom.com
+# 
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 2
+# of the License, or (at your option) any later version.
+# 
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+# 
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 
+# 02110-1301, USA.
+# 
+# Although this is not required, the author would appreciate being notified of, 
+# and receiving any modifications you may make to the source code that might serve
+# the general public.
+#
+################################################################################
+#
+# $Id: configure_1.m4,v 1.3 2008/04/02 19:16:26 iamcamiel Exp $
+#
+# X-1.x      Camiel Vanderhoeven                          02-APR-2008
+#     More questions, better structure.
+#
+################################################################################
+
+define(ES_ASK_YNS,
+# ask a higher-level question, with a response of yes, no, or some
+# arg 1: question
+# arg 2: default value
+# arg 3: action on yes
+# arg 4: action on no
+# arg 5: action on some
+# arg 6: pre-determined answer (if not "", the answer will be assumed to be this)
+# arg 7: explanation
+  if test "X$6" = "X"; then
+    if test "$all_default" = "yes"; then
+      answer="$2"
+    else
+      while true; do
+        echo -n "$1? (yes, no, some) [$2]: "
+        read answer
+        if test "X$answer" = "X"; then
+          answer="$2"
+        fi
+        if test "$answer" = "y" -o "$answer" = "ye" -o "$answer" = "yes"; then
+          answer="yes"
+          break
+        elif test "$answer" = "n" -o "$answer" = "no"; then
+          answer="no"
+          break
+        elif test "$answer" = "s" -o "$answer" = "so" -o "$answer" = "som" -o "$answer" = "some"; then
+          answer="some"
+          break
+        fi
+        echo "Invalid value: please answer yes no or some"
+      done
     fi
-    if test "$ac_tmp" = "y" -o "$ac_tmp" = "ye" -o "$ac_tmp" = "yes"; then
-      ifelse($3, , :, $3)
-      break
-    fi
-    if test "$ac_tmp" = "n" -o "$ac_tmp" = "no"; then
-      ifelse($4, , :, $4)
-      break
-    fi
-    echo "Invalid value; please enter yes or no"
-  done
+  else
+    answer="$6"
+  fi
+  if test "$answer" = "yes"; then
+    ifelse($3, , :, $3)
+  elif test "$answer" = "no"; then
+    ifelse($4, , :, $4)
+  elif test "$answer" = "some"; then
+    ifelse($5, , :, $5)
+  fi
 )
 
-define(ES_ASK_DEBUG_Q,
-  ES_ASK_Q(Do you want to enable $1 debugging, no, dbg="yes", dbg="no")
-  if test "$dbg" = "yes"; then
+define(ES_ASK_YN,
+# ask a question with a response of yes or no
+# arg 1: question
+# arg 2: default value
+# arg 3: action on yes
+# arg 4: action on no
+# arg 5: pre-determined answer (if not "", the answer will be assumed to be this)
+# arg 6: explanation
+  if test "X$5" = "X"; then
+    if test "$all_default" = "yes"; then
+      answer="$2"
+    else
+      while true; do
+        echo -n "$1? (yes, no) [$2]: "
+        read answer
+        if test "X$answer" = "X"; then
+          answer="$2"
+        fi
+        if test "$answer" = "y" -o "$answer" = "ye" -o "$answer" = "yes"; then
+          answer="yes"
+          break
+        elif test "$answer" = "n" -o "$answer" = "no"; then
+          answer="no"
+          break
+        fi
+        echo "Invalid value: please answer yes or no"
+      done
+    fi
+  else
+    answer="$5"
+  fi
+  if test "$answer" = "yes"; then
+    ifelse($3, , :, $3)
+  elif test "$answer" = "no"; then
+    ifelse($4, , :, $4)
+  fi
+)
+
+define(ES_ASK_DEF,
+# ask a yes/no question, and define/undefine a macro accordingly
+# arg 1: question to follow "Do you want to "
+# arg 2: name of macro
+# arg 3: default value
+# arg 4: pre-determined answer
+# arg 5: explanation
+# arg 6: reverse (yes, no)
+  ES_ASK_YN(Do you want to $1, $3, debug="yes", debug="no", $4, $5)
+  if test "$6" = "yes"; then
+    check_for="no"
+  else
+    check_for="yes"
+  fi
+  if test "$debug" = $check_for; then
     cat >>src/config_debug.h <<EOF
 
-// Enable $1 debugging
-#define DEBUG_$2 1
+// Define to 1 if you want to $1
+#define $2 1
 EOF
   else
     cat >>src/config_debug.h <<EOF
 
-// Disable $1 debugging
-//#define DEBUG_$2 1 
+// Define to 1 if you want to $1
+#undef $2
 EOF
   fi
+)
+
+define(ES_ASK_DEBUG,
+# arg 1: human-readable name of debugging
+# arg 2: name of debug-macro (excluding DEBUG_)
+# arg 3: pre-determined answer
+  ES_ASK_DEF(enable $1 debugging, DEBUG_$2, no, $3)
 )
 
 define(ES_DEBUG_Q, 
@@ -39,53 +158,55 @@ define(ES_DEBUG_Q,
 // This file contains the debug configuration options.
 // This file was generated by configure_1.sh
 EOF
-  ES_ASK_Q(Do you want the defaults for all options, yes, defopt="yes", defopt="no")
-  if test "$defopt" = "no"; then
-    ES_ASK_Q(Do you want to show the cycle counter, yes, cyc="yes", cyc="no")
-    if test "$cyc" = "no"; then
-      cat >>src/config_debug.h <<EOF
+  ES_ASK_YN(Do you want the defaults for all options, yes, all_default="yes", all_default="no")
 
-// Disable the cycle counter
-#define HIDE_COUNTER 1
-EOF
-    else
-      cat >>src/config_debug.h <<EOF
+  ES_ASK_DEF(show the cycle counter, HIDE_COUNTER, yes, , , yes)
 
-// Enable the cycle counter
-//#define HIDE_COUNTER 1
-EOF
-    fi
-    ES_ASK_DEBUG_Q(VGA, VGA)
-    ES_ASK_DEBUG_Q(Serial Port, SERIAL)
-    ES_ASK_Q(Do you want to enable one or more IDE debugging options, no, ide="yes", ide="no")
-    if test "$ide" = "yes"; then
-      ES_ASK_DEBUG_Q(all IDE, IDE)
-      if test "$dbg" = "no"; then
-        ES_ASK_DEBUG_Q(IDE Busmaster, IDE_BUSMASTER)
-        ES_ASK_DEBUG_Q(IDE Command, IDE_COMMAND)
-        ES_ASK_DEBUG_Q(IDE DMA, IDE_DMA)
-        ES_ASK_DEBUG_Q(IDE Interrupt, IDE_INTERRUPT)
-        ES_ASK_DEBUG_Q(IDE Command Register, IDE_REG_COMMAND)
-        ES_ASK_DEBUG_Q(IDE Control Register, IDE_REG_CONTROL)
-        ES_ASK_DEBUG_Q(IDE ATAPI Packet, IDE_PACKET)
-        ES_ASK_DEBUG_Q(IDE Thread, IDE_THREADS)
-        ES_ASK_DEBUG_Q(IDE Mutexes, IDE_LOCKS)
-      fi
-    fi
-    ES_ASK_DEBUG_Q(unknown memory access, UNKMEM)
-    ES_ASK_DEBUG_Q(PCI, PCI)
-    ES_ASK_DEBUG_Q(Translationbuffer, TB)
-    ES_ASK_DEBUG_Q(I/O Port Access, PORTACCESS)
-    ES_ASK_DEBUG_Q(SCSI, SCSI)
-    ES_ASK_DEBUG_Q(Keyboard, KBD)
-    ES_ASK_DEBUG_Q(Programmable Interrupt Controller (PIC), PIC)
-    ES_ASK_DEBUG_Q(Printer port, LPT)
-    ES_ASK_DEBUG_Q(USB Controller, USB)
-    ES_ASK_DEBUG_Q(Symbios SCSI Controller, SYM)
-    ES_ASK_DEBUG_Q(DMA Controller, DMA)
-    ES_ASK_DEBUG_Q(backtrace on SIGSEGV, BACKTRACE)
-    ES_ASK_DEBUG_Q(mutex, LOCKS)
-  fi
+  ES_ASK_DEBUG(VGA, VGA)
+  ES_ASK_DEBUG(Serial Port, SERIAL)
+    
+  ES_ASK_YNS(Do you want to enable IDE debugging options, no, ide="yes", ide="no", ide="")
+    ES_ASK_DEBUG(IDE General, IDE, $ide)
+    ES_ASK_DEBUG(IDE Busmaster, IDE_BUSMASTER, $ide)
+    ES_ASK_DEBUG(IDE Command, IDE_COMMAND, $ide)
+    ES_ASK_DEBUG(IDE CMD, IDE_CMD, $ide)
+    ES_ASK_DEBUG(IDE DMA, IDE_DMA, $ide)
+    ES_ASK_DEBUG(IDE Interrupt, IDE_INTERRUPT, $ide)
+    ES_ASK_DEBUG(IDE Command Register, IDE_REG_COMMAND, $ide)
+    ES_ASK_DEBUG(IDE Control Register, IDE_REG_CONTROL, $ide)
+    ES_ASK_DEBUG(IDE ATAPI Packet, IDE_PACKET, $ide)
+    ES_ASK_DEBUG(IDE Thread, IDE_THREADS, $ide)
+    ES_ASK_DEBUG(IDE Mutexes, IDE_LOCKS, $ide)
+    ES_ASK_DEBUG(IDE Multiple, IDE_MULTIPLE, $ide)
+
+  ES_ASK_YNS(Do you want to enable Floating-point debugging options, no, fp="yes", fp="no", fp="")
+    ES_ASK_DEBUG(Floating Point conversions, FP_CONVERSION, $fp)
+    ES_ASK_DEBUG(Floating Point load/store, FP_LOADSTORE, $fp)
+
+  ES_ASK_YNS(Do you want to enable network interface debugging options, no, nic="yes", nic="no", nic="")
+    ES_ASK_DEBUG(General NIC, NIC, $nic)
+    ES_ASK_DEBUG(NIC Filter, NIC_FILTER, $nic)
+    ES_ASK_DEBUG(NIC Serial ROM, NIC_SROM, $nic)
+
+  ES_ASK_DEBUG(unknown memory access, UNKMEM)
+  ES_ASK_DEBUG(PCI, PCI)
+  ES_ASK_DEBUG(Translationbuffer, TB)
+  ES_ASK_DEBUG(I/O Port Access, PORTACCESS)
+  ES_ASK_DEBUG(Keyboard, KBD)
+  ES_ASK_DEBUG(Programmable Interrupt Controller (PIC), PIC)
+  ES_ASK_DEBUG(Printer port, LPT)
+  ES_ASK_DEBUG(USB Controller, USB)
+ 
+  ES_ASK_YNS(Do ypu want to enable SCSI debugging options, no, scsi="yes", scsi="no", scsi="")
+    ES_ASK_DEBUG(SCSI Device, SCSI, $scsi)
+    ES_ASK_DEBUG(Symbios SCSI Controller, SYM, $scsi)
+    ES_ASK_DEBUG(Symbios Registers, SYM_REGS, $scsi)
+    ES_ASK_DEBUG(Symbios SCRIPTS Execution, SYM_SCRIPTS, $scsi)
+
+  ES_ASK_DEBUG(DMA Controller, DMA)
+  ES_ASK_DEBUG(backtrace on SIGSEGV, BACKTRACE)
+  ES_ASK_DEBUG(mutex, LOCKS)
+  ES_ASK_DEBUG(SDL Key translation, SDL_KEY)
 )
 #! /bin/sh
 #
@@ -96,3 +217,4 @@ echo "If you don't want any debugging options enabled, answer YES to the"
 echo "following question"
 echo ""
 ES_DEBUG_Q
+exit
