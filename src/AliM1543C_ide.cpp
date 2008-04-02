@@ -28,7 +28,10 @@
  * \file
  * Contains the code for the emulated Ali M1543C IDE chipset part.
  *
- * $Id: AliM1543C_ide.cpp,v 1.30 2008/03/20 11:40:47 iamcamiel Exp $
+ * $Id: AliM1543C_ide.cpp,v 1.31 2008/04/02 13:28:29 iamcamiel Exp $
+ *
+ * X-1.31       Camiel Vanderhoeven                             02-APR-2008
+ *      Fixed compiler warnings.
  *
  * X-1.30       Brian Wheeler                                   20-MAR-2008
  *   1. Improved locking by a) Removing all of the general register 
@@ -994,7 +997,7 @@ void CAliM1543C_ide::ide_control_write(int index, u32 address, u32 data)
  **/
 u32 CAliM1543C_ide::ide_busmaster_read(int index, u32 address, int dsize)
 {
-  u32 data;
+  u32 data = 0;
   switch(dsize)
   {
   case 8:
@@ -1007,7 +1010,6 @@ u32 CAliM1543C_ide::ide_busmaster_read(int index, u32 address, int dsize)
 
   default:
     FAILURE(InvalidArgument, "16-bit read from busmaster");
-    data = 0;
     break;
   }
 

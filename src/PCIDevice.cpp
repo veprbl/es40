@@ -27,7 +27,10 @@
  * \file
  * Contains the code for the PCI device class.
  *
- * $Id: PCIDevice.cpp,v 1.17 2008/03/14 15:30:51 iamcamiel Exp $
+ * $Id: PCIDevice.cpp,v 1.18 2008/04/02 13:28:29 iamcamiel Exp $
+ *
+ * X-1.17       Camiel Vanderhoeven                             02-APR-2008
+ *      Fixed compiler warnings.
  *
  * X-1.16       Camiel Vanderhoeven                             14-MAR-2008
  *   1. More meaningful exceptions replace throwing (int) 1.
@@ -105,6 +108,7 @@ CPCIDevice::CPCIDevice(CConfigurator* cfg, CSystem* c, int pcibus, int pcidev) :
 
 CPCIDevice::~CPCIDevice(void)
 { }
+
 void CPCIDevice::add_function(int func, u32 data[64], u32 mask[64])
 {
   memcpy(std_config_data[func], data, 64 * sizeof(u32));
@@ -524,7 +528,6 @@ u32 CPCIDevice::ReadMem_Legacy(int index, u32 address, int dsize)
 {
   FAILURE_2(NotImplemented, "%s(%s) No Legacy read handler installed",
             myCfg->get_myName(), myCfg->get_myValue());
-  return 0;
 }
 
 void CPCIDevice::WriteMem_Legacy(int index, u32 address, int dsize, u32 data)
@@ -537,7 +540,6 @@ u32 CPCIDevice::ReadMem_Bar(int func, int bar, u32 address, int dsize)
 {
   FAILURE_3(NotImplemented, "%s(%s).%d No BAR read handler installed",
             myCfg->get_myName(), myCfg->get_myValue(), func);
-  return 0;
 }
 
 void CPCIDevice::WriteMem_Bar(int func, int bar, u32 address, int dsize, u32 data)

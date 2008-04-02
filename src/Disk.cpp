@@ -27,7 +27,10 @@
  * \file
  * Contains code for the disk base class.
  *
- * $Id: Disk.cpp,v 1.30 2008/03/17 20:10:28 iamcamiel Exp $
+ * $Id: Disk.cpp,v 1.31 2008/04/02 13:28:29 iamcamiel Exp $
+ *
+ * X-1.31       Camiel Vanderhoeven                             02-APR-2008
+ *      Fixed compiler warnings.
  *
  * X-1.30       Camiel Vanderhoeven                             16-MAR-2008
  *      Always reset dati.read when setting dati.available.
@@ -846,10 +849,13 @@ int CDisk::do_scsi_command()
           break;
 
         default:
+#if 1
           FAILURE_1(NotImplemented,
                     "Don't know format for vital product data page %02x!!\n", state.scsi.cmd.data[2]);
+#else
           state.scsi.dati.data[1] = state.scsi.cmd.data[2]; // page code
           state.scsi.dati.data[2] = 0x00; // reserved
+#endif
         }
       }
       else
