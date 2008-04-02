@@ -27,7 +27,10 @@
  * \file 
  * Contains IEEE floating point code for the Alpha CPU.
  *
- * $Id: AlphaCPU_ieeefloat.cpp,v 1.8 2008/03/14 15:30:50 iamcamiel Exp $
+ * $Id: AlphaCPU_ieeefloat.cpp,v 1.9 2008/04/02 13:29:02 iamcamiel Exp $
+ *
+ * X-1.8        Camiel Vanderhoeven                             02-APR-2008
+ *      Fixed pointless comparison of U64 value against zero.
  *
  * X-1.7        Camiel Vanderhoeven                             14-MAR-2008
  *   1. More meaningful exceptions replace throwing (int) 1.
@@ -340,7 +343,7 @@ u64 CAlphaCPU::ieee_cvtif(u64 val, u32 ins, u32 dp)
 
   if(val == 0)
     return 0;   /* 0? return +0 */
-  if(val < 0)
+  if(((s64)val) < 0)
   {             /* < 0? */
     a.sign = 1; /* set sign */
     val = NEG_Q(val);
