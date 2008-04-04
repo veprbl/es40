@@ -3,6 +3,11 @@
 
 \section c019 version 0.18 -> 0.18+
 
+ - More questions in debug confuration script. (03-apr-2008, Camiel Vanderhoeven)
+ - Compile on OpenVMS; new OpenVMS build scripts generated from the UNIX build scripts; Include
+   selected parts of Poco (Poco has dropped support for OpenVMS). (02-apr-2008, Camiel
+   Vanderhoeven)
+ - Created configuration file utility. (28-mar-2008, Camiel Vanderhoeven)
  - Support OpenVMS file paths. (26-mar-2008, Camiel Vanderhoeven)
  - Use the config.h data created by the configure script. (26-mar-2008, Camiel Vanderhoeven)
  - Improved IDE locking by a) Removing all of the general register locking; b) Busmaster locking

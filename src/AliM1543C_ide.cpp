@@ -28,7 +28,10 @@
  * \file
  * Contains the code for the emulated Ali M1543C IDE chipset part.
  *
- * $Id: AliM1543C_ide.cpp,v 1.31 2008/04/02 13:28:29 iamcamiel Exp $
+ * $Id: AliM1543C_ide.cpp,v 1.32 2008/04/04 08:47:17 iamcamiel Exp $
+ *
+ * X-1.32       Brian Wheeler                                   04-APR-2008
+ *      Fixed missing variable declaration.
  *
  * X-1.31       Camiel Vanderhoeven                             02-APR-2008
  *      Fixed compiler warnings.
@@ -1107,6 +1110,7 @@ void CAliM1543C_ide::ide_busmaster_write(int index, u32 address, u32 data,
     printf("%%IDE-I-PRD: Virtual address: %"LL "x  \n",
            endian_32(*(u32 *) (&CONTROLLER(index).busmaster[4])));
     printf("-IDE-I-PRD: Physical address: %"LL "x  \n", prd_address);
+    u32 base, control;
     do
     {
       do_pci_read(prd_address, &base, 4, 1);
