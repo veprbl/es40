@@ -27,7 +27,10 @@
 #
 ################################################################################
 #
-# $Id: configure.ac,v 1.3 2008/03/26 19:01:38 iamcamiel Exp $
+# $Id: configure.ac,v 1.4 2008/04/04 09:07:14 iamcamiel Exp $
+#
+# X-1.2      Camiel Vanderhoeven                      04-APR-2008
+#      Version number set to "0.18+"
 #
 # X-1.1	     Camiel Vanderhoeven                      20-MAR-2008
 #      File Created.
@@ -37,10 +40,10 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ(2.61)
-AC_INIT(es40, 0.18, iamcamiel@gmail.com)
+AC_INIT(es40, 0.18+, iamcamiel@gmail.com)
 AC_CONFIG_SRCDIR([src/Flash.cpp])
 AM_CONFIG_HEADER([src/config.h])
-AM_INIT_AUTOMAKE(es40, 0.18)
+AM_INIT_AUTOMAKE(es40, 0.18+)
 
 # Checks for programs.
 AC_PROG_CXX

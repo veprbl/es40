@@ -21,9 +21,6 @@
  * Although this is not required, the author would appreciate being notified of, 
  * and receiving any modifications you may make to the source code that might serve
  * the general public.
- *
- * Parts of this file based upon GXemul, which is Copyright (C) 2004-2007  
- * Anders Gavare.  All rights reserved.
  */
 
 /**
@@ -31,11 +28,17 @@
  * Contains configuration definitions (similar to produced by the configure 
  * script on other OS'es) to build ES40 emulator on OpenVMS.
  *
- * $Id: config_vms.h,v 1.1 2008/03/31 19:13:28 iamcamiel Exp $
+ * $Id: config_vms.h,v 1.2 2008/04/04 09:07:14 iamcamiel Exp $
+ *
+ * X-1.2        Camiel Vanderhoeven                             04-APR-2008
+ *      Version number set to "0.18+"
  *
  * X-1.1        Camiel Vanderhoeven                             31-MAR-2008
  *      File creation.                    
  **/
+
+/* Version number of package */
+#define VERSION "0.18+"
 
 /* Define to 1 if you have the `alarm' function. */
 #define HAVE_ALARM 1
@@ -234,13 +237,13 @@
 #define PACKAGE_NAME "es40"
 
 /* Define to the full name and version of this package. */
-#define PACKAGE_STRING "es40 0.18"
+#define PACKAGE_STRING "es40 " VERSION
 
 /* Define to the one symbol short name of this package. */
 #define PACKAGE_TARNAME "es40"
 
 /* Define to the version of this package. */
-#define PACKAGE_VERSION "0.18"
+#define PACKAGE_VERSION VERSION
 
 /* Define as the return type of signal handlers (`int' or `void'). */
 #define RETSIGTYPE void
@@ -262,9 +265,6 @@
 
 /* Define to 1 if your <sys/time.h> declares `struct tm'. */
 /* #undef TM_IN_SYS_TIME */
-
-/* Version number of package */
-#define VERSION "0.18"
 
 /* Define for Solaris 2.5.1 so the uint32_t typedef from <sys/synch.h>,
    <pthread.h>, or <semaphore.h> is not used. If the typedef was allowed, the

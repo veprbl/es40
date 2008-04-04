@@ -26,7 +26,13 @@
 #
 ################################################################################
 #
-# $Id: Makefile.am,v 1.3 2008/03/29 09:16:14 iamcamiel Exp $
+# $Id: Makefile.am,v 1.4 2008/04/04 09:07:14 iamcamiel Exp $
+#
+# X-1.4      Camiel Vanderhoeven                      04-APR-2008
+#      Added comments.
+#
+# X-1.3      Camiel Vanderhoeven                      29-MAR-2008
+#      Added es40_cfg.
 #
 # X-1.1	     Camiel Vanderhoeven                      20-MAR-2008
 #      File Created.
