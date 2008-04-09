@@ -27,7 +27,10 @@
  * \file
  * Contains the code for the emulated Dual Port Ram and RMC devices.
  *
- * $Id: DPR.cpp,v 1.21 2008/03/17 20:20:39 iamcamiel Exp $
+ * $Id: DPR.cpp,v 1.22 2008/04/09 12:59:42 iamcamiel Exp $
+ *
+ * X-1.22       Brian Wheeler                                   09-APR-2008
+ *      Correct RMC ROM versions.
  *
  * X-1.21       Camiel Vanderhoeven                             17-MAR-2008
  *      Always set volatile DPR rom contents.
@@ -340,14 +343,14 @@ void CDPR::init()
   //    3009:300B       RMC Rev Level of RMC first byte is letter Rev [x/t/v] second 2 bytes are major/minor.
   //                            This is the rev level of the RMC on-chip code.
   state.ram[0x3009] = 'V';
-  state.ram[0x300a] = 0x01;
-  state.ram[0x300b] = 0x00;
+  state.ram[0x300a] = 0x31;
+  state.ram[0x300b] = 0x30;
 
   //    300C:300E       RMC Rev Level of RMC first byte is letter Rev [x/t/v] second 2 bytes are major/minor.
   //                            This is the rev level of the RMC flash code.
   state.ram[0x300c] = 'V';
-  state.ram[0x300d] = 0x01;
-  state.ram[0x300e] = 0x00;
+  state.ram[0x300d] = 0x31;
+  state.ram[0x300e] = 0x30;
 
   //    300F:3010 300F RMC Revision Field of the DPR Structure
   //    3400 SROM Size of Bcache in MB
@@ -383,7 +386,7 @@ void CDPR::init()
   //    3600:36FF 3600 SRM Reserved
   //    3700:37FF SRM Reserved
   //    3800:3AFF RMC RMC scratch space
-  printf("%s: $Id: DPR.cpp,v 1.21 2008/03/17 20:20:39 iamcamiel Exp $\n",
+  printf("%s: $Id: DPR.cpp,v 1.22 2008/04/09 12:59:42 iamcamiel Exp $\n",
          devid_string);
 }
 
