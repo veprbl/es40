@@ -1,7 +1,7 @@
 /* ES40 emulator.
  * Copyright (C) 2007-2008 by the ES40 Emulator Project
  *
- * WWW    : http://sourceforge.net/projects/es40
+ * WWW    : http://es40.org
  * E-mail : camiel@camicom.com
  * 
  * This program is free software; you can redistribute it and/or
@@ -27,7 +27,10 @@
  * \file
  * Defines the entry point for the application.
  *
- * $Id: AlphaSim.cpp,v 1.47 2008/04/04 09:06:30 iamcamiel Exp $
+ * $Id: AlphaSim.cpp,v 1.48 2008/04/10 12:32:24 iamcamiel Exp $
+ *
+ * X-1.48       Martin Borgman                                  10-APR-2008
+ *	    Handle SDL support on OS X through OS_X/SDLMain.m.
  *
  * X-1.47       Camiel Vanderhoeven                             04-APR-2008
  *      Take version number from config.h
@@ -190,6 +193,10 @@
 #include "DPR.h"
 
 #include "lockstep.h"
+
+#if defined(HAVE_SDL)
+#include "SDL.h"
+#endif
 
 /// "standard" locations for a configuration file.  This will be port specific.
 const char* path[] ={

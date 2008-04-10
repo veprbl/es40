@@ -1,7 +1,7 @@
 /* ES40 emulator.
  * Copyright (C) 2007-2008 by the ES40 Emulator Project
  *
- * WWW    : http://sourceforge.net/projects/es40
+ * WWW    : http://es40.org
  * E-mail : camiel@camicom.com
  * 
  *  This file is based upon Bochs.
@@ -34,7 +34,10 @@
  * Contains the code for the bx_sdl_gui_c class used for interfacing with
  * SDL.
  *
- * $Id: sdl.cpp,v 1.17 2008/03/14 15:31:29 iamcamiel Exp $
+ * $Id: sdl.cpp,v 1.18 2008/04/10 12:32:25 iamcamiel Exp $
+ *
+ * X-1.18       Martin Borgman                                  10-APR-2008
+ *	    Handle SDL support on OS X through OS_X/SDLMain.m.
  *
  * X-1.15       Camiel Vanderhoeven                             29-FEB-2008
  *      Comments
@@ -82,10 +85,6 @@
 #include "../Keyboard.h"
 #include "../Configurator.h"
 
-#ifdef __APPLE__
-#include <WebKit/CarbonUtils.h>
-#include <ApplicationServices/ApplicationServices.h>
-#endif
 #define _MULTI_THREAD
 
 // Define BX_PLUGGABLE in files that can be compiled into plugins.  For
@@ -192,20 +191,6 @@ void bx_sdl_gui_c::specific_init(unsigned x_tilesize, unsigned y_tilesize)
     for(j = 0; j < 16; j++)
       vga_charmap[i * 32 + j] = sdl_font8x16[i][j];
 
-#ifdef __APPLE__
-  {
-
-    // Initialize Cocoa before SDL_Init, using a method from WebKit.framework
-    WebInitForCarbon();
-
-    // Make the application as a GUI application (shown in Dock, etc.)
-    ProcessSerialNumber psn = { 0, kCurrentProcess};
-    TransformProcessType(&psn, kProcessTransformToForegroundApplication);
-
-    // Bring the window to the front
-    SetFrontProcess(&psn);
-  }
-#endif
 #ifdef __MORPHOS__
   if(!(PowerSDLBase = OpenLibrary("powersdl.library", 0)))
   {
