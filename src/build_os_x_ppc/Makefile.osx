@@ -27,7 +27,10 @@
 #
 # Makefile for GNU Linux. (And possibly many UNIX'es).
 #
-# $Id: Makefile.osx,v 1.1 2008/01/13 18:21:05 iamcamiel Exp $
+# $Id: Makefile.osx,v 1.1.2.1 2008/04/10 10:11:36 iamcamiel Exp $
+#
+# X-1.17		Martin Borgman  				10-APR-2008
+#	Handle SDL support on OS X through OS_X/SDLMain.m.
 #
 # X-1.16		Fang Zhe        				13-JAN-2008
 #	Adapted this file (from the Linux version) for the OS X port.
@@ -36,75 +39,78 @@
 
 #to use G++
 CC = g++
-CFLAGS = -arch ppc -arch i386 -isysroot /Developer/SDKs/MacOSX10.4u.sdk -O2 -I. -I..
+CFLAGS = -O2 -I. -I..
 
-#to use IBM's xlC
-#CC = /opt/ibmcmp/vacpp/6.0/bin/xlc++_r
-#CFLAGS = -O5 -I/opt/ibmcmp/vacpp/6.0/include -I. -I.. -D__GNUC__
-
-#CFLAGS += -I/Developer/SDKs/MacOSX10.3.9.sdk/usr/include
 CFLAGS += -g -I/Library/Frameworks/SDL.framework/Headers -DHAVE_SDL -DHAVE_PCAP
 
-#LDFLAGS = -Wl,-syslibroot,/Developer/SDKs/MacOSX10.3.9.sdk
-LDFLAGS = -arch ppc -arch i386 -isysroot /Developer/SDKs/MacOSX10.4u.sdk 
-LDFLAGS += -Wl,-framework,WebKit -Wl,-weak_framework,SDL -Wl,-framework,Carbon
-LDFLAGS += -L. -Wl,-dylib_file,/usr/lib/libpcap.A.dylib:libpcap.dylib -Wl,-dynamic -weak-lpcap
+LDFLAGS  = -weak_framework SDL -framework Cocoa
+LDFLAGS += -L. -dylib_file /usr/lib/libpcap.A.dylib:libpcap.dylib -dynamic -weak-lpcap
+
+
 IDB_CFLAGS = -DIDB 
 LSM_CFLAGS = -DIDB -DLS_MASTER
 LSS_CFLAGS = -DIDB -DLS_SLAVE
 LD = g++
-#to use IBM's xlC
-#LD = /opt/ibmcmp/vacpp/6.0/bin/xlc++_r
-#A_LDFLAGS = -O5 -qstrict -qmkshrobj -Wl,-static -qreport
-#LDFLAGS += -lgcc_s.1
 
 DEPEND = makedepend $(CFLAGS)
 
-OBJS =  AliM1543C.o \
-	  AliM1543C_ide.o \
-	  AliM1543C_usb.o \
-        AlphaCPU.o \
-	  AlphaCPU_vmspal.o \
-        AlphaSim.o \
-	  Cirrus.o \
-	  Configurator.o \
-        DEC21143.o \
-        Disk.o \
-        DiskController.o \
-        DiskDevice.o \
-        DiskFile.o \
-        DiskRam.o \
-        DPR.o \
-        es40_debug.o \
-        Flash.o \
-        FloppyController.o \
-  	  lockstep.o \
-       NewIde.o \
-	  PCIDevice.o \
-        Port80.o \
-	  S3Trio64.o \
+OBJS = AliM1543C.o \
+       AliM1543C_ide.o \
+       AliM1543C_usb.o \
+       AlphaCPU.o \
+       AlphaCPU_ieeefloat.o \
+       AlphaCPU_vaxfloat.o \
+       AlphaCPU_vmspal.o \
+       AlphaSim.o \
+       Cirrus.o \
+       Configurator.o \
+       DEC21143.o \
+       Disk.o \
+       DiskController.o \
+       DiskDevice.o \
+       DiskFile.o \
+       DiskRam.o \
+       DMA.o \
+       DPR.o \
+       es40_debug.o \
+       Ethernet.o \
+       Flash.o \
+       FloppyController.o \
+       Keyboard.o \
+       lockstep.o \
+       PCIDevice.o \
+       Port80.o \
+       S3Trio64.o \
        SCSIBus.o \
        SCSIDevice.o \
-	  Serial.o \
-        StdAfx.o \
-        Sym53C895.o \
-        SystemComponent.o \
-        System.o \
-        TraceEngine.o \
-	  VGA.o \
-	  gui/gui.o \
-	  gui/keymap.o \
-	  gui/scancodes.o \
-	  gui/sdl.o
+       Serial.o \
+       StdAfx.o \
+       Sym53C810.o \
+       Sym53C895.o \
+       SystemComponent.o \
+       System.o \
+       TraceEngine.o \
+       VGA.o \
+       gui/gui.o \
+       gui/keymap.o \
+       gui/scancodes.o \
+       gui/sdl.o
+
+MAC_OBJS = OS_X/SDLMain.o
 
 IDB_OBJS = $(subst .o,.do,$(OBJS))
 LSM_OBJS = $(subst .o,.mao,$(OBJS))
 LSS_OBJS = $(subst .o,.slo,$(OBJS))
+MAC_SRCS = $(subst .o,.m,$(MAC_OBJS))
+SRCS = $(subst .o,.cpp,$(OBJS))
 
 .SUFFIXES: .do .mao .slo
 
 .cpp.o:
 	$(CC) $(CFLAGS) -c $<  -o $@
+
+.m.o:
+	gcc -ObjC $(CFLAGS) -c $<  -o $@
 
 .cpp.do:
 	$(CC) $(CFLAGS) $(IDB_CFLAGS) -c $< -o $@
@@ -119,12 +125,12 @@ all: es40
 
 debug: es40_idb es40_lsm es40_lss
 
-es40:   $(OBJS)
+es40:   $(OBJS) $(MAC_OBJS)
 ifeq ($(CC),/opt/ibmcmp/vacpp/6.0/bin/xlc++_r)
 	$(LD) $(A_LDFLAGS) -o es40.a $(OBJS)
 	$(LD) $(LDFLAGS) es40.a -o es40
 else
-	$(LD) $(LDFLAGS) -o es40 $(OBJS)
+	$(LD) $(LDFLAGS) -o es40 $(OBJS) $(MAC_OBJS)
 endif
 
 es40_idb: $(IDB_OBJS)
@@ -137,8 +143,8 @@ es40_lss: $(LSS_OBJS)
 	$(LD) $(LDFLAGS) -o es40_lss $(LSS_OBJS)
 
 depend: $(SRCS)
-	$(DEPEND) $(SRCS)
+	$(DEPEND) $(SRCS) $(MAC_SRCS)
 	$(DEPEND) -o.do -a -- $(IDB_CFLAGS) -- $(SRCS)
 clean:
-	rm -f es40 es40.a es40_idb es40_lss es40_lsm *.o *.do *.mao *.slo *.trc gui/*.o gui/*.mao gui/*.slo gui/*.do
+	rm -f es40 es40_idb es40_lss es40_lsm *.o *.do *.mao *.slo *.trc gui/*.o gui/*.mao gui/*.slo gui/*.do
 

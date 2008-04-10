@@ -1,7 +1,7 @@
 /* ES40 emulator.
  * Copyright (C) 2007-2008 by the ES40 Emulator Project
  *
- * WWW    : http://sourceforge.net/projects/es40
+ * WWW    : http://es40.org
  * E-mail : camiel@camicom.com
  * 
  * This program is free software; you can redistribute it and/or
@@ -27,23 +27,10 @@
  * \file
  * Defines the entry point for the application.
  *
- * $Id: AlphaSim.cpp,v 1.47 2008/04/04 09:06:30 iamcamiel Exp $
+ * $Id: AlphaSim.cpp,v 1.42.2.1 2008/04/10 10:11:36 iamcamiel Exp $
  *
- * X-1.47       Camiel Vanderhoeven                             04-APR-2008
- *      Take version number from config.h
- *
- * X-1.46       Camiel Vanderhoeven                             26-MAR-2008
- *      Fix compiler warnings.
- *
- * X-1.45       Camiel Vanderhoeven                             17-MAR-2008
- *      Always set volatile DPR rom contents.
- *
- * X-1.44       Camiel Vanderhoeven                             14-MAR-2008
- *      Formatting.
- *
- * X-1.43       Camiel Vanderhoeven                             14-MAR-2008
- *   1. More meaningful exceptions replace throwing (int) 1.
- *   2. U64 macro replaces X64 macro.
+ * X-1.43		Martin Borgman  				                10-APR-2008
+ *	    Handle SDL support on OS X through OS_X/SDLMain.m.
  *
  * X-1.42       Camiel Vanderhoeven                             04-MAR-2008
  *      Version updated to 0.18.
@@ -184,6 +171,7 @@
  *
  * \author Camiel Vanderhoeven (camiel@camicom.com / http://www.camicom.com)
  **/
+
 #include "StdAfx.h"
 #include "System.h"
 #include "Flash.h"
@@ -191,14 +179,16 @@
 
 #include "lockstep.h"
 
+#if defined(HAVE_SDL)
+#include "SDL.h"
+#endif
+
 /// "standard" locations for a configuration file.  This will be port specific.
-const char* path[] ={
+char *path[]={
 #if defined(_WIN32)
   ".\\es40.cfg",
   "c:\\es40.cfg",
   "c:\\windows\\es40.cfg",
-#elif defined(__VMS)
-  "[]ES40.CFG",
 #else
   "./es40.cfg",
   "/etc/es40.cfg",
@@ -215,32 +205,27 @@ const char* path[] ={
 #define HAS_BACKTRACE
 
 #define BTCOUNT 100
-void*   btbuffer[BTCOUNT];
+void *btbuffer[BTCOUNT];
 
-void segv_handler(int signum)
-{
-  int     nptrs = backtrace(btbuffer, BTCOUNT);
-  char **  strings;
+void segv_handler(int signum) {
+  int nptrs = backtrace(btbuffer, BTCOUNT);
+  char **strings;
 
   printf("%%SYS-F-SEGFAULT: The Alpha Simulator has Segfaulted.\n");
   printf("-SYS-F-SEGFAULT: Backtrace follows.\n");
 
-  printf("backtrace() returned %d addresses.\n", nptrs);
-  strings = backtrace_symbols(btbuffer, nptrs);
-  if(strings == NULL)
-  {
+  printf("backtrace() returned %d addresses.\n",nptrs);
+  strings = backtrace_symbols(btbuffer,nptrs);
+  if(strings==NULL) {
     perror("backtrace_symbols");
     exit(1);
   }
 
-  for(int i = 0; i < nptrs; i++)
-  {
-    printf("%3d %s\n", nptrs - i, strings[i]);
+  for(int i = 0; i < nptrs; i++) {
+    printf("%3d %s\n",nptrs-i, strings[i]);
   }
-
   free(strings);
-  if(signum == SIGSEGV)
-    _exit(1);
+  if(signum==SIGSEGV) _exit(1);
 }
 
 #else
@@ -259,12 +244,14 @@ void segv_handler(int signum)
  *  - Cleans up.
  *  .
  **/
-int main (int argc, char*argv[])
+
+int main(int argc, char* argv[])
 {
+
   printf("\n\n");
   printf("   **======================================================================**\n");
   printf("   ||                             ES40  emulator                           ||\n");
-  printf("   ||                              Version " VERSION "                            ||\n");
+  printf("   ||                              Version 0.18                            ||\n");
   printf("   ||                                                                      ||\n");
   printf("   ||  Copyright (C) 2007-2008 by the ES40 Emulator Project                ||\n");
   printf("   ||  Website: http://sourceforge.net/projects/es40                       ||\n");
@@ -277,133 +264,132 @@ int main (int argc, char*argv[])
   printf("   **======================================================================**\n");
   printf("\n\n");
 
-  const char*   filename = 0;
-  FILE*   f;
+  char *filename = 0;
+  FILE *f;
 
 #ifdef HAS_BACKTRACE
   signal(SIGSEGV, &segv_handler);
   signal(SIGUSR1, &segv_handler);
 #endif
-  try
+
+  try 
   {
 #if defined(IDB) && (defined(LS_MASTER) || defined(LS_SLAVE))
-    lockstep_init();
+	lockstep_init();
 #endif
 #if defined(IDB)
-    if((argc == 2 || argc == 3) && argv[1][0] != '@')
+	if ((argc == 2 || argc==3) && argv[1][0] != '@')
 #else
-      if(argc == 2)
+	if (argc == 2)
 #endif
+	{
+	  filename = argv[1];
+    } 
+    else 
+    {
+      for(int i = 0 ; path[i] ; i++) 
       {
-        filename = argv[1];
-      }
-      else
-      {
-        for(int i = 0; path[i]; i++)
+        filename=path[i];
+        f=fopen(path[i],"r");
+        if(f != NULL) 
         {
-          filename = path[i];
-          f = fopen(path[i], "r");
-          if(f != NULL)
-          {
-            fclose(f);
-            filename = path[i];
-            break;
-          }
+		  fclose(f);
+		  filename = path[i];
+		  break;
         }
-        if(filename == NULL)
-          FAILURE(FileNotFound, "configuration file");
       }
-    char*   ch1;
-    size_t  ll1;
-    f = fopen(filename, "rb");
-    fseek(f, 0, SEEK_END);
+      if(filename==NULL)
+        FAILURE("Configuration file not found.");
+    }
+
+    char * ch1;
+    size_t ll1;
+    f = fopen(filename,"rb");
+    fseek(f,0,SEEK_END);
     ll1 = ftell(f);
-    ch1 = (char*) calloc(ll1, 1);
-    fseek(f, 0, SEEK_SET);
-    ll1 = fread(ch1, 1, ll1, f);
-    CConfigurator*  c = new CConfigurator(0, 0, 0, ch1, ll1);
+    ch1 = (char *) calloc(ll1,1);
+    fseek(f,0,SEEK_SET);
+    ll1 = fread(ch1,1,ll1,f);
+    CConfigurator * c = new CConfigurator(0,0,0,ch1,ll1);
     fclose(f);
     free(ch1);
 
-    if(!theSystem)
-      FAILURE(Configuration, "no system initialized");
+    if(!theSystem) 
+    {
+      printf("%%SYS-F-INIT: Initialization of system has failed. Syntax error in config?.\n");
+      exit(1);
+    }
 
 #if defined(IDB)
     trc = new CTraceEngine(theSystem);
 #endif
+
     theSystem->LoadROM();
+
+    theSROM->RestoreStateF();
+    theDPR->RestoreStateF();
 
 #if defined(PROFILE)
     {
       u64 p_i;
-      for(p_i = PROFILE_FROM; p_i < PROFILE_TO; p_i += (4 * PROFILE_BUCKSIZE))
+      for (p_i = PROFILE_FROM; p_i < PROFILE_TO; p_i+=(4*PROFILE_BUCKSIZE))
         PROFILE_BUCKET(p_i) = 0;
       profiled_insts = 0;
     }
 #endif
+
+
 #if defined(IDB)
-    if(argc > 1 && argc < 4 && argv[argc - 1][0] == '@')
-      trc->run_script(argv[argc - 1] + 1);
+    if (argc>1 && argc<4 && argv[argc-1][0]=='@')
+      trc->run_script(argv[argc-1] + 1);
     else
       trc->run_script(NULL);
 #else
-    theSystem->Run();
+
+    if (theSystem->Run()>0)
+    {
+      // save flash and dpr rom only if not terminated with a fatal error
+      theSROM->SaveStateF();
+      theDPR->SaveStateF();
+    }
 #endif
-  }
-  catch(CGracefulException & e)
-  {
-    printf("Exiting gracefully: %s\n", e.displayText().c_str());
-
-    theSystem->stop_threads();
-
-    // save flash and dpr rom only if not terminated with a fatal error
-    theSROM->SaveStateF();
-    theDPR->SaveStateF();
 
 #if defined(PROFILE)
     {
-      FILE*   p_fp;
-      u64     p_max = 0;
-      u64     p_i;
-      int     p_j;
+      FILE * p_fp;
+      u64 p_max = 0;
+      u64 p_i;
+      int p_j;
 
       printf("Writing profile to profile.txt");
 
-      p_fp = fopen("profile.txt", "w");
-      for(p_i = PROFILE_FROM; p_i < PROFILE_TO; p_i += (4 * PROFILE_BUCKSIZE))
+      p_fp = fopen("profile.txt","w");
+      for (p_i = PROFILE_FROM; p_i < PROFILE_TO; p_i+=(4*PROFILE_BUCKSIZE))
       {
-        if(PROFILE_BUCKET(p_i) > p_max)
+        if (PROFILE_BUCKET(p_i)>p_max)
           p_max = PROFILE_BUCKET(p_i);
       }
-      fprintf
-        (
-          p_fp, "p_max = %10"LL "d; %10"LL "d profiled instructions.\n\n", p_max,
-            profiled_insts
-        );
-      for(p_i = PROFILE_FROM; p_i < PROFILE_TO; p_i += (4 * PROFILE_BUCKSIZE))
+      fprintf(p_fp,"p_max = %10" LL "d; %10" LL "d profiled instructions.\n\n",p_max,profiled_insts);
+      for (p_i = PROFILE_FROM; p_i < PROFILE_TO; p_i+=(4*PROFILE_BUCKSIZE))
       {
-        if(PROFILE_BUCKET(p_i))
+        if (PROFILE_BUCKET(p_i))
         {
-          fprintf(p_fp, "%016"LL "x: %10"LL "d ", p_i, PROFILE_BUCKET(p_i));
-          for(p_j = 0; p_j < (((float) PROFILE_BUCKET(p_i) / (float) p_max) * 100);
-              p_j++)
-            fprintf(p_fp, "*");
-          fprintf(p_fp, "\n");
+          fprintf(p_fp,"%016" LL "x: %10" LL "d ",p_i,PROFILE_BUCKET(p_i));
+          for(p_j=0;p_j<(((float)PROFILE_BUCKET(p_i)/(float)p_max)*100);p_j++)
+            fprintf(p_fp,"*");
+          fprintf(p_fp,"\n");
         }
       }
       fclose(p_fp);
     }
 #endif
+
     delete theSystem;
   }
-  catch(Poco::Exception & e)
+  catch(int)
   {
-    printf("Emulator Failure: %s\n", e.displayText().c_str());
-    if(theSystem)
-    {
-      theSystem->stop_threads();
-      delete theSystem;
-    }
+	if (theSystem)
+	  delete theSystem;
   }
   return 0;
 }
