@@ -4025,18 +4025,32 @@ fi
   if test "x$no_sdl" = x ; then
      { echo "$as_me:$LINENO: result: yes" >&5
 echo "${ECHO_T}yes" >&6; }
-     CXXFLAGS="$CXXFLAGS $SDL_CFLAGS -DHAVE_SDL"
-  LIBS="$LIBS $SDL_LIBS"
-
+     sdl_found="yes"
   else
-     { echo "$as_me:$LINENO: result: no" >&5
-echo "${ECHO_T}no" >&6; }
      if test "$SDL_CONFIG" = "no" ; then
-       echo "*** The sdl-config script installed by SDL could not be found"
-       echo "*** If SDL was installed in PREFIX, make sure PREFIX/bin is in"
-       echo "*** your path, or set the SDL_CONFIG environment variable to the"
-       echo "*** full path to sdl-config."
+       if test -f /Library/Frameworks/SDL.framework/Headers/SDL.h ; then
+         { echo "$as_me:$LINENO: result: yes" >&5
+echo "${ECHO_T}yes" >&6; }
+         echo "*** OS-X version of SDL found."
+         SDL_CFLAGS="-I/Library/Frameworks/SDL.framework/Headers"
+         SDL_LIBS="-weak_framework SDL -framework Cocoa"
+         CFLAGS="$CFLAGS $SDL_CFLAGS"
+         CXXFLAGS="$CXXFLAGS $SDL_CFLAGS"
+         LIBS="$LIBS $SDL_LIBS"
+         sdl_found="yes"
+       else
+         { echo "$as_me:$LINENO: result: no" >&5
+echo "${ECHO_T}no" >&6; }
+         echo "*** The sdl-config script installed by SDL could not be found"
+         echo "*** If SDL was installed in PREFIX, make sure PREFIX/bin is in"
+         echo "*** your path, or set the SDL_CONFIG environment variable to the"
+         echo "*** full path to sdl-config."
+         sdl_found="no"
+       fi
      else
+       { echo "$as_me:$LINENO: result: no" >&5
+echo "${ECHO_T}no" >&6; }
+       sdl_found="no"
        if test -f conf.sdltest ; then
         :
        else
@@ -4111,6 +4125,12 @@ rm -f core conftest.err conftest.$ac_objext conftest_ipa8_conftest.oo \
           LIBS="$ac_save_LIBS"
        fi
      fi
+  fi
+  if test "$sdl_found" = "true" ; then
+     CXXFLAGS="$CXXFLAGS $SDL_CFLAGS -DHAVE_SDL"
+  LIBS="$LIBS $SDL_LIBS"
+
+  else
      SDL_CFLAGS=""
      SDL_LIBS=""
      :

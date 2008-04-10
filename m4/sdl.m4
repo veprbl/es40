@@ -2,8 +2,8 @@
 # ES40 emulator.
 # Copyright (C) 2007-2008 by the ES40 Emulator Project
 #
-# Website: http://sourceforge.net/projects/es40
-# E-mail : camiel@camicom.com
+# Website: http://es40.org
+# E-mail : camiel@es40.org
 # 
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
@@ -26,7 +26,11 @@
 #
 ################################################################################
 #
-# $Id: sdl.m4,v 1.1 2008/03/20 07:49:55 iamcamiel Exp $
+# $Id: sdl.m4,v 1.2 2008/04/10 12:08:57 iamcamiel Exp $
+#
+# X-1.2          Camiel Vanderhoeven                      10-APR-2008
+#      File now recognizes Apple's use of SDL. (SDL in 
+#      /Library/Grameworks/SDL.framework)
 #
 # X-1.1	     Camiel Vanderhoeven                      20-MAR-2008
 #      File Adapted for use with ES40 Emulator.
@@ -164,15 +168,29 @@ int main (int argc, char *argv[])
   fi
   if test "x$no_sdl" = x ; then
      AC_MSG_RESULT(yes)
-     ifelse([$2], , :, [$2])     
+     sdl_found="yes"
   else
-     AC_MSG_RESULT(no)
      if test "$SDL_CONFIG" = "no" ; then
-       echo "*** The sdl-config script installed by SDL could not be found"
-       echo "*** If SDL was installed in PREFIX, make sure PREFIX/bin is in"
-       echo "*** your path, or set the SDL_CONFIG environment variable to the"
-       echo "*** full path to sdl-config."
+       if test -f /Library/Frameworks/SDL.framework/Headers/SDL.h ; then
+         AC_MSG_RESULT(yes)
+         echo "*** OS-X version of SDL found."
+         SDL_CFLAGS="-I/Library/Frameworks/SDL.framework/Headers"
+         SDL_LIBS="-weak_framework SDL -framework Cocoa"
+         CFLAGS="$CFLAGS $SDL_CFLAGS"
+         CXXFLAGS="$CXXFLAGS $SDL_CFLAGS"
+         LIBS="$LIBS $SDL_LIBS"
+         sdl_found="yes"
+       else
+         AC_MSG_RESULT(no)
+         echo "*** The sdl-config script installed by SDL could not be found"
+         echo "*** If SDL was installed in PREFIX, make sure PREFIX/bin is in"
+         echo "*** your path, or set the SDL_CONFIG environment variable to the"
+         echo "*** full path to sdl-config."
+         sdl_found="no"
+       fi
      else
+       AC_MSG_RESULT(no)
+       sdl_found="no"
        if test -f conf.sdltest ; then
         :
        else
@@ -207,6 +225,10 @@ int main(int argc, char *argv[])
           LIBS="$ac_save_LIBS"
        fi
      fi
+  fi
+  if test "$sdl_found" = "true" ; then
+     ifelse([$2], , :, [$2])
+  else
      SDL_CFLAGS=""
      SDL_LIBS=""
      ifelse([$3], , :, [$3])
