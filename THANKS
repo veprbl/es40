@@ -17,6 +17,7 @@
  *  - Alex: GNU/Win32 support.
  *  - David Leonard: Bugfixes.
  *  - Pepito Grillo: Bugfixes.
+ *  - Martin Borgman: additional OS X support.
  *  .
  *
  * \section Acknowledgements
