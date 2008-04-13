@@ -1,8 +1,8 @@
 /* ES40 emulator.
  * Copyright (C) 2007-2008 by the ES40 Emulator Project
  *
- * WWW    : http://sourceforge.net/projects/es40
- * E-mail : camiel@camicom.com
+ * WWW    : http://es40.org
+ * E-mail : camiel@es40.org
  * 
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -27,7 +27,10 @@
  * \file
  * Contains the code for the emulated Cirrus CL GD-5434 Video Card device.
  *
- * $Id: Cirrus.cpp,v 1.21 2008/03/25 08:41:32 iamcamiel Exp $
+ * $Id: Cirrus.cpp,v 1.22 2008/04/13 16:04:52 iamcamiel Exp $
+ *
+ * X-1.22       Camiel Vanderhoeven                             13-APR-2008
+ *      Fixed Doxygen comment.
  *
  * X-1.21       Pepito Grillo                                   25-MAR-2008
  *      Fixed a typo in the last patch.
@@ -331,7 +334,7 @@ void CCirrus::init()
   state.vga_mem_updated = 1;
 
   myThread = 0;
-  printf("%s: $Id: Cirrus.cpp,v 1.21 2008/03/25 08:41:32 iamcamiel Exp $\n",
+  printf("%s: $Id: Cirrus.cpp,v 1.22 2008/04/13 16:04:52 iamcamiel Exp $\n",
          devid_string);
 }
 
@@ -997,7 +1000,7 @@ void CCirrus::io_write_b(u32 address, u8 data)
  *           +----- 2..3: Color Select 7-6: In modes other than mode 0x13 
  *                        (256-color VGA), these are the two most-significant bits
  *                        of the 8-bit digital color value to the video DAC.
- * \code
+ * \endcode
  **/
 void CCirrus::write_b_3c0(u8 value)
 {

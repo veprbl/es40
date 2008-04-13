@@ -1,8 +1,8 @@
 /* ES40 emulator.
  * Copyright (C) 2007-2008 by the ES40 Emulator Project
  *
- * WWW    : http://sourceforge.net/projects/es40
- * E-mail : camiel@camicom.com
+ * WWW    : http://es40.org
+ * E-mail : camiel@es40.org
  * 
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -27,7 +27,10 @@
  * \file
  * Contains the code for emulated S3 Trio 64 Video Card device.
  *
- * $Id: S3Trio64.cpp,v 1.18 2008/03/25 10:20:35 iamcamiel Exp $
+ * $Id: S3Trio64.cpp,v 1.19 2008/04/13 16:04:52 iamcamiel Exp $
+ *
+ * X-1.19       Camiel Vanderhoeven                             13-APR-2008
+ *      Fixed Doxygen comment.
  *
  * X-1.18       Camiel Vanderhoeven                             25-MAR-2008
  *      Added comments on VGA registers.
@@ -322,7 +325,7 @@ void CS3Trio64::init()
 
   myThread = 0;
 
-  printf("%s: $Id: S3Trio64.cpp,v 1.18 2008/03/25 10:20:35 iamcamiel Exp $\n",
+  printf("%s: $Id: S3Trio64.cpp,v 1.19 2008/04/13 16:04:52 iamcamiel Exp $\n",
          devid_string);
 }
 
@@ -988,7 +991,7 @@ void CS3Trio64::io_write_b(u32 address, u8 data)
  *           +----- 2..3: Color Select 7-6: In modes other than mode 0x13 
  *                        (256-color VGA), these are the two most-significant bits
  *                        of the 8-bit digital color value to the video DAC.
- * \code
+ * \endcode
  **/
 void CS3Trio64::write_b_3c0(u8 value)
 {
