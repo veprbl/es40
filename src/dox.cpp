@@ -1,8 +1,8 @@
 /* ES40 emulator.
  * Copyright (C) 2007-2008 by the ES40 Emulator Project
  *
- * Website: http://sourceforge.net/projects/es40
- * E-mail : camiel@camicom.com
+ * Website: http://es40.org
+ * E-mail : camiel@es40.org
  * 
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -31,7 +31,7 @@
  * You could read the documentation from this file; but it would probably
  * be easier to go to http://es40.sourceforge.net.
  *
- * $Id: dox.cpp,v 1.18 2008/04/01 14:21:34 iamcamiel Exp $
+ * $Id: dox.cpp,v 1.19 2008/04/13 15:49:49 iamcamiel Exp $
  **/
 
 /**
@@ -39,7 +39,7 @@
  *
  * \section intro Introduction
  * Welcome to the documentation for the ES40 Emulator Project. For the
- * main project page, goto http://sourceforge.net/projects/es40.
+ * main project page, goto http://es40.org.
  *
  * On these pages here, you can find the documented source code, the change
  * log, compilation & installation instructions, and more.
