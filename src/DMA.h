@@ -27,7 +27,13 @@
  * \file
  * Contains the definitions for the emulated DMA controller.
  *
- * $Id: DMA.h,v 1.2 2008/03/14 15:30:51 iamcamiel Exp $
+ * $Id: DMA.h,v 1.3 2008/04/18 09:56:20 iamcamiel Exp $
+ *
+ * X-1.3        Brian Wheeler                                   18-APR-2008
+ *      Rewrote DMA code to make it ready for floppy support.
+ *
+ * X-1.2        Camiel Vanderhoeven                             14-MAR-2008
+ *      Formatting.
  *
  * X-1.1        Camiel Vanderhoeven                             26-FEB-2008
  *      Created. Contains code previously found in AliM1543C.h
@@ -53,7 +59,13 @@ class CDMA : public CSystemComponent
     virtual u64   ReadMem(int index, u64 address, int dsize);
     virtual int   SaveState(FILE* f);
     virtual int   RestoreState(FILE* f);
+ 
+
+    void          set_request(int index, int channel, int data);
+
   private:
+    void          do_dma();
+
 
     /// The state structure contains all elements that need to be saved to the statefile.
     struct SDMA_state
@@ -68,6 +80,7 @@ class CDMA : public CSystemComponent
         u16   base;
         u16   pagebase;
         u16   count;
+	u8    mode;
       } channel[8];
 
       /// DMA controller state
@@ -75,11 +88,21 @@ class CDMA : public CSystemComponent
       {
         u8  status;
         u8  command;
-        u8  writereq;
-        u8  mask;
-        u8  mode;
+        u8  request;
+	u8  mask;
       } controller[2];
     }
     state;
 };
+
+#define DMA0_IO_MAIN 0
+#define DMA1_IO_MAIN 1
+#define DMA_IO_LPAGE 2
+#define DMA_IO_HPAGE 3
+#define DMA0_IO_CHANNEL 4
+#define DMA1_IO_CHANNEL 5
+
+
+
+
 #endif // !defined(INCLUDED_DMA_H)
