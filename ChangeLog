@@ -3,6 +3,7 @@
 
 \section c019 version 0.18 -> 0.18+
 
+ - Rewrote DMA code to make it ready for floppy support. (18-apr-2008, Brian Wheeler)
  - More questions in debug confuration script. (03-apr-2008, Camiel Vanderhoeven)
  - Compile on OpenVMS; new OpenVMS build scripts generated from the UNIX build scripts; Include
    selected parts of Poco (Poco has dropped support for OpenVMS). (02-apr-2008, Camiel
