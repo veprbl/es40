@@ -1,8 +1,8 @@
 /* ES40 emulator.
  * Copyright (C) 2007-2008 by the ES40 Emulator Project
  *
- * WWW    : http://sourceforge.net/projects/es40
- * E-mail : camiel@camicom.com
+ * WWW    : http://es40.org
+ * E-mail : camiel@es40.org
  * 
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -27,7 +27,11 @@
  * \file
  * Contains the definitions for the emulated Ali M1543C IDE chipset part.
  *
- * $Id: AliM1543C_ide.h,v 1.22 2008/03/26 19:04:41 iamcamiel Exp $
+ * $Id: AliM1543C_ide.h,v 1.23 2008/04/29 08:03:21 iamcamiel Exp $
+ *
+ * X-1.23       Camiel Vanderhoeven                             29-APR-2008
+ *      CDiskController is no longer a CPCIDevice. devices that are both
+ *      should multiple inherit both.
  *
  * X-1.22       Camiel Vanderhoeven                             26-MAR-2008
  *      Fix compiler warnings.
@@ -141,6 +145,7 @@
 #define DEBUG_IDE_MULTIPLE
 #endif
 
+#include "PCIDevice.h"
 #include "DiskController.h"
 #include "Configurator.h"
 #include "SCSIDevice.h"
@@ -159,7 +164,10 @@
  *  - Mt. Fuji Commands for Multimedia Devices Version 7 INF-8090i v7
  *  .
  **/
-class CAliM1543C_ide : public CDiskController, public CSCSIDevice, public Poco::Runnable
+class CAliM1543C_ide : public CPCIDevice, 
+                       public CDiskController, 
+                       public CSCSIDevice, 
+                       public Poco::Runnable
 {
   public:
     CAliM1543C_ide(CConfigurator*  cfg, class CSystem*  c, int pcibus, int pcidev);

@@ -1,8 +1,8 @@
 /* ES40 emulator.
  * Copyright (C) 2007-2008 by the ES40 Emulator Project
  *
- * WWW    : http://sourceforge.net/projects/es40
- * E-mail : camiel@camicom.com
+ * WWW    : http://es40.org
+ * E-mail : camiel@es40.org
  * 
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -27,7 +27,11 @@
  * \file
  * Contains the code for the emulated Symbios SCSI controller.
  *
- * $Id: Sym53C810.cpp,v 1.12 2008/03/25 20:46:20 iamcamiel Exp $
+ * $Id: Sym53C810.cpp,v 1.13 2008/04/29 08:03:21 iamcamiel Exp $
+ *
+ * X-1.13       Camiel Vanderhoeven                             29-APR-2008
+ *      CDiskController is no longer a CPCIDevice. devices that are both
+ *      should multiple inherit both.
  *
  * X-1.12       Camiel Vanderhoeven                             25-MAR-2008
  *      Separate functions for different instructions, comments.
@@ -526,7 +530,10 @@ void CSym53C810::run()
  * Set up the SCSI bus, and defer the rest of initialization to 
  * CSym53C895::init.
  **/
-CSym53C810::CSym53C810(CConfigurator* cfg, CSystem* c, int pcibus, int pcidev) : CDiskController(cfg, c, pcibus, pcidev, 1, 7), mySemaphore(0, 1)
+CSym53C810::CSym53C810(CConfigurator* cfg, CSystem* c, int pcibus, int pcidev)
+                                          : CPCIDevice(cfg, c, pcibus, pcidev), 
+                                            CDiskController(1, 7), 
+                                            mySemaphore(0, 1)
 {
 
   // create scsi bus
@@ -551,7 +558,7 @@ void CSym53C810::init()
 
   myThread = 0;
 
-  printf("%s: $Id: Sym53C810.cpp,v 1.12 2008/03/25 20:46:20 iamcamiel Exp $\n",
+  printf("%s: $Id: Sym53C810.cpp,v 1.13 2008/04/29 08:03:21 iamcamiel Exp $\n",
          devid_string);
 }
 

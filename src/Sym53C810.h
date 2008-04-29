@@ -1,8 +1,8 @@
 /* ES40 emulator.
  * Copyright (C) 2007-2008 by the ES40 Emulator Project
  *
- * WWW    : http://sourceforge.net/projects/es40
- * E-mail : camiel@camicom.com
+ * WWW    : http://es40.org
+ * E-mail : camiel@es40.org
  * 
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -27,7 +27,11 @@
  * \file
  * Contains the definitions for the emulated Symbios SCSI controller.
  *
- * $Id: Sym53C810.h,v 1.7 2008/03/25 20:46:20 iamcamiel Exp $
+ * $Id: Sym53C810.h,v 1.8 2008/04/29 08:03:21 iamcamiel Exp $
+ *
+ * X-1.8        Camiel Vanderhoeven                             29-APR-2008
+ *      CDiskController is no longer a CPCIDevice. devices that are both
+ *      should multiple inherit both.
  *
  * X-1.7        Camiel Vanderhoeven                             25-MAR-2008
  *      Separate functions for different instructions, comments.
@@ -54,6 +58,7 @@
 #if !defined(INCLUDED_SYM53C810_H_)
 #define INCLUDED_SYM53C810_H_
 
+#include "PCIDevice.h"
 #include "DiskController.h"
 #include "SCSIDevice.h"
 
@@ -69,7 +74,10 @@
  *  - Symbios SCSI SCRIPTS Processors Programming Guide (http://la.causeuse.org/hauke/macbsd/symbios_53cXXX_doc/lsilogic-53cXXX-scripts.pdf)
  *  .
  **/
-class CSym53C810 : public CDiskController, public CSCSIDevice, public Poco::Runnable
+class CSym53C810 : public CPCIDevice, 
+                   public CDiskController, 
+                   public CSCSIDevice, 
+                   public Poco::Runnable
 {
   public:
     virtual int   SaveState(FILE* f);

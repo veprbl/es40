@@ -1,8 +1,8 @@
 /* ES40 emulator.
  * Copyright (C) 2007-2008 by the ES40 Emulator Project
  *
- * WWW    : http://sourceforge.net/projects/es40
- * E-mail : camiel@camicom.com
+ * WWW    : http://es40.org
+ * E-mail : camiel@es40.org
  * 
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -27,7 +27,14 @@
  * \file
  * Contains definitions for the disk controller base class.
  *
- * $Id: DiskController.h,v 1.4 2008/03/14 15:30:51 iamcamiel Exp $
+ * $Id: DiskController.h,v 1.5 2008/04/29 08:03:21 iamcamiel Exp $
+ *
+ * X-1.5        Camiel Vanderhoeven                             29-APR-2008
+ *      CDiskController is no longer a CPCIDevice. devices that are both
+ *      should multiple inherit both.
+ *
+ * X-1.4        Camiel Vanderhoeven                             14-MAR-2008
+ *      Formatting.
  *
  * X-1.3        Camiel Vanderhoeven                             12-JAN-2008
  *      Made register_disk void and virtual.
@@ -41,17 +48,14 @@
 #if !defined(__DISKCONTROLLER_H__)
 #define __DISKCONTROLLER_H__
 
-#include "PCIDevice.h"
-
 /**
  * \brief Abstract base class for disk controllers (uses CDisk's)
  **/
-class CDiskController : public CPCIDevice
+class CDiskController
 {
   public:
-    CDiskController(CConfigurator*  cfg, CSystem*  c, int pcibus, int pcidev,
-                    int num_busses, int num_devs);
-    ~             CDiskController(void);
+    CDiskController(int num_busses, int num_devs);
+    ~CDiskController(void);
 
     virtual void  register_disk(class CDisk* dsk, int bus, int dev);
     class CDisk*  get_disk(int bus, int dev);

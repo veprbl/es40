@@ -1,8 +1,8 @@
 /* ES40 emulator.
  * Copyright (C) 2007-2008 by the ES40 Emulator Project
  *
- * WWW    : http://sourceforge.net/projects/es40
- * E-mail : camiel@camicom.com
+ * WWW    : http://es40.org
+ * E-mail : camiel@es40.org
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -28,7 +28,11 @@
  * \file
  * Contains the code for the emulated Ali M1543C IDE chipset part.
  *
- * $Id: AliM1543C_ide.cpp,v 1.32 2008/04/04 08:47:17 iamcamiel Exp $
+ * $Id: AliM1543C_ide.cpp,v 1.33 2008/04/29 08:03:21 iamcamiel Exp $
+ *
+ * X-1.33       Camiel Vanderhoeven                             29-APR-2008
+ *      CDiskController is no longer a CPCIDevice. devices that are both
+ *      should multiple inherit both.
  *
  * X-1.32       Brian Wheeler                                   04-APR-2008
  *      Fixed missing variable declaration.
@@ -295,8 +299,9 @@ u32 AliM1543C_ide_cfg_mask[64] = {
 /**
  * Constructor.
  **/
-CAliM1543C_ide::CAliM1543C_ide(CConfigurator*  cfg, CSystem*  c, int pcibus,
-                               int pcidev) : CDiskController(cfg, c, pcibus, pcidev, 2, 2)
+CAliM1543C_ide::CAliM1543C_ide(CConfigurator*  cfg, CSystem*  c, int pcibus, int pcidev)
+                                                    : CPCIDevice(cfg, c, pcibus, pcidev),
+                                                      CDiskController(2, 2)
 {
   if(theIDE != 0)
     FAILURE(Configuration, "More than one IDE controller");
