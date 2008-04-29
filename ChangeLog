@@ -3,6 +3,7 @@
 
 \section c019 version 0.18 -> 0.18+
 
+ - Floppy controller implementation. (29-apr-2008, Brian Wheeler)
  - CDiskController is no longer a CPCIDevice. This alows for non-PCI diskcontrollers (like the
    floppy controller. (29-apr-2008, Camiel Vanderhoeven)
  - Added memory map dumping and memory range checking. (29-apr-2008, Brian Wheeler)
