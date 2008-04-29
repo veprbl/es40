@@ -27,7 +27,7 @@
  * \file
  * Contains the definitions for the emulated DMA controller.
  *
- * $Id: DMA.h,v 1.3 2008/04/18 09:56:20 iamcamiel Exp $
+ * $Id: DMA.h,v 1.4 2008/04/29 08:45:48 iamcamiel Exp $
  *
  * X-1.3        Brian Wheeler                                   18-APR-2008
  *      Rewrote DMA code to make it ready for floppy support.
@@ -48,6 +48,8 @@
 /**
  * \brief Emulated DMA controller.
  **/
+
+
 class CDMA : public CSystemComponent
 {
   public:
@@ -62,9 +64,16 @@ class CDMA : public CSystemComponent
  
 
     void          set_request(int index, int channel, int data);
+    void           send_data(int channel, void *data);
+    void           recv_data(int channel, void *data);
+    int           get_count(int channel) { return state.channel[channel].count; };
+
 
   private:
     void          do_dma();
+
+    FILE *floppyimage;
+
 
 
     /// The state structure contains all elements that need to be saved to the statefile.
@@ -95,13 +104,17 @@ class CDMA : public CSystemComponent
     state;
 };
 
-#define DMA0_IO_MAIN 0
-#define DMA1_IO_MAIN 1
-#define DMA_IO_LPAGE 2
-#define DMA_IO_HPAGE 3
-#define DMA0_IO_CHANNEL 4
-#define DMA1_IO_CHANNEL 5
+#define DMA_IO_BASE 0x1000
+#define DMA0_IO_MAIN DMA_IO_BASE + 0
+#define DMA1_IO_MAIN DMA_IO_BASE + 1
+#define DMA_IO_LPAGE DMA_IO_BASE + 2
+#define DMA_IO_HPAGE DMA_IO_BASE + 3
+#define DMA0_IO_CHANNEL DMA_IO_BASE + 4
+#define DMA1_IO_CHANNEL DMA_IO_BASE + 5
+#define DMA0_IO_EXT DMA_IO_BASE + 6
+#define DMA1_IO_EXT DMA_IO_BASE + 7
 
+extern CDMA *theDMA;
 
 
 

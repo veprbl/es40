@@ -1,8 +1,8 @@
 /* ES40 emulator.
  * Copyright (C) 2007-2008 by the ES40 Emulator Project
  *
- * WWW    : http://sourceforge.net/projects/es40
- * E-mail : camiel@camicom.com
+ * WWW    : http://es40.org
+ * E-mail : camiel@es40.org
  * 
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -27,7 +27,10 @@
  * \file
  * Contains the code for the emulated DMA controller.
  *
- * $Id: DMA.cpp,v 1.6 2008/04/18 09:56:20 iamcamiel Exp $
+ * $Id: DMA.cpp,v 1.7 2008/04/29 08:45:48 iamcamiel Exp $
+ *
+ * X-1.7        Brian Wheeler                                   29-APR-2008
+ *      DMA now supports floppy device.
  *
  * X-1.6        Brian Wheeler                                   18-APR-2008
  *      Rewrote DMA code to make it ready for floppy support.
@@ -54,7 +57,11 @@
 #include "System.h"
 #include "DMA.h"
 #include "AliM1543C.h"
+#include "PCIDevice.h"
 
+#define DEBUG_DMA
+
+CDMA *theDMA = 0;
 
 /**
  * Constructor.
@@ -64,13 +71,15 @@ CDMA::CDMA(CConfigurator* cfg, CSystem* c) : CSystemComponent(cfg, c)
   int i;
 
   // DMA Setup
-#define LEGACY_IO(id,port,size) c->RegisterMemory(this, id, U64(0x00000801fc000000 | port), size)
-  LEGACY_IO(DMA0_IO_MAIN,0x08,8);
-  LEGACY_IO(DMA1_IO_MAIN,0xd0,16); 
+#define LEGACY_IO(id,port,size) c->RegisterMemory(this, id, U64(0x00000801fc000000) + port, size)
   LEGACY_IO(DMA0_IO_CHANNEL,0x00,8);
+  LEGACY_IO(DMA0_IO_MAIN,0x08,8);
+  LEGACY_IO(DMA_IO_LPAGE,0x81,11);
   LEGACY_IO(DMA1_IO_CHANNEL,0xc0,16);
-  LEGACY_IO(DMA_IO_LPAGE,0x80,16);
-  LEGACY_IO(DMA_IO_HPAGE,0x480,16); //? where is this documented?
+  LEGACY_IO(DMA1_IO_MAIN,0xd0,16); 
+  LEGACY_IO(DMA_IO_HPAGE,0x481,11);
+  LEGACY_IO(DMA0_IO_EXT, 0x040b, 1);
+  LEGACY_IO(DMA1_IO_EXT, 0x04D6, 1);
 
   for(i = 0; i < 8; i++)
   {
@@ -80,7 +89,8 @@ CDMA::CDMA(CConfigurator* cfg, CSystem* c) : CSystemComponent(cfg, c)
   state.controller[0].mask = 0xff;
   state.controller[1].mask = 0xff;
  
-  printf("dma: $Id: DMA.cpp,v 1.6 2008/04/18 09:56:20 iamcamiel Exp $\n");
+  theDMA = this;
+  printf("dma: $Id: DMA.cpp,v 1.7 2008/04/29 08:45:48 iamcamiel Exp $\n");
 }
 
 /**
@@ -93,11 +103,23 @@ int CDMA::DoClock()
   return 0;
 }
 
+char *dma_index_names[]={"DMA0_IO_MAIN",
+			 "DMA1_IO_MAIN",
+			 "DMA_IO_LPAGE",
+			 "DMA_IO_HPAGE",
+			 "DMA0_IO_CHANNEL",
+			 "DMA1_IO_CHANNEL",
+			 "DMA0_IO_EXT",
+			 "DMA1_IO_EXT"};
+#define DMA_INDEX(n) dma_index_names[n - DMA_IO_BASE]
+
+
 u64 CDMA::ReadMem(int index, u64 address, int dsize)
 {
   u64 ret;
   u8  data;
   int num;
+  printf("DMA: Readmem %s, %" LL "x, %x\n",DMA_INDEX(index),address, dsize);
   switch(dsize)
   {
   case 32:
@@ -113,8 +135,14 @@ u64 CDMA::ReadMem(int index, u64 address, int dsize)
     return ret;
 
   case 8:
+
+
+
+
     if(index == DMA1_IO_CHANNEL || index == DMA1_IO_MAIN)
       address >>=1;
+
+
 
     switch(index)
     {
@@ -137,6 +165,8 @@ u64 CDMA::ReadMem(int index, u64 address, int dsize)
 
     case DMA0_IO_MAIN:
     case DMA1_IO_MAIN:
+      num = ((address & 0x0e)>>1)+((index-DMA_IO_BASE)*4);
+      printf("num: %d\n",num);
       for(int i = 0; i< 4; i++) 
 	data |= ((state.channel[(num * 4) + i].count == state.channel[(num * 4) + 1].current)? 1 : 0) << i;
       data |= (state.controller[num].request & 0x0f) << 4;
@@ -147,7 +177,7 @@ u64 CDMA::ReadMem(int index, u64 address, int dsize)
     }
 
 #if defined(DEBUG_DMA)
-    printf("dma: read %d,%02x: %02x.   \n", index, address, data);
+    printf("dma: read %s,%02x: %02x.   \n", DMA_INDEX(index), address, data);
 #endif
     return data;
   }
@@ -156,7 +186,7 @@ u64 CDMA::ReadMem(int index, u64 address, int dsize)
 void CDMA::WriteMem(int index, u64 address, int dsize, u64 data)
 {
   int num = 0;
-  int channelmap[] = { 0xff, 2, 3, 1, 0xff, 0xff, 0xff, 0, 
+  int channelmap[] = { 2, 3, 1, 0xff, 0xff, 0xff, 0, 
 		       0xff, 6, 7, 5, 0xff, 0xff, 0xff, 4 };
   switch(dsize)
   {
@@ -178,13 +208,14 @@ void CDMA::WriteMem(int index, u64 address, int dsize, u64 data)
       address >>=1;
 
 #if defined(DEBUG_DMA)
-    printf("dma: write %d,%02x: %02x.   \n", index, address, data);
+    printf("dma: write %s, %02x: %02x.   \n", DMA_INDEX(index), (u32)address, data);
 #endif
     switch(index)
     {
-    case DMA0_IO_CHANNEL:
     case DMA1_IO_CHANNEL:
-      num = ((address & 0x0e)>>1)+(index*4);
+      num = 1;
+    case DMA0_IO_CHANNEL:
+      num = ((address & 0x0e)>>1)+(num*4);
       if(address & 1)
       {
 	if(state.channel[num].c_lobyte) 
@@ -192,21 +223,27 @@ void CDMA::WriteMem(int index, u64 address, int dsize, u64 data)
 	else
 	  state.channel[num].count = (state.channel[num].count & 0xff) | (data << 8);
 	state.channel[num].c_lobyte = ! state.channel[num].c_lobyte;
+#if defined(DEBUG_DMA)
+	printf("dma channel %d count: %04x\n", num, state.channel[num].count);
+#endif	
       } else {
 	if(state.channel[num].a_lobyte) 
 	  state.channel[num].base = (state.channel[num].base & 0xff00) | data;
 	else
 	  state.channel[num].base = (state.channel[num].base & 0xff) | (data << 8);
 	state.channel[num].a_lobyte = ! state.channel[num].a_lobyte;
+#if defined(DEBUG_DMA)
+	printf("dma channel %d base: %04x\n", num, state.channel[num].count);
+#endif	
       }
       break;
-
 
     case DMA1_IO_MAIN:
       num = 1;
     case DMA0_IO_MAIN:
       switch(address) {
       case 0: // command
+	printf("DMA: command register %d written with %x\n", num, data);
 	state.controller[num].command = data;
 	break;
 
@@ -215,22 +252,33 @@ void CDMA::WriteMem(int index, u64 address, int dsize, u64 data)
 	break;
 
       case 2: // single mask
+	printf("DMA: mask single on %d : %d %s\n", num, data & 0x03, data & 0x4 ? "Masked" : "Unmasked");
 	state.controller[num].mask = (state.controller[num].mask & ~(1 << (data & 0x03))) | ((data & 0x04)>>2);
+	printf("     Mask status: %x\n", state.controller[num].mask);
 	do_dma();
 	break;
 
       case 3: // mode register
+	printf("DMA: mode register %d for channel %d written with %x\n", num, (num*4)+(data & 0x03), data);
+	printf("    Mode: %s, Address %s, Autoinit %s, Command: %s\n",
+	       (data & 0x80 ? (data & 0x40 ? "Cascade" : "Block" ) : (data & 0x40 ? "Single" : "Demand" )),
+	       (data & 0x20 ? "Increment" : "Decrement" ),
+	       (data & 0x10 ? "Enable" : "Disable"),
+	       (data & 0x08 ? (data & 0x04 ? "Illegal" : "Read" ) : (data & 0x04 ? "Write" : "Verify")));
+	
+
 	state.channel[(num * 4) + (data & 0x03)].mode = data;
 	break;
 
       case 4: // clear flipflop(s)
+	printf("DMA: flipflops cleared for dma %d\n", num);
 	for(int i = (num * 4); i < ((num+1) * 4) ; i++)
 	  state.channel[i].a_lobyte = state.channel[i].c_lobyte = true;
 	break;
 
       case 5: // master reset
 #if defined(DEBUG_DMA)
-        printf("DMA-I-RESET: DMA %d reset.", index);
+        printf("DMA-I-RESET: DMA %d reset.", index - DMA_IO_BASE);
 #endif
 	for(int i = (num * 4); i < ((num+1) * 4) ; i++)
 	  state.channel[i].a_lobyte = state.channel[i].c_lobyte = true;
@@ -256,11 +304,24 @@ void CDMA::WriteMem(int index, u64 address, int dsize, u64 data)
 	printf("dma: unknown page register %x\n", address);
 	return;
       }
+      num = channelmap[address];
       if(index==DMA_IO_LPAGE) 
-        state.channel[num].pagebase = (state.channel[num].pagebase & 0xff00) | (u8) data;
+        state.channel[num].pagebase = (state.channel[num].pagebase & 0xff00) | data;
       else
         state.channel[num].pagebase = (state.channel[num].pagebase & 0xff) | (data << 8);
+
+#if defined(DEBUG_DMA)
+      printf("dma channel %d pagebase: %04x\n", num, state.channel[num].pagebase);
+#endif      
+
       break;
+
+
+    case DMA0_IO_EXT:
+    case DMA1_IO_EXT:
+      printf("dma: extended mode register %d written: %02x\n",index - DMA0_IO_EXT, data);
+      break;
+
 
     default:
       FAILURE(InvalidArgument, "dma: WriteMem index out of range");
@@ -369,4 +430,21 @@ void CDMA::do_dma() {
       }
     }
   }
+}
+
+
+void CDMA::send_data(int channel, void *data) {
+  u64 addr = (state.channel[channel].pagebase << 16) + state.channel[channel].base;
+  int count = get_count(channel);
+  printf("DMA send_data:  %x @ %16" LL "x\n", count, addr); 
+  // increment
+  theAli->do_pci_write(addr,data,1,count+1);
+  if(channel < 4)
+    state.controller[0].status |= 1 << channel;
+  else
+    state.controller[1].status |= 1 << channel;
+}
+
+void CDMA::recv_data(int channel, void *data) {
+
 }
