@@ -27,7 +27,10 @@
  * \file
  * Contains the code for the configuration file interpreter.
  *
- * $Id: Configurator.cpp,v 1.28 2008/04/29 08:49:12 iamcamiel Exp $
+ * $Id: Configurator.cpp,v 1.29 2008/04/29 09:52:46 iamcamiel Exp $
+ *
+ * X-1.29       Camiel Vanderhoeven                             29-APR-2008
+ *      Added floppy configuration.
  *
  * X-1.28       Brian Wheeler                                   29-APR-2008
  *      Added Floppy Controller.
@@ -696,6 +699,7 @@ classinfo classes[] = {
   {"dec21143", c_dec21143, IS_PCI | IS_NIC},
   {"sym53c895", c_sym53c895, IS_PCI | HAS_DISK},
   {"sym53c810", c_sym53c810, IS_PCI | HAS_DISK},
+  {"floppy", c_floppy, ON_CS | HAS_DISK},
   {"file", c_file, IS_DISK},
   {"device", c_device, IS_DISK},
   {"ramdisk", c_ramdisk, IS_DISK},
@@ -718,6 +722,7 @@ void CConfigurator::initialize()
   int     pcidev = 0;
   int     idedev = 0;
   int     idebus = 0;
+  int     fdcbus = 0;
   int     number;
   char*   pt;
 
@@ -790,6 +795,17 @@ void CConfigurator::initialize()
     pcidev = atoi(pt);
   }
 
+  if(myClassId == c_floppy)
+  {
+    if(strncmp(myName, "fdc", 3))
+      FAILURE_2(Configuration,
+                "Name %s for class %s should be fdc<bus>", myName,
+                myValue);
+
+    pt = &myName[3];
+    fdcbus = atoi(pt);
+  }
+
   if(myFlags & IS_DISK)
   {
     if(strncmp(myName, "disk", 4))
@@ -832,7 +848,10 @@ void CConfigurator::initialize()
     new CPort80(this, (CSystem*) pParent->get_device());
     new CKeyboard(this, (CSystem*) pParent->get_device());
     new CDMA(this, (CSystem*) pParent->get_device());
-    new CFloppyController(this, (CSystem*) pParent->get_device(),0);
+    break;
+
+  case c_floppy:
+    new CFloppyController(this, (CSystem*) pParent->get_device(),fdcbus);
     break;
 
   case c_ali_ide:
