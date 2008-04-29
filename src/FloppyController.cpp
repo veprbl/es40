@@ -27,7 +27,10 @@
  * \file
  * Contains the code for the emulated Floppy Controller devices.
  *
- * $Id: FloppyController.cpp,v 1.14 2008/04/29 08:48:17 iamcamiel Exp $
+ * $Id: FloppyController.cpp,v 1.15 2008/04/29 09:19:19 iamcamiel Exp $
+ *
+ * X-1.15       Brian Wheeler                                   29-APR-2008
+ *      Fixed floppy disk implementation.
  *
  * X-1.14       Brian Wheeler                                   29-APR-2008
  *      Floppy disk implementation.
@@ -84,19 +87,17 @@
  **/
 CFloppyController::CFloppyController(CConfigurator* cfg, CSystem* c, int id) : CSystemComponent(cfg, c)
 {
-  c->RegisterMemory(this, 0, U64(0x00000801fc0003f0) - (0x80 * id), 6);
-  c->RegisterMemory(this, 1, U64(0x00000801fc0003f7) - (0x80 * id), 1);
-
+  c->RegisterMemory(this, 1536, U64(0x00000801fc0003f0) - (0x80 * id), 6);
+  c->RegisterMemory(this, 1537, U64(0x00000801fc0003f7) - (0x80 * id), 1);
 
   state.cmd_parms_ptr = 0;
   state.cmd_res_ptr = 0;
   state.status.rqm=1;
   state.status.dio=0;
 
-
   floppyimage = fopen("disk1of3","r");
 
-  printf("%s: $Id: FloppyController.cpp,v 1.14 2008/04/29 08:48:17 iamcamiel Exp $\n",
+  printf("%s: $Id: FloppyController.cpp,v 1.15 2008/04/29 09:19:19 iamcamiel Exp $\n",
        devid_string);
 }
 
@@ -156,11 +157,10 @@ struct cmdinfo_t {
 
 void CFloppyController::WriteMem(int index, u64 address, int dsize, u64 data)
 {
-  if(index == 1)
+  if(index == 1537)
     address += 7;
 
-
-  printf("FDC: Write port %d, value: %x\n", address, data);
+  //printf("FDC: Write port %d, value: %x\n", address, data);
 
   switch(address)
   {
@@ -218,126 +218,132 @@ void CFloppyController::WriteMem(int index, u64 address, int dsize, u64 data)
       state.cmd_parms[state.cmd_parms_ptr++]=data;
       int cmd = state.cmd_parms[0] & 0x1F;
       state.cmd_res_max = cmdinfo[cmd].returns;
-      printf("FDC: parm_ptr: %d, parms: %d\n", state.cmd_parms_ptr, cmdinfo[cmd].parms);
-      if(state.cmd_parms_ptr == cmdinfo[cmd].parms) {
-	printf("FDC: command %s(",cmdinfo[cmd].name);
-	for(int i = 1; i < state.cmd_parms_ptr; i++) {
-	  printf("%x ",state.cmd_parms[i]);
-	}
-	printf(")\n");
-
-	state.cmd_res_max = cmdinfo[cmd].returns;
-	state.cmd_res_ptr = 0;
-	state.status.rqm=0;
-	switch(cmd) {
-	case 3: // specify
-	  // set up some hardware parameters.  We really don't care about
-	  // the times (step rate time, head unload time, head load time}, but
-	  // we may care about the ND bit (parm byte 3, bit 1)...
-	  state.dma = ~(state.cmd_parms[2] & 0x01);
-	  break;
-	  
-	case 6: // read data
-	  // args:
-	  // 0: bit 7 = MT (multitrack), 6 = MFM, 5 = SK (skip flag)
-	  // 1: bit 2 = HDS (head), 1 = DS1, 0 = DS0 
-	  // 2: C = cyl
-	  // 3: H = head address
-	  // 4: R = sector
-	  // 5: N = sector size, 2 = 512b
-	  // 6: EOT = end of track 0x24 = 36 sectors (18 * 2)
-	  // 7: GPL = gap length 
-	  // 8: DTL = sector size (if N = 0)
-	  {
-	    int count = theDMA->get_count(2);
-	    void *buffer = malloc(count+1);
-	    int pos = (state.cmd_parms[2] * state.cmd_parms[6]) // cyls
-	      + (state.cmd_parms[3] * (state.cmd_parms[6] / 2)) // head
-	      + state.cmd_parms[4]; // sector
-	    fseek(floppyimage, pos*512, SEEK_SET);
-	    fread(buffer, count+1, 1, floppyimage);
-	    theDMA->send_data(2,buffer);
-
-	    state.cmd_parms[4]++;
-	    if(state.cmd_parms[4] > (state.cmd_parms[6] / 2)) {
-	      state.cmd_parms[4] = 1;
-	      state.cmd_parms[3]++;
-	      if(state.cmd_parms[3] > 1) {
-		state.cmd_parms[3] = 0;
-		state.cmd_parms[2]++;
-	      }
+      //printf("FDC: parm_ptr: %d, parms: %d\n", state.cmd_parms_ptr, cmdinfo[cmd].parms);
+      if(state.cmd_parms_ptr == cmdinfo[cmd].parms) 
+      {
+	    printf("FDC: command %s(",cmdinfo[cmd].name);
+	    for(int i = 1; i < state.cmd_parms_ptr; i++) 
+        {
+	      printf("%x ",state.cmd_parms[i]);
 	    }
+	    printf(")\n");
+
+	    state.cmd_res_max = cmdinfo[cmd].returns;
+	    state.cmd_res_ptr = 0;
+	    state.status.rqm=0;
+	    switch(cmd) {
+	    case 3: // specify
+	      // set up some hardware parameters.  We really don't care about
+	      // the times (step rate time, head unload time, head load time}, but
+	      // we may care about the ND bit (parm byte 3, bit 1)...
+	      state.dma = ~(state.cmd_parms[2] & 0x01);
+	      break;
+    	  
+	    case 6: // read data
+	      // args:
+	      // 0: bit 7 = MT (multitrack), 6 = MFM, 5 = SK (skip flag)
+	      // 1: bit 2 = HDS (head), 1 = DS1, 0 = DS0 
+	      // 2: C = cyl
+	      // 3: H = head address
+	      // 4: R = sector
+	      // 5: N = sector size, 2 = 512b
+	      // 6: EOT = end of track 0x24 = 36 sectors (18 * 2)
+	      // 7: GPL = gap length 
+	      // 8: DTL = sector size (if N = 0)
+	      {
+	        int count = theDMA->get_count(2);
+	        void *buffer = malloc(count+1);
+	        int pos = (state.cmd_parms[2] * state.cmd_parms[6]) // cyls
+	          + (state.cmd_parms[3] * (state.cmd_parms[6] / 2)) // head
+    	      + state.cmd_parms[4] - 1; // sector (sectors start at 1)
+	        fseek(floppyimage, pos*512, SEEK_SET);
+	        fread(buffer, 1, count, floppyimage);
+
+	        printf("FDC: read data:  %x @ %x\n  ", count, pos * 512); 
+	        for(int i = 0; i < count; i++) 
+            {
+	          printf("%02x ", *((char *)buffer+i) & 0xff);
+	          if(i % 16 == 15) 
+    		    printf("\n  ");
+	        }
+	        printf("\n");
+
+	        theDMA->send_data(2,buffer);
+
+	        state.cmd_parms[4]++;
+	        if(state.cmd_parms[4] > (state.cmd_parms[6] / 2)) {
+	          state.cmd_parms[4] = 1;
+	          state.cmd_parms[3]++;
+	          if(state.cmd_parms[3] > 1) {
+		        state.cmd_parms[3] = 0;
+		        state.cmd_parms[2]++;
+	          }
+	        }
+
+	        state.cmd_res[0] = (state.cmd_parms[1] & 0x03) | ST0_SE | ST0_INTR;
+	        state.cmd_res[1] = 0;
+	        state.cmd_res[2] = 0;
+	        state.cmd_res[3] = state.cmd_parms[2];
+	        state.cmd_res[4] = state.cmd_parms[3];
+	        state.cmd_res[5] = state.cmd_parms[4];
+	        state.cmd_res[6] = state.cmd_parms[5];
+    	    SEL_DRIVE.seeking=1;
+
+	        do_interrupt();
+	      }
+	      break;
+
+	    case 7: // recalibrate
+    	  SEL_DRIVE.seeking=3; // wait for 3 status reads to finish seek.
+	      SEL_DRIVE.cylinder = 0;
+	      do_interrupt();
+	      break;
+    	  
+	    case 8: // sense interrupt status
+	      if(!state.interrupt) 
+	        state.cmd_res[0] = 0x80;
+	      else
+	        state.cmd_res[0] = 0x00; // ?
+
+	      state.cmd_res[1] = SEL_DRIVE.cylinder; // present cylinder number
+	      break;
+
+	    case 15: // seek
+	      // args:
+	      // 0: opcode
+	      // 1: bit 2 = HDS (head), 1 = DS1, 0 = DS0 
+	      // 2: NCN = new cylinder number
+	      SEL_DRIVE.seeking=3; // wait 3 status reads to finish seek.
+	      SEL_DRIVE.cylinder = state.cmd_parms[2];
+	      do_interrupt();
+	      break;
+
+	    case 18: // perpendicular mode
+	      // We really don't care, somehow
+	      break;
+    	  
+
+	    case 19: // configure
+	      // we're software, we don't care (I think)
+	      break;
+
+    	 
 
 
-	    state.cmd_res[0] = (state.cmd_parms[1] & 0x03) | ST0_SE | ST0_INTR;
-	    state.cmd_res[1] = 0;
-	    state.cmd_res[2] = 0;
-	    state.cmd_res[3] = state.cmd_parms[2];
-	    state.cmd_res[4] = state.cmd_parms[3];
-	    state.cmd_res[5] = state.cmd_parms[4];
-	    state.cmd_res[6] = state.cmd_parms[5];
 
+	    default:
+	      printf("Unhandled floppy command: %d = %s\n", cmd, cmdinfo[cmd].name);
+	      exit(1);
+	    }
+    	
 
-	    do_interrupt();
-	  }
-	  // returns:
-	  // st0
-	  // st1
-	  // st2
-	  // c
-	  // h
-	  // r
-	  // n
-
-
-
-
-	  break;
-
-	case 7: // recalibrate
-	  SEL_DRIVE.cylinder = 0;
-	  do_interrupt();
-	  break;
-	  
-	case 8: // sense interrupt status
-	  if(!state.interrupt) 
-	    state.cmd_res[0] = 0x80;
-	  else
-	    state.cmd_res[0] = 0x00; // ?
-
-	  state.cmd_res[1] = SEL_DRIVE.cylinder; // present cylinder number
-	  break;
-
-
-	  
-	  
-	  
-	case 18: // perpendicular mode
-	  // We really don't care, somehow
-	  break;
-	  
-
-	case 19: // configure
-	  // we're software, we don't care (I think)
-	  break;
-
-	 
-
-
-
-	default:
-	  printf("Unhandled floppy command: %d = %s\n", cmd, cmdinfo[cmd].name);
-	  exit(1);
-	}
-	
-
-	state.status.rqm=1;
-	if(cmdinfo[cmd].returns > 0) {
-	  state.status.dio=1;
-	}
-	state.cmd_parms_ptr=0;
+	    state.status.rqm=1;
+	    if(cmdinfo[cmd].returns > 0) {
+	      state.status.dio=1;
+	    }
+	    state.cmd_parms_ptr=0;
       } else {
-	printf("FDC: command parameter byte %d = %x, expecting %d bytes for %s\n", state.cmd_parms_ptr-1, data, cmdinfo[state.cmd_parms[0] & 0x1f].parms, cmdinfo[state.cmd_parms[0] &0x1f].name);
+    	//printf("FDC: command parameter byte %d = %x, expecting %d bytes for %s\n", state.cmd_parms_ptr-1, data, cmdinfo[state.cmd_parms[0] & 0x1f].parms, cmdinfo[state.cmd_parms[0] &0x1f].name);
       }
     }
 
@@ -359,7 +365,7 @@ u64 CFloppyController::ReadMem(int index, u64 address, int dsize)
 {
   u64 data = 0;
 
-  if(index == 1)
+  if(index == 1537)
     address += 7;
 
   switch(address)
@@ -517,13 +523,31 @@ u8 CFloppyController::get_status() {
     // bit 1 = drive 1 is busy (seeking)
     // bit 0 = drive 0 is busy (seeking)
 
+  for(int i=0; i<2; i++) {
+    if(state.drive[i].seeking > 0) 
+      state.drive[i].seeking--;
+    if(state.drive[i].seeking==0) 
+      state.status.seeking[i] = false;
+    else 
+      state.status.seeking[i] = true;
+  }
+
+  // we mark the controller busy if a disk is seeking or
+  // if there is data waiting to be sent by the controller.
+  if(state.status.seeking[0] || state.status.seeking[1] ||
+     (state.status.dio && state.status.rqm))
+    state.status.busy = true;
+  else
+    state.status.busy = false;
+
+
   printf("FDC Status: %s, %s, %s, %s, %s, %s\n",
 	 state.status.rqm?"Data Register Ready": "No Access",
 	 state.status.dio?"C->S":"S->C",
 	 state.status.nondma?"No DMA":"DMA",
 	 state.status.busy?"BUSY":"not busy",
-	 state.status.drv1busy?"Disk 1 Seeking":"Disk 1 Idle",
-	 state.status.drv1busy?"Disk 0 Seeking":"Disk 0 Idle");
+	 state.status.seeking[0]?"Disk 1 Seeking":"Disk 1 Idle",
+	 state.status.seeking[1]?"Disk 0 Seeking":"Disk 0 Idle");
 
 
 
@@ -532,7 +556,7 @@ u8 CFloppyController::get_status() {
     (state.status.dio?0x40:0x00) |
     (state.status.nondma?0x20:0x00) |
 	 (state.status.busy?0x10:0x00) |
-    (state.status.drv1busy?0x02:0x00) |
-    (state.status.drv0busy?0x01:0x00);
+    (state.status.seeking[1]?0x02:0x00) |
+    (state.status.seeking[0]?0x01:0x00);
   return data;
 }

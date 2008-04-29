@@ -27,7 +27,10 @@
  * \file 
  * Contains the definitions for the emulated Floppy Controller devices.
  *
- * $Id: FloppyController.h,v 1.11 2008/04/29 08:48:19 iamcamiel Exp $
+ * $Id: FloppyController.h,v 1.12 2008/04/29 09:19:20 iamcamiel Exp $
+ *
+ * X-1.12       Brian Wheeler                                   29-APR-2008
+ *      Fixed floppy disk implementation.
  *
  * X-1.11       Brian Wheeler                                   29-APR-2008
  *      Floppy disk implementation.
@@ -95,9 +98,9 @@ class CFloppyController : public CSystemComponent
 
     struct {
       struct {
-
-	int cylinder;
-	bool motor;
+        int seeking;
+    	int cylinder;
+	    bool motor;
       } drive[2];
 
       u8 write_precomp;
@@ -107,15 +110,14 @@ class CFloppyController : public CSystemComponent
 
 
       struct {
-	bool rqm;
-	bool dio;
-	bool nondma;
-	bool busy;
-	bool drv1busy;
-	bool drv0busy;
+	    bool rqm;
+	    bool dio;
+	    bool nondma;
+	    bool busy;
+        bool seeking[2];
       } status;
 
-
+      int busy;
       u8 cmd_parms[16];
       u8 cmd_parms_ptr;
       u8 cmd_res[16];

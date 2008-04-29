@@ -27,7 +27,10 @@
  * \file
  * Contains the code for the emulated DMA controller.
  *
- * $Id: DMA.cpp,v 1.7 2008/04/29 08:45:48 iamcamiel Exp $
+ * $Id: DMA.cpp,v 1.8 2008/04/29 09:19:19 iamcamiel Exp $
+ *
+ * X-1.8        Brian Wheeler                                   29-APR-2008
+ *      Fixed floppy disk implementation.
  *
  * X-1.7        Brian Wheeler                                   29-APR-2008
  *      DMA now supports floppy device.
@@ -90,7 +93,7 @@ CDMA::CDMA(CConfigurator* cfg, CSystem* c) : CSystemComponent(cfg, c)
   state.controller[1].mask = 0xff;
  
   theDMA = this;
-  printf("dma: $Id: DMA.cpp,v 1.7 2008/04/29 08:45:48 iamcamiel Exp $\n");
+  printf("dma: $Id: DMA.cpp,v 1.8 2008/04/29 09:19:19 iamcamiel Exp $\n");
 }
 
 /**
@@ -119,7 +122,7 @@ u64 CDMA::ReadMem(int index, u64 address, int dsize)
   u64 ret;
   u8  data;
   int num;
-  printf("DMA: Readmem %s, %" LL "x, %x\n",DMA_INDEX(index),address, dsize);
+  //printf("dma: Readmem %s, %" LL "x, %x\n",DMA_INDEX(index),address, dsize);
   switch(dsize)
   {
   case 32:
@@ -208,7 +211,7 @@ void CDMA::WriteMem(int index, u64 address, int dsize, u64 data)
       address >>=1;
 
 #if defined(DEBUG_DMA)
-    printf("dma: write %s, %02x: %02x.   \n", DMA_INDEX(index), (u32)address, data);
+    //printf("dma: write %s, %02x: %02x.   \n", DMA_INDEX(index), (u32)address, data);
 #endif
     switch(index)
     {
@@ -243,7 +246,7 @@ void CDMA::WriteMem(int index, u64 address, int dsize, u64 data)
     case DMA0_IO_MAIN:
       switch(address) {
       case 0: // command
-	printf("DMA: command register %d written with %x\n", num, data);
+	printf("dma: command register %d written with %x\n", num, data);
 	state.controller[num].command = data;
 	break;
 
@@ -252,14 +255,14 @@ void CDMA::WriteMem(int index, u64 address, int dsize, u64 data)
 	break;
 
       case 2: // single mask
-	printf("DMA: mask single on %d : %d %s\n", num, data & 0x03, data & 0x4 ? "Masked" : "Unmasked");
+	printf("dma: mask single on %d : %d %s\n", num, data & 0x03, data & 0x4 ? "Masked" : "Unmasked");
 	state.controller[num].mask = (state.controller[num].mask & ~(1 << (data & 0x03))) | ((data & 0x04)>>2);
 	printf("     Mask status: %x\n", state.controller[num].mask);
 	do_dma();
 	break;
 
       case 3: // mode register
-	printf("DMA: mode register %d for channel %d written with %x\n", num, (num*4)+(data & 0x03), data);
+	printf("dma: mode register %d for channel %d written with %x\n", num, (num*4)+(data & 0x03), data);
 	printf("    Mode: %s, Address %s, Autoinit %s, Command: %s\n",
 	       (data & 0x80 ? (data & 0x40 ? "Cascade" : "Block" ) : (data & 0x40 ? "Single" : "Demand" )),
 	       (data & 0x20 ? "Increment" : "Decrement" ),
@@ -271,7 +274,7 @@ void CDMA::WriteMem(int index, u64 address, int dsize, u64 data)
 	break;
 
       case 4: // clear flipflop(s)
-	printf("DMA: flipflops cleared for dma %d\n", num);
+	printf("dma: flipflops cleared for dma %d\n", num);
 	for(int i = (num * 4); i < ((num+1) * 4) ; i++)
 	  state.channel[i].a_lobyte = state.channel[i].c_lobyte = true;
 	break;
@@ -409,40 +412,119 @@ int CDMA::RestoreState(FILE* f)
   return 0;
 }
 
-
-
+/**
+ * Set the software request bit for a channel, and initiate DMA
+ **/
 void CDMA::set_request(int num, int channel, int data) {
   state.controller[num].request = (state.controller[num].request & ~(1 << (data & 0x03))) | ((data & 0x04)>>2);
   state.channel[(num * 4) + (data & 0x03)].current = 0;
   do_dma();
 }
 
-
-void CDMA::do_dma() {
-  for(int ctrlr = 0 ; ctrlr < 2; ctrlr++) {
-    if(state.controller[ctrlr].command & 0x04 == 0) { // controller not disabled.
-      for(int chnl = 0; chnl < 4; chnl++) {
-	if((state.controller[ctrlr].mask & (1 << chnl)) == 0) { // channel not masked
-	  if(state.controller[ctrlr].request & (1 << chnl)) { // channel has request
-	    
-	  }
-	}
+/**
+ * Perform a DMA if one is ready.
+ *
+ * \todo I'm not sure what would actually trigger this, so its mostly just a 
+ * placeholder.
+ **/
+void CDMA::do_dma() 
+{
+  for(int ctrlr = 0 ; ctrlr < 2; ctrlr++) 
+  {
+    if(state.controller[ctrlr].command & 0x04 == 0) // controller not disabled.
+    {
+      for(int chnl = 0; chnl < 4; chnl++) 
+      {
+	    if((state.controller[ctrlr].mask & (1 << chnl)) == 0) // channel not masked
+        {
+	      if(state.controller[ctrlr].request & (1 << chnl)) // channel has request
+          {
+	        // Do it!
+	      }
+	    }
       }
     }
   }
 }
 
 
+void CDMA::send_data(int channel, void *data) 
+{
+  if((state.controller[channel < 4? 0 : 1].command & 0x04) == 0) 
+  {
+    if((state.controller[channel < 4 ? 0 : 1].mask & ( 1 << channel)) == 0) 
+    {
+      u64 addr = (state.channel[channel].pagebase << 16) + state.channel[channel].base;
+      int count = get_count(channel);
+
+      printf("DMA send_data:  %x @ %16" LL "x\n  ", count, addr); 
+      for(int i = 0; i < count; i++) 
+      {
+	    printf("%02x ", *((char *)data+i) & 0xff);
+	    if(i % 16 == 15) 
+	      printf("\n  ");
+      }
+      printf("\n");
+
+
+      // increment
+      theAli->do_pci_write(addr,data,1,count);
+
+      // set the terminal count bit
+      if(channel < 4)
+    	state.controller[0].status |= 1 << channel;
+      else
+	    state.controller[1].status |= 1 << channel;
+    } 
+    else 
+    {
+      printf("dma: dma requested by device on channel %d, but it is masked.\n", channel);
+    }
+  } 
+  else 
+  {
+    printf("dma: dma requested by device, but controller %d is disabled.\n", channel < 4 ? 0 : 1);
+  }
+}
+
+void CDMA::recv_data(int channel, void *data) {
+
+}
+
+
+/*
+  This can be called by a device to perform a DMA in one fell swoop.
+
+ */
 void CDMA::send_data(int channel, void *data) {
-  u64 addr = (state.channel[channel].pagebase << 16) + state.channel[channel].base;
-  int count = get_count(channel);
-  printf("DMA send_data:  %x @ %16" LL "x\n", count, addr); 
-  // increment
-  theAli->do_pci_write(addr,data,1,count+1);
-  if(channel < 4)
-    state.controller[0].status |= 1 << channel;
-  else
-    state.controller[1].status |= 1 << channel;
+  if((state.controller[channel < 4? 0 : 1].command & 0x04) == 0) {
+    if((state.controller[channel < 4 ? 0 : 1].mask & ( 1 << channel)) == 0) {
+      u64 addr = (state.channel[channel].pagebase << 16) + state.channel[channel].base;
+      int count = get_count(channel);
+
+      printf("DMA send_data:  %x @ %16" LL "x\n  ", count, addr); 
+      for(int i = 0; i < count; i++) {
+	printf("%02x ", *((char *)data+i) & 0xff);
+	if(i % 16 == 15) 
+	  printf("\n  ");
+      }
+      printf("\n");
+
+
+      // increment
+      theAli->do_pci_write(addr,data,1,count);
+
+      // set the terminal count bit
+      if(channel < 4)
+	state.controller[0].status |= 1 << channel;
+      else
+	state.controller[1].status |= 1 << channel;
+    } else {
+      printf("dma: dma requested by device on channel %d, but it is masked.\n", channel);
+    }
+  } else {
+    printf("dma: dma requested by device, but controller %d is disabled.\n", channel < 4 ? 0 : 1);
+  }
 }
 
 void CDMA::recv_data(int channel, void *data) {

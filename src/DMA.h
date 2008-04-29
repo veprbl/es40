@@ -27,7 +27,10 @@
  * \file
  * Contains the definitions for the emulated DMA controller.
  *
- * $Id: DMA.h,v 1.4 2008/04/29 08:45:48 iamcamiel Exp $
+ * $Id: DMA.h,v 1.5 2008/04/29 09:19:19 iamcamiel Exp $
+ *
+ * X-1.4        Brian Wheeler                                   29-APR-2008
+ *      Fixed floppy disk implementation.
  *
  * X-1.3        Brian Wheeler                                   18-APR-2008
  *      Rewrote DMA code to make it ready for floppy support.
