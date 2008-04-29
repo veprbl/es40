@@ -27,12 +27,12 @@
  * \file
  * Contains the code for the configuration file interpreter.
  *
- * $Id: Configurator.cpp,v 1.29 2008/04/29 09:52:46 iamcamiel Exp $
+ * $Id: Configurator.cpp,v 1.30 2008/04/29 15:23:27 iamcamiel Exp $
  *
  * X-1.29       Camiel Vanderhoeven                             29-APR-2008
- *      Added floppy configuration.
+ *      Fixed a mistake in the last commit.
  *
- * X-1.28       Brian Wheeler                                   29-APR-2008
+ * X-1.28       Brian Wheeler/Camiel Vanderhoeven               29-APR-2008
  *      Added Floppy Controller.
  *
  * X-1.27       Camiel Vanderhoeven                             26-MAR-2008
@@ -851,7 +851,7 @@ void CConfigurator::initialize()
     break;
 
   case c_floppy:
-    new CFloppyController(this, (CSystem*) pParent->get_device(),fdcbus);
+    myDevice = new CFloppyController(this, (CSystem*) pParent->get_device(),fdcbus);
     break;
 
   case c_ali_ide:
