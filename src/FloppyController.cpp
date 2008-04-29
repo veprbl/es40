@@ -27,7 +27,10 @@
  * \file
  * Contains the code for the emulated Floppy Controller devices.
  *
- * $Id: FloppyController.cpp,v 1.15 2008/04/29 09:19:19 iamcamiel Exp $
+ * $Id: FloppyController.cpp,v 1.16 2008/04/29 09:53:30 iamcamiel Exp $
+ *
+ * X-1.16       Camiel Vanderhoeven                             29-APR-2008
+ *      Make floppy disk use CDisk images.
  *
  * X-1.15       Brian Wheeler                                   29-APR-2008
  *      Fixed floppy disk implementation.
@@ -81,11 +84,12 @@
 #include "FloppyController.h"
 #include "System.h"
 #include "DMA.h"
+#include "Disk.h"
 
 /**
  * Constructor.
  **/
-CFloppyController::CFloppyController(CConfigurator* cfg, CSystem* c, int id) : CSystemComponent(cfg, c)
+CFloppyController::CFloppyController(CConfigurator* cfg, CSystem* c, int id) : CSystemComponent(cfg, c), CDiskController(1,2)
 {
   c->RegisterMemory(this, 1536, U64(0x00000801fc0003f0) - (0x80 * id), 6);
   c->RegisterMemory(this, 1537, U64(0x00000801fc0003f7) - (0x80 * id), 1);
@@ -95,9 +99,7 @@ CFloppyController::CFloppyController(CConfigurator* cfg, CSystem* c, int id) : C
   state.status.rqm=1;
   state.status.dio=0;
 
-  floppyimage = fopen("disk1of3","r");
-
-  printf("%s: $Id: FloppyController.cpp,v 1.15 2008/04/29 09:19:19 iamcamiel Exp $\n",
+  printf("%s: $Id: FloppyController.cpp,v 1.16 2008/04/29 09:53:30 iamcamiel Exp $\n",
        devid_string);
 }
 
@@ -256,8 +258,8 @@ void CFloppyController::WriteMem(int index, u64 address, int dsize, u64 data)
 	        int pos = (state.cmd_parms[2] * state.cmd_parms[6]) // cyls
 	          + (state.cmd_parms[3] * (state.cmd_parms[6] / 2)) // head
     	      + state.cmd_parms[4] - 1; // sector (sectors start at 1)
-	        fseek(floppyimage, pos*512, SEEK_SET);
-	        fread(buffer, 1, count, floppyimage);
+            SEL_FDISK->seek_byte(pos*512);
+            SEL_FDISK->read_bytes(buffer, count); 
 
 	        printf("FDC: read data:  %x @ %x\n  ", count, pos * 512); 
 	        for(int i = 0; i < count; i++) 

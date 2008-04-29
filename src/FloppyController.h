@@ -27,7 +27,10 @@
  * \file 
  * Contains the definitions for the emulated Floppy Controller devices.
  *
- * $Id: FloppyController.h,v 1.12 2008/04/29 09:19:20 iamcamiel Exp $
+ * $Id: FloppyController.h,v 1.13 2008/04/29 09:53:30 iamcamiel Exp $
+ *
+ * X-1.13       Camiel Vanderhoeven                             29-APR-2008
+ *      Make floppy disk use CDisk images.
  *
  * X-1.12       Brian Wheeler                                   29-APR-2008
  *      Fixed floppy disk implementation.
@@ -71,13 +74,14 @@
 #if !defined(INCLUDED_FLOPPYCONTROLLER_H)
 #define INCLUDED_FLOPPYCONTROLLER_H
 
+#include "DiskController.h"
 #include "SystemComponent.h"
 #include "DMA.h"
 
 /**
  * \brief Emulated floppy-drive controller.
  **/
-class CFloppyController : public CSystemComponent
+class CFloppyController : public CSystemComponent, public CDiskController
 {
   public:
     virtual u64   ReadMem(int index, u64 address, int dsize);
@@ -87,14 +91,9 @@ class CFloppyController : public CSystemComponent
     virtual int   RestoreState(FILE* f);
     virtual int   SaveState(FILE* f);
 
-
-
   private:
     void do_interrupt();
     u8 get_status();
-
-
-    FILE *floppyimage;
 
     struct {
       struct {
@@ -107,7 +106,6 @@ class CFloppyController : public CSystemComponent
       u8 drive_select;
       bool dma;
       u8 datarate;
-
 
       struct {
 	    bool rqm;
@@ -126,7 +124,6 @@ class CFloppyController : public CSystemComponent
 
       bool interrupt;
 
-
     } state;
 };
 
@@ -138,9 +135,10 @@ class CFloppyController : public CSystemComponent
 #define FDC_REG_COMMAND 5
 #define FDC_REG_DIR 7
 
-
 #define SEL_DRIVE state.drive[state.drive_select]
+#define SEL_FDISK get_disk(0,state.drive_select)
 #define DRIVE(i) state.drive[i]
+#define FDISK(i) get_disk(0,i)
 
 //
 // These defines were stolen from the Linux 1.0 fdreg.h file :)
