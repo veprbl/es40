@@ -1,8 +1,8 @@
 /* ES40 emulator.
  * Copyright (C) 2007-2008 by the ES40 Emulator Project
  *
- * WWW    : http://sourceforge.net/projects/es40
- * E-mail : camiel@camicom.com
+ * WWW    : http://es40.org
+ * E-mail : camiel@es40.org
  * 
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -27,7 +27,14 @@
  * \file
  * Contains the definitions for the PCI Device base class.
  *
- * $Id: PCIDevice.h,v 1.5 2008/03/14 15:30:51 iamcamiel Exp $
+ * $Id: PCIDevice.h,v 1.6 2008/04/29 08:42:59 iamcamiel Exp $
+ *
+ * X-1.6        Brian Wheeler                                   29-APR-2008
+ *      Made some protected functions public for the benefit of the floppy
+ *      controller.
+ *
+ * X-1.5        Camiel Vanderhoeven                             14-MAR-2008
+ *      Formatting.
  *
  * X-1.4        Camiel Vanderhoeven                             24-JAN-2008
  *      Added do_pci_read and do_pci_write. Thanks to David Hittner for
@@ -84,13 +91,15 @@ class CPCIDevice : public CSystemComponent
                                      u32 old_data, u32 new_data, u32 data)
     { };
     void  register_bar(int func, int bar, u32 data, u32 mask);
-  protected:
-    bool  do_pci_interrupt(int func, bool asserted);
+
     void  do_pci_read(u32 address, void*  dest, size_t element_size,
                       size_t element_count);
     void  do_pci_write(u32 address, void*  source, size_t element_size,
                        size_t element_count);
 
+
+  protected:
+    bool  do_pci_interrupt(int func, bool asserted);
     void  add_function(int func, u32 data[64], u32 mask[64]);
     void  add_legacy_io(int id, u32 base, u32 length);
     void  add_legacy_mem(int id, u32 base, u32 length);
