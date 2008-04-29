@@ -28,7 +28,10 @@
 #
 ################################################################################
 #
-# $Id: configure_1.m4,v 1.5 2008/04/03 17:22:46 iamcamiel Exp $
+# $Id: configure_1.m4,v 1.6 2008/04/29 07:37:54 iamcamiel Exp $
+#
+# X-1.6      Camiel Vanderhoeven                          29-APR-2008
+#     Added CHECK_MEM_RANGES and DUMP_MEMMAP
 #
 # X-1.5      Camiel Vanderhoeven                          03-APR-2008
 #     Fixed typo
@@ -172,6 +175,9 @@ EOF
 
   ES_ASK_DEF(show the cycle counter, HIDE_COUNTER, no, , , yes)
   ES_ASK_DEF(show estimate speed, MIPS_ESTIMATE, no)
+  ES_ASK_DEF(show memory map, DUMP_MEMMAP, no)
+
+  ES_ASK_DEF(check for overlapping of memory ranges, CHECK_MEM_RANGES, yes)
 
   ES_ASK_DEF(use the new floating-point implementation, HAVE_NEW_FP, no)
 

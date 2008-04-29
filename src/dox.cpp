@@ -31,7 +31,7 @@
  * You could read the documentation from this file; but it would probably
  * be easier to go to http://es40.sourceforge.net.
  *
- * $Id: dox.cpp,v 1.19 2008/04/13 15:49:49 iamcamiel Exp $
+ * $Id: dox.cpp,v 1.20 2008/04/29 07:37:54 iamcamiel Exp $
  **/
 
 /**
@@ -42,7 +42,7 @@
  * main project page, goto http://es40.org.
  *
  * On these pages here, you can find the documented source code, the change
- * log, compilation & installation instructions, and more.
+ * log, and more.
  **/
 
 /**

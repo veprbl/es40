@@ -27,7 +27,11 @@
  * \file 
  * Contains the code for the emulated Typhoon Chipset devices.
  *
- * $Id: System.cpp,v 1.75 2008/03/26 19:16:33 iamcamiel Exp $
+ * $Id: System.cpp,v 1.76 2008/04/29 07:37:54 iamcamiel Exp $
+ *
+ * X-1.76       Brian Wheeler                                   29-APR-2008
+ *      Added memory map dumping and checking for overlapping memory ranges
+ *      (enabled with DUMP_MEMMAP and CHECK_MEM_RANGES, respectively).
  *
  * X-1.75       Camiel Vanderhoeven                             26-MAR-2008
  *      Fix compiler warnings.
@@ -375,7 +379,7 @@ CSystem::CSystem(CConfigurator* cfg)
 
   cpu_lock_mutex = new CFastMutex("cpu-locking-lock");
 
-  printf("%s(%s): $Id: System.cpp,v 1.75 2008/03/26 19:16:33 iamcamiel Exp $\n",
+  printf("%s(%s): $Id: System.cpp,v 1.76 2008/04/29 07:37:54 iamcamiel Exp $\n",
          cfg->get_myName(), cfg->get_myValue());
 }
 
@@ -458,6 +462,36 @@ int CSystem::RegisterMemory(CSystemComponent*  component, int index, u64 base,
 {
   struct SMemoryUser*   m;
   int                   i;
+
+#if defined(CHECK_MEM_RANGES)
+  for(i = 0; i < iNumMemories; i++)
+  {
+    if(component == asMemories[i]->component)
+      continue;
+
+    // check for overlaps
+    if(base >= asMemories[i]->base && 
+       base <= (asMemories[i]->base + asMemories[i]->length - 1)) {
+      printf("WARNING: Start address for %s/%d (%016" LL "x-%016" LL "x)\n"
+	     "  is within memory range of %s/%d (%016" LL "x-%016" LL "x).\n", 
+	     component->devid_string, 
+	     index, base, base + length - 1,
+	     asMemories[i]->component->devid_string, asMemories[i]->index, 
+	     asMemories[i]->base, asMemories[i]->base + asMemories[i]->length -1);
+    }
+
+    if(base + length - 1 >= asMemories[i]->base && 
+       base + length - 1 <= (asMemories[i]->base + asMemories[i]->length -1)) {
+      printf("WARNING: End address for %s/%d (%016" LL "x-%016" LL "x)\n"
+	     "  is within memory range of %s/%d (%016" LL "x-%016" LL "x).\n", 
+	     component->devid_string, 
+	     index, base, base + length - 1,
+	     asMemories[i]->component->devid_string, asMemories[i]->index,
+	     asMemories[i]->base, asMemories[i]->base + asMemories[i]->length -1);
+    }
+  }
+#endif //defined(CHECK_MEM_RANGES)
+
   for(i = 0; i < iNumMemories; i++)
   {
     if((asMemories[i]->component == component) && (asMemories[i]->index == index))
@@ -498,6 +532,19 @@ void CSystem::Run()
 
   int k;
 
+
+#if defined(DUMP_MEMMAP)
+  printf("ES40 Memory Map\n");
+  printf("Physical Address Size     Device/Index\n");
+  printf("---------------- -------- -------------------------\n"); 
+  for(i=0;i<iNumMemories;i++) {
+    printf("%016" LL "x %8x %s/%d\n",asMemories[i]->base,asMemories[i]->length, asMemories[i]->component->devid_string,asMemories[i]->index); 
+  }
+#endif //defined(DUMP_MEMMAP)
+
+
+
+
   /* catch CTRL-C and shutdown gracefully */
   signal(SIGINT, &sigint_handler);
 
@@ -514,10 +561,10 @@ void CSystem::Run()
 #if defined(PROFILE)
     printf("%d | %016"LL "x | %"LL "d profiled instructions.  \r", k,
            acCPUs[0]->get_pc(), profiled_insts);
-#else
+#else //defined(PROFILE)
     printf("%d | %016"LL "x\r", k, acCPUs[0]->get_pc());
-#endif
-#endif
+#endif //defined(PROFILE)
+#endif //defined(HIDE_COUNTER)
   }
 
   //  printf ("%%SYS-W-SHUTDOWN: CTRL-C or Device Failed\n");
@@ -546,7 +593,7 @@ int CSystem::SingleStep()
     dbg_strptr = debug_string;
     *dbg_strptr = '\0';
   }
-#endif
+#endif //defined(LS_MASTER) || defined(LS_SLAVE)
 
   //  if (iSingleStep >= CLOCK_RATIO)
   //  {
@@ -568,9 +615,9 @@ int CSystem::SingleStep()
   return 0;
 }
 
-#ifdef DEBUG_PORTACCESS
+#if defined(DEBUG_PORTACCESS)
 u64 lastport;
-#endif
+#endif //defined(DEBUG_PORTACCESS)
 void CSystem::cpu_lock(int cpuid, u64 address)
 {
   SCOPED_FM_LOCK(cpu_lock_mutex);
@@ -690,7 +737,7 @@ void CSystem::WriteMem(u64 address, int dsize, u64 data, CSystemComponent*  sour
   u64   t64;
   u32   t32;
   u16   t16;
-#endif
+#endif //defined(ALIGN_MEM_ACCESS)
   if(state.cpu_lock_flags)
   {
     for(i = 0; i < iNumCPUs; i++)
@@ -843,7 +890,7 @@ void CSystem::WriteMem(u64 address, int dsize, u64 data, CSystemComponent*  sour
              source->devid_string);
     else
       printf("Write to unknown memory %"LL "x   \n", a);
-#endif
+#endif //defined(DEBUG_UNKMEM)
     return;
   }
 
@@ -1072,13 +1119,13 @@ u64 CSystem::ReadMem(u64 address, int dsize, CSystemComponent* source)
       return 0;
     }
 
-#ifdef DEBUG_UNKMEM
+#if defined(DEBUG_UNKMEM)
     if(source)
       printf("Read from unknown memory %"LL "x from %s   \n", a,
              source->devid_string);
     else
       printf("Read from unknown memory %"LL "x   \n", a);
-#endif
+#endif //defined(DEBUG_UNKMEM)
     return 0x00;
 
     //                    return 0x77; // 7f
