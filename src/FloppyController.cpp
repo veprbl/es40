@@ -1,8 +1,8 @@
 /* ES40 emulator.
  * Copyright (C) 2007-2008 by the ES40 Emulator Project
  *
- * WWW    : http://sourceforge.net/projects/es40
- * E-mail : camiel@camicom.com
+ * WWW    : http://es40.org
+ * E-mail : camiel@es40.org
  * 
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -27,7 +27,13 @@
  * \file
  * Contains the code for the emulated Floppy Controller devices.
  *
- * $Id: FloppyController.cpp,v 1.13 2008/03/14 15:30:51 iamcamiel Exp $
+ * $Id: FloppyController.cpp,v 1.14 2008/04/29 08:48:17 iamcamiel Exp $
+ *
+ * X-1.14       Brian Wheeler                                   29-APR-2008
+ *      Floppy disk implementation.
+ *
+ * X-1.13       Camiel Vanderhoeven                             14-MAR-2008
+ *      Formatting.
  *
  * X-1.12       Camiel Vanderhoeven                             14-MAR-2008
  *   1. More meaningful exceptions replace throwing (int) 1.
@@ -71,6 +77,7 @@
 #include "StdAfx.h"
 #include "FloppyController.h"
 #include "System.h"
+#include "DMA.h"
 
 /**
  * Constructor.
@@ -79,54 +86,17 @@ CFloppyController::CFloppyController(CConfigurator* cfg, CSystem* c, int id) : C
 {
   c->RegisterMemory(this, 0, U64(0x00000801fc0003f0) - (0x80 * id), 6);
   c->RegisterMemory(this, 1, U64(0x00000801fc0003f7) - (0x80 * id), 1);
-  iMode = 0;
-  iID = id;
-  iActiveRegister = 0;
 
-  iRegisters[0x00] = 0x28;
-  iRegisters[0x01] = 0x9c;
-  iRegisters[0x02] = 0x88;
-  iRegisters[0x03] = 0x78;
-  iRegisters[0x04] = 0x00;
-  iRegisters[0x05] = 0x00;
-  iRegisters[0x06] = 0xff;
-  iRegisters[0x07] = 0x00;
-  iRegisters[0x08] = 0x00;
-  iRegisters[0x09] = 0x00;
-  iRegisters[0x0a] = 0x00;
-  iRegisters[0x0b] = 0x00;
-  iRegisters[0x0c] = 0x00;
-  iRegisters[0x0d] = 0x03;
-  iRegisters[0x0e] = 0x02;
-  iRegisters[0x0f] = 0x00;
-  iRegisters[0x10] = 0x00;
-  iRegisters[0x11] = 0x00;
-  iRegisters[0x12] = 0x00;
-  iRegisters[0x13] = 0x00;
-  iRegisters[0x14] = 0x00;
-  iRegisters[0x15] = 0x00;
-  iRegisters[0x16] = 0x00;
-  iRegisters[0x17] = 0x00;
-  iRegisters[0x18] = 0x00;
-  iRegisters[0x19] = 0x00;
-  iRegisters[0x1a] = 0x00;
-  iRegisters[0x1b] = 0x00;
-  iRegisters[0x1c] = 0x00;
-  iRegisters[0x1d] = 0x00;
-  iRegisters[0x1e] = 0x3c;
-  iRegisters[0x1f] = 0x00;
-  iRegisters[0x20] = 0x3c;
-  iRegisters[0x21] = 0x3c;
-  iRegisters[0x22] = 0x3d;
-  iRegisters[0x23] = 0x00;
-  iRegisters[0x24] = 0x00;
-  iRegisters[0x25] = 0x00;
-  iRegisters[0x26] = 0x00;
-  iRegisters[0x27] = 0x00;
-  iRegisters[0x28] = 0x00;
-  iRegisters[0x29] = 0x00;
 
-  printf("%s: $Id: FloppyController.cpp,v 1.13 2008/03/14 15:30:51 iamcamiel Exp $\n",
+  state.cmd_parms_ptr = 0;
+  state.cmd_res_ptr = 0;
+  state.status.rqm=1;
+  state.status.dio=0;
+
+
+  floppyimage = fopen("disk1of3","r");
+
+  printf("%s: $Id: FloppyController.cpp,v 1.14 2008/04/29 08:48:17 iamcamiel Exp $\n",
        devid_string);
 }
 
@@ -135,85 +105,434 @@ CFloppyController::CFloppyController(CConfigurator* cfg, CSystem* c, int id) : C
  **/
 CFloppyController::~CFloppyController()
 { }
+
+
+char *datarate_name[] = {"500 Kb/S MFM", "300 Kb/S MFM", "250 Kb/S MFM", 
+			 "1 Mb/S MFM"};
+
+struct cmdinfo_t {
+  u8 command;
+  u8 parms;
+  u8 returns;
+  char * name; } 
+  cmdinfo[] = {
+    { 0, 0, 0, NULL},
+    { 0, 0, 0, NULL},
+    { 2, 9, 7, "Read Track"},
+    { 3, 3, 0, "Specify"},
+    { 4, 2, 1, "Sense Drive Status"},
+    { 5, 9, 7, "Write Data"},
+    { 6, 9, 7, "Read Data"},
+    { 7, 2, 0, "Recalibrate"},
+    { 8, 1, 2, "Sense Interrupt Status"},
+    { 9, 9, 7, "Write Deleted Data"},
+    {10, 2, 7, "Read ID"},
+    {11, 0, 0, NULL},
+    {12, 9, 7, "Read Deleted"},
+    {13, 6, 7, "Format Track"},
+    {14, 1, 10, "DumpReg"},
+    {15, 3, 0, "Seek"},
+    {16, 1, 1, "Version"},
+    {17, 9, 7, "Scan Equal"},
+    {18, 2, 0, "Perpendicular Mode"},
+    {19, 4, 0, "Configure"},
+    {20, 1, 1, "Lock"},
+    {21, 0, 0, NULL},
+    {22, 9, 7, "Verify"},
+    {23, 0, 0, NULL},
+    {24, 0, 0, NULL},
+    {25, 9, 7, "Scan Low or Equal"},
+    {26, 0, 0, NULL},
+    {27, 0, 0, NULL},
+    {28, 0, 0, NULL},
+    {29, 9, 7, "Scan High or Equal"},
+    {30, 0, 0, NULL},
+    {31, 0, 0, NULL},
+  };
+
+
+
+
+
 void CFloppyController::WriteMem(int index, u64 address, int dsize, u64 data)
 {
   if(index == 1)
     address += 7;
 
+
+  printf("FDC: Write port %d, value: %x\n", address, data);
+
   switch(address)
   {
-  case 0:
-    switch(data & 0xff)
-    {
-    case 0x55:
+  case FDC_REG_STATUS_A:
+  case FDC_REG_STATUS_B:
+    printf("FDC: Read only register %d written.\n",address);
+    break;
+    
+  case FDC_REG_DOR: 
+    // bit 4 = drive 0 motor, bit 5 = drive 1 motor
+    // bit 3 = dma enable (ps/2 reserved?)
+    // bit 2 = 1: fdc enable (reset), 0: hold at reset
+    // bits 1-0:  drive select 0: a, 1: b, I assume 2 & 3 are reserved.
+    
+    state.drive[0].motor = (data & 0x10)>>4;
+    state.drive[1].motor = (data & 0x20)>>5;
+    state.dma = (data & 0x08)>>3;
+    state.drive_select = data & 0x03;
 
-      //			if (iMode==1)
-      //				printf("Entering configuration mode for floppy controller %d\n", iID);
-      if(iMode == 0 || iMode == 1)
-        iMode++;
-      break;
+    printf("FDC:  motor a: %s, motor b: %s, dma: %s, drive: %s\n", 
+	   state.drive[0].motor? "on":"off",
+	   state.drive[1].motor? "on":"off",
+	   state.dma? "on":"off",
+	   state.drive_select==0? "A":"B");
 
-    case 0xaa:
 
-      //			if (iMode==2)
-      //				printf("Leaving configuration mode for floppy controller %d\n", iID);
-      iMode = 0;
-      break;
-
-    default:
-      if(iMode == 2)
-        iActiveRegister = (int) (data & 0xff);
-
-      //			else
-      //				printf("Unknown command: %02x on floppy port %d\n",(u32)(data&0xff),(u32)address);
-    }
     break;
 
-  case 1:
-    if(iMode == 2)
-    {
-      if(iActiveRegister < 0x2a)
-        iRegisters[iActiveRegister] = (u8) (data & 0xff);
-
-      //			else
-      //				printf("Unknown floppy register: %02x\n",iActiveRegister);
-    }
-
-    //		else
-    //			printf("Unknown command: %02x on floppy port %d\n",(u32)(data&0xff),(u32)address);
+  case FDC_REG_TAPE:
+    printf("FDC: Tape register written with %x\n", data);
     break;
 
-    //	default:
-    //		printf("Unknown command: %02x on floppy port %d\n",(u32)(data&0xff),(u32)address);
+  case FDC_REG_STATUS:  // write = data rate selector
+    // bit 7 = software reset (self clearing)
+    // bit 6 = power down
+    // bit 5 = reserved (0)
+    // bit 4-2 = write precomp (000 = default)
+    // bit 1-0 = data rate select
+
+    state.datarate = data & 0x03;
+    state.write_precomp = (data & 0x1c) >> 2;
+    printf("FDC: data rate %s, precomp: %d\n", datarate_name[state.datarate], state.write_precomp);
+
+
+    break;
+
+  case FDC_REG_COMMAND: 
+    // the excitement happens here.
+    if(state.status.dio) {
+      printf("Unrequested data byte to command port.  Throwing away.\n");
+      break;
+    } 
+    else
+    {
+      state.cmd_parms[state.cmd_parms_ptr++]=data;
+      int cmd = state.cmd_parms[0] & 0x1F;
+      state.cmd_res_max = cmdinfo[cmd].returns;
+      printf("FDC: parm_ptr: %d, parms: %d\n", state.cmd_parms_ptr, cmdinfo[cmd].parms);
+      if(state.cmd_parms_ptr == cmdinfo[cmd].parms) {
+	printf("FDC: command %s(",cmdinfo[cmd].name);
+	for(int i = 1; i < state.cmd_parms_ptr; i++) {
+	  printf("%x ",state.cmd_parms[i]);
+	}
+	printf(")\n");
+
+	state.cmd_res_max = cmdinfo[cmd].returns;
+	state.cmd_res_ptr = 0;
+	state.status.rqm=0;
+	switch(cmd) {
+	case 3: // specify
+	  // set up some hardware parameters.  We really don't care about
+	  // the times (step rate time, head unload time, head load time}, but
+	  // we may care about the ND bit (parm byte 3, bit 1)...
+	  state.dma = ~(state.cmd_parms[2] & 0x01);
+	  break;
+	  
+	case 6: // read data
+	  // args:
+	  // 0: bit 7 = MT (multitrack), 6 = MFM, 5 = SK (skip flag)
+	  // 1: bit 2 = HDS (head), 1 = DS1, 0 = DS0 
+	  // 2: C = cyl
+	  // 3: H = head address
+	  // 4: R = sector
+	  // 5: N = sector size, 2 = 512b
+	  // 6: EOT = end of track 0x24 = 36 sectors (18 * 2)
+	  // 7: GPL = gap length 
+	  // 8: DTL = sector size (if N = 0)
+	  {
+	    int count = theDMA->get_count(2);
+	    void *buffer = malloc(count+1);
+	    int pos = (state.cmd_parms[2] * state.cmd_parms[6]) // cyls
+	      + (state.cmd_parms[3] * (state.cmd_parms[6] / 2)) // head
+	      + state.cmd_parms[4]; // sector
+	    fseek(floppyimage, pos*512, SEEK_SET);
+	    fread(buffer, count+1, 1, floppyimage);
+	    theDMA->send_data(2,buffer);
+
+	    state.cmd_parms[4]++;
+	    if(state.cmd_parms[4] > (state.cmd_parms[6] / 2)) {
+	      state.cmd_parms[4] = 1;
+	      state.cmd_parms[3]++;
+	      if(state.cmd_parms[3] > 1) {
+		state.cmd_parms[3] = 0;
+		state.cmd_parms[2]++;
+	      }
+	    }
+
+
+	    state.cmd_res[0] = (state.cmd_parms[1] & 0x03) | ST0_SE | ST0_INTR;
+	    state.cmd_res[1] = 0;
+	    state.cmd_res[2] = 0;
+	    state.cmd_res[3] = state.cmd_parms[2];
+	    state.cmd_res[4] = state.cmd_parms[3];
+	    state.cmd_res[5] = state.cmd_parms[4];
+	    state.cmd_res[6] = state.cmd_parms[5];
+
+
+	    do_interrupt();
+	  }
+	  // returns:
+	  // st0
+	  // st1
+	  // st2
+	  // c
+	  // h
+	  // r
+	  // n
+
+
+
+
+	  break;
+
+	case 7: // recalibrate
+	  SEL_DRIVE.cylinder = 0;
+	  do_interrupt();
+	  break;
+	  
+	case 8: // sense interrupt status
+	  if(!state.interrupt) 
+	    state.cmd_res[0] = 0x80;
+	  else
+	    state.cmd_res[0] = 0x00; // ?
+
+	  state.cmd_res[1] = SEL_DRIVE.cylinder; // present cylinder number
+	  break;
+
+
+	  
+	  
+	  
+	case 18: // perpendicular mode
+	  // We really don't care, somehow
+	  break;
+	  
+
+	case 19: // configure
+	  // we're software, we don't care (I think)
+	  break;
+
+	 
+
+
+
+	default:
+	  printf("Unhandled floppy command: %d = %s\n", cmd, cmdinfo[cmd].name);
+	  exit(1);
+	}
+	
+
+	state.status.rqm=1;
+	if(cmdinfo[cmd].returns > 0) {
+	  state.status.dio=1;
+	}
+	state.cmd_parms_ptr=0;
+      } else {
+	printf("FDC: command parameter byte %d = %x, expecting %d bytes for %s\n", state.cmd_parms_ptr-1, data, cmdinfo[state.cmd_parms[0] & 0x1f].parms, cmdinfo[state.cmd_parms[0] &0x1f].name);
+      }
+    }
+
+
+    break;
+
+  case FDC_REG_DIR:
+    // PC/AT, PS/2
+    //    bits 7-2 = reserved
+    //    bit 0-1 = MFM data rate
+    state.datarate = data & 0x03;
+    printf("FDC: data rate %s\n", datarate_name[state.datarate]);
+
+    break;
   }
 }
 
 u64 CFloppyController::ReadMem(int index, u64 address, int dsize)
 {
+  u64 data = 0;
+
   if(index == 1)
     address += 7;
 
   switch(address)
   {
-  case 1:
-    if(iMode == 2)
-    {
-      if(iActiveRegister < 0x2a)
-        return(u64) (iRegisters[iActiveRegister]);
-    }
+  case FDC_REG_STATUS_A:
+    // bit 7 = interrupt pending
+    // bit 6 = -DRV2  (second drive installed)
+    // bit 5 = step
+    // bit 4 = -track0
+    // bit 3 = head1 select
+    // bit 2 = -index
+    // bit 1 = -write protect
+    // bit 0 = +direction
+
+
     break;
 
-  case 4:         //3f4 floppy main status register
-    return 0x80;  // floppy ready
+  case FDC_REG_STATUS_B:
+    // bit 7-6 reserved (1)
+    // bit 5 = drive select
+    // bit 4 = write data
+    // bit 3 = read data
+    // bit 2 = write enable
+    // bit 1 = motor 1 enable
+    // bit 0 = motor 0 enable
+
+
+
+    break;
+    
+  case FDC_REG_DOR: 
+  case FDC_REG_TAPE:
+    printf("FDC: Write only register %d read.", address);
     break;
 
-  case 5:         //3f5 floppy command status register
-    return 0;
+  case FDC_REG_STATUS: 
+    data=get_status();
     break;
 
-  default:
-    printf("Unknown read access on floppy port %d\n", (u32) address);
+  case FDC_REG_COMMAND: 
+    // The data comes back from here.
+    data = state.cmd_res[state.cmd_res_ptr++];    
+    if(state.cmd_res_ptr >= state.cmd_res_max) {
+      state.status.rqm=1;
+      state.status.dio=0;
+    } 
+
+
+ 
+    break;
+
+  case FDC_REG_DIR:
+    // PS/2 mode:
+    //    bit 7 = diskette change
+    //    bits 6-3 = 1
+    //    bit 2 = datarate select 1
+    //    bit 1 = datarate select 0
+    //    bit 0 = high density select
+
+
+    break;
   }
 
+  printf("FDC: Read register %d, value: %x\n", address, data);
+
+  return data;
+}
+
+
+static u32 fdc_magic1 = 0x0fdc0fdc;
+static u32 fdc_magic2 = 0xfdc0fdc0;
+
+int CFloppyController::SaveState(FILE *f) {
+  long  ss = sizeof(state);
+
+  fwrite(&fdc_magic1, sizeof(u32), 1, f);
+  fwrite(&ss, sizeof(long), 1, f);
+  fwrite(&state, sizeof(state), 1, f);
+  fwrite(&fdc_magic2, sizeof(u32), 1, f);
+  printf("fdc: %d bytes saved.\n", ss);
   return 0;
+}
+
+int CFloppyController::RestoreState(FILE* f)
+{
+  long    ss;
+  u32     m1;
+  u32     m2;
+  size_t  r;
+
+  r = fread(&m1, sizeof(u32), 1, f);
+  if(r != 1)
+  {
+    printf("fdc: unexpected end of file!\n");
+    return -1;
+  }
+
+  if(m1 != fdc_magic1)
+  {
+    printf("fdc: MAGIC 1 does not match!\n");
+    return -1;
+  }
+
+  fread(&ss, sizeof(long), 1, f);
+  if(r != 1)
+  {
+    printf("fdc: unexpected end of file!\n");
+    return -1;
+  }
+
+  if(ss != sizeof(state))
+  {
+    printf("fdc: STRUCT SIZE does not match!\n");
+    return -1;
+  }
+
+  fread(&state, sizeof(state), 1, f);
+  if(r != 1)
+  {
+    printf("fdc: unexpected end of file!\n");
+    return -1;
+  }
+
+  r = fread(&m2, sizeof(u32), 1, f);
+  if(r != 1)
+  {
+    printf("fdc: unexpected end of file!\n");
+    return -1;
+  }
+
+  if(m2 != fdc_magic2)
+  {
+    printf("fdc: MAGIC 1 does not match!\n");
+    return -1;
+  }
+
+  printf("fdc: %d bytes restored.\n", ss);
+  return 0;
+}
+
+
+
+void CFloppyController::do_interrupt() {
+  // *shrug* I'll figure this out later.
+  state.interrupt=true;
+}
+
+
+u8 CFloppyController::get_status() {
+    // bit 7 = RQM data register is ready (0: no access is permitted)
+    // bit 6 = 1: transfer from controller to system, 0: sys to controller
+    // bit 5 = non dma mode
+    // bit 4 = diskette controller is busy
+    // bit 3-2 reserved
+    // bit 1 = drive 1 is busy (seeking)
+    // bit 0 = drive 0 is busy (seeking)
+
+  printf("FDC Status: %s, %s, %s, %s, %s, %s\n",
+	 state.status.rqm?"Data Register Ready": "No Access",
+	 state.status.dio?"C->S":"S->C",
+	 state.status.nondma?"No DMA":"DMA",
+	 state.status.busy?"BUSY":"not busy",
+	 state.status.drv1busy?"Disk 1 Seeking":"Disk 1 Idle",
+	 state.status.drv1busy?"Disk 0 Seeking":"Disk 0 Idle");
+
+
+
+
+  u8 data = (state.status.rqm?0x80:0x00) |
+    (state.status.dio?0x40:0x00) |
+    (state.status.nondma?0x20:0x00) |
+	 (state.status.busy?0x10:0x00) |
+    (state.status.drv1busy?0x02:0x00) |
+    (state.status.drv0busy?0x01:0x00);
+  return data;
 }
