@@ -1,8 +1,8 @@
 /* ES40 emulator.
  * Copyright (C) 2007-2008 by the ES40 Emulator Project
  *
- * WWW    : http://sourceforge.net/projects/es40
- * E-mail : camiel@camicom.com
+ * WWW    : http://es40.org
+ * E-mail : camiel@es40.org
  * 
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -27,7 +27,10 @@
  * \file
  * Contains the definitions for the emulated DMA controller.
  *
- * $Id: DMA.h,v 1.5 2008/04/29 09:19:19 iamcamiel Exp $
+ * $Id: DMA.h,v 1.6 2008/04/29 09:26:53 iamcamiel Exp $
+ *
+ * X-1.5        Camiel Vanderhoeven                             29-APR-2008
+ *      Removed unused reference to floppy disk image.
  *
  * X-1.4        Brian Wheeler                                   29-APR-2008
  *      Fixed floppy disk implementation.
@@ -64,25 +67,18 @@ class CDMA : public CSystemComponent
     virtual u64   ReadMem(int index, u64 address, int dsize);
     virtual int   SaveState(FILE* f);
     virtual int   RestoreState(FILE* f);
- 
 
     void          set_request(int index, int channel, int data);
     void           send_data(int channel, void *data);
     void           recv_data(int channel, void *data);
     int           get_count(int channel) { return state.channel[channel].count; };
 
-
   private:
     void          do_dma();
-
-    FILE *floppyimage;
-
-
 
     /// The state structure contains all elements that need to be saved to the statefile.
     struct SDMA_state
     {
-
       /// DMA channel state
       struct SDMA_chan
       {
@@ -92,7 +88,7 @@ class CDMA : public CSystemComponent
         u16   base;
         u16   pagebase;
         u16   count;
-	u8    mode;
+    	u8    mode;
       } channel[8];
 
       /// DMA controller state
@@ -101,7 +97,7 @@ class CDMA : public CSystemComponent
         u8  status;
         u8  command;
         u8  request;
-	u8  mask;
+	    u8  mask;
       } controller[2];
     }
     state;
@@ -118,7 +114,5 @@ class CDMA : public CSystemComponent
 #define DMA1_IO_EXT DMA_IO_BASE + 7
 
 extern CDMA *theDMA;
-
-
 
 #endif // !defined(INCLUDED_DMA_H)
