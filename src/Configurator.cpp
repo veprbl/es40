@@ -27,9 +27,13 @@
  * \file
  * Contains the code for the configuration file interpreter.
  *
- * $Id: Configurator.cpp,v 1.30 2008/04/29 15:23:27 iamcamiel Exp $
+ * $Id: Configurator.cpp,v 1.31 2008/04/30 16:00:03 iamcamiel Exp $
  *
- * X-1.29       Camiel Vanderhoeven                             29-APR-2008
+ * X-1.31       Camiel Vanderhoeven                             30-APR-2008
+ *      For disk controllers, myDevice points to the CDiskController part
+ *      of the class as it's used to register disks to.
+ *
+ * X-1.30       Camiel Vanderhoeven                             29-APR-2008
  *      Fixed a mistake in the last commit.
  *
  * X-1.28       Brian Wheeler/Camiel Vanderhoeven               29-APR-2008
@@ -851,11 +855,19 @@ void CConfigurator::initialize()
     break;
 
   case c_floppy:
-    myDevice = new CFloppyController(this, (CSystem*) pParent->get_device(),fdcbus);
+    /* For disk controllers, myDevice points to the
+     * CDiskController part of the class as it's used
+     * to register disks to.
+     */
+    myDevice = (CDiskController *) new CFloppyController(this, (CSystem*) pParent->get_device(),fdcbus);
     break;
 
   case c_ali_ide:
-    myDevice = new CAliM1543C_ide(this, (CSystem*) pParent->get_device(),
+    /* For disk controllers, myDevice points to the
+     * CDiskController part of the class as it's used
+     * to register disks to.
+     */
+    myDevice = (CDiskController *) new CAliM1543C_ide(this, (CSystem*) pParent->get_device(),
                                   pcibus, pcidev);
     break;
 
@@ -894,12 +906,20 @@ void CConfigurator::initialize()
 #endif
 
   case c_sym53c895:
-    myDevice = new CSym53C895(this, (CSystem*) pParent->get_device(), pcibus,
+    /* For disk controllers, myDevice points to the
+     * CDiskController part of the class as it's used
+     * to register disks to.
+     */
+    myDevice = (CDiskController *) new CSym53C895(this, (CSystem*) pParent->get_device(), pcibus,
                               pcidev);
     break;
 
   case c_sym53c810:
-    myDevice = new CSym53C810(this, (CSystem*) pParent->get_device(), pcibus,
+    /* For disk controllers, myDevice points to the
+     * CDiskController part of the class as it's used
+     * to register disks to.
+     */
+    myDevice = (CDiskController *) new CSym53C810(this, (CSystem*) pParent->get_device(), pcibus,
                               pcidev);
     break;
 
