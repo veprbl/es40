@@ -577,7 +577,7 @@
 				MinimalRebuild="false"
 				ExceptionHandling="1"
 				BasicRuntimeChecks="0"
-				RuntimeLibrary="0"
+				RuntimeLibrary="2"
 				EnableFunctionLevelLinking="false"
 				UsePrecompiledHeader="0"
 				PrecompiledHeaderFile=".\Release/es40.pch"
@@ -1620,7 +1620,7 @@
 				MinimalRebuild="false"
 				ExceptionHandling="1"
 				BasicRuntimeChecks="0"
-				RuntimeLibrary="0"
+				RuntimeLibrary="2"
 				EnableFunctionLevelLinking="false"
 				UsePrecompiledHeader="0"
 				PrecompiledHeaderFile=".\Release NN/es40.pch"
@@ -2450,7 +2450,7 @@
 				MinimalRebuild="false"
 				ExceptionHandling="1"
 				BasicRuntimeChecks="0"
-				RuntimeLibrary="0"
+				RuntimeLibrary="2"
 				EnableFunctionLevelLinking="false"
 				UsePrecompiledHeader="0"
 				PrecompiledHeaderFile=".\Release NN NS/es40.pch"
@@ -3280,7 +3280,7 @@
 				MinimalRebuild="false"
 				ExceptionHandling="1"
 				BasicRuntimeChecks="0"
-				RuntimeLibrary="0"
+				RuntimeLibrary="2"
 				EnableFunctionLevelLinking="false"
 				UsePrecompiledHeader="0"
 				PrecompiledHeaderFile=".\Release NS/es40.pch"
@@ -4185,11 +4185,11 @@
 				>
 			</File>
 			<File
-				RelativePath="..\gui\vga.h"
+				RelativePath="..\VGA.h"
 				>
 			</File>
 			<File
-				RelativePath="..\VGA.h"
+				RelativePath="..\gui\vga.h"
 				>
 			</File>
 		</Filter>
