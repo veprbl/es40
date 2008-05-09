@@ -3,6 +3,8 @@
 
 \section c019 version 0.18 -> 0.18+
 
+ - Fixed a bug (checking for "true" rather than "yes" in the final test) that was introduced
+   with the previous patch. (09-may-2008, Caolán McNamarra)
  - Floppy controller implementation. (29-apr-2008, Brian Wheeler)
  - CDiskController is no longer a CPCIDevice. This alows for non-PCI diskcontrollers (like the
    floppy controller. (29-apr-2008, Camiel Vanderhoeven)
