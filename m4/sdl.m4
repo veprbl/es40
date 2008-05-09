@@ -26,7 +26,11 @@
 #
 ################################################################################
 #
-# $Id: sdl.m4,v 1.2 2008/04/10 12:08:57 iamcamiel Exp $
+# $Id: sdl.m4,v 1.3 2008/05/09 07:10:22 iamcamiel Exp $
+#
+# X-1.3          Caolán McNamarra                         09-MAY-2008
+#      Fixed a bug (checking for "true" rather than "yes" in the final test) that
+#      was introduced with the previous patch.
 #
 # X-1.2          Camiel Vanderhoeven                      10-APR-2008
 #      File now recognizes Apple's use of SDL. (SDL in 
@@ -226,7 +230,7 @@ int main(int argc, char *argv[])
        fi
      fi
   fi
-  if test "$sdl_found" = "true" ; then
+  if test "$sdl_found" = "yes" ; then
      ifelse([$2], , :, [$2])
   else
      SDL_CFLAGS=""
