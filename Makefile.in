@@ -18,8 +18,8 @@
 # ES40 emulator.
 # Copyright (C) 2007-2008 by the ES40 Emulator Project
 #
-# Website: http://sourceforge.net/projects/es40
-# E-mail : camiel@camicom.com
+# Website: http://www.es40.org
+# E-mail : camiel@es40.org
 # 
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
@@ -42,7 +42,10 @@
 #
 ################################################################################
 #
-# $Id: Makefile.in,v 1.3 2008/04/04 09:07:14 iamcamiel Exp $
+# $Id: Makefile.in,v 1.4 2008/05/31 15:47:07 iamcamiel Exp $
+#
+# X-1.2      Camiel Vanderhoeven                      31-MAY-2008
+#      Add parts of Poco.
 #
 # X-1.1	     Camiel Vanderhoeven                      20-MAR-2008
 #      File Created.
@@ -64,14 +67,17 @@ POST_INSTALL = :
 NORMAL_UNINSTALL = :
 PRE_UNINSTALL = :
 POST_UNINSTALL = :
+build_triplet = @build@
+host_triplet = @host@
 subdir = .
 DIST_COMMON = README $(am__configure_deps) $(srcdir)/Makefile.am \
 	$(srcdir)/Makefile.in $(top_srcdir)/configure AUTHORS COPYING \
-	ChangeLog INSTALL NEWS THANKS depcomp install-sh missing
+	ChangeLog INSTALL NEWS THANKS config.guess config.sub depcomp \
+	install-sh missing
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/m4/libpcap.m4 \
-	$(top_srcdir)/m4/sdl.m4 $(top_srcdir)/m4/x11.m4 \
-	$(top_srcdir)/configure.ac
+	$(top_srcdir)/m4/pthreads.m4 $(top_srcdir)/m4/sdl.m4 \
+	$(top_srcdir)/m4/x11.m4 $(top_srcdir)/configure.ac
 am__configure_deps = $(am__aclocal_m4_deps) $(CONFIGURE_DEPENDENCIES) \
 	$(ACLOCAL_M4)
 am__CONFIG_DISTCLEAN_FILES = config.status config.cache config.log \
@@ -148,6 +154,9 @@ PACKAGE_VERSION = @PACKAGE_VERSION@
 PATH_SEPARATOR = @PATH_SEPARATOR@
 PCAP_CFLAGS = @PCAP_CFLAGS@
 PCAP_LIBS = @PCAP_LIBS@
+PTHREAD_CC = @PTHREAD_CC@
+PTHREAD_CFLAGS = @PTHREAD_CFLAGS@
+PTHREAD_LIBS = @PTHREAD_LIBS@
 SDL_CFLAGS = @SDL_CFLAGS@
 SDL_CONFIG = @SDL_CONFIG@
 SDL_LIBS = @SDL_LIBS@
@@ -164,20 +173,29 @@ abs_top_builddir = @abs_top_builddir@
 abs_top_srcdir = @abs_top_srcdir@
 ac_ct_CC = @ac_ct_CC@
 ac_ct_CXX = @ac_ct_CXX@
+acx_pthread_config = @acx_pthread_config@
 am__include = @am__include@
 am__leading_dot = @am__leading_dot@
 am__quote = @am__quote@
 am__tar = @am__tar@
 am__untar = @am__untar@
 bindir = @bindir@
+build = @build@
 build_alias = @build_alias@
+build_cpu = @build_cpu@
+build_os = @build_os@
+build_vendor = @build_vendor@
 builddir = @builddir@
 datadir = @datadir@
 datarootdir = @datarootdir@
 docdir = @docdir@
 dvidir = @dvidir@
 exec_prefix = @exec_prefix@
+host = @host@
 host_alias = @host_alias@
+host_cpu = @host_cpu@
+host_os = @host_os@
+host_vendor = @host_vendor@
 htmldir = @htmldir@
 includedir = @includedir@
 infodir = @infodir@

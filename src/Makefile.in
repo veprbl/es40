@@ -18,8 +18,8 @@
 # ES40 emulator.
 # Copyright (C) 2007-2008 by the ES40 Emulator Project
 #
-# Website: http://sourceforge.net/projects/es40
-# E-mail : camiel@camicom.com
+# Website: http://www.es40.org
+# E-mail : camiel@es40.org
 # 
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
@@ -42,7 +42,10 @@
 #
 ################################################################################
 #
-# $Id: Makefile.in,v 1.4 2008/04/04 09:07:14 iamcamiel Exp $
+# $Id: Makefile.in,v 1.5 2008/05/31 15:47:10 iamcamiel Exp $
+#
+# X-1.5      Camiel Vanderhoeven                          31-MAY-2008
+#      Add parts of Poco.
 #
 # X-1.4      Camiel Vanderhoeven                      04-APR-2008
 #      Added comments.
@@ -71,6 +74,8 @@ POST_INSTALL = :
 NORMAL_UNINSTALL = :
 PRE_UNINSTALL = :
 POST_UNINSTALL = :
+build_triplet = @build@
+host_triplet = @host@
 bin_PROGRAMS = es40$(EXEEXT) es40_idb$(EXEEXT) es40_lss$(EXEEXT) \
 	es40_lsm$(EXEEXT) es40_cfg$(EXEEXT)
 subdir = src
@@ -78,8 +83,8 @@ DIST_COMMON = $(srcdir)/Makefile.am $(srcdir)/Makefile.in \
 	$(srcdir)/config.h.in
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/m4/libpcap.m4 \
-	$(top_srcdir)/m4/sdl.m4 $(top_srcdir)/m4/x11.m4 \
-	$(top_srcdir)/configure.ac
+	$(top_srcdir)/m4/pthreads.m4 $(top_srcdir)/m4/sdl.m4 \
+	$(top_srcdir)/m4/x11.m4 $(top_srcdir)/configure.ac
 am__configure_deps = $(am__aclocal_m4_deps) $(CONFIGURE_DEPENDENCIES) \
 	$(ACLOCAL_M4)
 mkinstalldirs = $(install_sh) -d
@@ -96,22 +101,24 @@ am_es40_OBJECTS = AliM1543C.$(OBJEXT) AliM1543C_ide.$(OBJEXT) \
 	DiskController.$(OBJEXT) DiskDevice.$(OBJEXT) \
 	DiskFile.$(OBJEXT) DiskRam.$(OBJEXT) DMA.$(OBJEXT) \
 	DPR.$(OBJEXT) es40_debug.$(OBJEXT) Ethernet.$(OBJEXT) \
-	Exception.$(OBJEXT) Flash.$(OBJEXT) FloppyController.$(OBJEXT) \
-	Keyboard.$(OBJEXT) lockstep.$(OBJEXT) PCIDevice.$(OBJEXT) \
-	Port80.$(OBJEXT) S3Trio64.$(OBJEXT) SCSIBus.$(OBJEXT) \
-	SCSIDevice.$(OBJEXT) Serial.$(OBJEXT) StdAfx.$(OBJEXT) \
-	Sym53C810.$(OBJEXT) Sym53C895.$(OBJEXT) \
-	SystemComponent.$(OBJEXT) System.$(OBJEXT) \
+	Flash.$(OBJEXT) FloppyController.$(OBJEXT) Keyboard.$(OBJEXT) \
+	lockstep.$(OBJEXT) PCIDevice.$(OBJEXT) Port80.$(OBJEXT) \
+	S3Trio64.$(OBJEXT) SCSIBus.$(OBJEXT) SCSIDevice.$(OBJEXT) \
+	Serial.$(OBJEXT) StdAfx.$(OBJEXT) Sym53C810.$(OBJEXT) \
+	Sym53C895.$(OBJEXT) SystemComponent.$(OBJEXT) System.$(OBJEXT) \
 	TraceEngine.$(OBJEXT) VGA.$(OBJEXT) gui.$(OBJEXT) \
 	gui_x11.$(OBJEXT) keymap.$(OBJEXT) scancodes.$(OBJEXT) \
-	sdl.$(OBJEXT)
+	sdl.$(OBJEXT) Bugcheck.$(OBJEXT) ErrorHandler.$(OBJEXT) \
+	Event.$(OBJEXT) Exception.$(OBJEXT) Mutex.$(OBJEXT) \
+	NumberFormatter.$(OBJEXT) RefCountedObject.$(OBJEXT) \
+	Runnable.$(OBJEXT) RWLock.$(OBJEXT) Semaphore.$(OBJEXT) \
+	SignalHandler.$(OBJEXT) ThreadLocal.$(OBJEXT) Thread.$(OBJEXT) \
+	Timestamp.$(OBJEXT)
 es40_OBJECTS = $(am_es40_OBJECTS)
 es40_LDADD = $(LDADD)
-es40_DEPENDENCIES =
 am_es40_cfg_OBJECTS = es40-cfg.$(OBJEXT)
 es40_cfg_OBJECTS = $(am_es40_cfg_OBJECTS)
 es40_cfg_LDADD = $(LDADD)
-es40_cfg_DEPENDENCIES =
 am__objects_1 = es40_idb-AliM1543C.$(OBJEXT) \
 	es40_idb-AliM1543C_ide.$(OBJEXT) \
 	es40_idb-AliM1543C_usb.$(OBJEXT) es40_idb-AlphaCPU.$(OBJEXT) \
@@ -124,8 +131,8 @@ am__objects_1 = es40_idb-AliM1543C.$(OBJEXT) \
 	es40_idb-DiskDevice.$(OBJEXT) es40_idb-DiskFile.$(OBJEXT) \
 	es40_idb-DiskRam.$(OBJEXT) es40_idb-DMA.$(OBJEXT) \
 	es40_idb-DPR.$(OBJEXT) es40_idb-es40_debug.$(OBJEXT) \
-	es40_idb-Ethernet.$(OBJEXT) es40_idb-Exception.$(OBJEXT) \
-	es40_idb-Flash.$(OBJEXT) es40_idb-FloppyController.$(OBJEXT) \
+	es40_idb-Ethernet.$(OBJEXT) es40_idb-Flash.$(OBJEXT) \
+	es40_idb-FloppyController.$(OBJEXT) \
 	es40_idb-Keyboard.$(OBJEXT) es40_idb-lockstep.$(OBJEXT) \
 	es40_idb-PCIDevice.$(OBJEXT) es40_idb-Port80.$(OBJEXT) \
 	es40_idb-S3Trio64.$(OBJEXT) es40_idb-SCSIBus.$(OBJEXT) \
@@ -136,11 +143,18 @@ am__objects_1 = es40_idb-AliM1543C.$(OBJEXT) \
 	es40_idb-TraceEngine.$(OBJEXT) es40_idb-VGA.$(OBJEXT) \
 	es40_idb-gui.$(OBJEXT) es40_idb-gui_x11.$(OBJEXT) \
 	es40_idb-keymap.$(OBJEXT) es40_idb-scancodes.$(OBJEXT) \
-	es40_idb-sdl.$(OBJEXT)
+	es40_idb-sdl.$(OBJEXT) es40_idb-Bugcheck.$(OBJEXT) \
+	es40_idb-ErrorHandler.$(OBJEXT) es40_idb-Event.$(OBJEXT) \
+	es40_idb-Exception.$(OBJEXT) es40_idb-Mutex.$(OBJEXT) \
+	es40_idb-NumberFormatter.$(OBJEXT) \
+	es40_idb-RefCountedObject.$(OBJEXT) \
+	es40_idb-Runnable.$(OBJEXT) es40_idb-RWLock.$(OBJEXT) \
+	es40_idb-Semaphore.$(OBJEXT) es40_idb-SignalHandler.$(OBJEXT) \
+	es40_idb-ThreadLocal.$(OBJEXT) es40_idb-Thread.$(OBJEXT) \
+	es40_idb-Timestamp.$(OBJEXT)
 am_es40_idb_OBJECTS = $(am__objects_1)
 es40_idb_OBJECTS = $(am_es40_idb_OBJECTS)
 es40_idb_LDADD = $(LDADD)
-es40_idb_DEPENDENCIES =
 es40_idb_LINK = $(CXXLD) $(es40_idb_CXXFLAGS) $(CXXFLAGS) \
 	$(AM_LDFLAGS) $(LDFLAGS) -o $@
 am__objects_2 = es40_lsm-AliM1543C.$(OBJEXT) \
@@ -155,8 +169,8 @@ am__objects_2 = es40_lsm-AliM1543C.$(OBJEXT) \
 	es40_lsm-DiskDevice.$(OBJEXT) es40_lsm-DiskFile.$(OBJEXT) \
 	es40_lsm-DiskRam.$(OBJEXT) es40_lsm-DMA.$(OBJEXT) \
 	es40_lsm-DPR.$(OBJEXT) es40_lsm-es40_debug.$(OBJEXT) \
-	es40_lsm-Ethernet.$(OBJEXT) es40_lsm-Exception.$(OBJEXT) \
-	es40_lsm-Flash.$(OBJEXT) es40_lsm-FloppyController.$(OBJEXT) \
+	es40_lsm-Ethernet.$(OBJEXT) es40_lsm-Flash.$(OBJEXT) \
+	es40_lsm-FloppyController.$(OBJEXT) \
 	es40_lsm-Keyboard.$(OBJEXT) es40_lsm-lockstep.$(OBJEXT) \
 	es40_lsm-PCIDevice.$(OBJEXT) es40_lsm-Port80.$(OBJEXT) \
 	es40_lsm-S3Trio64.$(OBJEXT) es40_lsm-SCSIBus.$(OBJEXT) \
@@ -167,11 +181,18 @@ am__objects_2 = es40_lsm-AliM1543C.$(OBJEXT) \
 	es40_lsm-TraceEngine.$(OBJEXT) es40_lsm-VGA.$(OBJEXT) \
 	es40_lsm-gui.$(OBJEXT) es40_lsm-gui_x11.$(OBJEXT) \
 	es40_lsm-keymap.$(OBJEXT) es40_lsm-scancodes.$(OBJEXT) \
-	es40_lsm-sdl.$(OBJEXT)
+	es40_lsm-sdl.$(OBJEXT) es40_lsm-Bugcheck.$(OBJEXT) \
+	es40_lsm-ErrorHandler.$(OBJEXT) es40_lsm-Event.$(OBJEXT) \
+	es40_lsm-Exception.$(OBJEXT) es40_lsm-Mutex.$(OBJEXT) \
+	es40_lsm-NumberFormatter.$(OBJEXT) \
+	es40_lsm-RefCountedObject.$(OBJEXT) \
+	es40_lsm-Runnable.$(OBJEXT) es40_lsm-RWLock.$(OBJEXT) \
+	es40_lsm-Semaphore.$(OBJEXT) es40_lsm-SignalHandler.$(OBJEXT) \
+	es40_lsm-ThreadLocal.$(OBJEXT) es40_lsm-Thread.$(OBJEXT) \
+	es40_lsm-Timestamp.$(OBJEXT)
 am_es40_lsm_OBJECTS = $(am__objects_2)
 es40_lsm_OBJECTS = $(am_es40_lsm_OBJECTS)
 es40_lsm_LDADD = $(LDADD)
-es40_lsm_DEPENDENCIES =
 es40_lsm_LINK = $(CXXLD) $(es40_lsm_CXXFLAGS) $(CXXFLAGS) \
 	$(AM_LDFLAGS) $(LDFLAGS) -o $@
 am__objects_3 = es40_lss-AliM1543C.$(OBJEXT) \
@@ -186,8 +207,8 @@ am__objects_3 = es40_lss-AliM1543C.$(OBJEXT) \
 	es40_lss-DiskDevice.$(OBJEXT) es40_lss-DiskFile.$(OBJEXT) \
 	es40_lss-DiskRam.$(OBJEXT) es40_lss-DMA.$(OBJEXT) \
 	es40_lss-DPR.$(OBJEXT) es40_lss-es40_debug.$(OBJEXT) \
-	es40_lss-Ethernet.$(OBJEXT) es40_lss-Exception.$(OBJEXT) \
-	es40_lss-Flash.$(OBJEXT) es40_lss-FloppyController.$(OBJEXT) \
+	es40_lss-Ethernet.$(OBJEXT) es40_lss-Flash.$(OBJEXT) \
+	es40_lss-FloppyController.$(OBJEXT) \
 	es40_lss-Keyboard.$(OBJEXT) es40_lss-lockstep.$(OBJEXT) \
 	es40_lss-PCIDevice.$(OBJEXT) es40_lss-Port80.$(OBJEXT) \
 	es40_lss-S3Trio64.$(OBJEXT) es40_lss-SCSIBus.$(OBJEXT) \
@@ -198,11 +219,18 @@ am__objects_3 = es40_lss-AliM1543C.$(OBJEXT) \
 	es40_lss-TraceEngine.$(OBJEXT) es40_lss-VGA.$(OBJEXT) \
 	es40_lss-gui.$(OBJEXT) es40_lss-gui_x11.$(OBJEXT) \
 	es40_lss-keymap.$(OBJEXT) es40_lss-scancodes.$(OBJEXT) \
-	es40_lss-sdl.$(OBJEXT)
+	es40_lss-sdl.$(OBJEXT) es40_lss-Bugcheck.$(OBJEXT) \
+	es40_lss-ErrorHandler.$(OBJEXT) es40_lss-Event.$(OBJEXT) \
+	es40_lss-Exception.$(OBJEXT) es40_lss-Mutex.$(OBJEXT) \
+	es40_lss-NumberFormatter.$(OBJEXT) \
+	es40_lss-RefCountedObject.$(OBJEXT) \
+	es40_lss-Runnable.$(OBJEXT) es40_lss-RWLock.$(OBJEXT) \
+	es40_lss-Semaphore.$(OBJEXT) es40_lss-SignalHandler.$(OBJEXT) \
+	es40_lss-ThreadLocal.$(OBJEXT) es40_lss-Thread.$(OBJEXT) \
+	es40_lss-Timestamp.$(OBJEXT)
 am_es40_lss_OBJECTS = $(am__objects_3)
 es40_lss_OBJECTS = $(am_es40_lss_OBJECTS)
 es40_lss_LDADD = $(LDADD)
-es40_lss_DEPENDENCIES =
 es40_lss_LINK = $(CXXLD) $(es40_lss_CXXFLAGS) $(CXXFLAGS) \
 	$(AM_LDFLAGS) $(LDFLAGS) -o $@
 DEFAULT_INCLUDES = -I.@am__isrc@
@@ -264,6 +292,9 @@ PACKAGE_VERSION = @PACKAGE_VERSION@
 PATH_SEPARATOR = @PATH_SEPARATOR@
 PCAP_CFLAGS = @PCAP_CFLAGS@
 PCAP_LIBS = @PCAP_LIBS@
+PTHREAD_CC = @PTHREAD_CC@
+PTHREAD_CFLAGS = @PTHREAD_CFLAGS@
+PTHREAD_LIBS = @PTHREAD_LIBS@
 SDL_CFLAGS = @SDL_CFLAGS@
 SDL_CONFIG = @SDL_CONFIG@
 SDL_LIBS = @SDL_LIBS@
@@ -280,20 +311,29 @@ abs_top_builddir = @abs_top_builddir@
 abs_top_srcdir = @abs_top_srcdir@
 ac_ct_CC = @ac_ct_CC@
 ac_ct_CXX = @ac_ct_CXX@
+acx_pthread_config = @acx_pthread_config@
 am__include = @am__include@
 am__leading_dot = @am__leading_dot@
 am__quote = @am__quote@
 am__tar = @am__tar@
 am__untar = @am__untar@
 bindir = @bindir@
+build = @build@
 build_alias = @build_alias@
+build_cpu = @build_cpu@
+build_os = @build_os@
+build_vendor = @build_vendor@
 builddir = @builddir@
 datadir = @datadir@
 datarootdir = @datarootdir@
 docdir = @docdir@
 dvidir = @dvidir@
 exec_prefix = @exec_prefix@
+host = @host@
 host_alias = @host_alias@
+host_cpu = @host_cpu@
+host_os = @host_os@
+host_vendor = @host_vendor@
 htmldir = @htmldir@
 includedir = @includedir@
 infodir = @infodir@
@@ -336,7 +376,6 @@ es40_SOURCES = AliM1543C.cpp \
        DPR.cpp \
        es40_debug.cpp \
        Ethernet.cpp \
-       Exception.cpp \
        Flash.cpp \
        FloppyController.cpp \
        Keyboard.cpp \
@@ -358,7 +397,21 @@ es40_SOURCES = AliM1543C.cpp \
        gui/gui_x11.cpp \
        gui/keymap.cpp \
        gui/scancodes.cpp \
-       gui/sdl.cpp
+       gui/sdl.cpp \
+        base/Bugcheck.cpp \
+	base/ErrorHandler.cpp \
+	base/Event.cpp \
+	base/Exception.cpp \
+	base/Mutex.cpp \
+	base/NumberFormatter.cpp \
+	base/RefCountedObject.cpp \
+	base/Runnable.cpp \
+	base/RWLock.cpp \
+	base/Semaphore.cpp \
+	base/SignalHandler.cpp \
+	base/ThreadLocal.cpp \
+	base/Thread.cpp \
+	base/Timestamp.cpp
 
 es40_idb_SOURCES = $(es40_SOURCES)
 es40_lss_SOURCES = $(es40_SOURCES)
@@ -367,7 +420,6 @@ es40_idb_CXXFLAGS = -DIDB
 es40_lss_CXXFLAGS = -DIDB -DLSS
 es40_lsm_CXXFLAGS = -DIDB -DLSM
 es40_cfg_SOURCES = es40-cfg.cpp
-LDADD = -lPocoFoundation
 all: config.h
 	$(MAKE) $(AM_MAKEFLAGS) all-am
 
@@ -472,6 +524,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/AlphaCPU_vaxfloat.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/AlphaCPU_vmspal.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/AlphaSim.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/Bugcheck.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/Cirrus.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/Configurator.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/DEC21143.Po@am__quote@
@@ -482,22 +535,34 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/DiskDevice.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/DiskFile.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/DiskRam.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ErrorHandler.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/Ethernet.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/Event.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/Exception.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/Flash.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/FloppyController.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/Keyboard.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/Mutex.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/NumberFormatter.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/PCIDevice.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/Port80.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/RWLock.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/RefCountedObject.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/Runnable.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/S3Trio64.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/SCSIBus.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/SCSIDevice.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/Semaphore.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/Serial.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/SignalHandler.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/StdAfx.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/Sym53C810.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/Sym53C895.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/System.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/SystemComponent.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/Thread.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ThreadLocal.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/Timestamp.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/TraceEngine.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/VGA.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/es40-cfg.Po@am__quote@
@@ -510,6 +575,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/es40_idb-AlphaCPU_vaxfloat.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/es40_idb-AlphaCPU_vmspal.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/es40_idb-AlphaSim.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/es40_idb-Bugcheck.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/es40_idb-Cirrus.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/es40_idb-Configurator.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/es40_idb-DEC21143.Po@am__quote@
@@ -520,22 +586,34 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/es40_idb-DiskDevice.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/es40_idb-DiskFile.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/es40_idb-DiskRam.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/es40_idb-ErrorHandler.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/es40_idb-Ethernet.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/es40_idb-Event.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/es40_idb-Exception.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/es40_idb-Flash.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/es40_idb-FloppyController.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/es40_idb-Keyboard.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/es40_idb-Mutex.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/es40_idb-NumberFormatter.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/es40_idb-PCIDevice.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/es40_idb-Port80.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/es40_idb-RWLock.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/es40_idb-RefCountedObject.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/es40_idb-Runnable.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/es40_idb-S3Trio64.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/es40_idb-SCSIBus.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/es40_idb-SCSIDevice.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/es40_idb-Semaphore.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/es40_idb-Serial.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/es40_idb-SignalHandler.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/es40_idb-StdAfx.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/es40_idb-Sym53C810.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/es40_idb-Sym53C895.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/es40_idb-System.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/es40_idb-SystemComponent.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/es40_idb-Thread.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/es40_idb-ThreadLocal.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/es40_idb-Timestamp.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/es40_idb-TraceEngine.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/es40_idb-VGA.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/es40_idb-es40_debug.Po@am__quote@
@@ -553,6 +631,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/es40_lsm-AlphaCPU_vaxfloat.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/es40_lsm-AlphaCPU_vmspal.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/es40_lsm-AlphaSim.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/es40_lsm-Bugcheck.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/es40_lsm-Cirrus.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/es40_lsm-Configurator.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/es40_lsm-DEC21143.Po@am__quote@
@@ -563,22 +642,34 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/es40_lsm-DiskDevice.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/es40_lsm-DiskFile.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/es40_lsm-DiskRam.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/es40_lsm-ErrorHandler.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/es40_lsm-Ethernet.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/es40_lsm-Event.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/es40_lsm-Exception.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/es40_lsm-Flash.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/es40_lsm-FloppyController.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/es40_lsm-Keyboard.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/es40_lsm-Mutex.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/es40_lsm-NumberFormatter.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/es40_lsm-PCIDevice.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/es40_lsm-Port80.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/es40_lsm-RWLock.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/es40_lsm-RefCountedObject.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/es40_lsm-Runnable.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/es40_lsm-S3Trio64.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/es40_lsm-SCSIBus.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/es40_lsm-SCSIDevice.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/es40_lsm-Semaphore.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/es40_lsm-Serial.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/es40_lsm-SignalHandler.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/es40_lsm-StdAfx.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/es40_lsm-Sym53C810.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/es40_lsm-Sym53C895.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/es40_lsm-System.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/es40_lsm-SystemComponent.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/es40_lsm-Thread.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/es40_lsm-ThreadLocal.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/es40_lsm-Timestamp.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/es40_lsm-TraceEngine.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/es40_lsm-VGA.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/es40_lsm-es40_debug.Po@am__quote@
@@ -596,6 +687,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/es40_lss-AlphaCPU_vaxfloat.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/es40_lss-AlphaCPU_vmspal.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/es40_lss-AlphaSim.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/es40_lss-Bugcheck.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/es40_lss-Cirrus.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/es40_lss-Configurator.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/es40_lss-DEC21143.Po@am__quote@
@@ -606,22 +698,34 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/es40_lss-DiskDevice.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/es40_lss-DiskFile.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/es40_lss-DiskRam.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/es40_lss-ErrorHandler.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/es40_lss-Ethernet.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/es40_lss-Event.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/es40_lss-Exception.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/es40_lss-Flash.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/es40_lss-FloppyController.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/es40_lss-Keyboard.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/es40_lss-Mutex.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/es40_lss-NumberFormatter.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/es40_lss-PCIDevice.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/es40_lss-Port80.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/es40_lss-RWLock.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/es40_lss-RefCountedObject.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/es40_lss-Runnable.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/es40_lss-S3Trio64.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/es40_lss-SCSIBus.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/es40_lss-SCSIDevice.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/es40_lss-Semaphore.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/es40_lss-Serial.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/es40_lss-SignalHandler.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/es40_lss-StdAfx.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/es40_lss-Sym53C810.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/es40_lss-Sym53C895.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/es40_lss-System.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/es40_lss-SystemComponent.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/es40_lss-Thread.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/es40_lss-ThreadLocal.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/es40_lss-Timestamp.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/es40_lss-TraceEngine.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/es40_lss-VGA.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/es40_lss-es40_debug.Po@am__quote@
@@ -721,6 +825,202 @@ sdl.obj: gui/sdl.cpp
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='gui/sdl.cpp' object='sdl.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o sdl.obj `if test -f 'gui/sdl.cpp'; then $(CYGPATH_W) 'gui/sdl.cpp'; else $(CYGPATH_W) '$(srcdir)/gui/sdl.cpp'; fi`
+
+Bugcheck.o: base/Bugcheck.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT Bugcheck.o -MD -MP -MF $(DEPDIR)/Bugcheck.Tpo -c -o Bugcheck.o `test -f 'base/Bugcheck.cpp' || echo '$(srcdir)/'`base/Bugcheck.cpp
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/Bugcheck.Tpo $(DEPDIR)/Bugcheck.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='base/Bugcheck.cpp' object='Bugcheck.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o Bugcheck.o `test -f 'base/Bugcheck.cpp' || echo '$(srcdir)/'`base/Bugcheck.cpp
+
+Bugcheck.obj: base/Bugcheck.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT Bugcheck.obj -MD -MP -MF $(DEPDIR)/Bugcheck.Tpo -c -o Bugcheck.obj `if test -f 'base/Bugcheck.cpp'; then $(CYGPATH_W) 'base/Bugcheck.cpp'; else $(CYGPATH_W) '$(srcdir)/base/Bugcheck.cpp'; fi`
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/Bugcheck.Tpo $(DEPDIR)/Bugcheck.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='base/Bugcheck.cpp' object='Bugcheck.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o Bugcheck.obj `if test -f 'base/Bugcheck.cpp'; then $(CYGPATH_W) 'base/Bugcheck.cpp'; else $(CYGPATH_W) '$(srcdir)/base/Bugcheck.cpp'; fi`
+
+ErrorHandler.o: base/ErrorHandler.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT ErrorHandler.o -MD -MP -MF $(DEPDIR)/ErrorHandler.Tpo -c -o ErrorHandler.o `test -f 'base/ErrorHandler.cpp' || echo '$(srcdir)/'`base/ErrorHandler.cpp
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/ErrorHandler.Tpo $(DEPDIR)/ErrorHandler.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='base/ErrorHandler.cpp' object='ErrorHandler.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o ErrorHandler.o `test -f 'base/ErrorHandler.cpp' || echo '$(srcdir)/'`base/ErrorHandler.cpp
+
+ErrorHandler.obj: base/ErrorHandler.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT ErrorHandler.obj -MD -MP -MF $(DEPDIR)/ErrorHandler.Tpo -c -o ErrorHandler.obj `if test -f 'base/ErrorHandler.cpp'; then $(CYGPATH_W) 'base/ErrorHandler.cpp'; else $(CYGPATH_W) '$(srcdir)/base/ErrorHandler.cpp'; fi`
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/ErrorHandler.Tpo $(DEPDIR)/ErrorHandler.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='base/ErrorHandler.cpp' object='ErrorHandler.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o ErrorHandler.obj `if test -f 'base/ErrorHandler.cpp'; then $(CYGPATH_W) 'base/ErrorHandler.cpp'; else $(CYGPATH_W) '$(srcdir)/base/ErrorHandler.cpp'; fi`
+
+Event.o: base/Event.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT Event.o -MD -MP -MF $(DEPDIR)/Event.Tpo -c -o Event.o `test -f 'base/Event.cpp' || echo '$(srcdir)/'`base/Event.cpp
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/Event.Tpo $(DEPDIR)/Event.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='base/Event.cpp' object='Event.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o Event.o `test -f 'base/Event.cpp' || echo '$(srcdir)/'`base/Event.cpp
+
+Event.obj: base/Event.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT Event.obj -MD -MP -MF $(DEPDIR)/Event.Tpo -c -o Event.obj `if test -f 'base/Event.cpp'; then $(CYGPATH_W) 'base/Event.cpp'; else $(CYGPATH_W) '$(srcdir)/base/Event.cpp'; fi`
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/Event.Tpo $(DEPDIR)/Event.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='base/Event.cpp' object='Event.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o Event.obj `if test -f 'base/Event.cpp'; then $(CYGPATH_W) 'base/Event.cpp'; else $(CYGPATH_W) '$(srcdir)/base/Event.cpp'; fi`
+
+Exception.o: base/Exception.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT Exception.o -MD -MP -MF $(DEPDIR)/Exception.Tpo -c -o Exception.o `test -f 'base/Exception.cpp' || echo '$(srcdir)/'`base/Exception.cpp
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/Exception.Tpo $(DEPDIR)/Exception.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='base/Exception.cpp' object='Exception.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o Exception.o `test -f 'base/Exception.cpp' || echo '$(srcdir)/'`base/Exception.cpp
+
+Exception.obj: base/Exception.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT Exception.obj -MD -MP -MF $(DEPDIR)/Exception.Tpo -c -o Exception.obj `if test -f 'base/Exception.cpp'; then $(CYGPATH_W) 'base/Exception.cpp'; else $(CYGPATH_W) '$(srcdir)/base/Exception.cpp'; fi`
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/Exception.Tpo $(DEPDIR)/Exception.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='base/Exception.cpp' object='Exception.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o Exception.obj `if test -f 'base/Exception.cpp'; then $(CYGPATH_W) 'base/Exception.cpp'; else $(CYGPATH_W) '$(srcdir)/base/Exception.cpp'; fi`
+
+Mutex.o: base/Mutex.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT Mutex.o -MD -MP -MF $(DEPDIR)/Mutex.Tpo -c -o Mutex.o `test -f 'base/Mutex.cpp' || echo '$(srcdir)/'`base/Mutex.cpp
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/Mutex.Tpo $(DEPDIR)/Mutex.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='base/Mutex.cpp' object='Mutex.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o Mutex.o `test -f 'base/Mutex.cpp' || echo '$(srcdir)/'`base/Mutex.cpp
+
+Mutex.obj: base/Mutex.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT Mutex.obj -MD -MP -MF $(DEPDIR)/Mutex.Tpo -c -o Mutex.obj `if test -f 'base/Mutex.cpp'; then $(CYGPATH_W) 'base/Mutex.cpp'; else $(CYGPATH_W) '$(srcdir)/base/Mutex.cpp'; fi`
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/Mutex.Tpo $(DEPDIR)/Mutex.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='base/Mutex.cpp' object='Mutex.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o Mutex.obj `if test -f 'base/Mutex.cpp'; then $(CYGPATH_W) 'base/Mutex.cpp'; else $(CYGPATH_W) '$(srcdir)/base/Mutex.cpp'; fi`
+
+NumberFormatter.o: base/NumberFormatter.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT NumberFormatter.o -MD -MP -MF $(DEPDIR)/NumberFormatter.Tpo -c -o NumberFormatter.o `test -f 'base/NumberFormatter.cpp' || echo '$(srcdir)/'`base/NumberFormatter.cpp
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/NumberFormatter.Tpo $(DEPDIR)/NumberFormatter.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='base/NumberFormatter.cpp' object='NumberFormatter.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o NumberFormatter.o `test -f 'base/NumberFormatter.cpp' || echo '$(srcdir)/'`base/NumberFormatter.cpp
+
+NumberFormatter.obj: base/NumberFormatter.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT NumberFormatter.obj -MD -MP -MF $(DEPDIR)/NumberFormatter.Tpo -c -o NumberFormatter.obj `if test -f 'base/NumberFormatter.cpp'; then $(CYGPATH_W) 'base/NumberFormatter.cpp'; else $(CYGPATH_W) '$(srcdir)/base/NumberFormatter.cpp'; fi`
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/NumberFormatter.Tpo $(DEPDIR)/NumberFormatter.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='base/NumberFormatter.cpp' object='NumberFormatter.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o NumberFormatter.obj `if test -f 'base/NumberFormatter.cpp'; then $(CYGPATH_W) 'base/NumberFormatter.cpp'; else $(CYGPATH_W) '$(srcdir)/base/NumberFormatter.cpp'; fi`
+
+RefCountedObject.o: base/RefCountedObject.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT RefCountedObject.o -MD -MP -MF $(DEPDIR)/RefCountedObject.Tpo -c -o RefCountedObject.o `test -f 'base/RefCountedObject.cpp' || echo '$(srcdir)/'`base/RefCountedObject.cpp
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/RefCountedObject.Tpo $(DEPDIR)/RefCountedObject.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='base/RefCountedObject.cpp' object='RefCountedObject.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o RefCountedObject.o `test -f 'base/RefCountedObject.cpp' || echo '$(srcdir)/'`base/RefCountedObject.cpp
+
+RefCountedObject.obj: base/RefCountedObject.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT RefCountedObject.obj -MD -MP -MF $(DEPDIR)/RefCountedObject.Tpo -c -o RefCountedObject.obj `if test -f 'base/RefCountedObject.cpp'; then $(CYGPATH_W) 'base/RefCountedObject.cpp'; else $(CYGPATH_W) '$(srcdir)/base/RefCountedObject.cpp'; fi`
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/RefCountedObject.Tpo $(DEPDIR)/RefCountedObject.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='base/RefCountedObject.cpp' object='RefCountedObject.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o RefCountedObject.obj `if test -f 'base/RefCountedObject.cpp'; then $(CYGPATH_W) 'base/RefCountedObject.cpp'; else $(CYGPATH_W) '$(srcdir)/base/RefCountedObject.cpp'; fi`
+
+Runnable.o: base/Runnable.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT Runnable.o -MD -MP -MF $(DEPDIR)/Runnable.Tpo -c -o Runnable.o `test -f 'base/Runnable.cpp' || echo '$(srcdir)/'`base/Runnable.cpp
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/Runnable.Tpo $(DEPDIR)/Runnable.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='base/Runnable.cpp' object='Runnable.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o Runnable.o `test -f 'base/Runnable.cpp' || echo '$(srcdir)/'`base/Runnable.cpp
+
+Runnable.obj: base/Runnable.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT Runnable.obj -MD -MP -MF $(DEPDIR)/Runnable.Tpo -c -o Runnable.obj `if test -f 'base/Runnable.cpp'; then $(CYGPATH_W) 'base/Runnable.cpp'; else $(CYGPATH_W) '$(srcdir)/base/Runnable.cpp'; fi`
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/Runnable.Tpo $(DEPDIR)/Runnable.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='base/Runnable.cpp' object='Runnable.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o Runnable.obj `if test -f 'base/Runnable.cpp'; then $(CYGPATH_W) 'base/Runnable.cpp'; else $(CYGPATH_W) '$(srcdir)/base/Runnable.cpp'; fi`
+
+RWLock.o: base/RWLock.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT RWLock.o -MD -MP -MF $(DEPDIR)/RWLock.Tpo -c -o RWLock.o `test -f 'base/RWLock.cpp' || echo '$(srcdir)/'`base/RWLock.cpp
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/RWLock.Tpo $(DEPDIR)/RWLock.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='base/RWLock.cpp' object='RWLock.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o RWLock.o `test -f 'base/RWLock.cpp' || echo '$(srcdir)/'`base/RWLock.cpp
+
+RWLock.obj: base/RWLock.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT RWLock.obj -MD -MP -MF $(DEPDIR)/RWLock.Tpo -c -o RWLock.obj `if test -f 'base/RWLock.cpp'; then $(CYGPATH_W) 'base/RWLock.cpp'; else $(CYGPATH_W) '$(srcdir)/base/RWLock.cpp'; fi`
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/RWLock.Tpo $(DEPDIR)/RWLock.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='base/RWLock.cpp' object='RWLock.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o RWLock.obj `if test -f 'base/RWLock.cpp'; then $(CYGPATH_W) 'base/RWLock.cpp'; else $(CYGPATH_W) '$(srcdir)/base/RWLock.cpp'; fi`
+
+Semaphore.o: base/Semaphore.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT Semaphore.o -MD -MP -MF $(DEPDIR)/Semaphore.Tpo -c -o Semaphore.o `test -f 'base/Semaphore.cpp' || echo '$(srcdir)/'`base/Semaphore.cpp
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/Semaphore.Tpo $(DEPDIR)/Semaphore.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='base/Semaphore.cpp' object='Semaphore.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o Semaphore.o `test -f 'base/Semaphore.cpp' || echo '$(srcdir)/'`base/Semaphore.cpp
+
+Semaphore.obj: base/Semaphore.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT Semaphore.obj -MD -MP -MF $(DEPDIR)/Semaphore.Tpo -c -o Semaphore.obj `if test -f 'base/Semaphore.cpp'; then $(CYGPATH_W) 'base/Semaphore.cpp'; else $(CYGPATH_W) '$(srcdir)/base/Semaphore.cpp'; fi`
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/Semaphore.Tpo $(DEPDIR)/Semaphore.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='base/Semaphore.cpp' object='Semaphore.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o Semaphore.obj `if test -f 'base/Semaphore.cpp'; then $(CYGPATH_W) 'base/Semaphore.cpp'; else $(CYGPATH_W) '$(srcdir)/base/Semaphore.cpp'; fi`
+
+SignalHandler.o: base/SignalHandler.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT SignalHandler.o -MD -MP -MF $(DEPDIR)/SignalHandler.Tpo -c -o SignalHandler.o `test -f 'base/SignalHandler.cpp' || echo '$(srcdir)/'`base/SignalHandler.cpp
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/SignalHandler.Tpo $(DEPDIR)/SignalHandler.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='base/SignalHandler.cpp' object='SignalHandler.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o SignalHandler.o `test -f 'base/SignalHandler.cpp' || echo '$(srcdir)/'`base/SignalHandler.cpp
+
+SignalHandler.obj: base/SignalHandler.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT SignalHandler.obj -MD -MP -MF $(DEPDIR)/SignalHandler.Tpo -c -o SignalHandler.obj `if test -f 'base/SignalHandler.cpp'; then $(CYGPATH_W) 'base/SignalHandler.cpp'; else $(CYGPATH_W) '$(srcdir)/base/SignalHandler.cpp'; fi`
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/SignalHandler.Tpo $(DEPDIR)/SignalHandler.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='base/SignalHandler.cpp' object='SignalHandler.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o SignalHandler.obj `if test -f 'base/SignalHandler.cpp'; then $(CYGPATH_W) 'base/SignalHandler.cpp'; else $(CYGPATH_W) '$(srcdir)/base/SignalHandler.cpp'; fi`
+
+ThreadLocal.o: base/ThreadLocal.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT ThreadLocal.o -MD -MP -MF $(DEPDIR)/ThreadLocal.Tpo -c -o ThreadLocal.o `test -f 'base/ThreadLocal.cpp' || echo '$(srcdir)/'`base/ThreadLocal.cpp
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/ThreadLocal.Tpo $(DEPDIR)/ThreadLocal.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='base/ThreadLocal.cpp' object='ThreadLocal.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o ThreadLocal.o `test -f 'base/ThreadLocal.cpp' || echo '$(srcdir)/'`base/ThreadLocal.cpp
+
+ThreadLocal.obj: base/ThreadLocal.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT ThreadLocal.obj -MD -MP -MF $(DEPDIR)/ThreadLocal.Tpo -c -o ThreadLocal.obj `if test -f 'base/ThreadLocal.cpp'; then $(CYGPATH_W) 'base/ThreadLocal.cpp'; else $(CYGPATH_W) '$(srcdir)/base/ThreadLocal.cpp'; fi`
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/ThreadLocal.Tpo $(DEPDIR)/ThreadLocal.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='base/ThreadLocal.cpp' object='ThreadLocal.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o ThreadLocal.obj `if test -f 'base/ThreadLocal.cpp'; then $(CYGPATH_W) 'base/ThreadLocal.cpp'; else $(CYGPATH_W) '$(srcdir)/base/ThreadLocal.cpp'; fi`
+
+Thread.o: base/Thread.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT Thread.o -MD -MP -MF $(DEPDIR)/Thread.Tpo -c -o Thread.o `test -f 'base/Thread.cpp' || echo '$(srcdir)/'`base/Thread.cpp
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/Thread.Tpo $(DEPDIR)/Thread.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='base/Thread.cpp' object='Thread.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o Thread.o `test -f 'base/Thread.cpp' || echo '$(srcdir)/'`base/Thread.cpp
+
+Thread.obj: base/Thread.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT Thread.obj -MD -MP -MF $(DEPDIR)/Thread.Tpo -c -o Thread.obj `if test -f 'base/Thread.cpp'; then $(CYGPATH_W) 'base/Thread.cpp'; else $(CYGPATH_W) '$(srcdir)/base/Thread.cpp'; fi`
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/Thread.Tpo $(DEPDIR)/Thread.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='base/Thread.cpp' object='Thread.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o Thread.obj `if test -f 'base/Thread.cpp'; then $(CYGPATH_W) 'base/Thread.cpp'; else $(CYGPATH_W) '$(srcdir)/base/Thread.cpp'; fi`
+
+Timestamp.o: base/Timestamp.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT Timestamp.o -MD -MP -MF $(DEPDIR)/Timestamp.Tpo -c -o Timestamp.o `test -f 'base/Timestamp.cpp' || echo '$(srcdir)/'`base/Timestamp.cpp
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/Timestamp.Tpo $(DEPDIR)/Timestamp.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='base/Timestamp.cpp' object='Timestamp.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o Timestamp.o `test -f 'base/Timestamp.cpp' || echo '$(srcdir)/'`base/Timestamp.cpp
+
+Timestamp.obj: base/Timestamp.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT Timestamp.obj -MD -MP -MF $(DEPDIR)/Timestamp.Tpo -c -o Timestamp.obj `if test -f 'base/Timestamp.cpp'; then $(CYGPATH_W) 'base/Timestamp.cpp'; else $(CYGPATH_W) '$(srcdir)/base/Timestamp.cpp'; fi`
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/Timestamp.Tpo $(DEPDIR)/Timestamp.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='base/Timestamp.cpp' object='Timestamp.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o Timestamp.obj `if test -f 'base/Timestamp.cpp'; then $(CYGPATH_W) 'base/Timestamp.cpp'; else $(CYGPATH_W) '$(srcdir)/base/Timestamp.cpp'; fi`
 
 es40_idb-AliM1543C.o: AliM1543C.cpp
 @am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_idb_CXXFLAGS) $(CXXFLAGS) -MT es40_idb-AliM1543C.o -MD -MP -MF $(DEPDIR)/es40_idb-AliM1543C.Tpo -c -o es40_idb-AliM1543C.o `test -f 'AliM1543C.cpp' || echo '$(srcdir)/'`AliM1543C.cpp
@@ -1001,20 +1301,6 @@ es40_idb-Ethernet.obj: Ethernet.cpp
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='Ethernet.cpp' object='es40_idb-Ethernet.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_idb_CXXFLAGS) $(CXXFLAGS) -c -o es40_idb-Ethernet.obj `if test -f 'Ethernet.cpp'; then $(CYGPATH_W) 'Ethernet.cpp'; else $(CYGPATH_W) '$(srcdir)/Ethernet.cpp'; fi`
-
-es40_idb-Exception.o: Exception.cpp
-@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_idb_CXXFLAGS) $(CXXFLAGS) -MT es40_idb-Exception.o -MD -MP -MF $(DEPDIR)/es40_idb-Exception.Tpo -c -o es40_idb-Exception.o `test -f 'Exception.cpp' || echo '$(srcdir)/'`Exception.cpp
-@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/es40_idb-Exception.Tpo $(DEPDIR)/es40_idb-Exception.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='Exception.cpp' object='es40_idb-Exception.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_idb_CXXFLAGS) $(CXXFLAGS) -c -o es40_idb-Exception.o `test -f 'Exception.cpp' || echo '$(srcdir)/'`Exception.cpp
-
-es40_idb-Exception.obj: Exception.cpp
-@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_idb_CXXFLAGS) $(CXXFLAGS) -MT es40_idb-Exception.obj -MD -MP -MF $(DEPDIR)/es40_idb-Exception.Tpo -c -o es40_idb-Exception.obj `if test -f 'Exception.cpp'; then $(CYGPATH_W) 'Exception.cpp'; else $(CYGPATH_W) '$(srcdir)/Exception.cpp'; fi`
-@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/es40_idb-Exception.Tpo $(DEPDIR)/es40_idb-Exception.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='Exception.cpp' object='es40_idb-Exception.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_idb_CXXFLAGS) $(CXXFLAGS) -c -o es40_idb-Exception.obj `if test -f 'Exception.cpp'; then $(CYGPATH_W) 'Exception.cpp'; else $(CYGPATH_W) '$(srcdir)/Exception.cpp'; fi`
 
 es40_idb-Flash.o: Flash.cpp
 @am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_idb_CXXFLAGS) $(CXXFLAGS) -MT es40_idb-Flash.o -MD -MP -MF $(DEPDIR)/es40_idb-Flash.Tpo -c -o es40_idb-Flash.o `test -f 'Flash.cpp' || echo '$(srcdir)/'`Flash.cpp
@@ -1324,6 +1610,202 @@ es40_idb-sdl.obj: gui/sdl.cpp
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_idb_CXXFLAGS) $(CXXFLAGS) -c -o es40_idb-sdl.obj `if test -f 'gui/sdl.cpp'; then $(CYGPATH_W) 'gui/sdl.cpp'; else $(CYGPATH_W) '$(srcdir)/gui/sdl.cpp'; fi`
 
+es40_idb-Bugcheck.o: base/Bugcheck.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_idb_CXXFLAGS) $(CXXFLAGS) -MT es40_idb-Bugcheck.o -MD -MP -MF $(DEPDIR)/es40_idb-Bugcheck.Tpo -c -o es40_idb-Bugcheck.o `test -f 'base/Bugcheck.cpp' || echo '$(srcdir)/'`base/Bugcheck.cpp
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/es40_idb-Bugcheck.Tpo $(DEPDIR)/es40_idb-Bugcheck.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='base/Bugcheck.cpp' object='es40_idb-Bugcheck.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_idb_CXXFLAGS) $(CXXFLAGS) -c -o es40_idb-Bugcheck.o `test -f 'base/Bugcheck.cpp' || echo '$(srcdir)/'`base/Bugcheck.cpp
+
+es40_idb-Bugcheck.obj: base/Bugcheck.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_idb_CXXFLAGS) $(CXXFLAGS) -MT es40_idb-Bugcheck.obj -MD -MP -MF $(DEPDIR)/es40_idb-Bugcheck.Tpo -c -o es40_idb-Bugcheck.obj `if test -f 'base/Bugcheck.cpp'; then $(CYGPATH_W) 'base/Bugcheck.cpp'; else $(CYGPATH_W) '$(srcdir)/base/Bugcheck.cpp'; fi`
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/es40_idb-Bugcheck.Tpo $(DEPDIR)/es40_idb-Bugcheck.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='base/Bugcheck.cpp' object='es40_idb-Bugcheck.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_idb_CXXFLAGS) $(CXXFLAGS) -c -o es40_idb-Bugcheck.obj `if test -f 'base/Bugcheck.cpp'; then $(CYGPATH_W) 'base/Bugcheck.cpp'; else $(CYGPATH_W) '$(srcdir)/base/Bugcheck.cpp'; fi`
+
+es40_idb-ErrorHandler.o: base/ErrorHandler.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_idb_CXXFLAGS) $(CXXFLAGS) -MT es40_idb-ErrorHandler.o -MD -MP -MF $(DEPDIR)/es40_idb-ErrorHandler.Tpo -c -o es40_idb-ErrorHandler.o `test -f 'base/ErrorHandler.cpp' || echo '$(srcdir)/'`base/ErrorHandler.cpp
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/es40_idb-ErrorHandler.Tpo $(DEPDIR)/es40_idb-ErrorHandler.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='base/ErrorHandler.cpp' object='es40_idb-ErrorHandler.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_idb_CXXFLAGS) $(CXXFLAGS) -c -o es40_idb-ErrorHandler.o `test -f 'base/ErrorHandler.cpp' || echo '$(srcdir)/'`base/ErrorHandler.cpp
+
+es40_idb-ErrorHandler.obj: base/ErrorHandler.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_idb_CXXFLAGS) $(CXXFLAGS) -MT es40_idb-ErrorHandler.obj -MD -MP -MF $(DEPDIR)/es40_idb-ErrorHandler.Tpo -c -o es40_idb-ErrorHandler.obj `if test -f 'base/ErrorHandler.cpp'; then $(CYGPATH_W) 'base/ErrorHandler.cpp'; else $(CYGPATH_W) '$(srcdir)/base/ErrorHandler.cpp'; fi`
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/es40_idb-ErrorHandler.Tpo $(DEPDIR)/es40_idb-ErrorHandler.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='base/ErrorHandler.cpp' object='es40_idb-ErrorHandler.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_idb_CXXFLAGS) $(CXXFLAGS) -c -o es40_idb-ErrorHandler.obj `if test -f 'base/ErrorHandler.cpp'; then $(CYGPATH_W) 'base/ErrorHandler.cpp'; else $(CYGPATH_W) '$(srcdir)/base/ErrorHandler.cpp'; fi`
+
+es40_idb-Event.o: base/Event.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_idb_CXXFLAGS) $(CXXFLAGS) -MT es40_idb-Event.o -MD -MP -MF $(DEPDIR)/es40_idb-Event.Tpo -c -o es40_idb-Event.o `test -f 'base/Event.cpp' || echo '$(srcdir)/'`base/Event.cpp
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/es40_idb-Event.Tpo $(DEPDIR)/es40_idb-Event.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='base/Event.cpp' object='es40_idb-Event.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_idb_CXXFLAGS) $(CXXFLAGS) -c -o es40_idb-Event.o `test -f 'base/Event.cpp' || echo '$(srcdir)/'`base/Event.cpp
+
+es40_idb-Event.obj: base/Event.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_idb_CXXFLAGS) $(CXXFLAGS) -MT es40_idb-Event.obj -MD -MP -MF $(DEPDIR)/es40_idb-Event.Tpo -c -o es40_idb-Event.obj `if test -f 'base/Event.cpp'; then $(CYGPATH_W) 'base/Event.cpp'; else $(CYGPATH_W) '$(srcdir)/base/Event.cpp'; fi`
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/es40_idb-Event.Tpo $(DEPDIR)/es40_idb-Event.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='base/Event.cpp' object='es40_idb-Event.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_idb_CXXFLAGS) $(CXXFLAGS) -c -o es40_idb-Event.obj `if test -f 'base/Event.cpp'; then $(CYGPATH_W) 'base/Event.cpp'; else $(CYGPATH_W) '$(srcdir)/base/Event.cpp'; fi`
+
+es40_idb-Exception.o: base/Exception.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_idb_CXXFLAGS) $(CXXFLAGS) -MT es40_idb-Exception.o -MD -MP -MF $(DEPDIR)/es40_idb-Exception.Tpo -c -o es40_idb-Exception.o `test -f 'base/Exception.cpp' || echo '$(srcdir)/'`base/Exception.cpp
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/es40_idb-Exception.Tpo $(DEPDIR)/es40_idb-Exception.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='base/Exception.cpp' object='es40_idb-Exception.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_idb_CXXFLAGS) $(CXXFLAGS) -c -o es40_idb-Exception.o `test -f 'base/Exception.cpp' || echo '$(srcdir)/'`base/Exception.cpp
+
+es40_idb-Exception.obj: base/Exception.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_idb_CXXFLAGS) $(CXXFLAGS) -MT es40_idb-Exception.obj -MD -MP -MF $(DEPDIR)/es40_idb-Exception.Tpo -c -o es40_idb-Exception.obj `if test -f 'base/Exception.cpp'; then $(CYGPATH_W) 'base/Exception.cpp'; else $(CYGPATH_W) '$(srcdir)/base/Exception.cpp'; fi`
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/es40_idb-Exception.Tpo $(DEPDIR)/es40_idb-Exception.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='base/Exception.cpp' object='es40_idb-Exception.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_idb_CXXFLAGS) $(CXXFLAGS) -c -o es40_idb-Exception.obj `if test -f 'base/Exception.cpp'; then $(CYGPATH_W) 'base/Exception.cpp'; else $(CYGPATH_W) '$(srcdir)/base/Exception.cpp'; fi`
+
+es40_idb-Mutex.o: base/Mutex.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_idb_CXXFLAGS) $(CXXFLAGS) -MT es40_idb-Mutex.o -MD -MP -MF $(DEPDIR)/es40_idb-Mutex.Tpo -c -o es40_idb-Mutex.o `test -f 'base/Mutex.cpp' || echo '$(srcdir)/'`base/Mutex.cpp
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/es40_idb-Mutex.Tpo $(DEPDIR)/es40_idb-Mutex.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='base/Mutex.cpp' object='es40_idb-Mutex.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_idb_CXXFLAGS) $(CXXFLAGS) -c -o es40_idb-Mutex.o `test -f 'base/Mutex.cpp' || echo '$(srcdir)/'`base/Mutex.cpp
+
+es40_idb-Mutex.obj: base/Mutex.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_idb_CXXFLAGS) $(CXXFLAGS) -MT es40_idb-Mutex.obj -MD -MP -MF $(DEPDIR)/es40_idb-Mutex.Tpo -c -o es40_idb-Mutex.obj `if test -f 'base/Mutex.cpp'; then $(CYGPATH_W) 'base/Mutex.cpp'; else $(CYGPATH_W) '$(srcdir)/base/Mutex.cpp'; fi`
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/es40_idb-Mutex.Tpo $(DEPDIR)/es40_idb-Mutex.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='base/Mutex.cpp' object='es40_idb-Mutex.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_idb_CXXFLAGS) $(CXXFLAGS) -c -o es40_idb-Mutex.obj `if test -f 'base/Mutex.cpp'; then $(CYGPATH_W) 'base/Mutex.cpp'; else $(CYGPATH_W) '$(srcdir)/base/Mutex.cpp'; fi`
+
+es40_idb-NumberFormatter.o: base/NumberFormatter.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_idb_CXXFLAGS) $(CXXFLAGS) -MT es40_idb-NumberFormatter.o -MD -MP -MF $(DEPDIR)/es40_idb-NumberFormatter.Tpo -c -o es40_idb-NumberFormatter.o `test -f 'base/NumberFormatter.cpp' || echo '$(srcdir)/'`base/NumberFormatter.cpp
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/es40_idb-NumberFormatter.Tpo $(DEPDIR)/es40_idb-NumberFormatter.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='base/NumberFormatter.cpp' object='es40_idb-NumberFormatter.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_idb_CXXFLAGS) $(CXXFLAGS) -c -o es40_idb-NumberFormatter.o `test -f 'base/NumberFormatter.cpp' || echo '$(srcdir)/'`base/NumberFormatter.cpp
+
+es40_idb-NumberFormatter.obj: base/NumberFormatter.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_idb_CXXFLAGS) $(CXXFLAGS) -MT es40_idb-NumberFormatter.obj -MD -MP -MF $(DEPDIR)/es40_idb-NumberFormatter.Tpo -c -o es40_idb-NumberFormatter.obj `if test -f 'base/NumberFormatter.cpp'; then $(CYGPATH_W) 'base/NumberFormatter.cpp'; else $(CYGPATH_W) '$(srcdir)/base/NumberFormatter.cpp'; fi`
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/es40_idb-NumberFormatter.Tpo $(DEPDIR)/es40_idb-NumberFormatter.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='base/NumberFormatter.cpp' object='es40_idb-NumberFormatter.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_idb_CXXFLAGS) $(CXXFLAGS) -c -o es40_idb-NumberFormatter.obj `if test -f 'base/NumberFormatter.cpp'; then $(CYGPATH_W) 'base/NumberFormatter.cpp'; else $(CYGPATH_W) '$(srcdir)/base/NumberFormatter.cpp'; fi`
+
+es40_idb-RefCountedObject.o: base/RefCountedObject.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_idb_CXXFLAGS) $(CXXFLAGS) -MT es40_idb-RefCountedObject.o -MD -MP -MF $(DEPDIR)/es40_idb-RefCountedObject.Tpo -c -o es40_idb-RefCountedObject.o `test -f 'base/RefCountedObject.cpp' || echo '$(srcdir)/'`base/RefCountedObject.cpp
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/es40_idb-RefCountedObject.Tpo $(DEPDIR)/es40_idb-RefCountedObject.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='base/RefCountedObject.cpp' object='es40_idb-RefCountedObject.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_idb_CXXFLAGS) $(CXXFLAGS) -c -o es40_idb-RefCountedObject.o `test -f 'base/RefCountedObject.cpp' || echo '$(srcdir)/'`base/RefCountedObject.cpp
+
+es40_idb-RefCountedObject.obj: base/RefCountedObject.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_idb_CXXFLAGS) $(CXXFLAGS) -MT es40_idb-RefCountedObject.obj -MD -MP -MF $(DEPDIR)/es40_idb-RefCountedObject.Tpo -c -o es40_idb-RefCountedObject.obj `if test -f 'base/RefCountedObject.cpp'; then $(CYGPATH_W) 'base/RefCountedObject.cpp'; else $(CYGPATH_W) '$(srcdir)/base/RefCountedObject.cpp'; fi`
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/es40_idb-RefCountedObject.Tpo $(DEPDIR)/es40_idb-RefCountedObject.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='base/RefCountedObject.cpp' object='es40_idb-RefCountedObject.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_idb_CXXFLAGS) $(CXXFLAGS) -c -o es40_idb-RefCountedObject.obj `if test -f 'base/RefCountedObject.cpp'; then $(CYGPATH_W) 'base/RefCountedObject.cpp'; else $(CYGPATH_W) '$(srcdir)/base/RefCountedObject.cpp'; fi`
+
+es40_idb-Runnable.o: base/Runnable.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_idb_CXXFLAGS) $(CXXFLAGS) -MT es40_idb-Runnable.o -MD -MP -MF $(DEPDIR)/es40_idb-Runnable.Tpo -c -o es40_idb-Runnable.o `test -f 'base/Runnable.cpp' || echo '$(srcdir)/'`base/Runnable.cpp
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/es40_idb-Runnable.Tpo $(DEPDIR)/es40_idb-Runnable.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='base/Runnable.cpp' object='es40_idb-Runnable.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_idb_CXXFLAGS) $(CXXFLAGS) -c -o es40_idb-Runnable.o `test -f 'base/Runnable.cpp' || echo '$(srcdir)/'`base/Runnable.cpp
+
+es40_idb-Runnable.obj: base/Runnable.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_idb_CXXFLAGS) $(CXXFLAGS) -MT es40_idb-Runnable.obj -MD -MP -MF $(DEPDIR)/es40_idb-Runnable.Tpo -c -o es40_idb-Runnable.obj `if test -f 'base/Runnable.cpp'; then $(CYGPATH_W) 'base/Runnable.cpp'; else $(CYGPATH_W) '$(srcdir)/base/Runnable.cpp'; fi`
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/es40_idb-Runnable.Tpo $(DEPDIR)/es40_idb-Runnable.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='base/Runnable.cpp' object='es40_idb-Runnable.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_idb_CXXFLAGS) $(CXXFLAGS) -c -o es40_idb-Runnable.obj `if test -f 'base/Runnable.cpp'; then $(CYGPATH_W) 'base/Runnable.cpp'; else $(CYGPATH_W) '$(srcdir)/base/Runnable.cpp'; fi`
+
+es40_idb-RWLock.o: base/RWLock.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_idb_CXXFLAGS) $(CXXFLAGS) -MT es40_idb-RWLock.o -MD -MP -MF $(DEPDIR)/es40_idb-RWLock.Tpo -c -o es40_idb-RWLock.o `test -f 'base/RWLock.cpp' || echo '$(srcdir)/'`base/RWLock.cpp
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/es40_idb-RWLock.Tpo $(DEPDIR)/es40_idb-RWLock.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='base/RWLock.cpp' object='es40_idb-RWLock.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_idb_CXXFLAGS) $(CXXFLAGS) -c -o es40_idb-RWLock.o `test -f 'base/RWLock.cpp' || echo '$(srcdir)/'`base/RWLock.cpp
+
+es40_idb-RWLock.obj: base/RWLock.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_idb_CXXFLAGS) $(CXXFLAGS) -MT es40_idb-RWLock.obj -MD -MP -MF $(DEPDIR)/es40_idb-RWLock.Tpo -c -o es40_idb-RWLock.obj `if test -f 'base/RWLock.cpp'; then $(CYGPATH_W) 'base/RWLock.cpp'; else $(CYGPATH_W) '$(srcdir)/base/RWLock.cpp'; fi`
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/es40_idb-RWLock.Tpo $(DEPDIR)/es40_idb-RWLock.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='base/RWLock.cpp' object='es40_idb-RWLock.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_idb_CXXFLAGS) $(CXXFLAGS) -c -o es40_idb-RWLock.obj `if test -f 'base/RWLock.cpp'; then $(CYGPATH_W) 'base/RWLock.cpp'; else $(CYGPATH_W) '$(srcdir)/base/RWLock.cpp'; fi`
+
+es40_idb-Semaphore.o: base/Semaphore.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_idb_CXXFLAGS) $(CXXFLAGS) -MT es40_idb-Semaphore.o -MD -MP -MF $(DEPDIR)/es40_idb-Semaphore.Tpo -c -o es40_idb-Semaphore.o `test -f 'base/Semaphore.cpp' || echo '$(srcdir)/'`base/Semaphore.cpp
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/es40_idb-Semaphore.Tpo $(DEPDIR)/es40_idb-Semaphore.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='base/Semaphore.cpp' object='es40_idb-Semaphore.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_idb_CXXFLAGS) $(CXXFLAGS) -c -o es40_idb-Semaphore.o `test -f 'base/Semaphore.cpp' || echo '$(srcdir)/'`base/Semaphore.cpp
+
+es40_idb-Semaphore.obj: base/Semaphore.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_idb_CXXFLAGS) $(CXXFLAGS) -MT es40_idb-Semaphore.obj -MD -MP -MF $(DEPDIR)/es40_idb-Semaphore.Tpo -c -o es40_idb-Semaphore.obj `if test -f 'base/Semaphore.cpp'; then $(CYGPATH_W) 'base/Semaphore.cpp'; else $(CYGPATH_W) '$(srcdir)/base/Semaphore.cpp'; fi`
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/es40_idb-Semaphore.Tpo $(DEPDIR)/es40_idb-Semaphore.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='base/Semaphore.cpp' object='es40_idb-Semaphore.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_idb_CXXFLAGS) $(CXXFLAGS) -c -o es40_idb-Semaphore.obj `if test -f 'base/Semaphore.cpp'; then $(CYGPATH_W) 'base/Semaphore.cpp'; else $(CYGPATH_W) '$(srcdir)/base/Semaphore.cpp'; fi`
+
+es40_idb-SignalHandler.o: base/SignalHandler.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_idb_CXXFLAGS) $(CXXFLAGS) -MT es40_idb-SignalHandler.o -MD -MP -MF $(DEPDIR)/es40_idb-SignalHandler.Tpo -c -o es40_idb-SignalHandler.o `test -f 'base/SignalHandler.cpp' || echo '$(srcdir)/'`base/SignalHandler.cpp
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/es40_idb-SignalHandler.Tpo $(DEPDIR)/es40_idb-SignalHandler.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='base/SignalHandler.cpp' object='es40_idb-SignalHandler.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_idb_CXXFLAGS) $(CXXFLAGS) -c -o es40_idb-SignalHandler.o `test -f 'base/SignalHandler.cpp' || echo '$(srcdir)/'`base/SignalHandler.cpp
+
+es40_idb-SignalHandler.obj: base/SignalHandler.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_idb_CXXFLAGS) $(CXXFLAGS) -MT es40_idb-SignalHandler.obj -MD -MP -MF $(DEPDIR)/es40_idb-SignalHandler.Tpo -c -o es40_idb-SignalHandler.obj `if test -f 'base/SignalHandler.cpp'; then $(CYGPATH_W) 'base/SignalHandler.cpp'; else $(CYGPATH_W) '$(srcdir)/base/SignalHandler.cpp'; fi`
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/es40_idb-SignalHandler.Tpo $(DEPDIR)/es40_idb-SignalHandler.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='base/SignalHandler.cpp' object='es40_idb-SignalHandler.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_idb_CXXFLAGS) $(CXXFLAGS) -c -o es40_idb-SignalHandler.obj `if test -f 'base/SignalHandler.cpp'; then $(CYGPATH_W) 'base/SignalHandler.cpp'; else $(CYGPATH_W) '$(srcdir)/base/SignalHandler.cpp'; fi`
+
+es40_idb-ThreadLocal.o: base/ThreadLocal.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_idb_CXXFLAGS) $(CXXFLAGS) -MT es40_idb-ThreadLocal.o -MD -MP -MF $(DEPDIR)/es40_idb-ThreadLocal.Tpo -c -o es40_idb-ThreadLocal.o `test -f 'base/ThreadLocal.cpp' || echo '$(srcdir)/'`base/ThreadLocal.cpp
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/es40_idb-ThreadLocal.Tpo $(DEPDIR)/es40_idb-ThreadLocal.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='base/ThreadLocal.cpp' object='es40_idb-ThreadLocal.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_idb_CXXFLAGS) $(CXXFLAGS) -c -o es40_idb-ThreadLocal.o `test -f 'base/ThreadLocal.cpp' || echo '$(srcdir)/'`base/ThreadLocal.cpp
+
+es40_idb-ThreadLocal.obj: base/ThreadLocal.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_idb_CXXFLAGS) $(CXXFLAGS) -MT es40_idb-ThreadLocal.obj -MD -MP -MF $(DEPDIR)/es40_idb-ThreadLocal.Tpo -c -o es40_idb-ThreadLocal.obj `if test -f 'base/ThreadLocal.cpp'; then $(CYGPATH_W) 'base/ThreadLocal.cpp'; else $(CYGPATH_W) '$(srcdir)/base/ThreadLocal.cpp'; fi`
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/es40_idb-ThreadLocal.Tpo $(DEPDIR)/es40_idb-ThreadLocal.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='base/ThreadLocal.cpp' object='es40_idb-ThreadLocal.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_idb_CXXFLAGS) $(CXXFLAGS) -c -o es40_idb-ThreadLocal.obj `if test -f 'base/ThreadLocal.cpp'; then $(CYGPATH_W) 'base/ThreadLocal.cpp'; else $(CYGPATH_W) '$(srcdir)/base/ThreadLocal.cpp'; fi`
+
+es40_idb-Thread.o: base/Thread.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_idb_CXXFLAGS) $(CXXFLAGS) -MT es40_idb-Thread.o -MD -MP -MF $(DEPDIR)/es40_idb-Thread.Tpo -c -o es40_idb-Thread.o `test -f 'base/Thread.cpp' || echo '$(srcdir)/'`base/Thread.cpp
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/es40_idb-Thread.Tpo $(DEPDIR)/es40_idb-Thread.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='base/Thread.cpp' object='es40_idb-Thread.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_idb_CXXFLAGS) $(CXXFLAGS) -c -o es40_idb-Thread.o `test -f 'base/Thread.cpp' || echo '$(srcdir)/'`base/Thread.cpp
+
+es40_idb-Thread.obj: base/Thread.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_idb_CXXFLAGS) $(CXXFLAGS) -MT es40_idb-Thread.obj -MD -MP -MF $(DEPDIR)/es40_idb-Thread.Tpo -c -o es40_idb-Thread.obj `if test -f 'base/Thread.cpp'; then $(CYGPATH_W) 'base/Thread.cpp'; else $(CYGPATH_W) '$(srcdir)/base/Thread.cpp'; fi`
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/es40_idb-Thread.Tpo $(DEPDIR)/es40_idb-Thread.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='base/Thread.cpp' object='es40_idb-Thread.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_idb_CXXFLAGS) $(CXXFLAGS) -c -o es40_idb-Thread.obj `if test -f 'base/Thread.cpp'; then $(CYGPATH_W) 'base/Thread.cpp'; else $(CYGPATH_W) '$(srcdir)/base/Thread.cpp'; fi`
+
+es40_idb-Timestamp.o: base/Timestamp.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_idb_CXXFLAGS) $(CXXFLAGS) -MT es40_idb-Timestamp.o -MD -MP -MF $(DEPDIR)/es40_idb-Timestamp.Tpo -c -o es40_idb-Timestamp.o `test -f 'base/Timestamp.cpp' || echo '$(srcdir)/'`base/Timestamp.cpp
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/es40_idb-Timestamp.Tpo $(DEPDIR)/es40_idb-Timestamp.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='base/Timestamp.cpp' object='es40_idb-Timestamp.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_idb_CXXFLAGS) $(CXXFLAGS) -c -o es40_idb-Timestamp.o `test -f 'base/Timestamp.cpp' || echo '$(srcdir)/'`base/Timestamp.cpp
+
+es40_idb-Timestamp.obj: base/Timestamp.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_idb_CXXFLAGS) $(CXXFLAGS) -MT es40_idb-Timestamp.obj -MD -MP -MF $(DEPDIR)/es40_idb-Timestamp.Tpo -c -o es40_idb-Timestamp.obj `if test -f 'base/Timestamp.cpp'; then $(CYGPATH_W) 'base/Timestamp.cpp'; else $(CYGPATH_W) '$(srcdir)/base/Timestamp.cpp'; fi`
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/es40_idb-Timestamp.Tpo $(DEPDIR)/es40_idb-Timestamp.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='base/Timestamp.cpp' object='es40_idb-Timestamp.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_idb_CXXFLAGS) $(CXXFLAGS) -c -o es40_idb-Timestamp.obj `if test -f 'base/Timestamp.cpp'; then $(CYGPATH_W) 'base/Timestamp.cpp'; else $(CYGPATH_W) '$(srcdir)/base/Timestamp.cpp'; fi`
+
 es40_lsm-AliM1543C.o: AliM1543C.cpp
 @am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_lsm_CXXFLAGS) $(CXXFLAGS) -MT es40_lsm-AliM1543C.o -MD -MP -MF $(DEPDIR)/es40_lsm-AliM1543C.Tpo -c -o es40_lsm-AliM1543C.o `test -f 'AliM1543C.cpp' || echo '$(srcdir)/'`AliM1543C.cpp
 @am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/es40_lsm-AliM1543C.Tpo $(DEPDIR)/es40_lsm-AliM1543C.Po
@@ -1603,20 +2085,6 @@ es40_lsm-Ethernet.obj: Ethernet.cpp
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='Ethernet.cpp' object='es40_lsm-Ethernet.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_lsm_CXXFLAGS) $(CXXFLAGS) -c -o es40_lsm-Ethernet.obj `if test -f 'Ethernet.cpp'; then $(CYGPATH_W) 'Ethernet.cpp'; else $(CYGPATH_W) '$(srcdir)/Ethernet.cpp'; fi`
-
-es40_lsm-Exception.o: Exception.cpp
-@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_lsm_CXXFLAGS) $(CXXFLAGS) -MT es40_lsm-Exception.o -MD -MP -MF $(DEPDIR)/es40_lsm-Exception.Tpo -c -o es40_lsm-Exception.o `test -f 'Exception.cpp' || echo '$(srcdir)/'`Exception.cpp
-@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/es40_lsm-Exception.Tpo $(DEPDIR)/es40_lsm-Exception.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='Exception.cpp' object='es40_lsm-Exception.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_lsm_CXXFLAGS) $(CXXFLAGS) -c -o es40_lsm-Exception.o `test -f 'Exception.cpp' || echo '$(srcdir)/'`Exception.cpp
-
-es40_lsm-Exception.obj: Exception.cpp
-@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_lsm_CXXFLAGS) $(CXXFLAGS) -MT es40_lsm-Exception.obj -MD -MP -MF $(DEPDIR)/es40_lsm-Exception.Tpo -c -o es40_lsm-Exception.obj `if test -f 'Exception.cpp'; then $(CYGPATH_W) 'Exception.cpp'; else $(CYGPATH_W) '$(srcdir)/Exception.cpp'; fi`
-@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/es40_lsm-Exception.Tpo $(DEPDIR)/es40_lsm-Exception.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='Exception.cpp' object='es40_lsm-Exception.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_lsm_CXXFLAGS) $(CXXFLAGS) -c -o es40_lsm-Exception.obj `if test -f 'Exception.cpp'; then $(CYGPATH_W) 'Exception.cpp'; else $(CYGPATH_W) '$(srcdir)/Exception.cpp'; fi`
 
 es40_lsm-Flash.o: Flash.cpp
 @am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_lsm_CXXFLAGS) $(CXXFLAGS) -MT es40_lsm-Flash.o -MD -MP -MF $(DEPDIR)/es40_lsm-Flash.Tpo -c -o es40_lsm-Flash.o `test -f 'Flash.cpp' || echo '$(srcdir)/'`Flash.cpp
@@ -1926,6 +2394,202 @@ es40_lsm-sdl.obj: gui/sdl.cpp
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_lsm_CXXFLAGS) $(CXXFLAGS) -c -o es40_lsm-sdl.obj `if test -f 'gui/sdl.cpp'; then $(CYGPATH_W) 'gui/sdl.cpp'; else $(CYGPATH_W) '$(srcdir)/gui/sdl.cpp'; fi`
 
+es40_lsm-Bugcheck.o: base/Bugcheck.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_lsm_CXXFLAGS) $(CXXFLAGS) -MT es40_lsm-Bugcheck.o -MD -MP -MF $(DEPDIR)/es40_lsm-Bugcheck.Tpo -c -o es40_lsm-Bugcheck.o `test -f 'base/Bugcheck.cpp' || echo '$(srcdir)/'`base/Bugcheck.cpp
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/es40_lsm-Bugcheck.Tpo $(DEPDIR)/es40_lsm-Bugcheck.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='base/Bugcheck.cpp' object='es40_lsm-Bugcheck.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_lsm_CXXFLAGS) $(CXXFLAGS) -c -o es40_lsm-Bugcheck.o `test -f 'base/Bugcheck.cpp' || echo '$(srcdir)/'`base/Bugcheck.cpp
+
+es40_lsm-Bugcheck.obj: base/Bugcheck.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_lsm_CXXFLAGS) $(CXXFLAGS) -MT es40_lsm-Bugcheck.obj -MD -MP -MF $(DEPDIR)/es40_lsm-Bugcheck.Tpo -c -o es40_lsm-Bugcheck.obj `if test -f 'base/Bugcheck.cpp'; then $(CYGPATH_W) 'base/Bugcheck.cpp'; else $(CYGPATH_W) '$(srcdir)/base/Bugcheck.cpp'; fi`
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/es40_lsm-Bugcheck.Tpo $(DEPDIR)/es40_lsm-Bugcheck.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='base/Bugcheck.cpp' object='es40_lsm-Bugcheck.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_lsm_CXXFLAGS) $(CXXFLAGS) -c -o es40_lsm-Bugcheck.obj `if test -f 'base/Bugcheck.cpp'; then $(CYGPATH_W) 'base/Bugcheck.cpp'; else $(CYGPATH_W) '$(srcdir)/base/Bugcheck.cpp'; fi`
+
+es40_lsm-ErrorHandler.o: base/ErrorHandler.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_lsm_CXXFLAGS) $(CXXFLAGS) -MT es40_lsm-ErrorHandler.o -MD -MP -MF $(DEPDIR)/es40_lsm-ErrorHandler.Tpo -c -o es40_lsm-ErrorHandler.o `test -f 'base/ErrorHandler.cpp' || echo '$(srcdir)/'`base/ErrorHandler.cpp
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/es40_lsm-ErrorHandler.Tpo $(DEPDIR)/es40_lsm-ErrorHandler.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='base/ErrorHandler.cpp' object='es40_lsm-ErrorHandler.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_lsm_CXXFLAGS) $(CXXFLAGS) -c -o es40_lsm-ErrorHandler.o `test -f 'base/ErrorHandler.cpp' || echo '$(srcdir)/'`base/ErrorHandler.cpp
+
+es40_lsm-ErrorHandler.obj: base/ErrorHandler.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_lsm_CXXFLAGS) $(CXXFLAGS) -MT es40_lsm-ErrorHandler.obj -MD -MP -MF $(DEPDIR)/es40_lsm-ErrorHandler.Tpo -c -o es40_lsm-ErrorHandler.obj `if test -f 'base/ErrorHandler.cpp'; then $(CYGPATH_W) 'base/ErrorHandler.cpp'; else $(CYGPATH_W) '$(srcdir)/base/ErrorHandler.cpp'; fi`
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/es40_lsm-ErrorHandler.Tpo $(DEPDIR)/es40_lsm-ErrorHandler.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='base/ErrorHandler.cpp' object='es40_lsm-ErrorHandler.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_lsm_CXXFLAGS) $(CXXFLAGS) -c -o es40_lsm-ErrorHandler.obj `if test -f 'base/ErrorHandler.cpp'; then $(CYGPATH_W) 'base/ErrorHandler.cpp'; else $(CYGPATH_W) '$(srcdir)/base/ErrorHandler.cpp'; fi`
+
+es40_lsm-Event.o: base/Event.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_lsm_CXXFLAGS) $(CXXFLAGS) -MT es40_lsm-Event.o -MD -MP -MF $(DEPDIR)/es40_lsm-Event.Tpo -c -o es40_lsm-Event.o `test -f 'base/Event.cpp' || echo '$(srcdir)/'`base/Event.cpp
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/es40_lsm-Event.Tpo $(DEPDIR)/es40_lsm-Event.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='base/Event.cpp' object='es40_lsm-Event.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_lsm_CXXFLAGS) $(CXXFLAGS) -c -o es40_lsm-Event.o `test -f 'base/Event.cpp' || echo '$(srcdir)/'`base/Event.cpp
+
+es40_lsm-Event.obj: base/Event.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_lsm_CXXFLAGS) $(CXXFLAGS) -MT es40_lsm-Event.obj -MD -MP -MF $(DEPDIR)/es40_lsm-Event.Tpo -c -o es40_lsm-Event.obj `if test -f 'base/Event.cpp'; then $(CYGPATH_W) 'base/Event.cpp'; else $(CYGPATH_W) '$(srcdir)/base/Event.cpp'; fi`
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/es40_lsm-Event.Tpo $(DEPDIR)/es40_lsm-Event.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='base/Event.cpp' object='es40_lsm-Event.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_lsm_CXXFLAGS) $(CXXFLAGS) -c -o es40_lsm-Event.obj `if test -f 'base/Event.cpp'; then $(CYGPATH_W) 'base/Event.cpp'; else $(CYGPATH_W) '$(srcdir)/base/Event.cpp'; fi`
+
+es40_lsm-Exception.o: base/Exception.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_lsm_CXXFLAGS) $(CXXFLAGS) -MT es40_lsm-Exception.o -MD -MP -MF $(DEPDIR)/es40_lsm-Exception.Tpo -c -o es40_lsm-Exception.o `test -f 'base/Exception.cpp' || echo '$(srcdir)/'`base/Exception.cpp
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/es40_lsm-Exception.Tpo $(DEPDIR)/es40_lsm-Exception.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='base/Exception.cpp' object='es40_lsm-Exception.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_lsm_CXXFLAGS) $(CXXFLAGS) -c -o es40_lsm-Exception.o `test -f 'base/Exception.cpp' || echo '$(srcdir)/'`base/Exception.cpp
+
+es40_lsm-Exception.obj: base/Exception.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_lsm_CXXFLAGS) $(CXXFLAGS) -MT es40_lsm-Exception.obj -MD -MP -MF $(DEPDIR)/es40_lsm-Exception.Tpo -c -o es40_lsm-Exception.obj `if test -f 'base/Exception.cpp'; then $(CYGPATH_W) 'base/Exception.cpp'; else $(CYGPATH_W) '$(srcdir)/base/Exception.cpp'; fi`
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/es40_lsm-Exception.Tpo $(DEPDIR)/es40_lsm-Exception.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='base/Exception.cpp' object='es40_lsm-Exception.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_lsm_CXXFLAGS) $(CXXFLAGS) -c -o es40_lsm-Exception.obj `if test -f 'base/Exception.cpp'; then $(CYGPATH_W) 'base/Exception.cpp'; else $(CYGPATH_W) '$(srcdir)/base/Exception.cpp'; fi`
+
+es40_lsm-Mutex.o: base/Mutex.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_lsm_CXXFLAGS) $(CXXFLAGS) -MT es40_lsm-Mutex.o -MD -MP -MF $(DEPDIR)/es40_lsm-Mutex.Tpo -c -o es40_lsm-Mutex.o `test -f 'base/Mutex.cpp' || echo '$(srcdir)/'`base/Mutex.cpp
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/es40_lsm-Mutex.Tpo $(DEPDIR)/es40_lsm-Mutex.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='base/Mutex.cpp' object='es40_lsm-Mutex.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_lsm_CXXFLAGS) $(CXXFLAGS) -c -o es40_lsm-Mutex.o `test -f 'base/Mutex.cpp' || echo '$(srcdir)/'`base/Mutex.cpp
+
+es40_lsm-Mutex.obj: base/Mutex.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_lsm_CXXFLAGS) $(CXXFLAGS) -MT es40_lsm-Mutex.obj -MD -MP -MF $(DEPDIR)/es40_lsm-Mutex.Tpo -c -o es40_lsm-Mutex.obj `if test -f 'base/Mutex.cpp'; then $(CYGPATH_W) 'base/Mutex.cpp'; else $(CYGPATH_W) '$(srcdir)/base/Mutex.cpp'; fi`
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/es40_lsm-Mutex.Tpo $(DEPDIR)/es40_lsm-Mutex.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='base/Mutex.cpp' object='es40_lsm-Mutex.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_lsm_CXXFLAGS) $(CXXFLAGS) -c -o es40_lsm-Mutex.obj `if test -f 'base/Mutex.cpp'; then $(CYGPATH_W) 'base/Mutex.cpp'; else $(CYGPATH_W) '$(srcdir)/base/Mutex.cpp'; fi`
+
+es40_lsm-NumberFormatter.o: base/NumberFormatter.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_lsm_CXXFLAGS) $(CXXFLAGS) -MT es40_lsm-NumberFormatter.o -MD -MP -MF $(DEPDIR)/es40_lsm-NumberFormatter.Tpo -c -o es40_lsm-NumberFormatter.o `test -f 'base/NumberFormatter.cpp' || echo '$(srcdir)/'`base/NumberFormatter.cpp
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/es40_lsm-NumberFormatter.Tpo $(DEPDIR)/es40_lsm-NumberFormatter.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='base/NumberFormatter.cpp' object='es40_lsm-NumberFormatter.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_lsm_CXXFLAGS) $(CXXFLAGS) -c -o es40_lsm-NumberFormatter.o `test -f 'base/NumberFormatter.cpp' || echo '$(srcdir)/'`base/NumberFormatter.cpp
+
+es40_lsm-NumberFormatter.obj: base/NumberFormatter.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_lsm_CXXFLAGS) $(CXXFLAGS) -MT es40_lsm-NumberFormatter.obj -MD -MP -MF $(DEPDIR)/es40_lsm-NumberFormatter.Tpo -c -o es40_lsm-NumberFormatter.obj `if test -f 'base/NumberFormatter.cpp'; then $(CYGPATH_W) 'base/NumberFormatter.cpp'; else $(CYGPATH_W) '$(srcdir)/base/NumberFormatter.cpp'; fi`
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/es40_lsm-NumberFormatter.Tpo $(DEPDIR)/es40_lsm-NumberFormatter.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='base/NumberFormatter.cpp' object='es40_lsm-NumberFormatter.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_lsm_CXXFLAGS) $(CXXFLAGS) -c -o es40_lsm-NumberFormatter.obj `if test -f 'base/NumberFormatter.cpp'; then $(CYGPATH_W) 'base/NumberFormatter.cpp'; else $(CYGPATH_W) '$(srcdir)/base/NumberFormatter.cpp'; fi`
+
+es40_lsm-RefCountedObject.o: base/RefCountedObject.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_lsm_CXXFLAGS) $(CXXFLAGS) -MT es40_lsm-RefCountedObject.o -MD -MP -MF $(DEPDIR)/es40_lsm-RefCountedObject.Tpo -c -o es40_lsm-RefCountedObject.o `test -f 'base/RefCountedObject.cpp' || echo '$(srcdir)/'`base/RefCountedObject.cpp
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/es40_lsm-RefCountedObject.Tpo $(DEPDIR)/es40_lsm-RefCountedObject.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='base/RefCountedObject.cpp' object='es40_lsm-RefCountedObject.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_lsm_CXXFLAGS) $(CXXFLAGS) -c -o es40_lsm-RefCountedObject.o `test -f 'base/RefCountedObject.cpp' || echo '$(srcdir)/'`base/RefCountedObject.cpp
+
+es40_lsm-RefCountedObject.obj: base/RefCountedObject.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_lsm_CXXFLAGS) $(CXXFLAGS) -MT es40_lsm-RefCountedObject.obj -MD -MP -MF $(DEPDIR)/es40_lsm-RefCountedObject.Tpo -c -o es40_lsm-RefCountedObject.obj `if test -f 'base/RefCountedObject.cpp'; then $(CYGPATH_W) 'base/RefCountedObject.cpp'; else $(CYGPATH_W) '$(srcdir)/base/RefCountedObject.cpp'; fi`
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/es40_lsm-RefCountedObject.Tpo $(DEPDIR)/es40_lsm-RefCountedObject.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='base/RefCountedObject.cpp' object='es40_lsm-RefCountedObject.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_lsm_CXXFLAGS) $(CXXFLAGS) -c -o es40_lsm-RefCountedObject.obj `if test -f 'base/RefCountedObject.cpp'; then $(CYGPATH_W) 'base/RefCountedObject.cpp'; else $(CYGPATH_W) '$(srcdir)/base/RefCountedObject.cpp'; fi`
+
+es40_lsm-Runnable.o: base/Runnable.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_lsm_CXXFLAGS) $(CXXFLAGS) -MT es40_lsm-Runnable.o -MD -MP -MF $(DEPDIR)/es40_lsm-Runnable.Tpo -c -o es40_lsm-Runnable.o `test -f 'base/Runnable.cpp' || echo '$(srcdir)/'`base/Runnable.cpp
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/es40_lsm-Runnable.Tpo $(DEPDIR)/es40_lsm-Runnable.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='base/Runnable.cpp' object='es40_lsm-Runnable.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_lsm_CXXFLAGS) $(CXXFLAGS) -c -o es40_lsm-Runnable.o `test -f 'base/Runnable.cpp' || echo '$(srcdir)/'`base/Runnable.cpp
+
+es40_lsm-Runnable.obj: base/Runnable.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_lsm_CXXFLAGS) $(CXXFLAGS) -MT es40_lsm-Runnable.obj -MD -MP -MF $(DEPDIR)/es40_lsm-Runnable.Tpo -c -o es40_lsm-Runnable.obj `if test -f 'base/Runnable.cpp'; then $(CYGPATH_W) 'base/Runnable.cpp'; else $(CYGPATH_W) '$(srcdir)/base/Runnable.cpp'; fi`
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/es40_lsm-Runnable.Tpo $(DEPDIR)/es40_lsm-Runnable.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='base/Runnable.cpp' object='es40_lsm-Runnable.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_lsm_CXXFLAGS) $(CXXFLAGS) -c -o es40_lsm-Runnable.obj `if test -f 'base/Runnable.cpp'; then $(CYGPATH_W) 'base/Runnable.cpp'; else $(CYGPATH_W) '$(srcdir)/base/Runnable.cpp'; fi`
+
+es40_lsm-RWLock.o: base/RWLock.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_lsm_CXXFLAGS) $(CXXFLAGS) -MT es40_lsm-RWLock.o -MD -MP -MF $(DEPDIR)/es40_lsm-RWLock.Tpo -c -o es40_lsm-RWLock.o `test -f 'base/RWLock.cpp' || echo '$(srcdir)/'`base/RWLock.cpp
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/es40_lsm-RWLock.Tpo $(DEPDIR)/es40_lsm-RWLock.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='base/RWLock.cpp' object='es40_lsm-RWLock.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_lsm_CXXFLAGS) $(CXXFLAGS) -c -o es40_lsm-RWLock.o `test -f 'base/RWLock.cpp' || echo '$(srcdir)/'`base/RWLock.cpp
+
+es40_lsm-RWLock.obj: base/RWLock.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_lsm_CXXFLAGS) $(CXXFLAGS) -MT es40_lsm-RWLock.obj -MD -MP -MF $(DEPDIR)/es40_lsm-RWLock.Tpo -c -o es40_lsm-RWLock.obj `if test -f 'base/RWLock.cpp'; then $(CYGPATH_W) 'base/RWLock.cpp'; else $(CYGPATH_W) '$(srcdir)/base/RWLock.cpp'; fi`
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/es40_lsm-RWLock.Tpo $(DEPDIR)/es40_lsm-RWLock.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='base/RWLock.cpp' object='es40_lsm-RWLock.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_lsm_CXXFLAGS) $(CXXFLAGS) -c -o es40_lsm-RWLock.obj `if test -f 'base/RWLock.cpp'; then $(CYGPATH_W) 'base/RWLock.cpp'; else $(CYGPATH_W) '$(srcdir)/base/RWLock.cpp'; fi`
+
+es40_lsm-Semaphore.o: base/Semaphore.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_lsm_CXXFLAGS) $(CXXFLAGS) -MT es40_lsm-Semaphore.o -MD -MP -MF $(DEPDIR)/es40_lsm-Semaphore.Tpo -c -o es40_lsm-Semaphore.o `test -f 'base/Semaphore.cpp' || echo '$(srcdir)/'`base/Semaphore.cpp
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/es40_lsm-Semaphore.Tpo $(DEPDIR)/es40_lsm-Semaphore.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='base/Semaphore.cpp' object='es40_lsm-Semaphore.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_lsm_CXXFLAGS) $(CXXFLAGS) -c -o es40_lsm-Semaphore.o `test -f 'base/Semaphore.cpp' || echo '$(srcdir)/'`base/Semaphore.cpp
+
+es40_lsm-Semaphore.obj: base/Semaphore.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_lsm_CXXFLAGS) $(CXXFLAGS) -MT es40_lsm-Semaphore.obj -MD -MP -MF $(DEPDIR)/es40_lsm-Semaphore.Tpo -c -o es40_lsm-Semaphore.obj `if test -f 'base/Semaphore.cpp'; then $(CYGPATH_W) 'base/Semaphore.cpp'; else $(CYGPATH_W) '$(srcdir)/base/Semaphore.cpp'; fi`
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/es40_lsm-Semaphore.Tpo $(DEPDIR)/es40_lsm-Semaphore.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='base/Semaphore.cpp' object='es40_lsm-Semaphore.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_lsm_CXXFLAGS) $(CXXFLAGS) -c -o es40_lsm-Semaphore.obj `if test -f 'base/Semaphore.cpp'; then $(CYGPATH_W) 'base/Semaphore.cpp'; else $(CYGPATH_W) '$(srcdir)/base/Semaphore.cpp'; fi`
+
+es40_lsm-SignalHandler.o: base/SignalHandler.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_lsm_CXXFLAGS) $(CXXFLAGS) -MT es40_lsm-SignalHandler.o -MD -MP -MF $(DEPDIR)/es40_lsm-SignalHandler.Tpo -c -o es40_lsm-SignalHandler.o `test -f 'base/SignalHandler.cpp' || echo '$(srcdir)/'`base/SignalHandler.cpp
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/es40_lsm-SignalHandler.Tpo $(DEPDIR)/es40_lsm-SignalHandler.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='base/SignalHandler.cpp' object='es40_lsm-SignalHandler.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_lsm_CXXFLAGS) $(CXXFLAGS) -c -o es40_lsm-SignalHandler.o `test -f 'base/SignalHandler.cpp' || echo '$(srcdir)/'`base/SignalHandler.cpp
+
+es40_lsm-SignalHandler.obj: base/SignalHandler.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_lsm_CXXFLAGS) $(CXXFLAGS) -MT es40_lsm-SignalHandler.obj -MD -MP -MF $(DEPDIR)/es40_lsm-SignalHandler.Tpo -c -o es40_lsm-SignalHandler.obj `if test -f 'base/SignalHandler.cpp'; then $(CYGPATH_W) 'base/SignalHandler.cpp'; else $(CYGPATH_W) '$(srcdir)/base/SignalHandler.cpp'; fi`
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/es40_lsm-SignalHandler.Tpo $(DEPDIR)/es40_lsm-SignalHandler.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='base/SignalHandler.cpp' object='es40_lsm-SignalHandler.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_lsm_CXXFLAGS) $(CXXFLAGS) -c -o es40_lsm-SignalHandler.obj `if test -f 'base/SignalHandler.cpp'; then $(CYGPATH_W) 'base/SignalHandler.cpp'; else $(CYGPATH_W) '$(srcdir)/base/SignalHandler.cpp'; fi`
+
+es40_lsm-ThreadLocal.o: base/ThreadLocal.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_lsm_CXXFLAGS) $(CXXFLAGS) -MT es40_lsm-ThreadLocal.o -MD -MP -MF $(DEPDIR)/es40_lsm-ThreadLocal.Tpo -c -o es40_lsm-ThreadLocal.o `test -f 'base/ThreadLocal.cpp' || echo '$(srcdir)/'`base/ThreadLocal.cpp
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/es40_lsm-ThreadLocal.Tpo $(DEPDIR)/es40_lsm-ThreadLocal.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='base/ThreadLocal.cpp' object='es40_lsm-ThreadLocal.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_lsm_CXXFLAGS) $(CXXFLAGS) -c -o es40_lsm-ThreadLocal.o `test -f 'base/ThreadLocal.cpp' || echo '$(srcdir)/'`base/ThreadLocal.cpp
+
+es40_lsm-ThreadLocal.obj: base/ThreadLocal.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_lsm_CXXFLAGS) $(CXXFLAGS) -MT es40_lsm-ThreadLocal.obj -MD -MP -MF $(DEPDIR)/es40_lsm-ThreadLocal.Tpo -c -o es40_lsm-ThreadLocal.obj `if test -f 'base/ThreadLocal.cpp'; then $(CYGPATH_W) 'base/ThreadLocal.cpp'; else $(CYGPATH_W) '$(srcdir)/base/ThreadLocal.cpp'; fi`
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/es40_lsm-ThreadLocal.Tpo $(DEPDIR)/es40_lsm-ThreadLocal.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='base/ThreadLocal.cpp' object='es40_lsm-ThreadLocal.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_lsm_CXXFLAGS) $(CXXFLAGS) -c -o es40_lsm-ThreadLocal.obj `if test -f 'base/ThreadLocal.cpp'; then $(CYGPATH_W) 'base/ThreadLocal.cpp'; else $(CYGPATH_W) '$(srcdir)/base/ThreadLocal.cpp'; fi`
+
+es40_lsm-Thread.o: base/Thread.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_lsm_CXXFLAGS) $(CXXFLAGS) -MT es40_lsm-Thread.o -MD -MP -MF $(DEPDIR)/es40_lsm-Thread.Tpo -c -o es40_lsm-Thread.o `test -f 'base/Thread.cpp' || echo '$(srcdir)/'`base/Thread.cpp
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/es40_lsm-Thread.Tpo $(DEPDIR)/es40_lsm-Thread.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='base/Thread.cpp' object='es40_lsm-Thread.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_lsm_CXXFLAGS) $(CXXFLAGS) -c -o es40_lsm-Thread.o `test -f 'base/Thread.cpp' || echo '$(srcdir)/'`base/Thread.cpp
+
+es40_lsm-Thread.obj: base/Thread.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_lsm_CXXFLAGS) $(CXXFLAGS) -MT es40_lsm-Thread.obj -MD -MP -MF $(DEPDIR)/es40_lsm-Thread.Tpo -c -o es40_lsm-Thread.obj `if test -f 'base/Thread.cpp'; then $(CYGPATH_W) 'base/Thread.cpp'; else $(CYGPATH_W) '$(srcdir)/base/Thread.cpp'; fi`
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/es40_lsm-Thread.Tpo $(DEPDIR)/es40_lsm-Thread.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='base/Thread.cpp' object='es40_lsm-Thread.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_lsm_CXXFLAGS) $(CXXFLAGS) -c -o es40_lsm-Thread.obj `if test -f 'base/Thread.cpp'; then $(CYGPATH_W) 'base/Thread.cpp'; else $(CYGPATH_W) '$(srcdir)/base/Thread.cpp'; fi`
+
+es40_lsm-Timestamp.o: base/Timestamp.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_lsm_CXXFLAGS) $(CXXFLAGS) -MT es40_lsm-Timestamp.o -MD -MP -MF $(DEPDIR)/es40_lsm-Timestamp.Tpo -c -o es40_lsm-Timestamp.o `test -f 'base/Timestamp.cpp' || echo '$(srcdir)/'`base/Timestamp.cpp
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/es40_lsm-Timestamp.Tpo $(DEPDIR)/es40_lsm-Timestamp.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='base/Timestamp.cpp' object='es40_lsm-Timestamp.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_lsm_CXXFLAGS) $(CXXFLAGS) -c -o es40_lsm-Timestamp.o `test -f 'base/Timestamp.cpp' || echo '$(srcdir)/'`base/Timestamp.cpp
+
+es40_lsm-Timestamp.obj: base/Timestamp.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_lsm_CXXFLAGS) $(CXXFLAGS) -MT es40_lsm-Timestamp.obj -MD -MP -MF $(DEPDIR)/es40_lsm-Timestamp.Tpo -c -o es40_lsm-Timestamp.obj `if test -f 'base/Timestamp.cpp'; then $(CYGPATH_W) 'base/Timestamp.cpp'; else $(CYGPATH_W) '$(srcdir)/base/Timestamp.cpp'; fi`
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/es40_lsm-Timestamp.Tpo $(DEPDIR)/es40_lsm-Timestamp.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='base/Timestamp.cpp' object='es40_lsm-Timestamp.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_lsm_CXXFLAGS) $(CXXFLAGS) -c -o es40_lsm-Timestamp.obj `if test -f 'base/Timestamp.cpp'; then $(CYGPATH_W) 'base/Timestamp.cpp'; else $(CYGPATH_W) '$(srcdir)/base/Timestamp.cpp'; fi`
+
 es40_lss-AliM1543C.o: AliM1543C.cpp
 @am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_lss_CXXFLAGS) $(CXXFLAGS) -MT es40_lss-AliM1543C.o -MD -MP -MF $(DEPDIR)/es40_lss-AliM1543C.Tpo -c -o es40_lss-AliM1543C.o `test -f 'AliM1543C.cpp' || echo '$(srcdir)/'`AliM1543C.cpp
 @am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/es40_lss-AliM1543C.Tpo $(DEPDIR)/es40_lss-AliM1543C.Po
@@ -2205,20 +2869,6 @@ es40_lss-Ethernet.obj: Ethernet.cpp
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='Ethernet.cpp' object='es40_lss-Ethernet.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_lss_CXXFLAGS) $(CXXFLAGS) -c -o es40_lss-Ethernet.obj `if test -f 'Ethernet.cpp'; then $(CYGPATH_W) 'Ethernet.cpp'; else $(CYGPATH_W) '$(srcdir)/Ethernet.cpp'; fi`
-
-es40_lss-Exception.o: Exception.cpp
-@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_lss_CXXFLAGS) $(CXXFLAGS) -MT es40_lss-Exception.o -MD -MP -MF $(DEPDIR)/es40_lss-Exception.Tpo -c -o es40_lss-Exception.o `test -f 'Exception.cpp' || echo '$(srcdir)/'`Exception.cpp
-@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/es40_lss-Exception.Tpo $(DEPDIR)/es40_lss-Exception.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='Exception.cpp' object='es40_lss-Exception.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_lss_CXXFLAGS) $(CXXFLAGS) -c -o es40_lss-Exception.o `test -f 'Exception.cpp' || echo '$(srcdir)/'`Exception.cpp
-
-es40_lss-Exception.obj: Exception.cpp
-@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_lss_CXXFLAGS) $(CXXFLAGS) -MT es40_lss-Exception.obj -MD -MP -MF $(DEPDIR)/es40_lss-Exception.Tpo -c -o es40_lss-Exception.obj `if test -f 'Exception.cpp'; then $(CYGPATH_W) 'Exception.cpp'; else $(CYGPATH_W) '$(srcdir)/Exception.cpp'; fi`
-@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/es40_lss-Exception.Tpo $(DEPDIR)/es40_lss-Exception.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='Exception.cpp' object='es40_lss-Exception.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_lss_CXXFLAGS) $(CXXFLAGS) -c -o es40_lss-Exception.obj `if test -f 'Exception.cpp'; then $(CYGPATH_W) 'Exception.cpp'; else $(CYGPATH_W) '$(srcdir)/Exception.cpp'; fi`
 
 es40_lss-Flash.o: Flash.cpp
 @am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_lss_CXXFLAGS) $(CXXFLAGS) -MT es40_lss-Flash.o -MD -MP -MF $(DEPDIR)/es40_lss-Flash.Tpo -c -o es40_lss-Flash.o `test -f 'Flash.cpp' || echo '$(srcdir)/'`Flash.cpp
@@ -2528,6 +3178,202 @@ es40_lss-sdl.obj: gui/sdl.cpp
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_lss_CXXFLAGS) $(CXXFLAGS) -c -o es40_lss-sdl.obj `if test -f 'gui/sdl.cpp'; then $(CYGPATH_W) 'gui/sdl.cpp'; else $(CYGPATH_W) '$(srcdir)/gui/sdl.cpp'; fi`
 
+es40_lss-Bugcheck.o: base/Bugcheck.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_lss_CXXFLAGS) $(CXXFLAGS) -MT es40_lss-Bugcheck.o -MD -MP -MF $(DEPDIR)/es40_lss-Bugcheck.Tpo -c -o es40_lss-Bugcheck.o `test -f 'base/Bugcheck.cpp' || echo '$(srcdir)/'`base/Bugcheck.cpp
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/es40_lss-Bugcheck.Tpo $(DEPDIR)/es40_lss-Bugcheck.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='base/Bugcheck.cpp' object='es40_lss-Bugcheck.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_lss_CXXFLAGS) $(CXXFLAGS) -c -o es40_lss-Bugcheck.o `test -f 'base/Bugcheck.cpp' || echo '$(srcdir)/'`base/Bugcheck.cpp
+
+es40_lss-Bugcheck.obj: base/Bugcheck.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_lss_CXXFLAGS) $(CXXFLAGS) -MT es40_lss-Bugcheck.obj -MD -MP -MF $(DEPDIR)/es40_lss-Bugcheck.Tpo -c -o es40_lss-Bugcheck.obj `if test -f 'base/Bugcheck.cpp'; then $(CYGPATH_W) 'base/Bugcheck.cpp'; else $(CYGPATH_W) '$(srcdir)/base/Bugcheck.cpp'; fi`
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/es40_lss-Bugcheck.Tpo $(DEPDIR)/es40_lss-Bugcheck.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='base/Bugcheck.cpp' object='es40_lss-Bugcheck.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_lss_CXXFLAGS) $(CXXFLAGS) -c -o es40_lss-Bugcheck.obj `if test -f 'base/Bugcheck.cpp'; then $(CYGPATH_W) 'base/Bugcheck.cpp'; else $(CYGPATH_W) '$(srcdir)/base/Bugcheck.cpp'; fi`
+
+es40_lss-ErrorHandler.o: base/ErrorHandler.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_lss_CXXFLAGS) $(CXXFLAGS) -MT es40_lss-ErrorHandler.o -MD -MP -MF $(DEPDIR)/es40_lss-ErrorHandler.Tpo -c -o es40_lss-ErrorHandler.o `test -f 'base/ErrorHandler.cpp' || echo '$(srcdir)/'`base/ErrorHandler.cpp
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/es40_lss-ErrorHandler.Tpo $(DEPDIR)/es40_lss-ErrorHandler.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='base/ErrorHandler.cpp' object='es40_lss-ErrorHandler.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_lss_CXXFLAGS) $(CXXFLAGS) -c -o es40_lss-ErrorHandler.o `test -f 'base/ErrorHandler.cpp' || echo '$(srcdir)/'`base/ErrorHandler.cpp
+
+es40_lss-ErrorHandler.obj: base/ErrorHandler.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_lss_CXXFLAGS) $(CXXFLAGS) -MT es40_lss-ErrorHandler.obj -MD -MP -MF $(DEPDIR)/es40_lss-ErrorHandler.Tpo -c -o es40_lss-ErrorHandler.obj `if test -f 'base/ErrorHandler.cpp'; then $(CYGPATH_W) 'base/ErrorHandler.cpp'; else $(CYGPATH_W) '$(srcdir)/base/ErrorHandler.cpp'; fi`
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/es40_lss-ErrorHandler.Tpo $(DEPDIR)/es40_lss-ErrorHandler.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='base/ErrorHandler.cpp' object='es40_lss-ErrorHandler.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_lss_CXXFLAGS) $(CXXFLAGS) -c -o es40_lss-ErrorHandler.obj `if test -f 'base/ErrorHandler.cpp'; then $(CYGPATH_W) 'base/ErrorHandler.cpp'; else $(CYGPATH_W) '$(srcdir)/base/ErrorHandler.cpp'; fi`
+
+es40_lss-Event.o: base/Event.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_lss_CXXFLAGS) $(CXXFLAGS) -MT es40_lss-Event.o -MD -MP -MF $(DEPDIR)/es40_lss-Event.Tpo -c -o es40_lss-Event.o `test -f 'base/Event.cpp' || echo '$(srcdir)/'`base/Event.cpp
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/es40_lss-Event.Tpo $(DEPDIR)/es40_lss-Event.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='base/Event.cpp' object='es40_lss-Event.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_lss_CXXFLAGS) $(CXXFLAGS) -c -o es40_lss-Event.o `test -f 'base/Event.cpp' || echo '$(srcdir)/'`base/Event.cpp
+
+es40_lss-Event.obj: base/Event.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_lss_CXXFLAGS) $(CXXFLAGS) -MT es40_lss-Event.obj -MD -MP -MF $(DEPDIR)/es40_lss-Event.Tpo -c -o es40_lss-Event.obj `if test -f 'base/Event.cpp'; then $(CYGPATH_W) 'base/Event.cpp'; else $(CYGPATH_W) '$(srcdir)/base/Event.cpp'; fi`
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/es40_lss-Event.Tpo $(DEPDIR)/es40_lss-Event.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='base/Event.cpp' object='es40_lss-Event.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_lss_CXXFLAGS) $(CXXFLAGS) -c -o es40_lss-Event.obj `if test -f 'base/Event.cpp'; then $(CYGPATH_W) 'base/Event.cpp'; else $(CYGPATH_W) '$(srcdir)/base/Event.cpp'; fi`
+
+es40_lss-Exception.o: base/Exception.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_lss_CXXFLAGS) $(CXXFLAGS) -MT es40_lss-Exception.o -MD -MP -MF $(DEPDIR)/es40_lss-Exception.Tpo -c -o es40_lss-Exception.o `test -f 'base/Exception.cpp' || echo '$(srcdir)/'`base/Exception.cpp
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/es40_lss-Exception.Tpo $(DEPDIR)/es40_lss-Exception.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='base/Exception.cpp' object='es40_lss-Exception.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_lss_CXXFLAGS) $(CXXFLAGS) -c -o es40_lss-Exception.o `test -f 'base/Exception.cpp' || echo '$(srcdir)/'`base/Exception.cpp
+
+es40_lss-Exception.obj: base/Exception.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_lss_CXXFLAGS) $(CXXFLAGS) -MT es40_lss-Exception.obj -MD -MP -MF $(DEPDIR)/es40_lss-Exception.Tpo -c -o es40_lss-Exception.obj `if test -f 'base/Exception.cpp'; then $(CYGPATH_W) 'base/Exception.cpp'; else $(CYGPATH_W) '$(srcdir)/base/Exception.cpp'; fi`
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/es40_lss-Exception.Tpo $(DEPDIR)/es40_lss-Exception.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='base/Exception.cpp' object='es40_lss-Exception.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_lss_CXXFLAGS) $(CXXFLAGS) -c -o es40_lss-Exception.obj `if test -f 'base/Exception.cpp'; then $(CYGPATH_W) 'base/Exception.cpp'; else $(CYGPATH_W) '$(srcdir)/base/Exception.cpp'; fi`
+
+es40_lss-Mutex.o: base/Mutex.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_lss_CXXFLAGS) $(CXXFLAGS) -MT es40_lss-Mutex.o -MD -MP -MF $(DEPDIR)/es40_lss-Mutex.Tpo -c -o es40_lss-Mutex.o `test -f 'base/Mutex.cpp' || echo '$(srcdir)/'`base/Mutex.cpp
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/es40_lss-Mutex.Tpo $(DEPDIR)/es40_lss-Mutex.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='base/Mutex.cpp' object='es40_lss-Mutex.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_lss_CXXFLAGS) $(CXXFLAGS) -c -o es40_lss-Mutex.o `test -f 'base/Mutex.cpp' || echo '$(srcdir)/'`base/Mutex.cpp
+
+es40_lss-Mutex.obj: base/Mutex.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_lss_CXXFLAGS) $(CXXFLAGS) -MT es40_lss-Mutex.obj -MD -MP -MF $(DEPDIR)/es40_lss-Mutex.Tpo -c -o es40_lss-Mutex.obj `if test -f 'base/Mutex.cpp'; then $(CYGPATH_W) 'base/Mutex.cpp'; else $(CYGPATH_W) '$(srcdir)/base/Mutex.cpp'; fi`
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/es40_lss-Mutex.Tpo $(DEPDIR)/es40_lss-Mutex.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='base/Mutex.cpp' object='es40_lss-Mutex.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_lss_CXXFLAGS) $(CXXFLAGS) -c -o es40_lss-Mutex.obj `if test -f 'base/Mutex.cpp'; then $(CYGPATH_W) 'base/Mutex.cpp'; else $(CYGPATH_W) '$(srcdir)/base/Mutex.cpp'; fi`
+
+es40_lss-NumberFormatter.o: base/NumberFormatter.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_lss_CXXFLAGS) $(CXXFLAGS) -MT es40_lss-NumberFormatter.o -MD -MP -MF $(DEPDIR)/es40_lss-NumberFormatter.Tpo -c -o es40_lss-NumberFormatter.o `test -f 'base/NumberFormatter.cpp' || echo '$(srcdir)/'`base/NumberFormatter.cpp
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/es40_lss-NumberFormatter.Tpo $(DEPDIR)/es40_lss-NumberFormatter.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='base/NumberFormatter.cpp' object='es40_lss-NumberFormatter.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_lss_CXXFLAGS) $(CXXFLAGS) -c -o es40_lss-NumberFormatter.o `test -f 'base/NumberFormatter.cpp' || echo '$(srcdir)/'`base/NumberFormatter.cpp
+
+es40_lss-NumberFormatter.obj: base/NumberFormatter.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_lss_CXXFLAGS) $(CXXFLAGS) -MT es40_lss-NumberFormatter.obj -MD -MP -MF $(DEPDIR)/es40_lss-NumberFormatter.Tpo -c -o es40_lss-NumberFormatter.obj `if test -f 'base/NumberFormatter.cpp'; then $(CYGPATH_W) 'base/NumberFormatter.cpp'; else $(CYGPATH_W) '$(srcdir)/base/NumberFormatter.cpp'; fi`
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/es40_lss-NumberFormatter.Tpo $(DEPDIR)/es40_lss-NumberFormatter.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='base/NumberFormatter.cpp' object='es40_lss-NumberFormatter.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_lss_CXXFLAGS) $(CXXFLAGS) -c -o es40_lss-NumberFormatter.obj `if test -f 'base/NumberFormatter.cpp'; then $(CYGPATH_W) 'base/NumberFormatter.cpp'; else $(CYGPATH_W) '$(srcdir)/base/NumberFormatter.cpp'; fi`
+
+es40_lss-RefCountedObject.o: base/RefCountedObject.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_lss_CXXFLAGS) $(CXXFLAGS) -MT es40_lss-RefCountedObject.o -MD -MP -MF $(DEPDIR)/es40_lss-RefCountedObject.Tpo -c -o es40_lss-RefCountedObject.o `test -f 'base/RefCountedObject.cpp' || echo '$(srcdir)/'`base/RefCountedObject.cpp
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/es40_lss-RefCountedObject.Tpo $(DEPDIR)/es40_lss-RefCountedObject.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='base/RefCountedObject.cpp' object='es40_lss-RefCountedObject.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_lss_CXXFLAGS) $(CXXFLAGS) -c -o es40_lss-RefCountedObject.o `test -f 'base/RefCountedObject.cpp' || echo '$(srcdir)/'`base/RefCountedObject.cpp
+
+es40_lss-RefCountedObject.obj: base/RefCountedObject.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_lss_CXXFLAGS) $(CXXFLAGS) -MT es40_lss-RefCountedObject.obj -MD -MP -MF $(DEPDIR)/es40_lss-RefCountedObject.Tpo -c -o es40_lss-RefCountedObject.obj `if test -f 'base/RefCountedObject.cpp'; then $(CYGPATH_W) 'base/RefCountedObject.cpp'; else $(CYGPATH_W) '$(srcdir)/base/RefCountedObject.cpp'; fi`
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/es40_lss-RefCountedObject.Tpo $(DEPDIR)/es40_lss-RefCountedObject.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='base/RefCountedObject.cpp' object='es40_lss-RefCountedObject.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_lss_CXXFLAGS) $(CXXFLAGS) -c -o es40_lss-RefCountedObject.obj `if test -f 'base/RefCountedObject.cpp'; then $(CYGPATH_W) 'base/RefCountedObject.cpp'; else $(CYGPATH_W) '$(srcdir)/base/RefCountedObject.cpp'; fi`
+
+es40_lss-Runnable.o: base/Runnable.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_lss_CXXFLAGS) $(CXXFLAGS) -MT es40_lss-Runnable.o -MD -MP -MF $(DEPDIR)/es40_lss-Runnable.Tpo -c -o es40_lss-Runnable.o `test -f 'base/Runnable.cpp' || echo '$(srcdir)/'`base/Runnable.cpp
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/es40_lss-Runnable.Tpo $(DEPDIR)/es40_lss-Runnable.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='base/Runnable.cpp' object='es40_lss-Runnable.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_lss_CXXFLAGS) $(CXXFLAGS) -c -o es40_lss-Runnable.o `test -f 'base/Runnable.cpp' || echo '$(srcdir)/'`base/Runnable.cpp
+
+es40_lss-Runnable.obj: base/Runnable.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_lss_CXXFLAGS) $(CXXFLAGS) -MT es40_lss-Runnable.obj -MD -MP -MF $(DEPDIR)/es40_lss-Runnable.Tpo -c -o es40_lss-Runnable.obj `if test -f 'base/Runnable.cpp'; then $(CYGPATH_W) 'base/Runnable.cpp'; else $(CYGPATH_W) '$(srcdir)/base/Runnable.cpp'; fi`
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/es40_lss-Runnable.Tpo $(DEPDIR)/es40_lss-Runnable.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='base/Runnable.cpp' object='es40_lss-Runnable.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_lss_CXXFLAGS) $(CXXFLAGS) -c -o es40_lss-Runnable.obj `if test -f 'base/Runnable.cpp'; then $(CYGPATH_W) 'base/Runnable.cpp'; else $(CYGPATH_W) '$(srcdir)/base/Runnable.cpp'; fi`
+
+es40_lss-RWLock.o: base/RWLock.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_lss_CXXFLAGS) $(CXXFLAGS) -MT es40_lss-RWLock.o -MD -MP -MF $(DEPDIR)/es40_lss-RWLock.Tpo -c -o es40_lss-RWLock.o `test -f 'base/RWLock.cpp' || echo '$(srcdir)/'`base/RWLock.cpp
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/es40_lss-RWLock.Tpo $(DEPDIR)/es40_lss-RWLock.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='base/RWLock.cpp' object='es40_lss-RWLock.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_lss_CXXFLAGS) $(CXXFLAGS) -c -o es40_lss-RWLock.o `test -f 'base/RWLock.cpp' || echo '$(srcdir)/'`base/RWLock.cpp
+
+es40_lss-RWLock.obj: base/RWLock.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_lss_CXXFLAGS) $(CXXFLAGS) -MT es40_lss-RWLock.obj -MD -MP -MF $(DEPDIR)/es40_lss-RWLock.Tpo -c -o es40_lss-RWLock.obj `if test -f 'base/RWLock.cpp'; then $(CYGPATH_W) 'base/RWLock.cpp'; else $(CYGPATH_W) '$(srcdir)/base/RWLock.cpp'; fi`
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/es40_lss-RWLock.Tpo $(DEPDIR)/es40_lss-RWLock.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='base/RWLock.cpp' object='es40_lss-RWLock.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_lss_CXXFLAGS) $(CXXFLAGS) -c -o es40_lss-RWLock.obj `if test -f 'base/RWLock.cpp'; then $(CYGPATH_W) 'base/RWLock.cpp'; else $(CYGPATH_W) '$(srcdir)/base/RWLock.cpp'; fi`
+
+es40_lss-Semaphore.o: base/Semaphore.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_lss_CXXFLAGS) $(CXXFLAGS) -MT es40_lss-Semaphore.o -MD -MP -MF $(DEPDIR)/es40_lss-Semaphore.Tpo -c -o es40_lss-Semaphore.o `test -f 'base/Semaphore.cpp' || echo '$(srcdir)/'`base/Semaphore.cpp
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/es40_lss-Semaphore.Tpo $(DEPDIR)/es40_lss-Semaphore.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='base/Semaphore.cpp' object='es40_lss-Semaphore.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_lss_CXXFLAGS) $(CXXFLAGS) -c -o es40_lss-Semaphore.o `test -f 'base/Semaphore.cpp' || echo '$(srcdir)/'`base/Semaphore.cpp
+
+es40_lss-Semaphore.obj: base/Semaphore.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_lss_CXXFLAGS) $(CXXFLAGS) -MT es40_lss-Semaphore.obj -MD -MP -MF $(DEPDIR)/es40_lss-Semaphore.Tpo -c -o es40_lss-Semaphore.obj `if test -f 'base/Semaphore.cpp'; then $(CYGPATH_W) 'base/Semaphore.cpp'; else $(CYGPATH_W) '$(srcdir)/base/Semaphore.cpp'; fi`
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/es40_lss-Semaphore.Tpo $(DEPDIR)/es40_lss-Semaphore.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='base/Semaphore.cpp' object='es40_lss-Semaphore.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_lss_CXXFLAGS) $(CXXFLAGS) -c -o es40_lss-Semaphore.obj `if test -f 'base/Semaphore.cpp'; then $(CYGPATH_W) 'base/Semaphore.cpp'; else $(CYGPATH_W) '$(srcdir)/base/Semaphore.cpp'; fi`
+
+es40_lss-SignalHandler.o: base/SignalHandler.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_lss_CXXFLAGS) $(CXXFLAGS) -MT es40_lss-SignalHandler.o -MD -MP -MF $(DEPDIR)/es40_lss-SignalHandler.Tpo -c -o es40_lss-SignalHandler.o `test -f 'base/SignalHandler.cpp' || echo '$(srcdir)/'`base/SignalHandler.cpp
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/es40_lss-SignalHandler.Tpo $(DEPDIR)/es40_lss-SignalHandler.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='base/SignalHandler.cpp' object='es40_lss-SignalHandler.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_lss_CXXFLAGS) $(CXXFLAGS) -c -o es40_lss-SignalHandler.o `test -f 'base/SignalHandler.cpp' || echo '$(srcdir)/'`base/SignalHandler.cpp
+
+es40_lss-SignalHandler.obj: base/SignalHandler.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_lss_CXXFLAGS) $(CXXFLAGS) -MT es40_lss-SignalHandler.obj -MD -MP -MF $(DEPDIR)/es40_lss-SignalHandler.Tpo -c -o es40_lss-SignalHandler.obj `if test -f 'base/SignalHandler.cpp'; then $(CYGPATH_W) 'base/SignalHandler.cpp'; else $(CYGPATH_W) '$(srcdir)/base/SignalHandler.cpp'; fi`
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/es40_lss-SignalHandler.Tpo $(DEPDIR)/es40_lss-SignalHandler.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='base/SignalHandler.cpp' object='es40_lss-SignalHandler.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_lss_CXXFLAGS) $(CXXFLAGS) -c -o es40_lss-SignalHandler.obj `if test -f 'base/SignalHandler.cpp'; then $(CYGPATH_W) 'base/SignalHandler.cpp'; else $(CYGPATH_W) '$(srcdir)/base/SignalHandler.cpp'; fi`
+
+es40_lss-ThreadLocal.o: base/ThreadLocal.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_lss_CXXFLAGS) $(CXXFLAGS) -MT es40_lss-ThreadLocal.o -MD -MP -MF $(DEPDIR)/es40_lss-ThreadLocal.Tpo -c -o es40_lss-ThreadLocal.o `test -f 'base/ThreadLocal.cpp' || echo '$(srcdir)/'`base/ThreadLocal.cpp
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/es40_lss-ThreadLocal.Tpo $(DEPDIR)/es40_lss-ThreadLocal.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='base/ThreadLocal.cpp' object='es40_lss-ThreadLocal.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_lss_CXXFLAGS) $(CXXFLAGS) -c -o es40_lss-ThreadLocal.o `test -f 'base/ThreadLocal.cpp' || echo '$(srcdir)/'`base/ThreadLocal.cpp
+
+es40_lss-ThreadLocal.obj: base/ThreadLocal.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_lss_CXXFLAGS) $(CXXFLAGS) -MT es40_lss-ThreadLocal.obj -MD -MP -MF $(DEPDIR)/es40_lss-ThreadLocal.Tpo -c -o es40_lss-ThreadLocal.obj `if test -f 'base/ThreadLocal.cpp'; then $(CYGPATH_W) 'base/ThreadLocal.cpp'; else $(CYGPATH_W) '$(srcdir)/base/ThreadLocal.cpp'; fi`
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/es40_lss-ThreadLocal.Tpo $(DEPDIR)/es40_lss-ThreadLocal.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='base/ThreadLocal.cpp' object='es40_lss-ThreadLocal.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_lss_CXXFLAGS) $(CXXFLAGS) -c -o es40_lss-ThreadLocal.obj `if test -f 'base/ThreadLocal.cpp'; then $(CYGPATH_W) 'base/ThreadLocal.cpp'; else $(CYGPATH_W) '$(srcdir)/base/ThreadLocal.cpp'; fi`
+
+es40_lss-Thread.o: base/Thread.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_lss_CXXFLAGS) $(CXXFLAGS) -MT es40_lss-Thread.o -MD -MP -MF $(DEPDIR)/es40_lss-Thread.Tpo -c -o es40_lss-Thread.o `test -f 'base/Thread.cpp' || echo '$(srcdir)/'`base/Thread.cpp
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/es40_lss-Thread.Tpo $(DEPDIR)/es40_lss-Thread.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='base/Thread.cpp' object='es40_lss-Thread.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_lss_CXXFLAGS) $(CXXFLAGS) -c -o es40_lss-Thread.o `test -f 'base/Thread.cpp' || echo '$(srcdir)/'`base/Thread.cpp
+
+es40_lss-Thread.obj: base/Thread.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_lss_CXXFLAGS) $(CXXFLAGS) -MT es40_lss-Thread.obj -MD -MP -MF $(DEPDIR)/es40_lss-Thread.Tpo -c -o es40_lss-Thread.obj `if test -f 'base/Thread.cpp'; then $(CYGPATH_W) 'base/Thread.cpp'; else $(CYGPATH_W) '$(srcdir)/base/Thread.cpp'; fi`
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/es40_lss-Thread.Tpo $(DEPDIR)/es40_lss-Thread.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='base/Thread.cpp' object='es40_lss-Thread.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_lss_CXXFLAGS) $(CXXFLAGS) -c -o es40_lss-Thread.obj `if test -f 'base/Thread.cpp'; then $(CYGPATH_W) 'base/Thread.cpp'; else $(CYGPATH_W) '$(srcdir)/base/Thread.cpp'; fi`
+
+es40_lss-Timestamp.o: base/Timestamp.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_lss_CXXFLAGS) $(CXXFLAGS) -MT es40_lss-Timestamp.o -MD -MP -MF $(DEPDIR)/es40_lss-Timestamp.Tpo -c -o es40_lss-Timestamp.o `test -f 'base/Timestamp.cpp' || echo '$(srcdir)/'`base/Timestamp.cpp
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/es40_lss-Timestamp.Tpo $(DEPDIR)/es40_lss-Timestamp.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='base/Timestamp.cpp' object='es40_lss-Timestamp.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_lss_CXXFLAGS) $(CXXFLAGS) -c -o es40_lss-Timestamp.o `test -f 'base/Timestamp.cpp' || echo '$(srcdir)/'`base/Timestamp.cpp
+
+es40_lss-Timestamp.obj: base/Timestamp.cpp
+@am__fastdepCXX_TRUE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_lss_CXXFLAGS) $(CXXFLAGS) -MT es40_lss-Timestamp.obj -MD -MP -MF $(DEPDIR)/es40_lss-Timestamp.Tpo -c -o es40_lss-Timestamp.obj `if test -f 'base/Timestamp.cpp'; then $(CYGPATH_W) 'base/Timestamp.cpp'; else $(CYGPATH_W) '$(srcdir)/base/Timestamp.cpp'; fi`
+@am__fastdepCXX_TRUE@	mv -f $(DEPDIR)/es40_lss-Timestamp.Tpo $(DEPDIR)/es40_lss-Timestamp.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='base/Timestamp.cpp' object='es40_lss-Timestamp.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(es40_lss_CXXFLAGS) $(CXXFLAGS) -c -o es40_lss-Timestamp.obj `if test -f 'base/Timestamp.cpp'; then $(CYGPATH_W) 'base/Timestamp.cpp'; else $(CYGPATH_W) '$(srcdir)/base/Timestamp.cpp'; fi`
+
 ID: $(HEADERS) $(SOURCES) $(LISP) $(TAGS_FILES)
 	list='$(SOURCES) $(HEADERS) $(LISP) $(TAGS_FILES)'; \
 	unique=`for i in $$list; do \
@@ -2705,6 +3551,8 @@ uninstall-am: uninstall-binPROGRAMS
 	mostlyclean-compile mostlyclean-generic pdf pdf-am ps ps-am \
 	tags uninstall uninstall-am uninstall-binPROGRAMS
 
+
+#LDADD = -lPocoFoundation
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.
 .NOEXPORT:

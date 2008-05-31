@@ -1,8 +1,8 @@
 /* ES40 emulator.
  * Copyright (C) 2007-2008 by the ES40 Emulator Project
  *
- * WWW    : http://sourceforge.net/projects/es40
- * E-mail : camiel@camicom.com
+ * WWW    : http://www.es40.org
+ * E-mail : camiel@es40.org
  * 
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -30,7 +30,13 @@
  * \file 
  * Contains the definitions for the emulated DEC 21143 NIC device.
  *
- * $Id: DEC21143.h,v 1.17 2008/03/14 15:30:51 iamcamiel Exp $
+ * $Id: DEC21143.h,v 1.18 2008/05/31 15:47:09 iamcamiel Exp $
+ *
+ * X-1.18       Camiel Vanderhoeven                             31-MAY-2008
+ *      Changes to include parts of Poco.
+ *
+ * X-1.17       Camiel Vanderhoeven                             14-MAR-2008
+ *      Formatting.
  *
  * X-1.16       Camiel Vanderhoeven                             13-MAR-2008
  *      Create init(), start_threads() and stop_threads() functions.
@@ -103,7 +109,7 @@
  *  - Tru64 Device Driver Kit Version 2 (Ethernet sample = tu driver!) [T64]. (http://h30097.www3.hp.com/docs/dev_doc/DOCUMENTATION/HTML/dev_docs_r2.html)
  *  .
  **/
-class CDEC21143 : public CPCIDevice, public Poco::Runnable
+class CDEC21143 : public CPCIDevice, public CRunnable
 {
   public:
     virtual int   SaveState(FILE* f);
@@ -129,7 +135,7 @@ class CDEC21143 : public CPCIDevice, public Poco::Runnable
   private:
     static int  nic_num;
 
-    Poco::Thread * myThread;
+    CThread * myThread;
     bool                StopThread;
 
     u32                 nic_read(u32 address, int dsize);

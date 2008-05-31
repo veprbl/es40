@@ -1,8 +1,8 @@
 /* ES40 emulator.
  * Copyright (C) 2007-2008 by the ES40 Emulator Project
  *
- * WWW    : http://sourceforge.net/projects/es40
- * E-mail : camiel@camicom.com
+ * WWW    : http://www.es40.org
+ * E-mail : camiel@es40.org
  * 
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -27,7 +27,13 @@
  * \file
  * Contains the definitions for the emulated Keyboard and mouse devices and controller.
  *
- * $Id: Keyboard.h,v 1.5 2008/03/14 15:30:51 iamcamiel Exp $
+ * $Id: Keyboard.h,v 1.6 2008/05/31 15:47:10 iamcamiel Exp $
+ *
+ * X-1.6        Camiel Vanderhoeven                             31-MAY-2008
+ *      Changes to include parts of Poco.
+ *
+ * X-1.5        Camiel Vanderhoeven                             14-MAR-2008
+ *      Formatting.
  *
  * X-1.4        Camiel Vanderhoeven                             14-MAR-2008
  *   1. More meaningful exceptions replace throwing (int) 1.
@@ -61,7 +67,7 @@
 /**
  * \brief Emulated keyboard controller, keyboard and mouse.
  **/
-class CKeyboard : public CSystemComponent, public Poco::Runnable
+class CKeyboard : public CSystemComponent, public CRunnable
 {
   public:
     CKeyboard(CConfigurator* cfg, CSystem* c);
@@ -81,7 +87,7 @@ class CKeyboard : public CSystemComponent, public Poco::Runnable
     virtual void  start_threads();
     virtual void  stop_threads();
   private:
-    Poco::Thread * myThread;
+    CThread * myThread;
     bool      StopThread;
 
     u8        read_60();

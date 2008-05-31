@@ -1,7 +1,7 @@
 /* ES40 emulator.
  * Copyright (C) 2007-2008 by the ES40 Emulator Project
  *
- * WWW    : http://es40.org
+ * WWW    : http://www.es40.org
  * E-mail : camiel@es40.org
  * 
  * This program is free software; you can redistribute it and/or
@@ -27,7 +27,10 @@
  * \file
  * Contains the code for emulated S3 Trio 64 Video Card device.
  *
- * $Id: S3Trio64.cpp,v 1.19 2008/04/13 16:04:52 iamcamiel Exp $
+ * $Id: S3Trio64.cpp,v 1.20 2008/05/31 15:47:10 iamcamiel Exp $
+ *
+ * X-1.20       Camiel Vanderhoeven                             31-MAY-2008
+ *      Changes to include parts of Poco.
  *
  * X-1.19       Camiel Vanderhoeven                             13-APR-2008
  *      Fixed Doxygen comment.
@@ -163,7 +166,7 @@ static const u8 ccdat[16][4] = {
         bx_gui->lock();
         bx_gui->handle_events();
         bx_gui->unlock();
-        Poco::Thread::sleep(10);
+        CThread::sleep(10);
       }
       //Update the screen (10 times per second)
       bx_gui->lock();
@@ -173,7 +176,7 @@ static const u8 ccdat[16][4] = {
     }
   }
 
-  catch(Poco::Exception & e)
+  catch(CException & e)
   {
     printf("Exception in S3 thread: %s.\n", e.displayText().c_str());
 
@@ -325,7 +328,7 @@ void CS3Trio64::init()
 
   myThread = 0;
 
-  printf("%s: $Id: S3Trio64.cpp,v 1.19 2008/04/13 16:04:52 iamcamiel Exp $\n",
+  printf("%s: $Id: S3Trio64.cpp,v 1.20 2008/05/31 15:47:10 iamcamiel Exp $\n",
          devid_string);
 }
 
@@ -336,7 +339,7 @@ void CS3Trio64::start_threads()
 {
   if(!myThread)
   {
-    myThread = new Poco::Thread("s3");
+    myThread = new CThread("s3");
     printf(" %s", myThread->getName().c_str());
     StopThread = false;
     myThread->start(*this);

@@ -1,8 +1,8 @@
 /* ES40 emulator.
  * Copyright (C) 2007-2008 by the ES40 Emulator Project
  *
- * WWW    : http://sourceforge.net/projects/es40
- * E-mail : camiel@camicom.com
+ * WWW    : http://www.es40.org
+ * E-mail : camiel@es40.org
  * 
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -30,7 +30,10 @@
  * \file 
  * Contains the code for the emulated DEC 21143 NIC device.
  *
- * $Id: DEC21143.cpp,v 1.35 2008/03/26 19:11:01 iamcamiel Exp $
+ * $Id: DEC21143.cpp,v 1.36 2008/05/31 15:47:09 iamcamiel Exp $
+ *
+ * X-1.36       Camiel Vanderhoeven                             31-MAY-2008
+ *      Changes to include parts of Poco.
  *
  * X-1.35       Camiel Vanderhoeven                             26-MAR-2008
  *      Fix compiler warnings.
@@ -197,11 +200,11 @@ void CDEC21143::run()
           state.irq_was_asserted = asserted;
       }
 
-      Poco::Thread::sleep(10);
+      CThread::sleep(10);
     }
   }
 
-  catch(Poco::Exception & e)
+  catch(CException & e)
   {
     printf("Exception in NIC thread: %s.\n", e.displayText().c_str());
 
@@ -414,7 +417,7 @@ void CDEC21143::init()
 
   myThread = 0;
 
-  printf("%s: $Id: DEC21143.cpp,v 1.35 2008/03/26 19:11:01 iamcamiel Exp $\n",
+  printf("%s: $Id: DEC21143.cpp,v 1.36 2008/05/31 15:47:09 iamcamiel Exp $\n",
          devid_string);
 }
 
@@ -422,7 +425,7 @@ void CDEC21143::start_threads()
 {
   if(!myThread)
   {
-    myThread = new Poco::Thread("nic");
+    myThread = new CThread("nic");
     printf(" %s", myThread->getName().c_str());
     StopThread = false;
     myThread->start(*this);

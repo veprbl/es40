@@ -1,7 +1,7 @@
 /* ES40 emulator.
  * Copyright (C) 2007-2008 by the ES40 Emulator Project
  *
- * WWW    : http://es40.org
+ * WWW    : http://www.es40.org
  * E-mail : camiel@es40.org
  *
  * This program is free software; you can redistribute it and/or
@@ -28,7 +28,10 @@
  * \file
  * Contains the code for the emulated Ali M1543C IDE chipset part.
  *
- * $Id: AliM1543C_ide.cpp,v 1.33 2008/04/29 08:03:21 iamcamiel Exp $
+ * $Id: AliM1543C_ide.cpp,v 1.34 2008/05/31 15:47:08 iamcamiel Exp $
+ *
+ * X-1.34       Camiel Vanderhoeven                             31-MAY-2008
+ *      Changes to include parts of Poco.
  *
  * X-1.33       Camiel Vanderhoeven                             29-APR-2008
  *      CDiskController is no longer a CPCIDevice. devices that are both
@@ -338,15 +341,15 @@ void CAliM1543C_ide::init()
 
   // start controller threads
   StopThread = false;
-  mtRegisters[0] = new CRWMutex("ide0-registers");
-  mtRegisters[1] = new CRWMutex("ide1-registers");
-  mtBusMaster[0] = new CRWMutex("ide0-busmaster");
-  mtBusMaster[1] = new CRWMutex("ide1-busmaster");
+  mtRegisters[0] = new CRWLock("ide0-registers");
+  mtRegisters[1] = new CRWLock("ide1-registers");
+  mtBusMaster[0] = new CRWLock("ide0-busmaster");
+  mtBusMaster[1] = new CRWLock("ide1-busmaster");
 
   for(int i = 0; i < 2; i++)
   {
-    semController[i] = new Poco::Semaphore(0, 1); // disk controller
-    semBusMaster[i] = new Poco::Semaphore(0, 1);  // bus master
+    semController[i] = new CSemaphore(0, 1); // disk controller
+    semBusMaster[i] = new CSemaphore(0, 1);  // bus master
     thrController[i] = 0;
   }
 
@@ -361,7 +364,7 @@ void CAliM1543C_ide::start_threads()
     if(!thrController[i])
     {
       sprintf(buffer, "ide%d", i);
-      thrController[i] = new Poco::Thread(buffer);
+      thrController[i] = new CThread(buffer);
       printf(" %s", thrController[i]->getName().c_str());
       StopThread = false;
       thrController[i]->start(*this);
@@ -2626,7 +2629,7 @@ int CAliM1543C_ide::do_dma_transfer(int index, u8*  buffer, u32 buffersize,
  **/
 void CAliM1543C_ide::run()
 {
-  int index = (thrController[0] == Poco::Thread::current()) ? 0 : 1;
+  int index = (thrController[0] == CThread::current()) ? 0 : 1;
   try
   {
     for(;;)
@@ -2657,7 +2660,7 @@ void CAliM1543C_ide::run()
     }
   }
 
-  catch(Poco::Exception & e)
+  catch(CException & e)
   {
     printf("Exception in IDE thread: %s.\n", e.displayText().c_str());
 

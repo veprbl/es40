@@ -1,8 +1,8 @@
 /* ES40 emulator.
  * Copyright (C) 2007-2008 by the ES40 Emulator Project
  *
- * WWW    : http://sourceforge.net/projects/es40
- * E-mail : camiel@camicom.com
+ * WWW    : http://www.es40.org
+ * E-mail : camiel@es40.org
  * 
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -27,7 +27,13 @@
  * \file 
  * Contains the definitions for the ISA part of the emulated Ali M1543C chipset.
  *
- * $Id: AliM1543C.h,v 1.33 2008/03/14 15:30:50 iamcamiel Exp $
+ * $Id: AliM1543C.h,v 1.34 2008/05/31 15:47:08 iamcamiel Exp $
+ *
+ * X-1.34       Camiel Vanderhoeven                             31-MAY-2008
+ *      Changes to include parts of Poco.
+ *
+ * X-1.33       Camiel Vanderhoeven                             14-MAR-2008
+ *      Formatting.
  *
  * X-1.32       Camiel Vanderhoeven                             13-MAR-2008
  *      Create init(), start_threads() and stop_threads() functions.
@@ -145,7 +151,7 @@
  *  - Keyboard Scancodes, by Andries Brouwer (http://www.win.tue.nl/~aeb/linux/kbd/scancodes.html)
  *  .
  **/
-class CAliM1543C : public CPCIDevice, public Poco::Runnable
+class CAliM1543C : public CPCIDevice, public CRunnable
 {
   public:
     virtual int   SaveState(FILE* f);
@@ -169,7 +175,7 @@ class CAliM1543C : public CPCIDevice, public Poco::Runnable
     void          start_threads();
     void          stop_threads();
   private:
-    Poco::Thread * myThread;
+    CThread * myThread;
     CMutex*   myRegLock;
     bool      StopThread;
 

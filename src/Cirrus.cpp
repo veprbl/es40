@@ -1,7 +1,7 @@
 /* ES40 emulator.
  * Copyright (C) 2007-2008 by the ES40 Emulator Project
  *
- * WWW    : http://es40.org
+ * WWW    : http://www.es40.org
  * E-mail : camiel@es40.org
  * 
  * This program is free software; you can redistribute it and/or
@@ -27,7 +27,10 @@
  * \file
  * Contains the code for the emulated Cirrus CL GD-5434 Video Card device.
  *
- * $Id: Cirrus.cpp,v 1.22 2008/04/13 16:04:52 iamcamiel Exp $
+ * $Id: Cirrus.cpp,v 1.23 2008/05/31 15:47:09 iamcamiel Exp $
+ *
+ * X-1.23       Camiel Vanderhoeven                             31-MAY-2008
+ *      Changes to include parts of Poco.
  *
  * X-1.22       Camiel Vanderhoeven                             13-APR-2008
  *      Fixed Doxygen comment.
@@ -173,7 +176,7 @@ void CCirrus::run()
         bx_gui->lock();
         bx_gui->handle_events();
         bx_gui->unlock();
-        Poco::Thread::sleep(10);
+        CThread::sleep(10);
       }
       //Update the screen (10 times per second)
       bx_gui->lock();
@@ -183,7 +186,7 @@ void CCirrus::run()
     }
   }
 
-  catch(Poco::Exception & e)
+  catch(CException & e)
   {
     printf("Exception in Cirrus thread: %s.\n", e.displayText().c_str());
 
@@ -334,7 +337,7 @@ void CCirrus::init()
   state.vga_mem_updated = 1;
 
   myThread = 0;
-  printf("%s: $Id: Cirrus.cpp,v 1.22 2008/04/13 16:04:52 iamcamiel Exp $\n",
+  printf("%s: $Id: Cirrus.cpp,v 1.23 2008/05/31 15:47:09 iamcamiel Exp $\n",
          devid_string);
 }
 
@@ -345,7 +348,7 @@ void CCirrus::start_threads()
 {
   if(!myThread)
   {
-    myThread = new Poco::Thread("cirrus");
+    myThread = new CThread("cirrus");
     printf(" %s", myThread->getName().c_str());
     StopThread = false;
     myThread->start(*this);

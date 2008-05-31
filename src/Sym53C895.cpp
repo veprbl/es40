@@ -1,7 +1,7 @@
 /* ES40 emulator.
  * Copyright (C) 2007-2008 by the ES40 Emulator Project
  *
- * WWW    : http://es40.org
+ * WWW    : http://www.es40.org
  * E-mail : camiel@es40.org
  * 
  * This program is free software; you can redistribute it and/or
@@ -27,7 +27,10 @@
  * \file
  * Contains the code for the emulated Symbios SCSI controller.
  *
- * $Id: Sym53C895.cpp,v 1.34 2008/04/29 08:03:21 iamcamiel Exp $
+ * $Id: Sym53C895.cpp,v 1.35 2008/05/31 15:47:14 iamcamiel Exp $
+ *
+ * X-1.35       Camiel Vanderhoeven                             31-MAY-2008
+ *      Changes to include parts of Poco.
  *
  * X-1.34       Camiel Vanderhoeven                             29-APR-2008
  *      CDiskController is no longer a CPCIDevice. devices that are both
@@ -616,7 +619,7 @@ void CSym53C895::run()
     }
   }
 
-  catch(Poco::Exception & e)
+  catch(CException & e)
   {
     printf("Exception in SYM thread: %s.\n", e.displayText().c_str());
 
@@ -658,7 +661,7 @@ void CSym53C895::init()
 
   myThread = 0;
 
-  printf("%s: $Id: Sym53C895.cpp,v 1.34 2008/04/29 08:03:21 iamcamiel Exp $\n",
+  printf("%s: $Id: Sym53C895.cpp,v 1.35 2008/05/31 15:47:14 iamcamiel Exp $\n",
          devid_string);
 }
 
@@ -669,7 +672,7 @@ void CSym53C895::start_threads()
 {
   if(!myThread)
   {
-    myThread = new Poco::Thread("sym");
+    myThread = new CThread("sym");
     printf(" %s", myThread->getName().c_str());
     StopThread = false;
     myThread->start(*this);

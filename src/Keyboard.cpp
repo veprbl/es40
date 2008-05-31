@@ -1,8 +1,8 @@
 /* ES40 emulator.
  * Copyright (C) 2007-2008 by the ES40 Emulator Project
  *
- * WWW    : http://sourceforge.net/projects/es40
- * E-mail : camiel@camicom.com
+ * WWW    : http://www.es40.org
+ * E-mail : camiel@es40.org
  * 
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -27,7 +27,10 @@
  * \file
  * Contains the code for the emulated Keyboard and mouse devices and controller.
  *
- * $Id: Keyboard.cpp,v 1.9 2008/03/16 11:22:08 iamcamiel Exp $
+ * $Id: Keyboard.cpp,v 1.10 2008/05/31 15:47:09 iamcamiel Exp $
+ *
+ * X-1.10       Camiel Vanderhoeven                             31-MAY-2008
+ *      Changes to include parts of Poco.
  *
  * X-1.9        Camiel Vanderhoeven                             16-MAR-2008
  *      Fixed threading problems with SDL (I hope).
@@ -143,14 +146,14 @@ void CKeyboard::init()
 
   myThread = 0;
 
-  printf("kbc: $Id: Keyboard.cpp,v 1.9 2008/03/16 11:22:08 iamcamiel Exp $\n");
+  printf("kbc: $Id: Keyboard.cpp,v 1.10 2008/05/31 15:47:09 iamcamiel Exp $\n");
 }
 
 void CKeyboard::start_threads()
 {
   if(!myThread)
   {
-    myThread = new Poco::Thread("kbd");
+    myThread = new CThread("kbd");
     printf(" %s", myThread->getName().c_str());
     StopThread = false;
     myThread->start(*this);
@@ -1844,11 +1847,11 @@ void CKeyboard::run()
       if(StopThread)
         return;
       execute();
-      Poco::Thread::sleep(20);
+      CThread::sleep(20);
     }
   }
 
-  catch(Poco::Exception & e)
+  catch(CException & e)
   {
     printf("Exception in kbd thread: %s.\n", e.displayText().c_str());
 

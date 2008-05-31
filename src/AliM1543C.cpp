@@ -1,8 +1,8 @@
 /* ES40 emulator.
  * Copyright (C) 2007-2008 by the ES40 Emulator Project
  *
- * Website: http://sourceforge.net/projects/es40
- * E-mail : camiel@camicom.com
+ * Website: http://www.es40.org
+ * E-mail : camiel@es40.org
  * 
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -27,7 +27,13 @@
  * \file 
  * Contains the code for the emulated Ali M1543C chipset devices.
  *
- * $Id: AliM1543C.cpp,v 1.65 2008/03/14 15:30:50 iamcamiel Exp $
+ * $Id: AliM1543C.cpp,v 1.66 2008/05/31 15:47:07 iamcamiel Exp $
+ *
+ * X-1.66       Camiel Vanderhoeven                             31-MAY-2008
+ *      Changes to include parts of Poco.
+ *
+ * X-1.65       Camiel Vanderhoeven                             14-MAR-2008
+ *      Formatting.
  *
  * X-1.64       Camiel Vanderhoeven                             14-MAR-2008
  *   1. More meaningful exceptions replace throwing (int) 1.
@@ -405,7 +411,7 @@ void CAliM1543C::init()
 
   myThread = 0;
 
-  printf("%s: $Id: AliM1543C.cpp,v 1.65 2008/03/14 15:30:50 iamcamiel Exp $\n",
+  printf("%s: $Id: AliM1543C.cpp,v 1.66 2008/05/31 15:47:07 iamcamiel Exp $\n",
          devid_string);
 }
 
@@ -413,7 +419,7 @@ void CAliM1543C::start_threads()
 {
   if(!myThread)
   {
-    myThread = new Poco::Thread("ali");
+    myThread = new CThread("ali");
     printf(" %s", myThread->getName().c_str());
     StopThread = false;
     myThread->start(*this);
@@ -904,14 +910,14 @@ void CAliM1543C::run()
   {
     for(;;)
     {
-      Poco::Thread::sleep(1);
+      CThread::sleep(1);
       if(StopThread)
         return;
       do_pit_clock();
     }
   }
 
-  catch(Poco::Exception & e)
+  catch(CException & e)
   {
     printf("Exception in Ali thread: %s.\n", e.displayText().c_str());
 

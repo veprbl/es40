@@ -1,8 +1,8 @@
 /* ES40 emulator.
  * Copyright (C) 2007-2008 by the ES40 Emulator Project
  *
- * WWW    : http://sourceforge.net/projects/es40
- * E-mail : camiel@camicom.com
+ * WWW    : http://www.es40.org
+ * E-mail : camiel@es40.org
  * 
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -27,7 +27,10 @@
  * \file 
  * Contains the definitions for the emulated Serial Port devices.
  *
- * $Id: Serial.h,v 1.20 2008/03/26 19:18:03 iamcamiel Exp $
+ * $Id: Serial.h,v 1.21 2008/05/31 15:47:13 iamcamiel Exp $
+ *
+ * X-1.21       Camiel Vanderhoeven                             31-MAY-2008
+ *      Changes to include parts of Poco.
  *
  * X-1.20       Camiel Vanderhoeven                             26-MAR-2008
  *      Fix compiler warnings.
@@ -101,7 +104,7 @@
  *
  * The serial port is translated to a telnet port.
  **/
-class CSerial : public CSystemComponent, public Poco::Runnable
+class CSerial : public CSystemComponent, public CRunnable
 {
   public:
     void          write(const char* s);
@@ -124,7 +127,7 @@ class CSerial : public CSystemComponent, public Poco::Runnable
   private:
     void  serial_menu();
 
-    Poco::Thread * myThread;
+    CThread * myThread;
     bool  StopThread;
     bool  breakHit;
 

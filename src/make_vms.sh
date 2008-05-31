@@ -2,8 +2,8 @@
 # ES40 emulator.
 # Copyright (C) 2007-2008 by the ES40 Emulator Project
 #
-# Website: http://sourceforge.net/projects/es40
-# E-mail : camiel@camicom.com
+# Website: http://www.es40.org
+# E-mail : camiel@es40.org
 # 
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
@@ -26,7 +26,10 @@
 #
 ################################################################################
 #
-# $Id: make_vms.sh,v 1.4 2008/04/02 13:19:34 iamcamiel Exp $
+# $Id: make_vms.sh,v 1.5 2008/05/31 15:47:15 iamcamiel Exp $
+#
+# X-1.5      Camiel Vanderhoeven                      31-MAY-2008
+#      Add parts of Poco.
 #
 # X-1.4      Camiel Vanderhoeven                          02-APR-2008
 #   a) Determine ES40 source directory automatically.
@@ -48,7 +51,7 @@
 # Makefile.am
 #
 
-es40_VMS_SOURCES="vms/Event.cpp vms/Exception.cpp vms/Mutex.cpp vms/Runnable.cpp vms/RWLock.cpp vms/Semaphore.cpp vms/Thread.cpp vms/ErrorHandler.cpp vms/Bugcheck.cpp vms/Debugger.cpp vms/ThreadLocal.cpp vms/Timestamp.cpp vms/RefCountedObject.cpp"
+es40_VMS_SOURCES=""
 
 #
 # No user serviceable parts beyond this point...
@@ -177,7 +180,7 @@ es40_SOURCES="${es40_VMS_SOURCES}${es40_REG_SOURCES}"
 for current_CONFIG in $es40_CONFIGS; do
 
   es40_DEFINES=ES40,__USE_STD_IOSTREAM
-  es40_INCLUDE="\"''ES40_ROOT'/GUI\",\"''ES40_ROOT'/VMS'\""
+  es40_INCLUDE="\"''ES40_ROOT'/GUI\",\"''ES40_ROOT'/BASE'\""
   es40_OPTIMIZE="LEVEL=4,INLINE=SPEED,TUNE=HOST"
   es40_ARCH="HOST"
   es40_STANDARD="GNU"
@@ -208,10 +211,10 @@ VMS_EOF
       source_FILE=${source_FILE#gui/}
       object_FILE="gui_$source_FILE"
       source_FILE="[.gui]$source_FILE"
-    elif test "${source_FILE:0:4}" = "vms/"; then
-      source_FILE=${source_FILE#vms/}
-      object_FILE="vms_$source_FILE"
-      source_FILE="[.vms]$source_FILE"
+    elif test "${source_FILE:0:5}" = "base/"; then
+      source_FILE=${source_FILE#base/}
+      object_FILE="base_$source_FILE"
+      source_FILE="[.base]$source_FILE"
     else
       object_FILE=$source_FILE
     fi

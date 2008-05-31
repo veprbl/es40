@@ -1,8 +1,8 @@
 /* ES40 emulator.
  * Copyright (C) 2007-2008 by the ES40 Emulator Project
  *
- * WWW    : http://sourceforge.net/projects/es40
- * E-mail : camiel@camicom.com
+ * WWW    : http://www.es40.org
+ * E-mail : camiel@es40.org
  * 
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -28,7 +28,10 @@
  * \file
  * Contains the definitions for the emulated DecChip 21264CB EV68 Alpha processor.
  *
- * $Id: AlphaCPU.h,v 1.57 2008/03/24 21:47:50 iamcamiel Exp $
+ * $Id: AlphaCPU.h,v 1.58 2008/05/31 15:47:08 iamcamiel Exp $
+ *
+ * X-1.58       Camiel Vanderhoeven                             31-MAY-2008
+ *      Changes to include parts of Poco.
  *
  * X-1.57       Camiel Vanderhoeven                             24-MAR-2008
  *      Comments.
@@ -240,7 +243,7 @@
  *  - Alpha Architecture Reference Manual, fourth edition [ARM] (http://download.majix.org/dec/alpha_arch_ref.pdf)
  *	.
  **/
-class CAlphaCPU : public CSystemComponent, public Poco::Runnable
+class CAlphaCPU : public CSystemComponent, public CRunnable
 {
   public:
     void          flush_icache_asm();
@@ -295,8 +298,8 @@ class CAlphaCPU : public CSystemComponent, public Poco::Runnable
     virtual void  start_threads();
     virtual void  stop_threads();
   private:
-    Poco::Thread * myThread;
-    Poco::Semaphore mySemaphore;
+    CThread * myThread;
+    CSemaphore mySemaphore;
     bool            StopThread;
 
     int             get_icache(u64 address, u32* data);
@@ -414,7 +417,7 @@ class CAlphaCPU : public CSystemComponent, public Poco::Runnable
     u64             cc_large;
     u64             start_icount;
     u64             start_cc;
-    Poco::Timestamp start_time;
+    CTimestamp start_time;
     u64             prev_icount;
     u64             prev_cc;
     u64             prev_time;

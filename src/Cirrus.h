@@ -1,8 +1,8 @@
 /* ES40 emulator.
  * Copyright (C) 2007-2008 by the ES40 Emulator Project
  *
- * WWW    : http://sourceforge.net/projects/es40
- * E-mail : camiel@camicom.com
+ * WWW    : http://www.es40.org
+ * E-mail : camiel@es40.org
  * 
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -27,7 +27,13 @@
  * \file
  * Contains the definitions for the emulated Cirrus CL GD-5434 Video Card device.
  *
- * $Id: Cirrus.h,v 1.12 2008/03/14 15:30:50 iamcamiel Exp $
+ * $Id: Cirrus.h,v 1.13 2008/05/31 15:47:09 iamcamiel Exp $
+ *
+ * X-1.13       Camiel Vanderhoeven                             31-MAY-2008
+ *      Changes to include parts of Poco.
+ *
+ * X-1.12       Camiel Vanderhoeven                             14-MAR-2008
+ *      Formatting.
  *
  * X-1.11       Camiel Vanderhoeven                             13-MAR-2008
  *      Create init(), start_threads() and stop_threads() functions.
@@ -81,7 +87,7 @@
  *   (http://home.worldonline.dk/~finth/)
  *  .
  **/
-class CCirrus : public CVGA, public Poco::Runnable
+class CCirrus : public CVGA, public CRunnable
 {
   public:
     virtual int   SaveState(FILE* f);
@@ -156,7 +162,7 @@ class CCirrus : public CVGA, public Poco::Runnable
     void  vga_mem_write(u32 addr, u8 value);
     u8    vga_mem_read(u32 addr);
 
-    Poco::Thread * myThread;
+    CThread * myThread;
     bool  StopThread;
 
     /// The state structure contains all elements that need to be saved to the statefile

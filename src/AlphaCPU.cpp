@@ -1,8 +1,8 @@
 /* ES40 emulator.
  * Copyright (C) 2007-2008 by the ES40 Emulator Project
  *
- * WWW    : http://sourceforge.net/projects/es40
- * E-mail : camiel@camicom.com
+ * WWW    : http://www.es40.org
+ * E-mail : camiel@es40.org
  * 
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -27,7 +27,10 @@
  * \file 
  * Contains the code for the emulated DecChip 21264CB EV68 Alpha processor.
  *
- * $Id: AlphaCPU.cpp,v 1.79 2008/03/26 19:06:49 iamcamiel Exp $
+ * $Id: AlphaCPU.cpp,v 1.80 2008/05/31 15:47:08 iamcamiel Exp $
+ *
+ * X-1.80       Camiel Vanderhoeven                             31-MAY-2008
+ *      Changes to include parts of Poco.
  *
  * X-1.79       Camiel Vanderhoeven                             26-MAR-2008
  *      Fix compiler warnings.
@@ -358,7 +361,7 @@ void CAlphaCPU::run()
         execute();
     }
   }
-  catch(Poco::Exception & e)
+  catch(CException & e)
   {
     printf("Exception in CPU thread: %s.\n", e.displayText().c_str());
 
@@ -416,7 +419,7 @@ void CAlphaCPU::init()
 
   state.r[22] = state.r[22 + 32] = state.iProcNum;
 
-  printf("%s(%d): $Id: AlphaCPU.cpp,v 1.79 2008/03/26 19:06:49 iamcamiel Exp $\n",
+  printf("%s(%d): $Id: AlphaCPU.cpp,v 1.80 2008/05/31 15:47:08 iamcamiel Exp $\n",
          devid_string, state.iProcNum);
 }
 
@@ -427,7 +430,7 @@ void CAlphaCPU::start_threads()
   if(!myThread)
   {
     sprintf(buffer, "cpu%d", state.iProcNum);
-    myThread = new Poco::Thread(buffer);
+    myThread = new CThread(buffer);
     printf(" %s", myThread->getName().c_str());
     StopThread = false;
     myThread->start(*this);

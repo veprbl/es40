@@ -3,8 +3,8 @@
 # ES40 emulator.
 # Copyright (C) 2007-2008 by the ES40 Emulator Project
 #
-# Website: http://sourceforge.net/projects/es40
-# E-mail : camiel@camicom.com
+# Website: http://www.es40.org
+# E-mail : camiel@es40.org
 # 
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
@@ -27,7 +27,10 @@
 #
 ################################################################################
 #
-# $Id: configure.ac,v 1.4 2008/04/04 09:07:14 iamcamiel Exp $
+# $Id: configure.ac,v 1.5 2008/05/31 15:47:07 iamcamiel Exp $
+#
+# X-1.3      Camiel Vanderhoeven                      31-MAY-2008
+#      Add parts of Poco.
 #
 # X-1.2      Camiel Vanderhoeven                      04-APR-2008
 #      Version number set to "0.18+"
@@ -66,6 +69,10 @@ AM_PATH_X11(
   CXXFLAGS="$CXXFLAGS $X11_CFLAGS -DHAVE_X11"
   LIBS="$LIBS $X11_LIBS"
   ,:)
+
+ACX_PTHREAD
+CXXFLAGS="$CXXFLAGS $PTHREAD_CFLAGS"
+LIBS="$LIBS $PTHREAD_LIBS"
 
 # Checks for header files.
 AC_HEADER_STDC

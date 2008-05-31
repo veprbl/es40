@@ -74,305 +74,6 @@ $! Compile with the following defines: ES40,__USE_STD_IOSTREAM
 $!
 $ SAY "Compiling es40..."
 $!
-$! Check if es40_vms_Event.obj is up-to-date...
-$!
-$ SRCTIME = F$CVTIME(F$FILE_ATTRIBUTES("[.vms]Event.cpp","RDT"),"COMPARISON")
-$ OBJFILE = F$SEARCH("es40_vms_Event.obj")
-$ IF OBJFILE .NES. ""
-$ THEN
-$   OBJTIME = F$CVTIME(F$FILE_ATTRIBUTES("es40_vms_Event.obj","RDT"),"COMPARISON")
-$ ELSE
-$   OBJTIME = F$CVTIME("01-JAN-1970 00:00:00.00","COMPARISON")
-$ ENDIF
-$!
-$! Compile [.vms]Event.cpp to es40_vms_Event.obj
-$ IF SRCTIME .GTS. OBJTIME
-$ THEN
-$   CXX [.vms]Event.cpp -
-         /DEFINE=(ES40,__USE_STD_IOSTREAM'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
-         /STANDARD=GNU -
-         /ARCHITECTURE=HOST -
-         /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
-         /OBJECT=es40_vms_Event.obj
-$ ENDIF
-$!
-$! Check if es40_vms_Exception.obj is up-to-date...
-$!
-$ SRCTIME = F$CVTIME(F$FILE_ATTRIBUTES("[.vms]Exception.cpp","RDT"),"COMPARISON")
-$ OBJFILE = F$SEARCH("es40_vms_Exception.obj")
-$ IF OBJFILE .NES. ""
-$ THEN
-$   OBJTIME = F$CVTIME(F$FILE_ATTRIBUTES("es40_vms_Exception.obj","RDT"),"COMPARISON")
-$ ELSE
-$   OBJTIME = F$CVTIME("01-JAN-1970 00:00:00.00","COMPARISON")
-$ ENDIF
-$!
-$! Compile [.vms]Exception.cpp to es40_vms_Exception.obj
-$ IF SRCTIME .GTS. OBJTIME
-$ THEN
-$   CXX [.vms]Exception.cpp -
-         /DEFINE=(ES40,__USE_STD_IOSTREAM'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
-         /STANDARD=GNU -
-         /ARCHITECTURE=HOST -
-         /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
-         /OBJECT=es40_vms_Exception.obj
-$ ENDIF
-$!
-$! Check if es40_vms_Mutex.obj is up-to-date...
-$!
-$ SRCTIME = F$CVTIME(F$FILE_ATTRIBUTES("[.vms]Mutex.cpp","RDT"),"COMPARISON")
-$ OBJFILE = F$SEARCH("es40_vms_Mutex.obj")
-$ IF OBJFILE .NES. ""
-$ THEN
-$   OBJTIME = F$CVTIME(F$FILE_ATTRIBUTES("es40_vms_Mutex.obj","RDT"),"COMPARISON")
-$ ELSE
-$   OBJTIME = F$CVTIME("01-JAN-1970 00:00:00.00","COMPARISON")
-$ ENDIF
-$!
-$! Compile [.vms]Mutex.cpp to es40_vms_Mutex.obj
-$ IF SRCTIME .GTS. OBJTIME
-$ THEN
-$   CXX [.vms]Mutex.cpp -
-         /DEFINE=(ES40,__USE_STD_IOSTREAM'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
-         /STANDARD=GNU -
-         /ARCHITECTURE=HOST -
-         /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
-         /OBJECT=es40_vms_Mutex.obj
-$ ENDIF
-$!
-$! Check if es40_vms_Runnable.obj is up-to-date...
-$!
-$ SRCTIME = F$CVTIME(F$FILE_ATTRIBUTES("[.vms]Runnable.cpp","RDT"),"COMPARISON")
-$ OBJFILE = F$SEARCH("es40_vms_Runnable.obj")
-$ IF OBJFILE .NES. ""
-$ THEN
-$   OBJTIME = F$CVTIME(F$FILE_ATTRIBUTES("es40_vms_Runnable.obj","RDT"),"COMPARISON")
-$ ELSE
-$   OBJTIME = F$CVTIME("01-JAN-1970 00:00:00.00","COMPARISON")
-$ ENDIF
-$!
-$! Compile [.vms]Runnable.cpp to es40_vms_Runnable.obj
-$ IF SRCTIME .GTS. OBJTIME
-$ THEN
-$   CXX [.vms]Runnable.cpp -
-         /DEFINE=(ES40,__USE_STD_IOSTREAM'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
-         /STANDARD=GNU -
-         /ARCHITECTURE=HOST -
-         /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
-         /OBJECT=es40_vms_Runnable.obj
-$ ENDIF
-$!
-$! Check if es40_vms_RWLock.obj is up-to-date...
-$!
-$ SRCTIME = F$CVTIME(F$FILE_ATTRIBUTES("[.vms]RWLock.cpp","RDT"),"COMPARISON")
-$ OBJFILE = F$SEARCH("es40_vms_RWLock.obj")
-$ IF OBJFILE .NES. ""
-$ THEN
-$   OBJTIME = F$CVTIME(F$FILE_ATTRIBUTES("es40_vms_RWLock.obj","RDT"),"COMPARISON")
-$ ELSE
-$   OBJTIME = F$CVTIME("01-JAN-1970 00:00:00.00","COMPARISON")
-$ ENDIF
-$!
-$! Compile [.vms]RWLock.cpp to es40_vms_RWLock.obj
-$ IF SRCTIME .GTS. OBJTIME
-$ THEN
-$   CXX [.vms]RWLock.cpp -
-         /DEFINE=(ES40,__USE_STD_IOSTREAM'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
-         /STANDARD=GNU -
-         /ARCHITECTURE=HOST -
-         /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
-         /OBJECT=es40_vms_RWLock.obj
-$ ENDIF
-$!
-$! Check if es40_vms_Semaphore.obj is up-to-date...
-$!
-$ SRCTIME = F$CVTIME(F$FILE_ATTRIBUTES("[.vms]Semaphore.cpp","RDT"),"COMPARISON")
-$ OBJFILE = F$SEARCH("es40_vms_Semaphore.obj")
-$ IF OBJFILE .NES. ""
-$ THEN
-$   OBJTIME = F$CVTIME(F$FILE_ATTRIBUTES("es40_vms_Semaphore.obj","RDT"),"COMPARISON")
-$ ELSE
-$   OBJTIME = F$CVTIME("01-JAN-1970 00:00:00.00","COMPARISON")
-$ ENDIF
-$!
-$! Compile [.vms]Semaphore.cpp to es40_vms_Semaphore.obj
-$ IF SRCTIME .GTS. OBJTIME
-$ THEN
-$   CXX [.vms]Semaphore.cpp -
-         /DEFINE=(ES40,__USE_STD_IOSTREAM'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
-         /STANDARD=GNU -
-         /ARCHITECTURE=HOST -
-         /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
-         /OBJECT=es40_vms_Semaphore.obj
-$ ENDIF
-$!
-$! Check if es40_vms_Thread.obj is up-to-date...
-$!
-$ SRCTIME = F$CVTIME(F$FILE_ATTRIBUTES("[.vms]Thread.cpp","RDT"),"COMPARISON")
-$ OBJFILE = F$SEARCH("es40_vms_Thread.obj")
-$ IF OBJFILE .NES. ""
-$ THEN
-$   OBJTIME = F$CVTIME(F$FILE_ATTRIBUTES("es40_vms_Thread.obj","RDT"),"COMPARISON")
-$ ELSE
-$   OBJTIME = F$CVTIME("01-JAN-1970 00:00:00.00","COMPARISON")
-$ ENDIF
-$!
-$! Compile [.vms]Thread.cpp to es40_vms_Thread.obj
-$ IF SRCTIME .GTS. OBJTIME
-$ THEN
-$   CXX [.vms]Thread.cpp -
-         /DEFINE=(ES40,__USE_STD_IOSTREAM'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
-         /STANDARD=GNU -
-         /ARCHITECTURE=HOST -
-         /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
-         /OBJECT=es40_vms_Thread.obj
-$ ENDIF
-$!
-$! Check if es40_vms_ErrorHandler.obj is up-to-date...
-$!
-$ SRCTIME = F$CVTIME(F$FILE_ATTRIBUTES("[.vms]ErrorHandler.cpp","RDT"),"COMPARISON")
-$ OBJFILE = F$SEARCH("es40_vms_ErrorHandler.obj")
-$ IF OBJFILE .NES. ""
-$ THEN
-$   OBJTIME = F$CVTIME(F$FILE_ATTRIBUTES("es40_vms_ErrorHandler.obj","RDT"),"COMPARISON")
-$ ELSE
-$   OBJTIME = F$CVTIME("01-JAN-1970 00:00:00.00","COMPARISON")
-$ ENDIF
-$!
-$! Compile [.vms]ErrorHandler.cpp to es40_vms_ErrorHandler.obj
-$ IF SRCTIME .GTS. OBJTIME
-$ THEN
-$   CXX [.vms]ErrorHandler.cpp -
-         /DEFINE=(ES40,__USE_STD_IOSTREAM'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
-         /STANDARD=GNU -
-         /ARCHITECTURE=HOST -
-         /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
-         /OBJECT=es40_vms_ErrorHandler.obj
-$ ENDIF
-$!
-$! Check if es40_vms_Bugcheck.obj is up-to-date...
-$!
-$ SRCTIME = F$CVTIME(F$FILE_ATTRIBUTES("[.vms]Bugcheck.cpp","RDT"),"COMPARISON")
-$ OBJFILE = F$SEARCH("es40_vms_Bugcheck.obj")
-$ IF OBJFILE .NES. ""
-$ THEN
-$   OBJTIME = F$CVTIME(F$FILE_ATTRIBUTES("es40_vms_Bugcheck.obj","RDT"),"COMPARISON")
-$ ELSE
-$   OBJTIME = F$CVTIME("01-JAN-1970 00:00:00.00","COMPARISON")
-$ ENDIF
-$!
-$! Compile [.vms]Bugcheck.cpp to es40_vms_Bugcheck.obj
-$ IF SRCTIME .GTS. OBJTIME
-$ THEN
-$   CXX [.vms]Bugcheck.cpp -
-         /DEFINE=(ES40,__USE_STD_IOSTREAM'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
-         /STANDARD=GNU -
-         /ARCHITECTURE=HOST -
-         /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
-         /OBJECT=es40_vms_Bugcheck.obj
-$ ENDIF
-$!
-$! Check if es40_vms_Debugger.obj is up-to-date...
-$!
-$ SRCTIME = F$CVTIME(F$FILE_ATTRIBUTES("[.vms]Debugger.cpp","RDT"),"COMPARISON")
-$ OBJFILE = F$SEARCH("es40_vms_Debugger.obj")
-$ IF OBJFILE .NES. ""
-$ THEN
-$   OBJTIME = F$CVTIME(F$FILE_ATTRIBUTES("es40_vms_Debugger.obj","RDT"),"COMPARISON")
-$ ELSE
-$   OBJTIME = F$CVTIME("01-JAN-1970 00:00:00.00","COMPARISON")
-$ ENDIF
-$!
-$! Compile [.vms]Debugger.cpp to es40_vms_Debugger.obj
-$ IF SRCTIME .GTS. OBJTIME
-$ THEN
-$   CXX [.vms]Debugger.cpp -
-         /DEFINE=(ES40,__USE_STD_IOSTREAM'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
-         /STANDARD=GNU -
-         /ARCHITECTURE=HOST -
-         /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
-         /OBJECT=es40_vms_Debugger.obj
-$ ENDIF
-$!
-$! Check if es40_vms_ThreadLocal.obj is up-to-date...
-$!
-$ SRCTIME = F$CVTIME(F$FILE_ATTRIBUTES("[.vms]ThreadLocal.cpp","RDT"),"COMPARISON")
-$ OBJFILE = F$SEARCH("es40_vms_ThreadLocal.obj")
-$ IF OBJFILE .NES. ""
-$ THEN
-$   OBJTIME = F$CVTIME(F$FILE_ATTRIBUTES("es40_vms_ThreadLocal.obj","RDT"),"COMPARISON")
-$ ELSE
-$   OBJTIME = F$CVTIME("01-JAN-1970 00:00:00.00","COMPARISON")
-$ ENDIF
-$!
-$! Compile [.vms]ThreadLocal.cpp to es40_vms_ThreadLocal.obj
-$ IF SRCTIME .GTS. OBJTIME
-$ THEN
-$   CXX [.vms]ThreadLocal.cpp -
-         /DEFINE=(ES40,__USE_STD_IOSTREAM'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
-         /STANDARD=GNU -
-         /ARCHITECTURE=HOST -
-         /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
-         /OBJECT=es40_vms_ThreadLocal.obj
-$ ENDIF
-$!
-$! Check if es40_vms_Timestamp.obj is up-to-date...
-$!
-$ SRCTIME = F$CVTIME(F$FILE_ATTRIBUTES("[.vms]Timestamp.cpp","RDT"),"COMPARISON")
-$ OBJFILE = F$SEARCH("es40_vms_Timestamp.obj")
-$ IF OBJFILE .NES. ""
-$ THEN
-$   OBJTIME = F$CVTIME(F$FILE_ATTRIBUTES("es40_vms_Timestamp.obj","RDT"),"COMPARISON")
-$ ELSE
-$   OBJTIME = F$CVTIME("01-JAN-1970 00:00:00.00","COMPARISON")
-$ ENDIF
-$!
-$! Compile [.vms]Timestamp.cpp to es40_vms_Timestamp.obj
-$ IF SRCTIME .GTS. OBJTIME
-$ THEN
-$   CXX [.vms]Timestamp.cpp -
-         /DEFINE=(ES40,__USE_STD_IOSTREAM'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
-         /STANDARD=GNU -
-         /ARCHITECTURE=HOST -
-         /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
-         /OBJECT=es40_vms_Timestamp.obj
-$ ENDIF
-$!
-$! Check if es40_vms_RefCountedObject.obj is up-to-date...
-$!
-$ SRCTIME = F$CVTIME(F$FILE_ATTRIBUTES("[.vms]RefCountedObject.cpp","RDT"),"COMPARISON")
-$ OBJFILE = F$SEARCH("es40_vms_RefCountedObject.obj")
-$ IF OBJFILE .NES. ""
-$ THEN
-$   OBJTIME = F$CVTIME(F$FILE_ATTRIBUTES("es40_vms_RefCountedObject.obj","RDT"),"COMPARISON")
-$ ELSE
-$   OBJTIME = F$CVTIME("01-JAN-1970 00:00:00.00","COMPARISON")
-$ ENDIF
-$!
-$! Compile [.vms]RefCountedObject.cpp to es40_vms_RefCountedObject.obj
-$ IF SRCTIME .GTS. OBJTIME
-$ THEN
-$   CXX [.vms]RefCountedObject.cpp -
-         /DEFINE=(ES40,__USE_STD_IOSTREAM'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
-         /STANDARD=GNU -
-         /ARCHITECTURE=HOST -
-         /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
-         /OBJECT=es40_vms_RefCountedObject.obj
-$ ENDIF
-$!
 $! Check if es40_AliM1543C.obj is up-to-date...
 $!
 $ SRCTIME = F$CVTIME(F$FILE_ATTRIBUTES("AliM1543C.cpp","RDT"),"COMPARISON")
@@ -389,7 +90,7 @@ $ IF SRCTIME .GTS. OBJTIME
 $ THEN
 $   CXX AliM1543C.cpp -
          /DEFINE=(ES40,__USE_STD_IOSTREAM'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
          /STANDARD=GNU -
          /ARCHITECTURE=HOST -
          /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
@@ -412,7 +113,7 @@ $ IF SRCTIME .GTS. OBJTIME
 $ THEN
 $   CXX AliM1543C_ide.cpp -
          /DEFINE=(ES40,__USE_STD_IOSTREAM'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
          /STANDARD=GNU -
          /ARCHITECTURE=HOST -
          /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
@@ -435,7 +136,7 @@ $ IF SRCTIME .GTS. OBJTIME
 $ THEN
 $   CXX AliM1543C_usb.cpp -
          /DEFINE=(ES40,__USE_STD_IOSTREAM'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
          /STANDARD=GNU -
          /ARCHITECTURE=HOST -
          /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
@@ -458,7 +159,7 @@ $ IF SRCTIME .GTS. OBJTIME
 $ THEN
 $   CXX AlphaCPU.cpp -
          /DEFINE=(ES40,__USE_STD_IOSTREAM'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
          /STANDARD=GNU -
          /ARCHITECTURE=HOST -
          /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
@@ -481,7 +182,7 @@ $ IF SRCTIME .GTS. OBJTIME
 $ THEN
 $   CXX AlphaCPU_ieeefloat.cpp -
          /DEFINE=(ES40,__USE_STD_IOSTREAM'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
          /STANDARD=GNU -
          /ARCHITECTURE=HOST -
          /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
@@ -504,7 +205,7 @@ $ IF SRCTIME .GTS. OBJTIME
 $ THEN
 $   CXX AlphaCPU_vaxfloat.cpp -
          /DEFINE=(ES40,__USE_STD_IOSTREAM'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
          /STANDARD=GNU -
          /ARCHITECTURE=HOST -
          /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
@@ -527,7 +228,7 @@ $ IF SRCTIME .GTS. OBJTIME
 $ THEN
 $   CXX AlphaCPU_vmspal.cpp -
          /DEFINE=(ES40,__USE_STD_IOSTREAM'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
          /STANDARD=GNU -
          /ARCHITECTURE=HOST -
          /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
@@ -550,7 +251,7 @@ $ IF SRCTIME .GTS. OBJTIME
 $ THEN
 $   CXX AlphaSim.cpp -
          /DEFINE=(ES40,__USE_STD_IOSTREAM'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
          /STANDARD=GNU -
          /ARCHITECTURE=HOST -
          /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
@@ -573,7 +274,7 @@ $ IF SRCTIME .GTS. OBJTIME
 $ THEN
 $   CXX Cirrus.cpp -
          /DEFINE=(ES40,__USE_STD_IOSTREAM'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
          /STANDARD=GNU -
          /ARCHITECTURE=HOST -
          /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
@@ -596,7 +297,7 @@ $ IF SRCTIME .GTS. OBJTIME
 $ THEN
 $   CXX Configurator.cpp -
          /DEFINE=(ES40,__USE_STD_IOSTREAM'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
          /STANDARD=GNU -
          /ARCHITECTURE=HOST -
          /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
@@ -619,7 +320,7 @@ $ IF SRCTIME .GTS. OBJTIME
 $ THEN
 $   CXX DEC21143.cpp -
          /DEFINE=(ES40,__USE_STD_IOSTREAM'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
          /STANDARD=GNU -
          /ARCHITECTURE=HOST -
          /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
@@ -642,7 +343,7 @@ $ IF SRCTIME .GTS. OBJTIME
 $ THEN
 $   CXX Disk.cpp -
          /DEFINE=(ES40,__USE_STD_IOSTREAM'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
          /STANDARD=GNU -
          /ARCHITECTURE=HOST -
          /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
@@ -665,7 +366,7 @@ $ IF SRCTIME .GTS. OBJTIME
 $ THEN
 $   CXX DiskController.cpp -
          /DEFINE=(ES40,__USE_STD_IOSTREAM'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
          /STANDARD=GNU -
          /ARCHITECTURE=HOST -
          /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
@@ -688,7 +389,7 @@ $ IF SRCTIME .GTS. OBJTIME
 $ THEN
 $   CXX DiskDevice.cpp -
          /DEFINE=(ES40,__USE_STD_IOSTREAM'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
          /STANDARD=GNU -
          /ARCHITECTURE=HOST -
          /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
@@ -711,7 +412,7 @@ $ IF SRCTIME .GTS. OBJTIME
 $ THEN
 $   CXX DiskFile.cpp -
          /DEFINE=(ES40,__USE_STD_IOSTREAM'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
          /STANDARD=GNU -
          /ARCHITECTURE=HOST -
          /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
@@ -734,7 +435,7 @@ $ IF SRCTIME .GTS. OBJTIME
 $ THEN
 $   CXX DiskRam.cpp -
          /DEFINE=(ES40,__USE_STD_IOSTREAM'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
          /STANDARD=GNU -
          /ARCHITECTURE=HOST -
          /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
@@ -757,7 +458,7 @@ $ IF SRCTIME .GTS. OBJTIME
 $ THEN
 $   CXX DMA.cpp -
          /DEFINE=(ES40,__USE_STD_IOSTREAM'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
          /STANDARD=GNU -
          /ARCHITECTURE=HOST -
          /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
@@ -780,7 +481,7 @@ $ IF SRCTIME .GTS. OBJTIME
 $ THEN
 $   CXX DPR.cpp -
          /DEFINE=(ES40,__USE_STD_IOSTREAM'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
          /STANDARD=GNU -
          /ARCHITECTURE=HOST -
          /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
@@ -803,7 +504,7 @@ $ IF SRCTIME .GTS. OBJTIME
 $ THEN
 $   CXX es40_debug.cpp -
          /DEFINE=(ES40,__USE_STD_IOSTREAM'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
          /STANDARD=GNU -
          /ARCHITECTURE=HOST -
          /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
@@ -826,34 +527,11 @@ $ IF SRCTIME .GTS. OBJTIME
 $ THEN
 $   CXX Ethernet.cpp -
          /DEFINE=(ES40,__USE_STD_IOSTREAM'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
          /STANDARD=GNU -
          /ARCHITECTURE=HOST -
          /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
          /OBJECT=es40_Ethernet.obj
-$ ENDIF
-$!
-$! Check if es40_Exception.obj is up-to-date...
-$!
-$ SRCTIME = F$CVTIME(F$FILE_ATTRIBUTES("Exception.cpp","RDT"),"COMPARISON")
-$ OBJFILE = F$SEARCH("es40_Exception.obj")
-$ IF OBJFILE .NES. ""
-$ THEN
-$   OBJTIME = F$CVTIME(F$FILE_ATTRIBUTES("es40_Exception.obj","RDT"),"COMPARISON")
-$ ELSE
-$   OBJTIME = F$CVTIME("01-JAN-1970 00:00:00.00","COMPARISON")
-$ ENDIF
-$!
-$! Compile Exception.cpp to es40_Exception.obj
-$ IF SRCTIME .GTS. OBJTIME
-$ THEN
-$   CXX Exception.cpp -
-         /DEFINE=(ES40,__USE_STD_IOSTREAM'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
-         /STANDARD=GNU -
-         /ARCHITECTURE=HOST -
-         /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
-         /OBJECT=es40_Exception.obj
 $ ENDIF
 $!
 $! Check if es40_Flash.obj is up-to-date...
@@ -872,7 +550,7 @@ $ IF SRCTIME .GTS. OBJTIME
 $ THEN
 $   CXX Flash.cpp -
          /DEFINE=(ES40,__USE_STD_IOSTREAM'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
          /STANDARD=GNU -
          /ARCHITECTURE=HOST -
          /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
@@ -895,7 +573,7 @@ $ IF SRCTIME .GTS. OBJTIME
 $ THEN
 $   CXX FloppyController.cpp -
          /DEFINE=(ES40,__USE_STD_IOSTREAM'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
          /STANDARD=GNU -
          /ARCHITECTURE=HOST -
          /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
@@ -918,7 +596,7 @@ $ IF SRCTIME .GTS. OBJTIME
 $ THEN
 $   CXX Keyboard.cpp -
          /DEFINE=(ES40,__USE_STD_IOSTREAM'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
          /STANDARD=GNU -
          /ARCHITECTURE=HOST -
          /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
@@ -941,7 +619,7 @@ $ IF SRCTIME .GTS. OBJTIME
 $ THEN
 $   CXX lockstep.cpp -
          /DEFINE=(ES40,__USE_STD_IOSTREAM'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
          /STANDARD=GNU -
          /ARCHITECTURE=HOST -
          /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
@@ -964,7 +642,7 @@ $ IF SRCTIME .GTS. OBJTIME
 $ THEN
 $   CXX PCIDevice.cpp -
          /DEFINE=(ES40,__USE_STD_IOSTREAM'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
          /STANDARD=GNU -
          /ARCHITECTURE=HOST -
          /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
@@ -987,7 +665,7 @@ $ IF SRCTIME .GTS. OBJTIME
 $ THEN
 $   CXX Port80.cpp -
          /DEFINE=(ES40,__USE_STD_IOSTREAM'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
          /STANDARD=GNU -
          /ARCHITECTURE=HOST -
          /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
@@ -1010,7 +688,7 @@ $ IF SRCTIME .GTS. OBJTIME
 $ THEN
 $   CXX S3Trio64.cpp -
          /DEFINE=(ES40,__USE_STD_IOSTREAM'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
          /STANDARD=GNU -
          /ARCHITECTURE=HOST -
          /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
@@ -1033,7 +711,7 @@ $ IF SRCTIME .GTS. OBJTIME
 $ THEN
 $   CXX SCSIBus.cpp -
          /DEFINE=(ES40,__USE_STD_IOSTREAM'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
          /STANDARD=GNU -
          /ARCHITECTURE=HOST -
          /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
@@ -1056,7 +734,7 @@ $ IF SRCTIME .GTS. OBJTIME
 $ THEN
 $   CXX SCSIDevice.cpp -
          /DEFINE=(ES40,__USE_STD_IOSTREAM'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
          /STANDARD=GNU -
          /ARCHITECTURE=HOST -
          /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
@@ -1079,7 +757,7 @@ $ IF SRCTIME .GTS. OBJTIME
 $ THEN
 $   CXX Serial.cpp -
          /DEFINE=(ES40,__USE_STD_IOSTREAM'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
          /STANDARD=GNU -
          /ARCHITECTURE=HOST -
          /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
@@ -1102,7 +780,7 @@ $ IF SRCTIME .GTS. OBJTIME
 $ THEN
 $   CXX StdAfx.cpp -
          /DEFINE=(ES40,__USE_STD_IOSTREAM'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
          /STANDARD=GNU -
          /ARCHITECTURE=HOST -
          /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
@@ -1125,7 +803,7 @@ $ IF SRCTIME .GTS. OBJTIME
 $ THEN
 $   CXX Sym53C810.cpp -
          /DEFINE=(ES40,__USE_STD_IOSTREAM'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
          /STANDARD=GNU -
          /ARCHITECTURE=HOST -
          /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
@@ -1148,7 +826,7 @@ $ IF SRCTIME .GTS. OBJTIME
 $ THEN
 $   CXX Sym53C895.cpp -
          /DEFINE=(ES40,__USE_STD_IOSTREAM'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
          /STANDARD=GNU -
          /ARCHITECTURE=HOST -
          /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
@@ -1171,7 +849,7 @@ $ IF SRCTIME .GTS. OBJTIME
 $ THEN
 $   CXX SystemComponent.cpp -
          /DEFINE=(ES40,__USE_STD_IOSTREAM'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
          /STANDARD=GNU -
          /ARCHITECTURE=HOST -
          /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
@@ -1194,7 +872,7 @@ $ IF SRCTIME .GTS. OBJTIME
 $ THEN
 $   CXX System.cpp -
          /DEFINE=(ES40,__USE_STD_IOSTREAM'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
          /STANDARD=GNU -
          /ARCHITECTURE=HOST -
          /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
@@ -1217,7 +895,7 @@ $ IF SRCTIME .GTS. OBJTIME
 $ THEN
 $   CXX TraceEngine.cpp -
          /DEFINE=(ES40,__USE_STD_IOSTREAM'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
          /STANDARD=GNU -
          /ARCHITECTURE=HOST -
          /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
@@ -1240,7 +918,7 @@ $ IF SRCTIME .GTS. OBJTIME
 $ THEN
 $   CXX VGA.cpp -
          /DEFINE=(ES40,__USE_STD_IOSTREAM'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
          /STANDARD=GNU -
          /ARCHITECTURE=HOST -
          /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
@@ -1263,7 +941,7 @@ $ IF SRCTIME .GTS. OBJTIME
 $ THEN
 $   CXX [.gui]gui.cpp -
          /DEFINE=(ES40,__USE_STD_IOSTREAM'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
          /STANDARD=GNU -
          /ARCHITECTURE=HOST -
          /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
@@ -1286,7 +964,7 @@ $ IF SRCTIME .GTS. OBJTIME
 $ THEN
 $   CXX [.gui]gui_x11.cpp -
          /DEFINE=(ES40,__USE_STD_IOSTREAM'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
          /STANDARD=GNU -
          /ARCHITECTURE=HOST -
          /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
@@ -1309,7 +987,7 @@ $ IF SRCTIME .GTS. OBJTIME
 $ THEN
 $   CXX [.gui]keymap.cpp -
          /DEFINE=(ES40,__USE_STD_IOSTREAM'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
          /STANDARD=GNU -
          /ARCHITECTURE=HOST -
          /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
@@ -1332,18 +1010,340 @@ $ IF SRCTIME .GTS. OBJTIME
 $ THEN
 $   CXX [.gui]scancodes.cpp -
          /DEFINE=(ES40,__USE_STD_IOSTREAM'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
          /STANDARD=GNU -
          /ARCHITECTURE=HOST -
          /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
          /OBJECT=es40_gui_scancodes.obj
 $ ENDIF
 $!
+$! Check if es40_gui_sdl.obj is up-to-date...
+$!
+$ SRCTIME = F$CVTIME(F$FILE_ATTRIBUTES("[.gui]sdl.cpp","RDT"),"COMPARISON")
+$ OBJFILE = F$SEARCH("es40_gui_sdl.obj")
+$ IF OBJFILE .NES. ""
+$ THEN
+$   OBJTIME = F$CVTIME(F$FILE_ATTRIBUTES("es40_gui_sdl.obj","RDT"),"COMPARISON")
+$ ELSE
+$   OBJTIME = F$CVTIME("01-JAN-1970 00:00:00.00","COMPARISON")
+$ ENDIF
+$!
+$! Compile [.gui]sdl.cpp to es40_gui_sdl.obj
+$ IF SRCTIME .GTS. OBJTIME
+$ THEN
+$   CXX [.gui]sdl.cpp -
+         /DEFINE=(ES40,__USE_STD_IOSTREAM'X11_DEF') -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
+         /STANDARD=GNU -
+         /ARCHITECTURE=HOST -
+         /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
+         /OBJECT=es40_gui_sdl.obj
+$ ENDIF
+$!
+$! Check if es40_base_Bugcheck.obj is up-to-date...
+$!
+$ SRCTIME = F$CVTIME(F$FILE_ATTRIBUTES("[.base]Bugcheck.cpp","RDT"),"COMPARISON")
+$ OBJFILE = F$SEARCH("es40_base_Bugcheck.obj")
+$ IF OBJFILE .NES. ""
+$ THEN
+$   OBJTIME = F$CVTIME(F$FILE_ATTRIBUTES("es40_base_Bugcheck.obj","RDT"),"COMPARISON")
+$ ELSE
+$   OBJTIME = F$CVTIME("01-JAN-1970 00:00:00.00","COMPARISON")
+$ ENDIF
+$!
+$! Compile [.base]Bugcheck.cpp to es40_base_Bugcheck.obj
+$ IF SRCTIME .GTS. OBJTIME
+$ THEN
+$   CXX [.base]Bugcheck.cpp -
+         /DEFINE=(ES40,__USE_STD_IOSTREAM'X11_DEF') -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
+         /STANDARD=GNU -
+         /ARCHITECTURE=HOST -
+         /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
+         /OBJECT=es40_base_Bugcheck.obj
+$ ENDIF
+$!
+$! Check if es40_base_ErrorHandler.obj is up-to-date...
+$!
+$ SRCTIME = F$CVTIME(F$FILE_ATTRIBUTES("[.base]ErrorHandler.cpp","RDT"),"COMPARISON")
+$ OBJFILE = F$SEARCH("es40_base_ErrorHandler.obj")
+$ IF OBJFILE .NES. ""
+$ THEN
+$   OBJTIME = F$CVTIME(F$FILE_ATTRIBUTES("es40_base_ErrorHandler.obj","RDT"),"COMPARISON")
+$ ELSE
+$   OBJTIME = F$CVTIME("01-JAN-1970 00:00:00.00","COMPARISON")
+$ ENDIF
+$!
+$! Compile [.base]ErrorHandler.cpp to es40_base_ErrorHandler.obj
+$ IF SRCTIME .GTS. OBJTIME
+$ THEN
+$   CXX [.base]ErrorHandler.cpp -
+         /DEFINE=(ES40,__USE_STD_IOSTREAM'X11_DEF') -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
+         /STANDARD=GNU -
+         /ARCHITECTURE=HOST -
+         /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
+         /OBJECT=es40_base_ErrorHandler.obj
+$ ENDIF
+$!
+$! Check if es40_base_Event.obj is up-to-date...
+$!
+$ SRCTIME = F$CVTIME(F$FILE_ATTRIBUTES("[.base]Event.cpp","RDT"),"COMPARISON")
+$ OBJFILE = F$SEARCH("es40_base_Event.obj")
+$ IF OBJFILE .NES. ""
+$ THEN
+$   OBJTIME = F$CVTIME(F$FILE_ATTRIBUTES("es40_base_Event.obj","RDT"),"COMPARISON")
+$ ELSE
+$   OBJTIME = F$CVTIME("01-JAN-1970 00:00:00.00","COMPARISON")
+$ ENDIF
+$!
+$! Compile [.base]Event.cpp to es40_base_Event.obj
+$ IF SRCTIME .GTS. OBJTIME
+$ THEN
+$   CXX [.base]Event.cpp -
+         /DEFINE=(ES40,__USE_STD_IOSTREAM'X11_DEF') -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
+         /STANDARD=GNU -
+         /ARCHITECTURE=HOST -
+         /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
+         /OBJECT=es40_base_Event.obj
+$ ENDIF
+$!
+$! Check if es40_base_Exception.obj is up-to-date...
+$!
+$ SRCTIME = F$CVTIME(F$FILE_ATTRIBUTES("[.base]Exception.cpp","RDT"),"COMPARISON")
+$ OBJFILE = F$SEARCH("es40_base_Exception.obj")
+$ IF OBJFILE .NES. ""
+$ THEN
+$   OBJTIME = F$CVTIME(F$FILE_ATTRIBUTES("es40_base_Exception.obj","RDT"),"COMPARISON")
+$ ELSE
+$   OBJTIME = F$CVTIME("01-JAN-1970 00:00:00.00","COMPARISON")
+$ ENDIF
+$!
+$! Compile [.base]Exception.cpp to es40_base_Exception.obj
+$ IF SRCTIME .GTS. OBJTIME
+$ THEN
+$   CXX [.base]Exception.cpp -
+         /DEFINE=(ES40,__USE_STD_IOSTREAM'X11_DEF') -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
+         /STANDARD=GNU -
+         /ARCHITECTURE=HOST -
+         /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
+         /OBJECT=es40_base_Exception.obj
+$ ENDIF
+$!
+$! Check if es40_base_Mutex.obj is up-to-date...
+$!
+$ SRCTIME = F$CVTIME(F$FILE_ATTRIBUTES("[.base]Mutex.cpp","RDT"),"COMPARISON")
+$ OBJFILE = F$SEARCH("es40_base_Mutex.obj")
+$ IF OBJFILE .NES. ""
+$ THEN
+$   OBJTIME = F$CVTIME(F$FILE_ATTRIBUTES("es40_base_Mutex.obj","RDT"),"COMPARISON")
+$ ELSE
+$   OBJTIME = F$CVTIME("01-JAN-1970 00:00:00.00","COMPARISON")
+$ ENDIF
+$!
+$! Compile [.base]Mutex.cpp to es40_base_Mutex.obj
+$ IF SRCTIME .GTS. OBJTIME
+$ THEN
+$   CXX [.base]Mutex.cpp -
+         /DEFINE=(ES40,__USE_STD_IOSTREAM'X11_DEF') -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
+         /STANDARD=GNU -
+         /ARCHITECTURE=HOST -
+         /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
+         /OBJECT=es40_base_Mutex.obj
+$ ENDIF
+$!
+$! Check if es40_base_NumberFormatter.obj is up-to-date...
+$!
+$ SRCTIME = F$CVTIME(F$FILE_ATTRIBUTES("[.base]NumberFormatter.cpp","RDT"),"COMPARISON")
+$ OBJFILE = F$SEARCH("es40_base_NumberFormatter.obj")
+$ IF OBJFILE .NES. ""
+$ THEN
+$   OBJTIME = F$CVTIME(F$FILE_ATTRIBUTES("es40_base_NumberFormatter.obj","RDT"),"COMPARISON")
+$ ELSE
+$   OBJTIME = F$CVTIME("01-JAN-1970 00:00:00.00","COMPARISON")
+$ ENDIF
+$!
+$! Compile [.base]NumberFormatter.cpp to es40_base_NumberFormatter.obj
+$ IF SRCTIME .GTS. OBJTIME
+$ THEN
+$   CXX [.base]NumberFormatter.cpp -
+         /DEFINE=(ES40,__USE_STD_IOSTREAM'X11_DEF') -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
+         /STANDARD=GNU -
+         /ARCHITECTURE=HOST -
+         /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
+         /OBJECT=es40_base_NumberFormatter.obj
+$ ENDIF
+$!
+$! Check if es40_base_RefCountedObject.obj is up-to-date...
+$!
+$ SRCTIME = F$CVTIME(F$FILE_ATTRIBUTES("[.base]RefCountedObject.cpp","RDT"),"COMPARISON")
+$ OBJFILE = F$SEARCH("es40_base_RefCountedObject.obj")
+$ IF OBJFILE .NES. ""
+$ THEN
+$   OBJTIME = F$CVTIME(F$FILE_ATTRIBUTES("es40_base_RefCountedObject.obj","RDT"),"COMPARISON")
+$ ELSE
+$   OBJTIME = F$CVTIME("01-JAN-1970 00:00:00.00","COMPARISON")
+$ ENDIF
+$!
+$! Compile [.base]RefCountedObject.cpp to es40_base_RefCountedObject.obj
+$ IF SRCTIME .GTS. OBJTIME
+$ THEN
+$   CXX [.base]RefCountedObject.cpp -
+         /DEFINE=(ES40,__USE_STD_IOSTREAM'X11_DEF') -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
+         /STANDARD=GNU -
+         /ARCHITECTURE=HOST -
+         /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
+         /OBJECT=es40_base_RefCountedObject.obj
+$ ENDIF
+$!
+$! Check if es40_base_Runnable.obj is up-to-date...
+$!
+$ SRCTIME = F$CVTIME(F$FILE_ATTRIBUTES("[.base]Runnable.cpp","RDT"),"COMPARISON")
+$ OBJFILE = F$SEARCH("es40_base_Runnable.obj")
+$ IF OBJFILE .NES. ""
+$ THEN
+$   OBJTIME = F$CVTIME(F$FILE_ATTRIBUTES("es40_base_Runnable.obj","RDT"),"COMPARISON")
+$ ELSE
+$   OBJTIME = F$CVTIME("01-JAN-1970 00:00:00.00","COMPARISON")
+$ ENDIF
+$!
+$! Compile [.base]Runnable.cpp to es40_base_Runnable.obj
+$ IF SRCTIME .GTS. OBJTIME
+$ THEN
+$   CXX [.base]Runnable.cpp -
+         /DEFINE=(ES40,__USE_STD_IOSTREAM'X11_DEF') -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
+         /STANDARD=GNU -
+         /ARCHITECTURE=HOST -
+         /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
+         /OBJECT=es40_base_Runnable.obj
+$ ENDIF
+$!
+$! Check if es40_base_RWLock.obj is up-to-date...
+$!
+$ SRCTIME = F$CVTIME(F$FILE_ATTRIBUTES("[.base]RWLock.cpp","RDT"),"COMPARISON")
+$ OBJFILE = F$SEARCH("es40_base_RWLock.obj")
+$ IF OBJFILE .NES. ""
+$ THEN
+$   OBJTIME = F$CVTIME(F$FILE_ATTRIBUTES("es40_base_RWLock.obj","RDT"),"COMPARISON")
+$ ELSE
+$   OBJTIME = F$CVTIME("01-JAN-1970 00:00:00.00","COMPARISON")
+$ ENDIF
+$!
+$! Compile [.base]RWLock.cpp to es40_base_RWLock.obj
+$ IF SRCTIME .GTS. OBJTIME
+$ THEN
+$   CXX [.base]RWLock.cpp -
+         /DEFINE=(ES40,__USE_STD_IOSTREAM'X11_DEF') -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
+         /STANDARD=GNU -
+         /ARCHITECTURE=HOST -
+         /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
+         /OBJECT=es40_base_RWLock.obj
+$ ENDIF
+$!
+$! Check if es40_base_Semaphore.obj is up-to-date...
+$!
+$ SRCTIME = F$CVTIME(F$FILE_ATTRIBUTES("[.base]Semaphore.cpp","RDT"),"COMPARISON")
+$ OBJFILE = F$SEARCH("es40_base_Semaphore.obj")
+$ IF OBJFILE .NES. ""
+$ THEN
+$   OBJTIME = F$CVTIME(F$FILE_ATTRIBUTES("es40_base_Semaphore.obj","RDT"),"COMPARISON")
+$ ELSE
+$   OBJTIME = F$CVTIME("01-JAN-1970 00:00:00.00","COMPARISON")
+$ ENDIF
+$!
+$! Compile [.base]Semaphore.cpp to es40_base_Semaphore.obj
+$ IF SRCTIME .GTS. OBJTIME
+$ THEN
+$   CXX [.base]Semaphore.cpp -
+         /DEFINE=(ES40,__USE_STD_IOSTREAM'X11_DEF') -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
+         /STANDARD=GNU -
+         /ARCHITECTURE=HOST -
+         /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
+         /OBJECT=es40_base_Semaphore.obj
+$ ENDIF
+$!
+$! Check if es40_base_SignalHandler.obj is up-to-date...
+$!
+$ SRCTIME = F$CVTIME(F$FILE_ATTRIBUTES("[.base]SignalHandler.cpp","RDT"),"COMPARISON")
+$ OBJFILE = F$SEARCH("es40_base_SignalHandler.obj")
+$ IF OBJFILE .NES. ""
+$ THEN
+$   OBJTIME = F$CVTIME(F$FILE_ATTRIBUTES("es40_base_SignalHandler.obj","RDT"),"COMPARISON")
+$ ELSE
+$   OBJTIME = F$CVTIME("01-JAN-1970 00:00:00.00","COMPARISON")
+$ ENDIF
+$!
+$! Compile [.base]SignalHandler.cpp to es40_base_SignalHandler.obj
+$ IF SRCTIME .GTS. OBJTIME
+$ THEN
+$   CXX [.base]SignalHandler.cpp -
+         /DEFINE=(ES40,__USE_STD_IOSTREAM'X11_DEF') -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
+         /STANDARD=GNU -
+         /ARCHITECTURE=HOST -
+         /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
+         /OBJECT=es40_base_SignalHandler.obj
+$ ENDIF
+$!
+$! Check if es40_base_ThreadLocal.obj is up-to-date...
+$!
+$ SRCTIME = F$CVTIME(F$FILE_ATTRIBUTES("[.base]ThreadLocal.cpp","RDT"),"COMPARISON")
+$ OBJFILE = F$SEARCH("es40_base_ThreadLocal.obj")
+$ IF OBJFILE .NES. ""
+$ THEN
+$   OBJTIME = F$CVTIME(F$FILE_ATTRIBUTES("es40_base_ThreadLocal.obj","RDT"),"COMPARISON")
+$ ELSE
+$   OBJTIME = F$CVTIME("01-JAN-1970 00:00:00.00","COMPARISON")
+$ ENDIF
+$!
+$! Compile [.base]ThreadLocal.cpp to es40_base_ThreadLocal.obj
+$ IF SRCTIME .GTS. OBJTIME
+$ THEN
+$   CXX [.base]ThreadLocal.cpp -
+         /DEFINE=(ES40,__USE_STD_IOSTREAM'X11_DEF') -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
+         /STANDARD=GNU -
+         /ARCHITECTURE=HOST -
+         /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
+         /OBJECT=es40_base_ThreadLocal.obj
+$ ENDIF
+$!
+$! Check if es40_base_Thread.obj is up-to-date...
+$!
+$ SRCTIME = F$CVTIME(F$FILE_ATTRIBUTES("[.base]Thread.cpp","RDT"),"COMPARISON")
+$ OBJFILE = F$SEARCH("es40_base_Thread.obj")
+$ IF OBJFILE .NES. ""
+$ THEN
+$   OBJTIME = F$CVTIME(F$FILE_ATTRIBUTES("es40_base_Thread.obj","RDT"),"COMPARISON")
+$ ELSE
+$   OBJTIME = F$CVTIME("01-JAN-1970 00:00:00.00","COMPARISON")
+$ ENDIF
+$!
+$! Compile [.base]Thread.cpp to es40_base_Thread.obj
+$ IF SRCTIME .GTS. OBJTIME
+$ THEN
+$   CXX [.base]Thread.cpp -
+         /DEFINE=(ES40,__USE_STD_IOSTREAM'X11_DEF') -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
+         /STANDARD=GNU -
+         /ARCHITECTURE=HOST -
+         /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
+         /OBJECT=es40_base_Thread.obj
+$ ENDIF
+$!
 $! Link es40
 $!
 $ SAY "Linking es40..."
 $!
-$ CXXLINK es40_vms_Event.obj,es40_vms_Exception.obj,es40_vms_Mutex.obj,es40_vms_Runnable.obj,es40_vms_RWLock.obj,es40_vms_Semaphore.obj,es40_vms_Thread.obj,es40_vms_ErrorHandler.obj,es40_vms_Bugcheck.obj,es40_vms_Debugger.obj,es40_vms_ThreadLocal.obj,es40_vms_Timestamp.obj,es40_vms_RefCountedObject.obj,es40_AliM1543C.obj,es40_AliM1543C_ide.obj,es40_AliM1543C_usb.obj,es40_AlphaCPU.obj,es40_AlphaCPU_ieeefloat.obj,es40_AlphaCPU_vaxfloat.obj,es40_AlphaCPU_vmspal.obj,es40_AlphaSim.obj,es40_Cirrus.obj,es40_Configurator.obj,es40_DEC21143.obj,es40_Disk.obj,es40_DiskController.obj,es40_DiskDevice.obj,es40_DiskFile.obj,es40_DiskRam.obj,es40_DMA.obj,es40_DPR.obj,es40_es40_debug.obj,es40_Ethernet.obj,es40_Exception.obj,es40_Flash.obj,es40_FloppyController.obj,es40_Keyboard.obj,es40_lockstep.obj,es40_PCIDevice.obj,es40_Port80.obj,es40_S3Trio64.obj,es40_SCSIBus.obj,es40_SCSIDevice.obj,es40_Serial.obj,es40_StdAfx.obj,es40_Sym53C810.obj,es40_Sym53C895.obj,es40_SystemComponent.obj,es40_System.obj,es40_TraceEngine.obj,es40_VGA.obj,es40_gui_gui.obj,es40_gui_gui_x11.obj,es40_gui_keymap.obj,es40_gui_scancodes.obj'X11_LIB' -
+$ CXXLINK es40_AliM1543C.obj,es40_AliM1543C_ide.obj,es40_AliM1543C_usb.obj,es40_AlphaCPU.obj,es40_AlphaCPU_ieeefloat.obj,es40_AlphaCPU_vaxfloat.obj,es40_AlphaCPU_vmspal.obj,es40_AlphaSim.obj,es40_Cirrus.obj,es40_Configurator.obj,es40_DEC21143.obj,es40_Disk.obj,es40_DiskController.obj,es40_DiskDevice.obj,es40_DiskFile.obj,es40_DiskRam.obj,es40_DMA.obj,es40_DPR.obj,es40_es40_debug.obj,es40_Ethernet.obj,es40_Flash.obj,es40_FloppyController.obj,es40_Keyboard.obj,es40_lockstep.obj,es40_PCIDevice.obj,es40_Port80.obj,es40_S3Trio64.obj,es40_SCSIBus.obj,es40_SCSIDevice.obj,es40_Serial.obj,es40_StdAfx.obj,es40_Sym53C810.obj,es40_Sym53C895.obj,es40_SystemComponent.obj,es40_System.obj,es40_TraceEngine.obj,es40_VGA.obj,es40_gui_gui.obj,es40_gui_gui_x11.obj,es40_gui_keymap.obj,es40_gui_scancodes.obj,es40_gui_sdl.obj,es40_base_Bugcheck.obj,es40_base_ErrorHandler.obj,es40_base_Event.obj,es40_base_Exception.obj,es40_base_Mutex.obj,es40_base_NumberFormatter.obj,es40_base_RefCountedObject.obj,es40_base_Runnable.obj,es40_base_RWLock.obj,es40_base_Semaphore.obj,es40_base_SignalHandler.obj,es40_base_ThreadLocal.obj,es40_base_Thread.obj'X11_LIB' -
            /EXECUTABLE=es40.exe
 $!
 $! Compile sources for es40_idb
@@ -1351,305 +1351,6 @@ $!
 $! Compile with the following defines: ES40,__USE_STD_IOSTREAM,IDB
 $!
 $ SAY "Compiling es40_idb..."
-$!
-$! Check if es40_idb_vms_Event.obj is up-to-date...
-$!
-$ SRCTIME = F$CVTIME(F$FILE_ATTRIBUTES("[.vms]Event.cpp","RDT"),"COMPARISON")
-$ OBJFILE = F$SEARCH("es40_idb_vms_Event.obj")
-$ IF OBJFILE .NES. ""
-$ THEN
-$   OBJTIME = F$CVTIME(F$FILE_ATTRIBUTES("es40_idb_vms_Event.obj","RDT"),"COMPARISON")
-$ ELSE
-$   OBJTIME = F$CVTIME("01-JAN-1970 00:00:00.00","COMPARISON")
-$ ENDIF
-$!
-$! Compile [.vms]Event.cpp to es40_idb_vms_Event.obj
-$ IF SRCTIME .GTS. OBJTIME
-$ THEN
-$   CXX [.vms]Event.cpp -
-         /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
-         /STANDARD=GNU -
-         /ARCHITECTURE=HOST -
-         /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
-         /OBJECT=es40_idb_vms_Event.obj
-$ ENDIF
-$!
-$! Check if es40_idb_vms_Exception.obj is up-to-date...
-$!
-$ SRCTIME = F$CVTIME(F$FILE_ATTRIBUTES("[.vms]Exception.cpp","RDT"),"COMPARISON")
-$ OBJFILE = F$SEARCH("es40_idb_vms_Exception.obj")
-$ IF OBJFILE .NES. ""
-$ THEN
-$   OBJTIME = F$CVTIME(F$FILE_ATTRIBUTES("es40_idb_vms_Exception.obj","RDT"),"COMPARISON")
-$ ELSE
-$   OBJTIME = F$CVTIME("01-JAN-1970 00:00:00.00","COMPARISON")
-$ ENDIF
-$!
-$! Compile [.vms]Exception.cpp to es40_idb_vms_Exception.obj
-$ IF SRCTIME .GTS. OBJTIME
-$ THEN
-$   CXX [.vms]Exception.cpp -
-         /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
-         /STANDARD=GNU -
-         /ARCHITECTURE=HOST -
-         /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
-         /OBJECT=es40_idb_vms_Exception.obj
-$ ENDIF
-$!
-$! Check if es40_idb_vms_Mutex.obj is up-to-date...
-$!
-$ SRCTIME = F$CVTIME(F$FILE_ATTRIBUTES("[.vms]Mutex.cpp","RDT"),"COMPARISON")
-$ OBJFILE = F$SEARCH("es40_idb_vms_Mutex.obj")
-$ IF OBJFILE .NES. ""
-$ THEN
-$   OBJTIME = F$CVTIME(F$FILE_ATTRIBUTES("es40_idb_vms_Mutex.obj","RDT"),"COMPARISON")
-$ ELSE
-$   OBJTIME = F$CVTIME("01-JAN-1970 00:00:00.00","COMPARISON")
-$ ENDIF
-$!
-$! Compile [.vms]Mutex.cpp to es40_idb_vms_Mutex.obj
-$ IF SRCTIME .GTS. OBJTIME
-$ THEN
-$   CXX [.vms]Mutex.cpp -
-         /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
-         /STANDARD=GNU -
-         /ARCHITECTURE=HOST -
-         /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
-         /OBJECT=es40_idb_vms_Mutex.obj
-$ ENDIF
-$!
-$! Check if es40_idb_vms_Runnable.obj is up-to-date...
-$!
-$ SRCTIME = F$CVTIME(F$FILE_ATTRIBUTES("[.vms]Runnable.cpp","RDT"),"COMPARISON")
-$ OBJFILE = F$SEARCH("es40_idb_vms_Runnable.obj")
-$ IF OBJFILE .NES. ""
-$ THEN
-$   OBJTIME = F$CVTIME(F$FILE_ATTRIBUTES("es40_idb_vms_Runnable.obj","RDT"),"COMPARISON")
-$ ELSE
-$   OBJTIME = F$CVTIME("01-JAN-1970 00:00:00.00","COMPARISON")
-$ ENDIF
-$!
-$! Compile [.vms]Runnable.cpp to es40_idb_vms_Runnable.obj
-$ IF SRCTIME .GTS. OBJTIME
-$ THEN
-$   CXX [.vms]Runnable.cpp -
-         /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
-         /STANDARD=GNU -
-         /ARCHITECTURE=HOST -
-         /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
-         /OBJECT=es40_idb_vms_Runnable.obj
-$ ENDIF
-$!
-$! Check if es40_idb_vms_RWLock.obj is up-to-date...
-$!
-$ SRCTIME = F$CVTIME(F$FILE_ATTRIBUTES("[.vms]RWLock.cpp","RDT"),"COMPARISON")
-$ OBJFILE = F$SEARCH("es40_idb_vms_RWLock.obj")
-$ IF OBJFILE .NES. ""
-$ THEN
-$   OBJTIME = F$CVTIME(F$FILE_ATTRIBUTES("es40_idb_vms_RWLock.obj","RDT"),"COMPARISON")
-$ ELSE
-$   OBJTIME = F$CVTIME("01-JAN-1970 00:00:00.00","COMPARISON")
-$ ENDIF
-$!
-$! Compile [.vms]RWLock.cpp to es40_idb_vms_RWLock.obj
-$ IF SRCTIME .GTS. OBJTIME
-$ THEN
-$   CXX [.vms]RWLock.cpp -
-         /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
-         /STANDARD=GNU -
-         /ARCHITECTURE=HOST -
-         /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
-         /OBJECT=es40_idb_vms_RWLock.obj
-$ ENDIF
-$!
-$! Check if es40_idb_vms_Semaphore.obj is up-to-date...
-$!
-$ SRCTIME = F$CVTIME(F$FILE_ATTRIBUTES("[.vms]Semaphore.cpp","RDT"),"COMPARISON")
-$ OBJFILE = F$SEARCH("es40_idb_vms_Semaphore.obj")
-$ IF OBJFILE .NES. ""
-$ THEN
-$   OBJTIME = F$CVTIME(F$FILE_ATTRIBUTES("es40_idb_vms_Semaphore.obj","RDT"),"COMPARISON")
-$ ELSE
-$   OBJTIME = F$CVTIME("01-JAN-1970 00:00:00.00","COMPARISON")
-$ ENDIF
-$!
-$! Compile [.vms]Semaphore.cpp to es40_idb_vms_Semaphore.obj
-$ IF SRCTIME .GTS. OBJTIME
-$ THEN
-$   CXX [.vms]Semaphore.cpp -
-         /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
-         /STANDARD=GNU -
-         /ARCHITECTURE=HOST -
-         /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
-         /OBJECT=es40_idb_vms_Semaphore.obj
-$ ENDIF
-$!
-$! Check if es40_idb_vms_Thread.obj is up-to-date...
-$!
-$ SRCTIME = F$CVTIME(F$FILE_ATTRIBUTES("[.vms]Thread.cpp","RDT"),"COMPARISON")
-$ OBJFILE = F$SEARCH("es40_idb_vms_Thread.obj")
-$ IF OBJFILE .NES. ""
-$ THEN
-$   OBJTIME = F$CVTIME(F$FILE_ATTRIBUTES("es40_idb_vms_Thread.obj","RDT"),"COMPARISON")
-$ ELSE
-$   OBJTIME = F$CVTIME("01-JAN-1970 00:00:00.00","COMPARISON")
-$ ENDIF
-$!
-$! Compile [.vms]Thread.cpp to es40_idb_vms_Thread.obj
-$ IF SRCTIME .GTS. OBJTIME
-$ THEN
-$   CXX [.vms]Thread.cpp -
-         /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
-         /STANDARD=GNU -
-         /ARCHITECTURE=HOST -
-         /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
-         /OBJECT=es40_idb_vms_Thread.obj
-$ ENDIF
-$!
-$! Check if es40_idb_vms_ErrorHandler.obj is up-to-date...
-$!
-$ SRCTIME = F$CVTIME(F$FILE_ATTRIBUTES("[.vms]ErrorHandler.cpp","RDT"),"COMPARISON")
-$ OBJFILE = F$SEARCH("es40_idb_vms_ErrorHandler.obj")
-$ IF OBJFILE .NES. ""
-$ THEN
-$   OBJTIME = F$CVTIME(F$FILE_ATTRIBUTES("es40_idb_vms_ErrorHandler.obj","RDT"),"COMPARISON")
-$ ELSE
-$   OBJTIME = F$CVTIME("01-JAN-1970 00:00:00.00","COMPARISON")
-$ ENDIF
-$!
-$! Compile [.vms]ErrorHandler.cpp to es40_idb_vms_ErrorHandler.obj
-$ IF SRCTIME .GTS. OBJTIME
-$ THEN
-$   CXX [.vms]ErrorHandler.cpp -
-         /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
-         /STANDARD=GNU -
-         /ARCHITECTURE=HOST -
-         /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
-         /OBJECT=es40_idb_vms_ErrorHandler.obj
-$ ENDIF
-$!
-$! Check if es40_idb_vms_Bugcheck.obj is up-to-date...
-$!
-$ SRCTIME = F$CVTIME(F$FILE_ATTRIBUTES("[.vms]Bugcheck.cpp","RDT"),"COMPARISON")
-$ OBJFILE = F$SEARCH("es40_idb_vms_Bugcheck.obj")
-$ IF OBJFILE .NES. ""
-$ THEN
-$   OBJTIME = F$CVTIME(F$FILE_ATTRIBUTES("es40_idb_vms_Bugcheck.obj","RDT"),"COMPARISON")
-$ ELSE
-$   OBJTIME = F$CVTIME("01-JAN-1970 00:00:00.00","COMPARISON")
-$ ENDIF
-$!
-$! Compile [.vms]Bugcheck.cpp to es40_idb_vms_Bugcheck.obj
-$ IF SRCTIME .GTS. OBJTIME
-$ THEN
-$   CXX [.vms]Bugcheck.cpp -
-         /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
-         /STANDARD=GNU -
-         /ARCHITECTURE=HOST -
-         /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
-         /OBJECT=es40_idb_vms_Bugcheck.obj
-$ ENDIF
-$!
-$! Check if es40_idb_vms_Debugger.obj is up-to-date...
-$!
-$ SRCTIME = F$CVTIME(F$FILE_ATTRIBUTES("[.vms]Debugger.cpp","RDT"),"COMPARISON")
-$ OBJFILE = F$SEARCH("es40_idb_vms_Debugger.obj")
-$ IF OBJFILE .NES. ""
-$ THEN
-$   OBJTIME = F$CVTIME(F$FILE_ATTRIBUTES("es40_idb_vms_Debugger.obj","RDT"),"COMPARISON")
-$ ELSE
-$   OBJTIME = F$CVTIME("01-JAN-1970 00:00:00.00","COMPARISON")
-$ ENDIF
-$!
-$! Compile [.vms]Debugger.cpp to es40_idb_vms_Debugger.obj
-$ IF SRCTIME .GTS. OBJTIME
-$ THEN
-$   CXX [.vms]Debugger.cpp -
-         /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
-         /STANDARD=GNU -
-         /ARCHITECTURE=HOST -
-         /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
-         /OBJECT=es40_idb_vms_Debugger.obj
-$ ENDIF
-$!
-$! Check if es40_idb_vms_ThreadLocal.obj is up-to-date...
-$!
-$ SRCTIME = F$CVTIME(F$FILE_ATTRIBUTES("[.vms]ThreadLocal.cpp","RDT"),"COMPARISON")
-$ OBJFILE = F$SEARCH("es40_idb_vms_ThreadLocal.obj")
-$ IF OBJFILE .NES. ""
-$ THEN
-$   OBJTIME = F$CVTIME(F$FILE_ATTRIBUTES("es40_idb_vms_ThreadLocal.obj","RDT"),"COMPARISON")
-$ ELSE
-$   OBJTIME = F$CVTIME("01-JAN-1970 00:00:00.00","COMPARISON")
-$ ENDIF
-$!
-$! Compile [.vms]ThreadLocal.cpp to es40_idb_vms_ThreadLocal.obj
-$ IF SRCTIME .GTS. OBJTIME
-$ THEN
-$   CXX [.vms]ThreadLocal.cpp -
-         /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
-         /STANDARD=GNU -
-         /ARCHITECTURE=HOST -
-         /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
-         /OBJECT=es40_idb_vms_ThreadLocal.obj
-$ ENDIF
-$!
-$! Check if es40_idb_vms_Timestamp.obj is up-to-date...
-$!
-$ SRCTIME = F$CVTIME(F$FILE_ATTRIBUTES("[.vms]Timestamp.cpp","RDT"),"COMPARISON")
-$ OBJFILE = F$SEARCH("es40_idb_vms_Timestamp.obj")
-$ IF OBJFILE .NES. ""
-$ THEN
-$   OBJTIME = F$CVTIME(F$FILE_ATTRIBUTES("es40_idb_vms_Timestamp.obj","RDT"),"COMPARISON")
-$ ELSE
-$   OBJTIME = F$CVTIME("01-JAN-1970 00:00:00.00","COMPARISON")
-$ ENDIF
-$!
-$! Compile [.vms]Timestamp.cpp to es40_idb_vms_Timestamp.obj
-$ IF SRCTIME .GTS. OBJTIME
-$ THEN
-$   CXX [.vms]Timestamp.cpp -
-         /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
-         /STANDARD=GNU -
-         /ARCHITECTURE=HOST -
-         /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
-         /OBJECT=es40_idb_vms_Timestamp.obj
-$ ENDIF
-$!
-$! Check if es40_idb_vms_RefCountedObject.obj is up-to-date...
-$!
-$ SRCTIME = F$CVTIME(F$FILE_ATTRIBUTES("[.vms]RefCountedObject.cpp","RDT"),"COMPARISON")
-$ OBJFILE = F$SEARCH("es40_idb_vms_RefCountedObject.obj")
-$ IF OBJFILE .NES. ""
-$ THEN
-$   OBJTIME = F$CVTIME(F$FILE_ATTRIBUTES("es40_idb_vms_RefCountedObject.obj","RDT"),"COMPARISON")
-$ ELSE
-$   OBJTIME = F$CVTIME("01-JAN-1970 00:00:00.00","COMPARISON")
-$ ENDIF
-$!
-$! Compile [.vms]RefCountedObject.cpp to es40_idb_vms_RefCountedObject.obj
-$ IF SRCTIME .GTS. OBJTIME
-$ THEN
-$   CXX [.vms]RefCountedObject.cpp -
-         /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
-         /STANDARD=GNU -
-         /ARCHITECTURE=HOST -
-         /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
-         /OBJECT=es40_idb_vms_RefCountedObject.obj
-$ ENDIF
 $!
 $! Check if es40_idb_AliM1543C.obj is up-to-date...
 $!
@@ -1667,7 +1368,7 @@ $ IF SRCTIME .GTS. OBJTIME
 $ THEN
 $   CXX AliM1543C.cpp -
          /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
          /STANDARD=GNU -
          /ARCHITECTURE=HOST -
          /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
@@ -1690,7 +1391,7 @@ $ IF SRCTIME .GTS. OBJTIME
 $ THEN
 $   CXX AliM1543C_ide.cpp -
          /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
          /STANDARD=GNU -
          /ARCHITECTURE=HOST -
          /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
@@ -1713,7 +1414,7 @@ $ IF SRCTIME .GTS. OBJTIME
 $ THEN
 $   CXX AliM1543C_usb.cpp -
          /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
          /STANDARD=GNU -
          /ARCHITECTURE=HOST -
          /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
@@ -1736,7 +1437,7 @@ $ IF SRCTIME .GTS. OBJTIME
 $ THEN
 $   CXX AlphaCPU.cpp -
          /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
          /STANDARD=GNU -
          /ARCHITECTURE=HOST -
          /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
@@ -1759,7 +1460,7 @@ $ IF SRCTIME .GTS. OBJTIME
 $ THEN
 $   CXX AlphaCPU_ieeefloat.cpp -
          /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
          /STANDARD=GNU -
          /ARCHITECTURE=HOST -
          /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
@@ -1782,7 +1483,7 @@ $ IF SRCTIME .GTS. OBJTIME
 $ THEN
 $   CXX AlphaCPU_vaxfloat.cpp -
          /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
          /STANDARD=GNU -
          /ARCHITECTURE=HOST -
          /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
@@ -1805,7 +1506,7 @@ $ IF SRCTIME .GTS. OBJTIME
 $ THEN
 $   CXX AlphaCPU_vmspal.cpp -
          /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
          /STANDARD=GNU -
          /ARCHITECTURE=HOST -
          /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
@@ -1828,7 +1529,7 @@ $ IF SRCTIME .GTS. OBJTIME
 $ THEN
 $   CXX AlphaSim.cpp -
          /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
          /STANDARD=GNU -
          /ARCHITECTURE=HOST -
          /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
@@ -1851,7 +1552,7 @@ $ IF SRCTIME .GTS. OBJTIME
 $ THEN
 $   CXX Cirrus.cpp -
          /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
          /STANDARD=GNU -
          /ARCHITECTURE=HOST -
          /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
@@ -1874,7 +1575,7 @@ $ IF SRCTIME .GTS. OBJTIME
 $ THEN
 $   CXX Configurator.cpp -
          /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
          /STANDARD=GNU -
          /ARCHITECTURE=HOST -
          /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
@@ -1897,7 +1598,7 @@ $ IF SRCTIME .GTS. OBJTIME
 $ THEN
 $   CXX DEC21143.cpp -
          /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
          /STANDARD=GNU -
          /ARCHITECTURE=HOST -
          /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
@@ -1920,7 +1621,7 @@ $ IF SRCTIME .GTS. OBJTIME
 $ THEN
 $   CXX Disk.cpp -
          /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
          /STANDARD=GNU -
          /ARCHITECTURE=HOST -
          /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
@@ -1943,7 +1644,7 @@ $ IF SRCTIME .GTS. OBJTIME
 $ THEN
 $   CXX DiskController.cpp -
          /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
          /STANDARD=GNU -
          /ARCHITECTURE=HOST -
          /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
@@ -1966,7 +1667,7 @@ $ IF SRCTIME .GTS. OBJTIME
 $ THEN
 $   CXX DiskDevice.cpp -
          /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
          /STANDARD=GNU -
          /ARCHITECTURE=HOST -
          /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
@@ -1989,7 +1690,7 @@ $ IF SRCTIME .GTS. OBJTIME
 $ THEN
 $   CXX DiskFile.cpp -
          /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
          /STANDARD=GNU -
          /ARCHITECTURE=HOST -
          /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
@@ -2012,7 +1713,7 @@ $ IF SRCTIME .GTS. OBJTIME
 $ THEN
 $   CXX DiskRam.cpp -
          /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
          /STANDARD=GNU -
          /ARCHITECTURE=HOST -
          /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
@@ -2035,7 +1736,7 @@ $ IF SRCTIME .GTS. OBJTIME
 $ THEN
 $   CXX DMA.cpp -
          /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
          /STANDARD=GNU -
          /ARCHITECTURE=HOST -
          /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
@@ -2058,7 +1759,7 @@ $ IF SRCTIME .GTS. OBJTIME
 $ THEN
 $   CXX DPR.cpp -
          /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
          /STANDARD=GNU -
          /ARCHITECTURE=HOST -
          /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
@@ -2081,7 +1782,7 @@ $ IF SRCTIME .GTS. OBJTIME
 $ THEN
 $   CXX es40_debug.cpp -
          /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
          /STANDARD=GNU -
          /ARCHITECTURE=HOST -
          /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
@@ -2104,34 +1805,11 @@ $ IF SRCTIME .GTS. OBJTIME
 $ THEN
 $   CXX Ethernet.cpp -
          /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
          /STANDARD=GNU -
          /ARCHITECTURE=HOST -
          /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
          /OBJECT=es40_idb_Ethernet.obj
-$ ENDIF
-$!
-$! Check if es40_idb_Exception.obj is up-to-date...
-$!
-$ SRCTIME = F$CVTIME(F$FILE_ATTRIBUTES("Exception.cpp","RDT"),"COMPARISON")
-$ OBJFILE = F$SEARCH("es40_idb_Exception.obj")
-$ IF OBJFILE .NES. ""
-$ THEN
-$   OBJTIME = F$CVTIME(F$FILE_ATTRIBUTES("es40_idb_Exception.obj","RDT"),"COMPARISON")
-$ ELSE
-$   OBJTIME = F$CVTIME("01-JAN-1970 00:00:00.00","COMPARISON")
-$ ENDIF
-$!
-$! Compile Exception.cpp to es40_idb_Exception.obj
-$ IF SRCTIME .GTS. OBJTIME
-$ THEN
-$   CXX Exception.cpp -
-         /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
-         /STANDARD=GNU -
-         /ARCHITECTURE=HOST -
-         /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
-         /OBJECT=es40_idb_Exception.obj
 $ ENDIF
 $!
 $! Check if es40_idb_Flash.obj is up-to-date...
@@ -2150,7 +1828,7 @@ $ IF SRCTIME .GTS. OBJTIME
 $ THEN
 $   CXX Flash.cpp -
          /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
          /STANDARD=GNU -
          /ARCHITECTURE=HOST -
          /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
@@ -2173,7 +1851,7 @@ $ IF SRCTIME .GTS. OBJTIME
 $ THEN
 $   CXX FloppyController.cpp -
          /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
          /STANDARD=GNU -
          /ARCHITECTURE=HOST -
          /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
@@ -2196,7 +1874,7 @@ $ IF SRCTIME .GTS. OBJTIME
 $ THEN
 $   CXX Keyboard.cpp -
          /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
          /STANDARD=GNU -
          /ARCHITECTURE=HOST -
          /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
@@ -2219,7 +1897,7 @@ $ IF SRCTIME .GTS. OBJTIME
 $ THEN
 $   CXX lockstep.cpp -
          /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
          /STANDARD=GNU -
          /ARCHITECTURE=HOST -
          /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
@@ -2242,7 +1920,7 @@ $ IF SRCTIME .GTS. OBJTIME
 $ THEN
 $   CXX PCIDevice.cpp -
          /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
          /STANDARD=GNU -
          /ARCHITECTURE=HOST -
          /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
@@ -2265,7 +1943,7 @@ $ IF SRCTIME .GTS. OBJTIME
 $ THEN
 $   CXX Port80.cpp -
          /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
          /STANDARD=GNU -
          /ARCHITECTURE=HOST -
          /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
@@ -2288,7 +1966,7 @@ $ IF SRCTIME .GTS. OBJTIME
 $ THEN
 $   CXX S3Trio64.cpp -
          /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
          /STANDARD=GNU -
          /ARCHITECTURE=HOST -
          /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
@@ -2311,7 +1989,7 @@ $ IF SRCTIME .GTS. OBJTIME
 $ THEN
 $   CXX SCSIBus.cpp -
          /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
          /STANDARD=GNU -
          /ARCHITECTURE=HOST -
          /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
@@ -2334,7 +2012,7 @@ $ IF SRCTIME .GTS. OBJTIME
 $ THEN
 $   CXX SCSIDevice.cpp -
          /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
          /STANDARD=GNU -
          /ARCHITECTURE=HOST -
          /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
@@ -2357,7 +2035,7 @@ $ IF SRCTIME .GTS. OBJTIME
 $ THEN
 $   CXX Serial.cpp -
          /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
          /STANDARD=GNU -
          /ARCHITECTURE=HOST -
          /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
@@ -2380,7 +2058,7 @@ $ IF SRCTIME .GTS. OBJTIME
 $ THEN
 $   CXX StdAfx.cpp -
          /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
          /STANDARD=GNU -
          /ARCHITECTURE=HOST -
          /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
@@ -2403,7 +2081,7 @@ $ IF SRCTIME .GTS. OBJTIME
 $ THEN
 $   CXX Sym53C810.cpp -
          /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
          /STANDARD=GNU -
          /ARCHITECTURE=HOST -
          /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
@@ -2426,7 +2104,7 @@ $ IF SRCTIME .GTS. OBJTIME
 $ THEN
 $   CXX Sym53C895.cpp -
          /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
          /STANDARD=GNU -
          /ARCHITECTURE=HOST -
          /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
@@ -2449,7 +2127,7 @@ $ IF SRCTIME .GTS. OBJTIME
 $ THEN
 $   CXX SystemComponent.cpp -
          /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
          /STANDARD=GNU -
          /ARCHITECTURE=HOST -
          /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
@@ -2472,7 +2150,7 @@ $ IF SRCTIME .GTS. OBJTIME
 $ THEN
 $   CXX System.cpp -
          /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
          /STANDARD=GNU -
          /ARCHITECTURE=HOST -
          /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
@@ -2495,7 +2173,7 @@ $ IF SRCTIME .GTS. OBJTIME
 $ THEN
 $   CXX TraceEngine.cpp -
          /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
          /STANDARD=GNU -
          /ARCHITECTURE=HOST -
          /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
@@ -2518,7 +2196,7 @@ $ IF SRCTIME .GTS. OBJTIME
 $ THEN
 $   CXX VGA.cpp -
          /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
          /STANDARD=GNU -
          /ARCHITECTURE=HOST -
          /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
@@ -2541,7 +2219,7 @@ $ IF SRCTIME .GTS. OBJTIME
 $ THEN
 $   CXX [.gui]gui.cpp -
          /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
          /STANDARD=GNU -
          /ARCHITECTURE=HOST -
          /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
@@ -2564,7 +2242,7 @@ $ IF SRCTIME .GTS. OBJTIME
 $ THEN
 $   CXX [.gui]gui_x11.cpp -
          /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
          /STANDARD=GNU -
          /ARCHITECTURE=HOST -
          /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
@@ -2587,7 +2265,7 @@ $ IF SRCTIME .GTS. OBJTIME
 $ THEN
 $   CXX [.gui]keymap.cpp -
          /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
          /STANDARD=GNU -
          /ARCHITECTURE=HOST -
          /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
@@ -2610,18 +2288,340 @@ $ IF SRCTIME .GTS. OBJTIME
 $ THEN
 $   CXX [.gui]scancodes.cpp -
          /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
          /STANDARD=GNU -
          /ARCHITECTURE=HOST -
          /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
          /OBJECT=es40_idb_gui_scancodes.obj
 $ ENDIF
 $!
+$! Check if es40_idb_gui_sdl.obj is up-to-date...
+$!
+$ SRCTIME = F$CVTIME(F$FILE_ATTRIBUTES("[.gui]sdl.cpp","RDT"),"COMPARISON")
+$ OBJFILE = F$SEARCH("es40_idb_gui_sdl.obj")
+$ IF OBJFILE .NES. ""
+$ THEN
+$   OBJTIME = F$CVTIME(F$FILE_ATTRIBUTES("es40_idb_gui_sdl.obj","RDT"),"COMPARISON")
+$ ELSE
+$   OBJTIME = F$CVTIME("01-JAN-1970 00:00:00.00","COMPARISON")
+$ ENDIF
+$!
+$! Compile [.gui]sdl.cpp to es40_idb_gui_sdl.obj
+$ IF SRCTIME .GTS. OBJTIME
+$ THEN
+$   CXX [.gui]sdl.cpp -
+         /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB'X11_DEF') -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
+         /STANDARD=GNU -
+         /ARCHITECTURE=HOST -
+         /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
+         /OBJECT=es40_idb_gui_sdl.obj
+$ ENDIF
+$!
+$! Check if es40_idb_base_Bugcheck.obj is up-to-date...
+$!
+$ SRCTIME = F$CVTIME(F$FILE_ATTRIBUTES("[.base]Bugcheck.cpp","RDT"),"COMPARISON")
+$ OBJFILE = F$SEARCH("es40_idb_base_Bugcheck.obj")
+$ IF OBJFILE .NES. ""
+$ THEN
+$   OBJTIME = F$CVTIME(F$FILE_ATTRIBUTES("es40_idb_base_Bugcheck.obj","RDT"),"COMPARISON")
+$ ELSE
+$   OBJTIME = F$CVTIME("01-JAN-1970 00:00:00.00","COMPARISON")
+$ ENDIF
+$!
+$! Compile [.base]Bugcheck.cpp to es40_idb_base_Bugcheck.obj
+$ IF SRCTIME .GTS. OBJTIME
+$ THEN
+$   CXX [.base]Bugcheck.cpp -
+         /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB'X11_DEF') -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
+         /STANDARD=GNU -
+         /ARCHITECTURE=HOST -
+         /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
+         /OBJECT=es40_idb_base_Bugcheck.obj
+$ ENDIF
+$!
+$! Check if es40_idb_base_ErrorHandler.obj is up-to-date...
+$!
+$ SRCTIME = F$CVTIME(F$FILE_ATTRIBUTES("[.base]ErrorHandler.cpp","RDT"),"COMPARISON")
+$ OBJFILE = F$SEARCH("es40_idb_base_ErrorHandler.obj")
+$ IF OBJFILE .NES. ""
+$ THEN
+$   OBJTIME = F$CVTIME(F$FILE_ATTRIBUTES("es40_idb_base_ErrorHandler.obj","RDT"),"COMPARISON")
+$ ELSE
+$   OBJTIME = F$CVTIME("01-JAN-1970 00:00:00.00","COMPARISON")
+$ ENDIF
+$!
+$! Compile [.base]ErrorHandler.cpp to es40_idb_base_ErrorHandler.obj
+$ IF SRCTIME .GTS. OBJTIME
+$ THEN
+$   CXX [.base]ErrorHandler.cpp -
+         /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB'X11_DEF') -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
+         /STANDARD=GNU -
+         /ARCHITECTURE=HOST -
+         /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
+         /OBJECT=es40_idb_base_ErrorHandler.obj
+$ ENDIF
+$!
+$! Check if es40_idb_base_Event.obj is up-to-date...
+$!
+$ SRCTIME = F$CVTIME(F$FILE_ATTRIBUTES("[.base]Event.cpp","RDT"),"COMPARISON")
+$ OBJFILE = F$SEARCH("es40_idb_base_Event.obj")
+$ IF OBJFILE .NES. ""
+$ THEN
+$   OBJTIME = F$CVTIME(F$FILE_ATTRIBUTES("es40_idb_base_Event.obj","RDT"),"COMPARISON")
+$ ELSE
+$   OBJTIME = F$CVTIME("01-JAN-1970 00:00:00.00","COMPARISON")
+$ ENDIF
+$!
+$! Compile [.base]Event.cpp to es40_idb_base_Event.obj
+$ IF SRCTIME .GTS. OBJTIME
+$ THEN
+$   CXX [.base]Event.cpp -
+         /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB'X11_DEF') -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
+         /STANDARD=GNU -
+         /ARCHITECTURE=HOST -
+         /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
+         /OBJECT=es40_idb_base_Event.obj
+$ ENDIF
+$!
+$! Check if es40_idb_base_Exception.obj is up-to-date...
+$!
+$ SRCTIME = F$CVTIME(F$FILE_ATTRIBUTES("[.base]Exception.cpp","RDT"),"COMPARISON")
+$ OBJFILE = F$SEARCH("es40_idb_base_Exception.obj")
+$ IF OBJFILE .NES. ""
+$ THEN
+$   OBJTIME = F$CVTIME(F$FILE_ATTRIBUTES("es40_idb_base_Exception.obj","RDT"),"COMPARISON")
+$ ELSE
+$   OBJTIME = F$CVTIME("01-JAN-1970 00:00:00.00","COMPARISON")
+$ ENDIF
+$!
+$! Compile [.base]Exception.cpp to es40_idb_base_Exception.obj
+$ IF SRCTIME .GTS. OBJTIME
+$ THEN
+$   CXX [.base]Exception.cpp -
+         /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB'X11_DEF') -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
+         /STANDARD=GNU -
+         /ARCHITECTURE=HOST -
+         /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
+         /OBJECT=es40_idb_base_Exception.obj
+$ ENDIF
+$!
+$! Check if es40_idb_base_Mutex.obj is up-to-date...
+$!
+$ SRCTIME = F$CVTIME(F$FILE_ATTRIBUTES("[.base]Mutex.cpp","RDT"),"COMPARISON")
+$ OBJFILE = F$SEARCH("es40_idb_base_Mutex.obj")
+$ IF OBJFILE .NES. ""
+$ THEN
+$   OBJTIME = F$CVTIME(F$FILE_ATTRIBUTES("es40_idb_base_Mutex.obj","RDT"),"COMPARISON")
+$ ELSE
+$   OBJTIME = F$CVTIME("01-JAN-1970 00:00:00.00","COMPARISON")
+$ ENDIF
+$!
+$! Compile [.base]Mutex.cpp to es40_idb_base_Mutex.obj
+$ IF SRCTIME .GTS. OBJTIME
+$ THEN
+$   CXX [.base]Mutex.cpp -
+         /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB'X11_DEF') -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
+         /STANDARD=GNU -
+         /ARCHITECTURE=HOST -
+         /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
+         /OBJECT=es40_idb_base_Mutex.obj
+$ ENDIF
+$!
+$! Check if es40_idb_base_NumberFormatter.obj is up-to-date...
+$!
+$ SRCTIME = F$CVTIME(F$FILE_ATTRIBUTES("[.base]NumberFormatter.cpp","RDT"),"COMPARISON")
+$ OBJFILE = F$SEARCH("es40_idb_base_NumberFormatter.obj")
+$ IF OBJFILE .NES. ""
+$ THEN
+$   OBJTIME = F$CVTIME(F$FILE_ATTRIBUTES("es40_idb_base_NumberFormatter.obj","RDT"),"COMPARISON")
+$ ELSE
+$   OBJTIME = F$CVTIME("01-JAN-1970 00:00:00.00","COMPARISON")
+$ ENDIF
+$!
+$! Compile [.base]NumberFormatter.cpp to es40_idb_base_NumberFormatter.obj
+$ IF SRCTIME .GTS. OBJTIME
+$ THEN
+$   CXX [.base]NumberFormatter.cpp -
+         /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB'X11_DEF') -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
+         /STANDARD=GNU -
+         /ARCHITECTURE=HOST -
+         /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
+         /OBJECT=es40_idb_base_NumberFormatter.obj
+$ ENDIF
+$!
+$! Check if es40_idb_base_RefCountedObject.obj is up-to-date...
+$!
+$ SRCTIME = F$CVTIME(F$FILE_ATTRIBUTES("[.base]RefCountedObject.cpp","RDT"),"COMPARISON")
+$ OBJFILE = F$SEARCH("es40_idb_base_RefCountedObject.obj")
+$ IF OBJFILE .NES. ""
+$ THEN
+$   OBJTIME = F$CVTIME(F$FILE_ATTRIBUTES("es40_idb_base_RefCountedObject.obj","RDT"),"COMPARISON")
+$ ELSE
+$   OBJTIME = F$CVTIME("01-JAN-1970 00:00:00.00","COMPARISON")
+$ ENDIF
+$!
+$! Compile [.base]RefCountedObject.cpp to es40_idb_base_RefCountedObject.obj
+$ IF SRCTIME .GTS. OBJTIME
+$ THEN
+$   CXX [.base]RefCountedObject.cpp -
+         /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB'X11_DEF') -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
+         /STANDARD=GNU -
+         /ARCHITECTURE=HOST -
+         /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
+         /OBJECT=es40_idb_base_RefCountedObject.obj
+$ ENDIF
+$!
+$! Check if es40_idb_base_Runnable.obj is up-to-date...
+$!
+$ SRCTIME = F$CVTIME(F$FILE_ATTRIBUTES("[.base]Runnable.cpp","RDT"),"COMPARISON")
+$ OBJFILE = F$SEARCH("es40_idb_base_Runnable.obj")
+$ IF OBJFILE .NES. ""
+$ THEN
+$   OBJTIME = F$CVTIME(F$FILE_ATTRIBUTES("es40_idb_base_Runnable.obj","RDT"),"COMPARISON")
+$ ELSE
+$   OBJTIME = F$CVTIME("01-JAN-1970 00:00:00.00","COMPARISON")
+$ ENDIF
+$!
+$! Compile [.base]Runnable.cpp to es40_idb_base_Runnable.obj
+$ IF SRCTIME .GTS. OBJTIME
+$ THEN
+$   CXX [.base]Runnable.cpp -
+         /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB'X11_DEF') -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
+         /STANDARD=GNU -
+         /ARCHITECTURE=HOST -
+         /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
+         /OBJECT=es40_idb_base_Runnable.obj
+$ ENDIF
+$!
+$! Check if es40_idb_base_RWLock.obj is up-to-date...
+$!
+$ SRCTIME = F$CVTIME(F$FILE_ATTRIBUTES("[.base]RWLock.cpp","RDT"),"COMPARISON")
+$ OBJFILE = F$SEARCH("es40_idb_base_RWLock.obj")
+$ IF OBJFILE .NES. ""
+$ THEN
+$   OBJTIME = F$CVTIME(F$FILE_ATTRIBUTES("es40_idb_base_RWLock.obj","RDT"),"COMPARISON")
+$ ELSE
+$   OBJTIME = F$CVTIME("01-JAN-1970 00:00:00.00","COMPARISON")
+$ ENDIF
+$!
+$! Compile [.base]RWLock.cpp to es40_idb_base_RWLock.obj
+$ IF SRCTIME .GTS. OBJTIME
+$ THEN
+$   CXX [.base]RWLock.cpp -
+         /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB'X11_DEF') -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
+         /STANDARD=GNU -
+         /ARCHITECTURE=HOST -
+         /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
+         /OBJECT=es40_idb_base_RWLock.obj
+$ ENDIF
+$!
+$! Check if es40_idb_base_Semaphore.obj is up-to-date...
+$!
+$ SRCTIME = F$CVTIME(F$FILE_ATTRIBUTES("[.base]Semaphore.cpp","RDT"),"COMPARISON")
+$ OBJFILE = F$SEARCH("es40_idb_base_Semaphore.obj")
+$ IF OBJFILE .NES. ""
+$ THEN
+$   OBJTIME = F$CVTIME(F$FILE_ATTRIBUTES("es40_idb_base_Semaphore.obj","RDT"),"COMPARISON")
+$ ELSE
+$   OBJTIME = F$CVTIME("01-JAN-1970 00:00:00.00","COMPARISON")
+$ ENDIF
+$!
+$! Compile [.base]Semaphore.cpp to es40_idb_base_Semaphore.obj
+$ IF SRCTIME .GTS. OBJTIME
+$ THEN
+$   CXX [.base]Semaphore.cpp -
+         /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB'X11_DEF') -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
+         /STANDARD=GNU -
+         /ARCHITECTURE=HOST -
+         /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
+         /OBJECT=es40_idb_base_Semaphore.obj
+$ ENDIF
+$!
+$! Check if es40_idb_base_SignalHandler.obj is up-to-date...
+$!
+$ SRCTIME = F$CVTIME(F$FILE_ATTRIBUTES("[.base]SignalHandler.cpp","RDT"),"COMPARISON")
+$ OBJFILE = F$SEARCH("es40_idb_base_SignalHandler.obj")
+$ IF OBJFILE .NES. ""
+$ THEN
+$   OBJTIME = F$CVTIME(F$FILE_ATTRIBUTES("es40_idb_base_SignalHandler.obj","RDT"),"COMPARISON")
+$ ELSE
+$   OBJTIME = F$CVTIME("01-JAN-1970 00:00:00.00","COMPARISON")
+$ ENDIF
+$!
+$! Compile [.base]SignalHandler.cpp to es40_idb_base_SignalHandler.obj
+$ IF SRCTIME .GTS. OBJTIME
+$ THEN
+$   CXX [.base]SignalHandler.cpp -
+         /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB'X11_DEF') -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
+         /STANDARD=GNU -
+         /ARCHITECTURE=HOST -
+         /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
+         /OBJECT=es40_idb_base_SignalHandler.obj
+$ ENDIF
+$!
+$! Check if es40_idb_base_ThreadLocal.obj is up-to-date...
+$!
+$ SRCTIME = F$CVTIME(F$FILE_ATTRIBUTES("[.base]ThreadLocal.cpp","RDT"),"COMPARISON")
+$ OBJFILE = F$SEARCH("es40_idb_base_ThreadLocal.obj")
+$ IF OBJFILE .NES. ""
+$ THEN
+$   OBJTIME = F$CVTIME(F$FILE_ATTRIBUTES("es40_idb_base_ThreadLocal.obj","RDT"),"COMPARISON")
+$ ELSE
+$   OBJTIME = F$CVTIME("01-JAN-1970 00:00:00.00","COMPARISON")
+$ ENDIF
+$!
+$! Compile [.base]ThreadLocal.cpp to es40_idb_base_ThreadLocal.obj
+$ IF SRCTIME .GTS. OBJTIME
+$ THEN
+$   CXX [.base]ThreadLocal.cpp -
+         /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB'X11_DEF') -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
+         /STANDARD=GNU -
+         /ARCHITECTURE=HOST -
+         /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
+         /OBJECT=es40_idb_base_ThreadLocal.obj
+$ ENDIF
+$!
+$! Check if es40_idb_base_Thread.obj is up-to-date...
+$!
+$ SRCTIME = F$CVTIME(F$FILE_ATTRIBUTES("[.base]Thread.cpp","RDT"),"COMPARISON")
+$ OBJFILE = F$SEARCH("es40_idb_base_Thread.obj")
+$ IF OBJFILE .NES. ""
+$ THEN
+$   OBJTIME = F$CVTIME(F$FILE_ATTRIBUTES("es40_idb_base_Thread.obj","RDT"),"COMPARISON")
+$ ELSE
+$   OBJTIME = F$CVTIME("01-JAN-1970 00:00:00.00","COMPARISON")
+$ ENDIF
+$!
+$! Compile [.base]Thread.cpp to es40_idb_base_Thread.obj
+$ IF SRCTIME .GTS. OBJTIME
+$ THEN
+$   CXX [.base]Thread.cpp -
+         /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB'X11_DEF') -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
+         /STANDARD=GNU -
+         /ARCHITECTURE=HOST -
+         /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
+         /OBJECT=es40_idb_base_Thread.obj
+$ ENDIF
+$!
 $! Link es40_idb
 $!
 $ SAY "Linking es40_idb..."
 $!
-$ CXXLINK es40_idb_vms_Event.obj,es40_idb_vms_Exception.obj,es40_idb_vms_Mutex.obj,es40_idb_vms_Runnable.obj,es40_idb_vms_RWLock.obj,es40_idb_vms_Semaphore.obj,es40_idb_vms_Thread.obj,es40_idb_vms_ErrorHandler.obj,es40_idb_vms_Bugcheck.obj,es40_idb_vms_Debugger.obj,es40_idb_vms_ThreadLocal.obj,es40_idb_vms_Timestamp.obj,es40_idb_vms_RefCountedObject.obj,es40_idb_AliM1543C.obj,es40_idb_AliM1543C_ide.obj,es40_idb_AliM1543C_usb.obj,es40_idb_AlphaCPU.obj,es40_idb_AlphaCPU_ieeefloat.obj,es40_idb_AlphaCPU_vaxfloat.obj,es40_idb_AlphaCPU_vmspal.obj,es40_idb_AlphaSim.obj,es40_idb_Cirrus.obj,es40_idb_Configurator.obj,es40_idb_DEC21143.obj,es40_idb_Disk.obj,es40_idb_DiskController.obj,es40_idb_DiskDevice.obj,es40_idb_DiskFile.obj,es40_idb_DiskRam.obj,es40_idb_DMA.obj,es40_idb_DPR.obj,es40_idb_es40_debug.obj,es40_idb_Ethernet.obj,es40_idb_Exception.obj,es40_idb_Flash.obj,es40_idb_FloppyController.obj,es40_idb_Keyboard.obj,es40_idb_lockstep.obj,es40_idb_PCIDevice.obj,es40_idb_Port80.obj,es40_idb_S3Trio64.obj,es40_idb_SCSIBus.obj,es40_idb_SCSIDevice.obj,es40_idb_Serial.obj,es40_idb_StdAfx.obj,es40_idb_Sym53C810.obj,es40_idb_Sym53C895.obj,es40_idb_SystemComponent.obj,es40_idb_System.obj,es40_idb_TraceEngine.obj,es40_idb_VGA.obj,es40_idb_gui_gui.obj,es40_idb_gui_gui_x11.obj,es40_idb_gui_keymap.obj,es40_idb_gui_scancodes.obj'X11_LIB' -
+$ CXXLINK es40_idb_AliM1543C.obj,es40_idb_AliM1543C_ide.obj,es40_idb_AliM1543C_usb.obj,es40_idb_AlphaCPU.obj,es40_idb_AlphaCPU_ieeefloat.obj,es40_idb_AlphaCPU_vaxfloat.obj,es40_idb_AlphaCPU_vmspal.obj,es40_idb_AlphaSim.obj,es40_idb_Cirrus.obj,es40_idb_Configurator.obj,es40_idb_DEC21143.obj,es40_idb_Disk.obj,es40_idb_DiskController.obj,es40_idb_DiskDevice.obj,es40_idb_DiskFile.obj,es40_idb_DiskRam.obj,es40_idb_DMA.obj,es40_idb_DPR.obj,es40_idb_es40_debug.obj,es40_idb_Ethernet.obj,es40_idb_Flash.obj,es40_idb_FloppyController.obj,es40_idb_Keyboard.obj,es40_idb_lockstep.obj,es40_idb_PCIDevice.obj,es40_idb_Port80.obj,es40_idb_S3Trio64.obj,es40_idb_SCSIBus.obj,es40_idb_SCSIDevice.obj,es40_idb_Serial.obj,es40_idb_StdAfx.obj,es40_idb_Sym53C810.obj,es40_idb_Sym53C895.obj,es40_idb_SystemComponent.obj,es40_idb_System.obj,es40_idb_TraceEngine.obj,es40_idb_VGA.obj,es40_idb_gui_gui.obj,es40_idb_gui_gui_x11.obj,es40_idb_gui_keymap.obj,es40_idb_gui_scancodes.obj,es40_idb_gui_sdl.obj,es40_idb_base_Bugcheck.obj,es40_idb_base_ErrorHandler.obj,es40_idb_base_Event.obj,es40_idb_base_Exception.obj,es40_idb_base_Mutex.obj,es40_idb_base_NumberFormatter.obj,es40_idb_base_RefCountedObject.obj,es40_idb_base_Runnable.obj,es40_idb_base_RWLock.obj,es40_idb_base_Semaphore.obj,es40_idb_base_SignalHandler.obj,es40_idb_base_ThreadLocal.obj,es40_idb_base_Thread.obj'X11_LIB' -
            /EXECUTABLE=es40_idb.exe
 $!
 $! Compile sources for es40_lss
@@ -2629,305 +2629,6 @@ $!
 $! Compile with the following defines: ES40,__USE_STD_IOSTREAM,IDB,LSS
 $!
 $ SAY "Compiling es40_lss..."
-$!
-$! Check if es40_lss_vms_Event.obj is up-to-date...
-$!
-$ SRCTIME = F$CVTIME(F$FILE_ATTRIBUTES("[.vms]Event.cpp","RDT"),"COMPARISON")
-$ OBJFILE = F$SEARCH("es40_lss_vms_Event.obj")
-$ IF OBJFILE .NES. ""
-$ THEN
-$   OBJTIME = F$CVTIME(F$FILE_ATTRIBUTES("es40_lss_vms_Event.obj","RDT"),"COMPARISON")
-$ ELSE
-$   OBJTIME = F$CVTIME("01-JAN-1970 00:00:00.00","COMPARISON")
-$ ENDIF
-$!
-$! Compile [.vms]Event.cpp to es40_lss_vms_Event.obj
-$ IF SRCTIME .GTS. OBJTIME
-$ THEN
-$   CXX [.vms]Event.cpp -
-         /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB,LSS'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
-         /STANDARD=GNU -
-         /ARCHITECTURE=HOST -
-         /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
-         /OBJECT=es40_lss_vms_Event.obj
-$ ENDIF
-$!
-$! Check if es40_lss_vms_Exception.obj is up-to-date...
-$!
-$ SRCTIME = F$CVTIME(F$FILE_ATTRIBUTES("[.vms]Exception.cpp","RDT"),"COMPARISON")
-$ OBJFILE = F$SEARCH("es40_lss_vms_Exception.obj")
-$ IF OBJFILE .NES. ""
-$ THEN
-$   OBJTIME = F$CVTIME(F$FILE_ATTRIBUTES("es40_lss_vms_Exception.obj","RDT"),"COMPARISON")
-$ ELSE
-$   OBJTIME = F$CVTIME("01-JAN-1970 00:00:00.00","COMPARISON")
-$ ENDIF
-$!
-$! Compile [.vms]Exception.cpp to es40_lss_vms_Exception.obj
-$ IF SRCTIME .GTS. OBJTIME
-$ THEN
-$   CXX [.vms]Exception.cpp -
-         /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB,LSS'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
-         /STANDARD=GNU -
-         /ARCHITECTURE=HOST -
-         /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
-         /OBJECT=es40_lss_vms_Exception.obj
-$ ENDIF
-$!
-$! Check if es40_lss_vms_Mutex.obj is up-to-date...
-$!
-$ SRCTIME = F$CVTIME(F$FILE_ATTRIBUTES("[.vms]Mutex.cpp","RDT"),"COMPARISON")
-$ OBJFILE = F$SEARCH("es40_lss_vms_Mutex.obj")
-$ IF OBJFILE .NES. ""
-$ THEN
-$   OBJTIME = F$CVTIME(F$FILE_ATTRIBUTES("es40_lss_vms_Mutex.obj","RDT"),"COMPARISON")
-$ ELSE
-$   OBJTIME = F$CVTIME("01-JAN-1970 00:00:00.00","COMPARISON")
-$ ENDIF
-$!
-$! Compile [.vms]Mutex.cpp to es40_lss_vms_Mutex.obj
-$ IF SRCTIME .GTS. OBJTIME
-$ THEN
-$   CXX [.vms]Mutex.cpp -
-         /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB,LSS'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
-         /STANDARD=GNU -
-         /ARCHITECTURE=HOST -
-         /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
-         /OBJECT=es40_lss_vms_Mutex.obj
-$ ENDIF
-$!
-$! Check if es40_lss_vms_Runnable.obj is up-to-date...
-$!
-$ SRCTIME = F$CVTIME(F$FILE_ATTRIBUTES("[.vms]Runnable.cpp","RDT"),"COMPARISON")
-$ OBJFILE = F$SEARCH("es40_lss_vms_Runnable.obj")
-$ IF OBJFILE .NES. ""
-$ THEN
-$   OBJTIME = F$CVTIME(F$FILE_ATTRIBUTES("es40_lss_vms_Runnable.obj","RDT"),"COMPARISON")
-$ ELSE
-$   OBJTIME = F$CVTIME("01-JAN-1970 00:00:00.00","COMPARISON")
-$ ENDIF
-$!
-$! Compile [.vms]Runnable.cpp to es40_lss_vms_Runnable.obj
-$ IF SRCTIME .GTS. OBJTIME
-$ THEN
-$   CXX [.vms]Runnable.cpp -
-         /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB,LSS'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
-         /STANDARD=GNU -
-         /ARCHITECTURE=HOST -
-         /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
-         /OBJECT=es40_lss_vms_Runnable.obj
-$ ENDIF
-$!
-$! Check if es40_lss_vms_RWLock.obj is up-to-date...
-$!
-$ SRCTIME = F$CVTIME(F$FILE_ATTRIBUTES("[.vms]RWLock.cpp","RDT"),"COMPARISON")
-$ OBJFILE = F$SEARCH("es40_lss_vms_RWLock.obj")
-$ IF OBJFILE .NES. ""
-$ THEN
-$   OBJTIME = F$CVTIME(F$FILE_ATTRIBUTES("es40_lss_vms_RWLock.obj","RDT"),"COMPARISON")
-$ ELSE
-$   OBJTIME = F$CVTIME("01-JAN-1970 00:00:00.00","COMPARISON")
-$ ENDIF
-$!
-$! Compile [.vms]RWLock.cpp to es40_lss_vms_RWLock.obj
-$ IF SRCTIME .GTS. OBJTIME
-$ THEN
-$   CXX [.vms]RWLock.cpp -
-         /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB,LSS'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
-         /STANDARD=GNU -
-         /ARCHITECTURE=HOST -
-         /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
-         /OBJECT=es40_lss_vms_RWLock.obj
-$ ENDIF
-$!
-$! Check if es40_lss_vms_Semaphore.obj is up-to-date...
-$!
-$ SRCTIME = F$CVTIME(F$FILE_ATTRIBUTES("[.vms]Semaphore.cpp","RDT"),"COMPARISON")
-$ OBJFILE = F$SEARCH("es40_lss_vms_Semaphore.obj")
-$ IF OBJFILE .NES. ""
-$ THEN
-$   OBJTIME = F$CVTIME(F$FILE_ATTRIBUTES("es40_lss_vms_Semaphore.obj","RDT"),"COMPARISON")
-$ ELSE
-$   OBJTIME = F$CVTIME("01-JAN-1970 00:00:00.00","COMPARISON")
-$ ENDIF
-$!
-$! Compile [.vms]Semaphore.cpp to es40_lss_vms_Semaphore.obj
-$ IF SRCTIME .GTS. OBJTIME
-$ THEN
-$   CXX [.vms]Semaphore.cpp -
-         /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB,LSS'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
-         /STANDARD=GNU -
-         /ARCHITECTURE=HOST -
-         /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
-         /OBJECT=es40_lss_vms_Semaphore.obj
-$ ENDIF
-$!
-$! Check if es40_lss_vms_Thread.obj is up-to-date...
-$!
-$ SRCTIME = F$CVTIME(F$FILE_ATTRIBUTES("[.vms]Thread.cpp","RDT"),"COMPARISON")
-$ OBJFILE = F$SEARCH("es40_lss_vms_Thread.obj")
-$ IF OBJFILE .NES. ""
-$ THEN
-$   OBJTIME = F$CVTIME(F$FILE_ATTRIBUTES("es40_lss_vms_Thread.obj","RDT"),"COMPARISON")
-$ ELSE
-$   OBJTIME = F$CVTIME("01-JAN-1970 00:00:00.00","COMPARISON")
-$ ENDIF
-$!
-$! Compile [.vms]Thread.cpp to es40_lss_vms_Thread.obj
-$ IF SRCTIME .GTS. OBJTIME
-$ THEN
-$   CXX [.vms]Thread.cpp -
-         /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB,LSS'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
-         /STANDARD=GNU -
-         /ARCHITECTURE=HOST -
-         /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
-         /OBJECT=es40_lss_vms_Thread.obj
-$ ENDIF
-$!
-$! Check if es40_lss_vms_ErrorHandler.obj is up-to-date...
-$!
-$ SRCTIME = F$CVTIME(F$FILE_ATTRIBUTES("[.vms]ErrorHandler.cpp","RDT"),"COMPARISON")
-$ OBJFILE = F$SEARCH("es40_lss_vms_ErrorHandler.obj")
-$ IF OBJFILE .NES. ""
-$ THEN
-$   OBJTIME = F$CVTIME(F$FILE_ATTRIBUTES("es40_lss_vms_ErrorHandler.obj","RDT"),"COMPARISON")
-$ ELSE
-$   OBJTIME = F$CVTIME("01-JAN-1970 00:00:00.00","COMPARISON")
-$ ENDIF
-$!
-$! Compile [.vms]ErrorHandler.cpp to es40_lss_vms_ErrorHandler.obj
-$ IF SRCTIME .GTS. OBJTIME
-$ THEN
-$   CXX [.vms]ErrorHandler.cpp -
-         /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB,LSS'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
-         /STANDARD=GNU -
-         /ARCHITECTURE=HOST -
-         /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
-         /OBJECT=es40_lss_vms_ErrorHandler.obj
-$ ENDIF
-$!
-$! Check if es40_lss_vms_Bugcheck.obj is up-to-date...
-$!
-$ SRCTIME = F$CVTIME(F$FILE_ATTRIBUTES("[.vms]Bugcheck.cpp","RDT"),"COMPARISON")
-$ OBJFILE = F$SEARCH("es40_lss_vms_Bugcheck.obj")
-$ IF OBJFILE .NES. ""
-$ THEN
-$   OBJTIME = F$CVTIME(F$FILE_ATTRIBUTES("es40_lss_vms_Bugcheck.obj","RDT"),"COMPARISON")
-$ ELSE
-$   OBJTIME = F$CVTIME("01-JAN-1970 00:00:00.00","COMPARISON")
-$ ENDIF
-$!
-$! Compile [.vms]Bugcheck.cpp to es40_lss_vms_Bugcheck.obj
-$ IF SRCTIME .GTS. OBJTIME
-$ THEN
-$   CXX [.vms]Bugcheck.cpp -
-         /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB,LSS'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
-         /STANDARD=GNU -
-         /ARCHITECTURE=HOST -
-         /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
-         /OBJECT=es40_lss_vms_Bugcheck.obj
-$ ENDIF
-$!
-$! Check if es40_lss_vms_Debugger.obj is up-to-date...
-$!
-$ SRCTIME = F$CVTIME(F$FILE_ATTRIBUTES("[.vms]Debugger.cpp","RDT"),"COMPARISON")
-$ OBJFILE = F$SEARCH("es40_lss_vms_Debugger.obj")
-$ IF OBJFILE .NES. ""
-$ THEN
-$   OBJTIME = F$CVTIME(F$FILE_ATTRIBUTES("es40_lss_vms_Debugger.obj","RDT"),"COMPARISON")
-$ ELSE
-$   OBJTIME = F$CVTIME("01-JAN-1970 00:00:00.00","COMPARISON")
-$ ENDIF
-$!
-$! Compile [.vms]Debugger.cpp to es40_lss_vms_Debugger.obj
-$ IF SRCTIME .GTS. OBJTIME
-$ THEN
-$   CXX [.vms]Debugger.cpp -
-         /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB,LSS'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
-         /STANDARD=GNU -
-         /ARCHITECTURE=HOST -
-         /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
-         /OBJECT=es40_lss_vms_Debugger.obj
-$ ENDIF
-$!
-$! Check if es40_lss_vms_ThreadLocal.obj is up-to-date...
-$!
-$ SRCTIME = F$CVTIME(F$FILE_ATTRIBUTES("[.vms]ThreadLocal.cpp","RDT"),"COMPARISON")
-$ OBJFILE = F$SEARCH("es40_lss_vms_ThreadLocal.obj")
-$ IF OBJFILE .NES. ""
-$ THEN
-$   OBJTIME = F$CVTIME(F$FILE_ATTRIBUTES("es40_lss_vms_ThreadLocal.obj","RDT"),"COMPARISON")
-$ ELSE
-$   OBJTIME = F$CVTIME("01-JAN-1970 00:00:00.00","COMPARISON")
-$ ENDIF
-$!
-$! Compile [.vms]ThreadLocal.cpp to es40_lss_vms_ThreadLocal.obj
-$ IF SRCTIME .GTS. OBJTIME
-$ THEN
-$   CXX [.vms]ThreadLocal.cpp -
-         /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB,LSS'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
-         /STANDARD=GNU -
-         /ARCHITECTURE=HOST -
-         /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
-         /OBJECT=es40_lss_vms_ThreadLocal.obj
-$ ENDIF
-$!
-$! Check if es40_lss_vms_Timestamp.obj is up-to-date...
-$!
-$ SRCTIME = F$CVTIME(F$FILE_ATTRIBUTES("[.vms]Timestamp.cpp","RDT"),"COMPARISON")
-$ OBJFILE = F$SEARCH("es40_lss_vms_Timestamp.obj")
-$ IF OBJFILE .NES. ""
-$ THEN
-$   OBJTIME = F$CVTIME(F$FILE_ATTRIBUTES("es40_lss_vms_Timestamp.obj","RDT"),"COMPARISON")
-$ ELSE
-$   OBJTIME = F$CVTIME("01-JAN-1970 00:00:00.00","COMPARISON")
-$ ENDIF
-$!
-$! Compile [.vms]Timestamp.cpp to es40_lss_vms_Timestamp.obj
-$ IF SRCTIME .GTS. OBJTIME
-$ THEN
-$   CXX [.vms]Timestamp.cpp -
-         /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB,LSS'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
-         /STANDARD=GNU -
-         /ARCHITECTURE=HOST -
-         /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
-         /OBJECT=es40_lss_vms_Timestamp.obj
-$ ENDIF
-$!
-$! Check if es40_lss_vms_RefCountedObject.obj is up-to-date...
-$!
-$ SRCTIME = F$CVTIME(F$FILE_ATTRIBUTES("[.vms]RefCountedObject.cpp","RDT"),"COMPARISON")
-$ OBJFILE = F$SEARCH("es40_lss_vms_RefCountedObject.obj")
-$ IF OBJFILE .NES. ""
-$ THEN
-$   OBJTIME = F$CVTIME(F$FILE_ATTRIBUTES("es40_lss_vms_RefCountedObject.obj","RDT"),"COMPARISON")
-$ ELSE
-$   OBJTIME = F$CVTIME("01-JAN-1970 00:00:00.00","COMPARISON")
-$ ENDIF
-$!
-$! Compile [.vms]RefCountedObject.cpp to es40_lss_vms_RefCountedObject.obj
-$ IF SRCTIME .GTS. OBJTIME
-$ THEN
-$   CXX [.vms]RefCountedObject.cpp -
-         /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB,LSS'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
-         /STANDARD=GNU -
-         /ARCHITECTURE=HOST -
-         /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
-         /OBJECT=es40_lss_vms_RefCountedObject.obj
-$ ENDIF
 $!
 $! Check if es40_lss_AliM1543C.obj is up-to-date...
 $!
@@ -2945,7 +2646,7 @@ $ IF SRCTIME .GTS. OBJTIME
 $ THEN
 $   CXX AliM1543C.cpp -
          /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB,LSS'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
          /STANDARD=GNU -
          /ARCHITECTURE=HOST -
          /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
@@ -2968,7 +2669,7 @@ $ IF SRCTIME .GTS. OBJTIME
 $ THEN
 $   CXX AliM1543C_ide.cpp -
          /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB,LSS'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
          /STANDARD=GNU -
          /ARCHITECTURE=HOST -
          /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
@@ -2991,7 +2692,7 @@ $ IF SRCTIME .GTS. OBJTIME
 $ THEN
 $   CXX AliM1543C_usb.cpp -
          /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB,LSS'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
          /STANDARD=GNU -
          /ARCHITECTURE=HOST -
          /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
@@ -3014,7 +2715,7 @@ $ IF SRCTIME .GTS. OBJTIME
 $ THEN
 $   CXX AlphaCPU.cpp -
          /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB,LSS'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
          /STANDARD=GNU -
          /ARCHITECTURE=HOST -
          /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
@@ -3037,7 +2738,7 @@ $ IF SRCTIME .GTS. OBJTIME
 $ THEN
 $   CXX AlphaCPU_ieeefloat.cpp -
          /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB,LSS'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
          /STANDARD=GNU -
          /ARCHITECTURE=HOST -
          /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
@@ -3060,7 +2761,7 @@ $ IF SRCTIME .GTS. OBJTIME
 $ THEN
 $   CXX AlphaCPU_vaxfloat.cpp -
          /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB,LSS'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
          /STANDARD=GNU -
          /ARCHITECTURE=HOST -
          /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
@@ -3083,7 +2784,7 @@ $ IF SRCTIME .GTS. OBJTIME
 $ THEN
 $   CXX AlphaCPU_vmspal.cpp -
          /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB,LSS'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
          /STANDARD=GNU -
          /ARCHITECTURE=HOST -
          /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
@@ -3106,7 +2807,7 @@ $ IF SRCTIME .GTS. OBJTIME
 $ THEN
 $   CXX AlphaSim.cpp -
          /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB,LSS'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
          /STANDARD=GNU -
          /ARCHITECTURE=HOST -
          /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
@@ -3129,7 +2830,7 @@ $ IF SRCTIME .GTS. OBJTIME
 $ THEN
 $   CXX Cirrus.cpp -
          /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB,LSS'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
          /STANDARD=GNU -
          /ARCHITECTURE=HOST -
          /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
@@ -3152,7 +2853,7 @@ $ IF SRCTIME .GTS. OBJTIME
 $ THEN
 $   CXX Configurator.cpp -
          /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB,LSS'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
          /STANDARD=GNU -
          /ARCHITECTURE=HOST -
          /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
@@ -3175,7 +2876,7 @@ $ IF SRCTIME .GTS. OBJTIME
 $ THEN
 $   CXX DEC21143.cpp -
          /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB,LSS'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
          /STANDARD=GNU -
          /ARCHITECTURE=HOST -
          /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
@@ -3198,7 +2899,7 @@ $ IF SRCTIME .GTS. OBJTIME
 $ THEN
 $   CXX Disk.cpp -
          /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB,LSS'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
          /STANDARD=GNU -
          /ARCHITECTURE=HOST -
          /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
@@ -3221,7 +2922,7 @@ $ IF SRCTIME .GTS. OBJTIME
 $ THEN
 $   CXX DiskController.cpp -
          /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB,LSS'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
          /STANDARD=GNU -
          /ARCHITECTURE=HOST -
          /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
@@ -3244,7 +2945,7 @@ $ IF SRCTIME .GTS. OBJTIME
 $ THEN
 $   CXX DiskDevice.cpp -
          /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB,LSS'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
          /STANDARD=GNU -
          /ARCHITECTURE=HOST -
          /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
@@ -3267,7 +2968,7 @@ $ IF SRCTIME .GTS. OBJTIME
 $ THEN
 $   CXX DiskFile.cpp -
          /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB,LSS'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
          /STANDARD=GNU -
          /ARCHITECTURE=HOST -
          /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
@@ -3290,7 +2991,7 @@ $ IF SRCTIME .GTS. OBJTIME
 $ THEN
 $   CXX DiskRam.cpp -
          /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB,LSS'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
          /STANDARD=GNU -
          /ARCHITECTURE=HOST -
          /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
@@ -3313,7 +3014,7 @@ $ IF SRCTIME .GTS. OBJTIME
 $ THEN
 $   CXX DMA.cpp -
          /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB,LSS'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
          /STANDARD=GNU -
          /ARCHITECTURE=HOST -
          /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
@@ -3336,7 +3037,7 @@ $ IF SRCTIME .GTS. OBJTIME
 $ THEN
 $   CXX DPR.cpp -
          /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB,LSS'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
          /STANDARD=GNU -
          /ARCHITECTURE=HOST -
          /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
@@ -3359,7 +3060,7 @@ $ IF SRCTIME .GTS. OBJTIME
 $ THEN
 $   CXX es40_debug.cpp -
          /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB,LSS'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
          /STANDARD=GNU -
          /ARCHITECTURE=HOST -
          /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
@@ -3382,34 +3083,11 @@ $ IF SRCTIME .GTS. OBJTIME
 $ THEN
 $   CXX Ethernet.cpp -
          /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB,LSS'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
          /STANDARD=GNU -
          /ARCHITECTURE=HOST -
          /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
          /OBJECT=es40_lss_Ethernet.obj
-$ ENDIF
-$!
-$! Check if es40_lss_Exception.obj is up-to-date...
-$!
-$ SRCTIME = F$CVTIME(F$FILE_ATTRIBUTES("Exception.cpp","RDT"),"COMPARISON")
-$ OBJFILE = F$SEARCH("es40_lss_Exception.obj")
-$ IF OBJFILE .NES. ""
-$ THEN
-$   OBJTIME = F$CVTIME(F$FILE_ATTRIBUTES("es40_lss_Exception.obj","RDT"),"COMPARISON")
-$ ELSE
-$   OBJTIME = F$CVTIME("01-JAN-1970 00:00:00.00","COMPARISON")
-$ ENDIF
-$!
-$! Compile Exception.cpp to es40_lss_Exception.obj
-$ IF SRCTIME .GTS. OBJTIME
-$ THEN
-$   CXX Exception.cpp -
-         /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB,LSS'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
-         /STANDARD=GNU -
-         /ARCHITECTURE=HOST -
-         /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
-         /OBJECT=es40_lss_Exception.obj
 $ ENDIF
 $!
 $! Check if es40_lss_Flash.obj is up-to-date...
@@ -3428,7 +3106,7 @@ $ IF SRCTIME .GTS. OBJTIME
 $ THEN
 $   CXX Flash.cpp -
          /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB,LSS'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
          /STANDARD=GNU -
          /ARCHITECTURE=HOST -
          /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
@@ -3451,7 +3129,7 @@ $ IF SRCTIME .GTS. OBJTIME
 $ THEN
 $   CXX FloppyController.cpp -
          /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB,LSS'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
          /STANDARD=GNU -
          /ARCHITECTURE=HOST -
          /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
@@ -3474,7 +3152,7 @@ $ IF SRCTIME .GTS. OBJTIME
 $ THEN
 $   CXX Keyboard.cpp -
          /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB,LSS'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
          /STANDARD=GNU -
          /ARCHITECTURE=HOST -
          /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
@@ -3497,7 +3175,7 @@ $ IF SRCTIME .GTS. OBJTIME
 $ THEN
 $   CXX lockstep.cpp -
          /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB,LSS'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
          /STANDARD=GNU -
          /ARCHITECTURE=HOST -
          /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
@@ -3520,7 +3198,7 @@ $ IF SRCTIME .GTS. OBJTIME
 $ THEN
 $   CXX PCIDevice.cpp -
          /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB,LSS'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
          /STANDARD=GNU -
          /ARCHITECTURE=HOST -
          /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
@@ -3543,7 +3221,7 @@ $ IF SRCTIME .GTS. OBJTIME
 $ THEN
 $   CXX Port80.cpp -
          /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB,LSS'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
          /STANDARD=GNU -
          /ARCHITECTURE=HOST -
          /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
@@ -3566,7 +3244,7 @@ $ IF SRCTIME .GTS. OBJTIME
 $ THEN
 $   CXX S3Trio64.cpp -
          /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB,LSS'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
          /STANDARD=GNU -
          /ARCHITECTURE=HOST -
          /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
@@ -3589,7 +3267,7 @@ $ IF SRCTIME .GTS. OBJTIME
 $ THEN
 $   CXX SCSIBus.cpp -
          /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB,LSS'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
          /STANDARD=GNU -
          /ARCHITECTURE=HOST -
          /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
@@ -3612,7 +3290,7 @@ $ IF SRCTIME .GTS. OBJTIME
 $ THEN
 $   CXX SCSIDevice.cpp -
          /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB,LSS'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
          /STANDARD=GNU -
          /ARCHITECTURE=HOST -
          /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
@@ -3635,7 +3313,7 @@ $ IF SRCTIME .GTS. OBJTIME
 $ THEN
 $   CXX Serial.cpp -
          /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB,LSS'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
          /STANDARD=GNU -
          /ARCHITECTURE=HOST -
          /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
@@ -3658,7 +3336,7 @@ $ IF SRCTIME .GTS. OBJTIME
 $ THEN
 $   CXX StdAfx.cpp -
          /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB,LSS'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
          /STANDARD=GNU -
          /ARCHITECTURE=HOST -
          /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
@@ -3681,7 +3359,7 @@ $ IF SRCTIME .GTS. OBJTIME
 $ THEN
 $   CXX Sym53C810.cpp -
          /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB,LSS'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
          /STANDARD=GNU -
          /ARCHITECTURE=HOST -
          /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
@@ -3704,7 +3382,7 @@ $ IF SRCTIME .GTS. OBJTIME
 $ THEN
 $   CXX Sym53C895.cpp -
          /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB,LSS'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
          /STANDARD=GNU -
          /ARCHITECTURE=HOST -
          /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
@@ -3727,7 +3405,7 @@ $ IF SRCTIME .GTS. OBJTIME
 $ THEN
 $   CXX SystemComponent.cpp -
          /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB,LSS'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
          /STANDARD=GNU -
          /ARCHITECTURE=HOST -
          /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
@@ -3750,7 +3428,7 @@ $ IF SRCTIME .GTS. OBJTIME
 $ THEN
 $   CXX System.cpp -
          /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB,LSS'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
          /STANDARD=GNU -
          /ARCHITECTURE=HOST -
          /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
@@ -3773,7 +3451,7 @@ $ IF SRCTIME .GTS. OBJTIME
 $ THEN
 $   CXX TraceEngine.cpp -
          /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB,LSS'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
          /STANDARD=GNU -
          /ARCHITECTURE=HOST -
          /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
@@ -3796,7 +3474,7 @@ $ IF SRCTIME .GTS. OBJTIME
 $ THEN
 $   CXX VGA.cpp -
          /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB,LSS'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
          /STANDARD=GNU -
          /ARCHITECTURE=HOST -
          /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
@@ -3819,7 +3497,7 @@ $ IF SRCTIME .GTS. OBJTIME
 $ THEN
 $   CXX [.gui]gui.cpp -
          /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB,LSS'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
          /STANDARD=GNU -
          /ARCHITECTURE=HOST -
          /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
@@ -3842,7 +3520,7 @@ $ IF SRCTIME .GTS. OBJTIME
 $ THEN
 $   CXX [.gui]gui_x11.cpp -
          /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB,LSS'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
          /STANDARD=GNU -
          /ARCHITECTURE=HOST -
          /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
@@ -3865,7 +3543,7 @@ $ IF SRCTIME .GTS. OBJTIME
 $ THEN
 $   CXX [.gui]keymap.cpp -
          /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB,LSS'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
          /STANDARD=GNU -
          /ARCHITECTURE=HOST -
          /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
@@ -3888,18 +3566,340 @@ $ IF SRCTIME .GTS. OBJTIME
 $ THEN
 $   CXX [.gui]scancodes.cpp -
          /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB,LSS'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
          /STANDARD=GNU -
          /ARCHITECTURE=HOST -
          /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
          /OBJECT=es40_lss_gui_scancodes.obj
 $ ENDIF
 $!
+$! Check if es40_lss_gui_sdl.obj is up-to-date...
+$!
+$ SRCTIME = F$CVTIME(F$FILE_ATTRIBUTES("[.gui]sdl.cpp","RDT"),"COMPARISON")
+$ OBJFILE = F$SEARCH("es40_lss_gui_sdl.obj")
+$ IF OBJFILE .NES. ""
+$ THEN
+$   OBJTIME = F$CVTIME(F$FILE_ATTRIBUTES("es40_lss_gui_sdl.obj","RDT"),"COMPARISON")
+$ ELSE
+$   OBJTIME = F$CVTIME("01-JAN-1970 00:00:00.00","COMPARISON")
+$ ENDIF
+$!
+$! Compile [.gui]sdl.cpp to es40_lss_gui_sdl.obj
+$ IF SRCTIME .GTS. OBJTIME
+$ THEN
+$   CXX [.gui]sdl.cpp -
+         /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB,LSS'X11_DEF') -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
+         /STANDARD=GNU -
+         /ARCHITECTURE=HOST -
+         /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
+         /OBJECT=es40_lss_gui_sdl.obj
+$ ENDIF
+$!
+$! Check if es40_lss_base_Bugcheck.obj is up-to-date...
+$!
+$ SRCTIME = F$CVTIME(F$FILE_ATTRIBUTES("[.base]Bugcheck.cpp","RDT"),"COMPARISON")
+$ OBJFILE = F$SEARCH("es40_lss_base_Bugcheck.obj")
+$ IF OBJFILE .NES. ""
+$ THEN
+$   OBJTIME = F$CVTIME(F$FILE_ATTRIBUTES("es40_lss_base_Bugcheck.obj","RDT"),"COMPARISON")
+$ ELSE
+$   OBJTIME = F$CVTIME("01-JAN-1970 00:00:00.00","COMPARISON")
+$ ENDIF
+$!
+$! Compile [.base]Bugcheck.cpp to es40_lss_base_Bugcheck.obj
+$ IF SRCTIME .GTS. OBJTIME
+$ THEN
+$   CXX [.base]Bugcheck.cpp -
+         /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB,LSS'X11_DEF') -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
+         /STANDARD=GNU -
+         /ARCHITECTURE=HOST -
+         /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
+         /OBJECT=es40_lss_base_Bugcheck.obj
+$ ENDIF
+$!
+$! Check if es40_lss_base_ErrorHandler.obj is up-to-date...
+$!
+$ SRCTIME = F$CVTIME(F$FILE_ATTRIBUTES("[.base]ErrorHandler.cpp","RDT"),"COMPARISON")
+$ OBJFILE = F$SEARCH("es40_lss_base_ErrorHandler.obj")
+$ IF OBJFILE .NES. ""
+$ THEN
+$   OBJTIME = F$CVTIME(F$FILE_ATTRIBUTES("es40_lss_base_ErrorHandler.obj","RDT"),"COMPARISON")
+$ ELSE
+$   OBJTIME = F$CVTIME("01-JAN-1970 00:00:00.00","COMPARISON")
+$ ENDIF
+$!
+$! Compile [.base]ErrorHandler.cpp to es40_lss_base_ErrorHandler.obj
+$ IF SRCTIME .GTS. OBJTIME
+$ THEN
+$   CXX [.base]ErrorHandler.cpp -
+         /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB,LSS'X11_DEF') -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
+         /STANDARD=GNU -
+         /ARCHITECTURE=HOST -
+         /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
+         /OBJECT=es40_lss_base_ErrorHandler.obj
+$ ENDIF
+$!
+$! Check if es40_lss_base_Event.obj is up-to-date...
+$!
+$ SRCTIME = F$CVTIME(F$FILE_ATTRIBUTES("[.base]Event.cpp","RDT"),"COMPARISON")
+$ OBJFILE = F$SEARCH("es40_lss_base_Event.obj")
+$ IF OBJFILE .NES. ""
+$ THEN
+$   OBJTIME = F$CVTIME(F$FILE_ATTRIBUTES("es40_lss_base_Event.obj","RDT"),"COMPARISON")
+$ ELSE
+$   OBJTIME = F$CVTIME("01-JAN-1970 00:00:00.00","COMPARISON")
+$ ENDIF
+$!
+$! Compile [.base]Event.cpp to es40_lss_base_Event.obj
+$ IF SRCTIME .GTS. OBJTIME
+$ THEN
+$   CXX [.base]Event.cpp -
+         /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB,LSS'X11_DEF') -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
+         /STANDARD=GNU -
+         /ARCHITECTURE=HOST -
+         /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
+         /OBJECT=es40_lss_base_Event.obj
+$ ENDIF
+$!
+$! Check if es40_lss_base_Exception.obj is up-to-date...
+$!
+$ SRCTIME = F$CVTIME(F$FILE_ATTRIBUTES("[.base]Exception.cpp","RDT"),"COMPARISON")
+$ OBJFILE = F$SEARCH("es40_lss_base_Exception.obj")
+$ IF OBJFILE .NES. ""
+$ THEN
+$   OBJTIME = F$CVTIME(F$FILE_ATTRIBUTES("es40_lss_base_Exception.obj","RDT"),"COMPARISON")
+$ ELSE
+$   OBJTIME = F$CVTIME("01-JAN-1970 00:00:00.00","COMPARISON")
+$ ENDIF
+$!
+$! Compile [.base]Exception.cpp to es40_lss_base_Exception.obj
+$ IF SRCTIME .GTS. OBJTIME
+$ THEN
+$   CXX [.base]Exception.cpp -
+         /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB,LSS'X11_DEF') -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
+         /STANDARD=GNU -
+         /ARCHITECTURE=HOST -
+         /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
+         /OBJECT=es40_lss_base_Exception.obj
+$ ENDIF
+$!
+$! Check if es40_lss_base_Mutex.obj is up-to-date...
+$!
+$ SRCTIME = F$CVTIME(F$FILE_ATTRIBUTES("[.base]Mutex.cpp","RDT"),"COMPARISON")
+$ OBJFILE = F$SEARCH("es40_lss_base_Mutex.obj")
+$ IF OBJFILE .NES. ""
+$ THEN
+$   OBJTIME = F$CVTIME(F$FILE_ATTRIBUTES("es40_lss_base_Mutex.obj","RDT"),"COMPARISON")
+$ ELSE
+$   OBJTIME = F$CVTIME("01-JAN-1970 00:00:00.00","COMPARISON")
+$ ENDIF
+$!
+$! Compile [.base]Mutex.cpp to es40_lss_base_Mutex.obj
+$ IF SRCTIME .GTS. OBJTIME
+$ THEN
+$   CXX [.base]Mutex.cpp -
+         /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB,LSS'X11_DEF') -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
+         /STANDARD=GNU -
+         /ARCHITECTURE=HOST -
+         /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
+         /OBJECT=es40_lss_base_Mutex.obj
+$ ENDIF
+$!
+$! Check if es40_lss_base_NumberFormatter.obj is up-to-date...
+$!
+$ SRCTIME = F$CVTIME(F$FILE_ATTRIBUTES("[.base]NumberFormatter.cpp","RDT"),"COMPARISON")
+$ OBJFILE = F$SEARCH("es40_lss_base_NumberFormatter.obj")
+$ IF OBJFILE .NES. ""
+$ THEN
+$   OBJTIME = F$CVTIME(F$FILE_ATTRIBUTES("es40_lss_base_NumberFormatter.obj","RDT"),"COMPARISON")
+$ ELSE
+$   OBJTIME = F$CVTIME("01-JAN-1970 00:00:00.00","COMPARISON")
+$ ENDIF
+$!
+$! Compile [.base]NumberFormatter.cpp to es40_lss_base_NumberFormatter.obj
+$ IF SRCTIME .GTS. OBJTIME
+$ THEN
+$   CXX [.base]NumberFormatter.cpp -
+         /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB,LSS'X11_DEF') -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
+         /STANDARD=GNU -
+         /ARCHITECTURE=HOST -
+         /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
+         /OBJECT=es40_lss_base_NumberFormatter.obj
+$ ENDIF
+$!
+$! Check if es40_lss_base_RefCountedObject.obj is up-to-date...
+$!
+$ SRCTIME = F$CVTIME(F$FILE_ATTRIBUTES("[.base]RefCountedObject.cpp","RDT"),"COMPARISON")
+$ OBJFILE = F$SEARCH("es40_lss_base_RefCountedObject.obj")
+$ IF OBJFILE .NES. ""
+$ THEN
+$   OBJTIME = F$CVTIME(F$FILE_ATTRIBUTES("es40_lss_base_RefCountedObject.obj","RDT"),"COMPARISON")
+$ ELSE
+$   OBJTIME = F$CVTIME("01-JAN-1970 00:00:00.00","COMPARISON")
+$ ENDIF
+$!
+$! Compile [.base]RefCountedObject.cpp to es40_lss_base_RefCountedObject.obj
+$ IF SRCTIME .GTS. OBJTIME
+$ THEN
+$   CXX [.base]RefCountedObject.cpp -
+         /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB,LSS'X11_DEF') -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
+         /STANDARD=GNU -
+         /ARCHITECTURE=HOST -
+         /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
+         /OBJECT=es40_lss_base_RefCountedObject.obj
+$ ENDIF
+$!
+$! Check if es40_lss_base_Runnable.obj is up-to-date...
+$!
+$ SRCTIME = F$CVTIME(F$FILE_ATTRIBUTES("[.base]Runnable.cpp","RDT"),"COMPARISON")
+$ OBJFILE = F$SEARCH("es40_lss_base_Runnable.obj")
+$ IF OBJFILE .NES. ""
+$ THEN
+$   OBJTIME = F$CVTIME(F$FILE_ATTRIBUTES("es40_lss_base_Runnable.obj","RDT"),"COMPARISON")
+$ ELSE
+$   OBJTIME = F$CVTIME("01-JAN-1970 00:00:00.00","COMPARISON")
+$ ENDIF
+$!
+$! Compile [.base]Runnable.cpp to es40_lss_base_Runnable.obj
+$ IF SRCTIME .GTS. OBJTIME
+$ THEN
+$   CXX [.base]Runnable.cpp -
+         /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB,LSS'X11_DEF') -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
+         /STANDARD=GNU -
+         /ARCHITECTURE=HOST -
+         /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
+         /OBJECT=es40_lss_base_Runnable.obj
+$ ENDIF
+$!
+$! Check if es40_lss_base_RWLock.obj is up-to-date...
+$!
+$ SRCTIME = F$CVTIME(F$FILE_ATTRIBUTES("[.base]RWLock.cpp","RDT"),"COMPARISON")
+$ OBJFILE = F$SEARCH("es40_lss_base_RWLock.obj")
+$ IF OBJFILE .NES. ""
+$ THEN
+$   OBJTIME = F$CVTIME(F$FILE_ATTRIBUTES("es40_lss_base_RWLock.obj","RDT"),"COMPARISON")
+$ ELSE
+$   OBJTIME = F$CVTIME("01-JAN-1970 00:00:00.00","COMPARISON")
+$ ENDIF
+$!
+$! Compile [.base]RWLock.cpp to es40_lss_base_RWLock.obj
+$ IF SRCTIME .GTS. OBJTIME
+$ THEN
+$   CXX [.base]RWLock.cpp -
+         /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB,LSS'X11_DEF') -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
+         /STANDARD=GNU -
+         /ARCHITECTURE=HOST -
+         /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
+         /OBJECT=es40_lss_base_RWLock.obj
+$ ENDIF
+$!
+$! Check if es40_lss_base_Semaphore.obj is up-to-date...
+$!
+$ SRCTIME = F$CVTIME(F$FILE_ATTRIBUTES("[.base]Semaphore.cpp","RDT"),"COMPARISON")
+$ OBJFILE = F$SEARCH("es40_lss_base_Semaphore.obj")
+$ IF OBJFILE .NES. ""
+$ THEN
+$   OBJTIME = F$CVTIME(F$FILE_ATTRIBUTES("es40_lss_base_Semaphore.obj","RDT"),"COMPARISON")
+$ ELSE
+$   OBJTIME = F$CVTIME("01-JAN-1970 00:00:00.00","COMPARISON")
+$ ENDIF
+$!
+$! Compile [.base]Semaphore.cpp to es40_lss_base_Semaphore.obj
+$ IF SRCTIME .GTS. OBJTIME
+$ THEN
+$   CXX [.base]Semaphore.cpp -
+         /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB,LSS'X11_DEF') -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
+         /STANDARD=GNU -
+         /ARCHITECTURE=HOST -
+         /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
+         /OBJECT=es40_lss_base_Semaphore.obj
+$ ENDIF
+$!
+$! Check if es40_lss_base_SignalHandler.obj is up-to-date...
+$!
+$ SRCTIME = F$CVTIME(F$FILE_ATTRIBUTES("[.base]SignalHandler.cpp","RDT"),"COMPARISON")
+$ OBJFILE = F$SEARCH("es40_lss_base_SignalHandler.obj")
+$ IF OBJFILE .NES. ""
+$ THEN
+$   OBJTIME = F$CVTIME(F$FILE_ATTRIBUTES("es40_lss_base_SignalHandler.obj","RDT"),"COMPARISON")
+$ ELSE
+$   OBJTIME = F$CVTIME("01-JAN-1970 00:00:00.00","COMPARISON")
+$ ENDIF
+$!
+$! Compile [.base]SignalHandler.cpp to es40_lss_base_SignalHandler.obj
+$ IF SRCTIME .GTS. OBJTIME
+$ THEN
+$   CXX [.base]SignalHandler.cpp -
+         /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB,LSS'X11_DEF') -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
+         /STANDARD=GNU -
+         /ARCHITECTURE=HOST -
+         /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
+         /OBJECT=es40_lss_base_SignalHandler.obj
+$ ENDIF
+$!
+$! Check if es40_lss_base_ThreadLocal.obj is up-to-date...
+$!
+$ SRCTIME = F$CVTIME(F$FILE_ATTRIBUTES("[.base]ThreadLocal.cpp","RDT"),"COMPARISON")
+$ OBJFILE = F$SEARCH("es40_lss_base_ThreadLocal.obj")
+$ IF OBJFILE .NES. ""
+$ THEN
+$   OBJTIME = F$CVTIME(F$FILE_ATTRIBUTES("es40_lss_base_ThreadLocal.obj","RDT"),"COMPARISON")
+$ ELSE
+$   OBJTIME = F$CVTIME("01-JAN-1970 00:00:00.00","COMPARISON")
+$ ENDIF
+$!
+$! Compile [.base]ThreadLocal.cpp to es40_lss_base_ThreadLocal.obj
+$ IF SRCTIME .GTS. OBJTIME
+$ THEN
+$   CXX [.base]ThreadLocal.cpp -
+         /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB,LSS'X11_DEF') -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
+         /STANDARD=GNU -
+         /ARCHITECTURE=HOST -
+         /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
+         /OBJECT=es40_lss_base_ThreadLocal.obj
+$ ENDIF
+$!
+$! Check if es40_lss_base_Thread.obj is up-to-date...
+$!
+$ SRCTIME = F$CVTIME(F$FILE_ATTRIBUTES("[.base]Thread.cpp","RDT"),"COMPARISON")
+$ OBJFILE = F$SEARCH("es40_lss_base_Thread.obj")
+$ IF OBJFILE .NES. ""
+$ THEN
+$   OBJTIME = F$CVTIME(F$FILE_ATTRIBUTES("es40_lss_base_Thread.obj","RDT"),"COMPARISON")
+$ ELSE
+$   OBJTIME = F$CVTIME("01-JAN-1970 00:00:00.00","COMPARISON")
+$ ENDIF
+$!
+$! Compile [.base]Thread.cpp to es40_lss_base_Thread.obj
+$ IF SRCTIME .GTS. OBJTIME
+$ THEN
+$   CXX [.base]Thread.cpp -
+         /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB,LSS'X11_DEF') -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
+         /STANDARD=GNU -
+         /ARCHITECTURE=HOST -
+         /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
+         /OBJECT=es40_lss_base_Thread.obj
+$ ENDIF
+$!
 $! Link es40_lss
 $!
 $ SAY "Linking es40_lss..."
 $!
-$ CXXLINK es40_lss_vms_Event.obj,es40_lss_vms_Exception.obj,es40_lss_vms_Mutex.obj,es40_lss_vms_Runnable.obj,es40_lss_vms_RWLock.obj,es40_lss_vms_Semaphore.obj,es40_lss_vms_Thread.obj,es40_lss_vms_ErrorHandler.obj,es40_lss_vms_Bugcheck.obj,es40_lss_vms_Debugger.obj,es40_lss_vms_ThreadLocal.obj,es40_lss_vms_Timestamp.obj,es40_lss_vms_RefCountedObject.obj,es40_lss_AliM1543C.obj,es40_lss_AliM1543C_ide.obj,es40_lss_AliM1543C_usb.obj,es40_lss_AlphaCPU.obj,es40_lss_AlphaCPU_ieeefloat.obj,es40_lss_AlphaCPU_vaxfloat.obj,es40_lss_AlphaCPU_vmspal.obj,es40_lss_AlphaSim.obj,es40_lss_Cirrus.obj,es40_lss_Configurator.obj,es40_lss_DEC21143.obj,es40_lss_Disk.obj,es40_lss_DiskController.obj,es40_lss_DiskDevice.obj,es40_lss_DiskFile.obj,es40_lss_DiskRam.obj,es40_lss_DMA.obj,es40_lss_DPR.obj,es40_lss_es40_debug.obj,es40_lss_Ethernet.obj,es40_lss_Exception.obj,es40_lss_Flash.obj,es40_lss_FloppyController.obj,es40_lss_Keyboard.obj,es40_lss_lockstep.obj,es40_lss_PCIDevice.obj,es40_lss_Port80.obj,es40_lss_S3Trio64.obj,es40_lss_SCSIBus.obj,es40_lss_SCSIDevice.obj,es40_lss_Serial.obj,es40_lss_StdAfx.obj,es40_lss_Sym53C810.obj,es40_lss_Sym53C895.obj,es40_lss_SystemComponent.obj,es40_lss_System.obj,es40_lss_TraceEngine.obj,es40_lss_VGA.obj,es40_lss_gui_gui.obj,es40_lss_gui_gui_x11.obj,es40_lss_gui_keymap.obj,es40_lss_gui_scancodes.obj'X11_LIB' -
+$ CXXLINK es40_lss_AliM1543C.obj,es40_lss_AliM1543C_ide.obj,es40_lss_AliM1543C_usb.obj,es40_lss_AlphaCPU.obj,es40_lss_AlphaCPU_ieeefloat.obj,es40_lss_AlphaCPU_vaxfloat.obj,es40_lss_AlphaCPU_vmspal.obj,es40_lss_AlphaSim.obj,es40_lss_Cirrus.obj,es40_lss_Configurator.obj,es40_lss_DEC21143.obj,es40_lss_Disk.obj,es40_lss_DiskController.obj,es40_lss_DiskDevice.obj,es40_lss_DiskFile.obj,es40_lss_DiskRam.obj,es40_lss_DMA.obj,es40_lss_DPR.obj,es40_lss_es40_debug.obj,es40_lss_Ethernet.obj,es40_lss_Flash.obj,es40_lss_FloppyController.obj,es40_lss_Keyboard.obj,es40_lss_lockstep.obj,es40_lss_PCIDevice.obj,es40_lss_Port80.obj,es40_lss_S3Trio64.obj,es40_lss_SCSIBus.obj,es40_lss_SCSIDevice.obj,es40_lss_Serial.obj,es40_lss_StdAfx.obj,es40_lss_Sym53C810.obj,es40_lss_Sym53C895.obj,es40_lss_SystemComponent.obj,es40_lss_System.obj,es40_lss_TraceEngine.obj,es40_lss_VGA.obj,es40_lss_gui_gui.obj,es40_lss_gui_gui_x11.obj,es40_lss_gui_keymap.obj,es40_lss_gui_scancodes.obj,es40_lss_gui_sdl.obj,es40_lss_base_Bugcheck.obj,es40_lss_base_ErrorHandler.obj,es40_lss_base_Event.obj,es40_lss_base_Exception.obj,es40_lss_base_Mutex.obj,es40_lss_base_NumberFormatter.obj,es40_lss_base_RefCountedObject.obj,es40_lss_base_Runnable.obj,es40_lss_base_RWLock.obj,es40_lss_base_Semaphore.obj,es40_lss_base_SignalHandler.obj,es40_lss_base_ThreadLocal.obj,es40_lss_base_Thread.obj'X11_LIB' -
            /EXECUTABLE=es40_lss.exe
 $!
 $! Compile sources for es40_lsm
@@ -3907,305 +3907,6 @@ $!
 $! Compile with the following defines: ES40,__USE_STD_IOSTREAM,IDB,LSM
 $!
 $ SAY "Compiling es40_lsm..."
-$!
-$! Check if es40_lsm_vms_Event.obj is up-to-date...
-$!
-$ SRCTIME = F$CVTIME(F$FILE_ATTRIBUTES("[.vms]Event.cpp","RDT"),"COMPARISON")
-$ OBJFILE = F$SEARCH("es40_lsm_vms_Event.obj")
-$ IF OBJFILE .NES. ""
-$ THEN
-$   OBJTIME = F$CVTIME(F$FILE_ATTRIBUTES("es40_lsm_vms_Event.obj","RDT"),"COMPARISON")
-$ ELSE
-$   OBJTIME = F$CVTIME("01-JAN-1970 00:00:00.00","COMPARISON")
-$ ENDIF
-$!
-$! Compile [.vms]Event.cpp to es40_lsm_vms_Event.obj
-$ IF SRCTIME .GTS. OBJTIME
-$ THEN
-$   CXX [.vms]Event.cpp -
-         /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB,LSM'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
-         /STANDARD=GNU -
-         /ARCHITECTURE=HOST -
-         /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
-         /OBJECT=es40_lsm_vms_Event.obj
-$ ENDIF
-$!
-$! Check if es40_lsm_vms_Exception.obj is up-to-date...
-$!
-$ SRCTIME = F$CVTIME(F$FILE_ATTRIBUTES("[.vms]Exception.cpp","RDT"),"COMPARISON")
-$ OBJFILE = F$SEARCH("es40_lsm_vms_Exception.obj")
-$ IF OBJFILE .NES. ""
-$ THEN
-$   OBJTIME = F$CVTIME(F$FILE_ATTRIBUTES("es40_lsm_vms_Exception.obj","RDT"),"COMPARISON")
-$ ELSE
-$   OBJTIME = F$CVTIME("01-JAN-1970 00:00:00.00","COMPARISON")
-$ ENDIF
-$!
-$! Compile [.vms]Exception.cpp to es40_lsm_vms_Exception.obj
-$ IF SRCTIME .GTS. OBJTIME
-$ THEN
-$   CXX [.vms]Exception.cpp -
-         /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB,LSM'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
-         /STANDARD=GNU -
-         /ARCHITECTURE=HOST -
-         /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
-         /OBJECT=es40_lsm_vms_Exception.obj
-$ ENDIF
-$!
-$! Check if es40_lsm_vms_Mutex.obj is up-to-date...
-$!
-$ SRCTIME = F$CVTIME(F$FILE_ATTRIBUTES("[.vms]Mutex.cpp","RDT"),"COMPARISON")
-$ OBJFILE = F$SEARCH("es40_lsm_vms_Mutex.obj")
-$ IF OBJFILE .NES. ""
-$ THEN
-$   OBJTIME = F$CVTIME(F$FILE_ATTRIBUTES("es40_lsm_vms_Mutex.obj","RDT"),"COMPARISON")
-$ ELSE
-$   OBJTIME = F$CVTIME("01-JAN-1970 00:00:00.00","COMPARISON")
-$ ENDIF
-$!
-$! Compile [.vms]Mutex.cpp to es40_lsm_vms_Mutex.obj
-$ IF SRCTIME .GTS. OBJTIME
-$ THEN
-$   CXX [.vms]Mutex.cpp -
-         /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB,LSM'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
-         /STANDARD=GNU -
-         /ARCHITECTURE=HOST -
-         /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
-         /OBJECT=es40_lsm_vms_Mutex.obj
-$ ENDIF
-$!
-$! Check if es40_lsm_vms_Runnable.obj is up-to-date...
-$!
-$ SRCTIME = F$CVTIME(F$FILE_ATTRIBUTES("[.vms]Runnable.cpp","RDT"),"COMPARISON")
-$ OBJFILE = F$SEARCH("es40_lsm_vms_Runnable.obj")
-$ IF OBJFILE .NES. ""
-$ THEN
-$   OBJTIME = F$CVTIME(F$FILE_ATTRIBUTES("es40_lsm_vms_Runnable.obj","RDT"),"COMPARISON")
-$ ELSE
-$   OBJTIME = F$CVTIME("01-JAN-1970 00:00:00.00","COMPARISON")
-$ ENDIF
-$!
-$! Compile [.vms]Runnable.cpp to es40_lsm_vms_Runnable.obj
-$ IF SRCTIME .GTS. OBJTIME
-$ THEN
-$   CXX [.vms]Runnable.cpp -
-         /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB,LSM'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
-         /STANDARD=GNU -
-         /ARCHITECTURE=HOST -
-         /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
-         /OBJECT=es40_lsm_vms_Runnable.obj
-$ ENDIF
-$!
-$! Check if es40_lsm_vms_RWLock.obj is up-to-date...
-$!
-$ SRCTIME = F$CVTIME(F$FILE_ATTRIBUTES("[.vms]RWLock.cpp","RDT"),"COMPARISON")
-$ OBJFILE = F$SEARCH("es40_lsm_vms_RWLock.obj")
-$ IF OBJFILE .NES. ""
-$ THEN
-$   OBJTIME = F$CVTIME(F$FILE_ATTRIBUTES("es40_lsm_vms_RWLock.obj","RDT"),"COMPARISON")
-$ ELSE
-$   OBJTIME = F$CVTIME("01-JAN-1970 00:00:00.00","COMPARISON")
-$ ENDIF
-$!
-$! Compile [.vms]RWLock.cpp to es40_lsm_vms_RWLock.obj
-$ IF SRCTIME .GTS. OBJTIME
-$ THEN
-$   CXX [.vms]RWLock.cpp -
-         /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB,LSM'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
-         /STANDARD=GNU -
-         /ARCHITECTURE=HOST -
-         /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
-         /OBJECT=es40_lsm_vms_RWLock.obj
-$ ENDIF
-$!
-$! Check if es40_lsm_vms_Semaphore.obj is up-to-date...
-$!
-$ SRCTIME = F$CVTIME(F$FILE_ATTRIBUTES("[.vms]Semaphore.cpp","RDT"),"COMPARISON")
-$ OBJFILE = F$SEARCH("es40_lsm_vms_Semaphore.obj")
-$ IF OBJFILE .NES. ""
-$ THEN
-$   OBJTIME = F$CVTIME(F$FILE_ATTRIBUTES("es40_lsm_vms_Semaphore.obj","RDT"),"COMPARISON")
-$ ELSE
-$   OBJTIME = F$CVTIME("01-JAN-1970 00:00:00.00","COMPARISON")
-$ ENDIF
-$!
-$! Compile [.vms]Semaphore.cpp to es40_lsm_vms_Semaphore.obj
-$ IF SRCTIME .GTS. OBJTIME
-$ THEN
-$   CXX [.vms]Semaphore.cpp -
-         /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB,LSM'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
-         /STANDARD=GNU -
-         /ARCHITECTURE=HOST -
-         /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
-         /OBJECT=es40_lsm_vms_Semaphore.obj
-$ ENDIF
-$!
-$! Check if es40_lsm_vms_Thread.obj is up-to-date...
-$!
-$ SRCTIME = F$CVTIME(F$FILE_ATTRIBUTES("[.vms]Thread.cpp","RDT"),"COMPARISON")
-$ OBJFILE = F$SEARCH("es40_lsm_vms_Thread.obj")
-$ IF OBJFILE .NES. ""
-$ THEN
-$   OBJTIME = F$CVTIME(F$FILE_ATTRIBUTES("es40_lsm_vms_Thread.obj","RDT"),"COMPARISON")
-$ ELSE
-$   OBJTIME = F$CVTIME("01-JAN-1970 00:00:00.00","COMPARISON")
-$ ENDIF
-$!
-$! Compile [.vms]Thread.cpp to es40_lsm_vms_Thread.obj
-$ IF SRCTIME .GTS. OBJTIME
-$ THEN
-$   CXX [.vms]Thread.cpp -
-         /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB,LSM'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
-         /STANDARD=GNU -
-         /ARCHITECTURE=HOST -
-         /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
-         /OBJECT=es40_lsm_vms_Thread.obj
-$ ENDIF
-$!
-$! Check if es40_lsm_vms_ErrorHandler.obj is up-to-date...
-$!
-$ SRCTIME = F$CVTIME(F$FILE_ATTRIBUTES("[.vms]ErrorHandler.cpp","RDT"),"COMPARISON")
-$ OBJFILE = F$SEARCH("es40_lsm_vms_ErrorHandler.obj")
-$ IF OBJFILE .NES. ""
-$ THEN
-$   OBJTIME = F$CVTIME(F$FILE_ATTRIBUTES("es40_lsm_vms_ErrorHandler.obj","RDT"),"COMPARISON")
-$ ELSE
-$   OBJTIME = F$CVTIME("01-JAN-1970 00:00:00.00","COMPARISON")
-$ ENDIF
-$!
-$! Compile [.vms]ErrorHandler.cpp to es40_lsm_vms_ErrorHandler.obj
-$ IF SRCTIME .GTS. OBJTIME
-$ THEN
-$   CXX [.vms]ErrorHandler.cpp -
-         /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB,LSM'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
-         /STANDARD=GNU -
-         /ARCHITECTURE=HOST -
-         /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
-         /OBJECT=es40_lsm_vms_ErrorHandler.obj
-$ ENDIF
-$!
-$! Check if es40_lsm_vms_Bugcheck.obj is up-to-date...
-$!
-$ SRCTIME = F$CVTIME(F$FILE_ATTRIBUTES("[.vms]Bugcheck.cpp","RDT"),"COMPARISON")
-$ OBJFILE = F$SEARCH("es40_lsm_vms_Bugcheck.obj")
-$ IF OBJFILE .NES. ""
-$ THEN
-$   OBJTIME = F$CVTIME(F$FILE_ATTRIBUTES("es40_lsm_vms_Bugcheck.obj","RDT"),"COMPARISON")
-$ ELSE
-$   OBJTIME = F$CVTIME("01-JAN-1970 00:00:00.00","COMPARISON")
-$ ENDIF
-$!
-$! Compile [.vms]Bugcheck.cpp to es40_lsm_vms_Bugcheck.obj
-$ IF SRCTIME .GTS. OBJTIME
-$ THEN
-$   CXX [.vms]Bugcheck.cpp -
-         /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB,LSM'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
-         /STANDARD=GNU -
-         /ARCHITECTURE=HOST -
-         /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
-         /OBJECT=es40_lsm_vms_Bugcheck.obj
-$ ENDIF
-$!
-$! Check if es40_lsm_vms_Debugger.obj is up-to-date...
-$!
-$ SRCTIME = F$CVTIME(F$FILE_ATTRIBUTES("[.vms]Debugger.cpp","RDT"),"COMPARISON")
-$ OBJFILE = F$SEARCH("es40_lsm_vms_Debugger.obj")
-$ IF OBJFILE .NES. ""
-$ THEN
-$   OBJTIME = F$CVTIME(F$FILE_ATTRIBUTES("es40_lsm_vms_Debugger.obj","RDT"),"COMPARISON")
-$ ELSE
-$   OBJTIME = F$CVTIME("01-JAN-1970 00:00:00.00","COMPARISON")
-$ ENDIF
-$!
-$! Compile [.vms]Debugger.cpp to es40_lsm_vms_Debugger.obj
-$ IF SRCTIME .GTS. OBJTIME
-$ THEN
-$   CXX [.vms]Debugger.cpp -
-         /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB,LSM'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
-         /STANDARD=GNU -
-         /ARCHITECTURE=HOST -
-         /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
-         /OBJECT=es40_lsm_vms_Debugger.obj
-$ ENDIF
-$!
-$! Check if es40_lsm_vms_ThreadLocal.obj is up-to-date...
-$!
-$ SRCTIME = F$CVTIME(F$FILE_ATTRIBUTES("[.vms]ThreadLocal.cpp","RDT"),"COMPARISON")
-$ OBJFILE = F$SEARCH("es40_lsm_vms_ThreadLocal.obj")
-$ IF OBJFILE .NES. ""
-$ THEN
-$   OBJTIME = F$CVTIME(F$FILE_ATTRIBUTES("es40_lsm_vms_ThreadLocal.obj","RDT"),"COMPARISON")
-$ ELSE
-$   OBJTIME = F$CVTIME("01-JAN-1970 00:00:00.00","COMPARISON")
-$ ENDIF
-$!
-$! Compile [.vms]ThreadLocal.cpp to es40_lsm_vms_ThreadLocal.obj
-$ IF SRCTIME .GTS. OBJTIME
-$ THEN
-$   CXX [.vms]ThreadLocal.cpp -
-         /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB,LSM'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
-         /STANDARD=GNU -
-         /ARCHITECTURE=HOST -
-         /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
-         /OBJECT=es40_lsm_vms_ThreadLocal.obj
-$ ENDIF
-$!
-$! Check if es40_lsm_vms_Timestamp.obj is up-to-date...
-$!
-$ SRCTIME = F$CVTIME(F$FILE_ATTRIBUTES("[.vms]Timestamp.cpp","RDT"),"COMPARISON")
-$ OBJFILE = F$SEARCH("es40_lsm_vms_Timestamp.obj")
-$ IF OBJFILE .NES. ""
-$ THEN
-$   OBJTIME = F$CVTIME(F$FILE_ATTRIBUTES("es40_lsm_vms_Timestamp.obj","RDT"),"COMPARISON")
-$ ELSE
-$   OBJTIME = F$CVTIME("01-JAN-1970 00:00:00.00","COMPARISON")
-$ ENDIF
-$!
-$! Compile [.vms]Timestamp.cpp to es40_lsm_vms_Timestamp.obj
-$ IF SRCTIME .GTS. OBJTIME
-$ THEN
-$   CXX [.vms]Timestamp.cpp -
-         /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB,LSM'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
-         /STANDARD=GNU -
-         /ARCHITECTURE=HOST -
-         /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
-         /OBJECT=es40_lsm_vms_Timestamp.obj
-$ ENDIF
-$!
-$! Check if es40_lsm_vms_RefCountedObject.obj is up-to-date...
-$!
-$ SRCTIME = F$CVTIME(F$FILE_ATTRIBUTES("[.vms]RefCountedObject.cpp","RDT"),"COMPARISON")
-$ OBJFILE = F$SEARCH("es40_lsm_vms_RefCountedObject.obj")
-$ IF OBJFILE .NES. ""
-$ THEN
-$   OBJTIME = F$CVTIME(F$FILE_ATTRIBUTES("es40_lsm_vms_RefCountedObject.obj","RDT"),"COMPARISON")
-$ ELSE
-$   OBJTIME = F$CVTIME("01-JAN-1970 00:00:00.00","COMPARISON")
-$ ENDIF
-$!
-$! Compile [.vms]RefCountedObject.cpp to es40_lsm_vms_RefCountedObject.obj
-$ IF SRCTIME .GTS. OBJTIME
-$ THEN
-$   CXX [.vms]RefCountedObject.cpp -
-         /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB,LSM'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
-         /STANDARD=GNU -
-         /ARCHITECTURE=HOST -
-         /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
-         /OBJECT=es40_lsm_vms_RefCountedObject.obj
-$ ENDIF
 $!
 $! Check if es40_lsm_AliM1543C.obj is up-to-date...
 $!
@@ -4223,7 +3924,7 @@ $ IF SRCTIME .GTS. OBJTIME
 $ THEN
 $   CXX AliM1543C.cpp -
          /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB,LSM'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
          /STANDARD=GNU -
          /ARCHITECTURE=HOST -
          /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
@@ -4246,7 +3947,7 @@ $ IF SRCTIME .GTS. OBJTIME
 $ THEN
 $   CXX AliM1543C_ide.cpp -
          /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB,LSM'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
          /STANDARD=GNU -
          /ARCHITECTURE=HOST -
          /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
@@ -4269,7 +3970,7 @@ $ IF SRCTIME .GTS. OBJTIME
 $ THEN
 $   CXX AliM1543C_usb.cpp -
          /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB,LSM'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
          /STANDARD=GNU -
          /ARCHITECTURE=HOST -
          /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
@@ -4292,7 +3993,7 @@ $ IF SRCTIME .GTS. OBJTIME
 $ THEN
 $   CXX AlphaCPU.cpp -
          /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB,LSM'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
          /STANDARD=GNU -
          /ARCHITECTURE=HOST -
          /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
@@ -4315,7 +4016,7 @@ $ IF SRCTIME .GTS. OBJTIME
 $ THEN
 $   CXX AlphaCPU_ieeefloat.cpp -
          /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB,LSM'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
          /STANDARD=GNU -
          /ARCHITECTURE=HOST -
          /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
@@ -4338,7 +4039,7 @@ $ IF SRCTIME .GTS. OBJTIME
 $ THEN
 $   CXX AlphaCPU_vaxfloat.cpp -
          /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB,LSM'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
          /STANDARD=GNU -
          /ARCHITECTURE=HOST -
          /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
@@ -4361,7 +4062,7 @@ $ IF SRCTIME .GTS. OBJTIME
 $ THEN
 $   CXX AlphaCPU_vmspal.cpp -
          /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB,LSM'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
          /STANDARD=GNU -
          /ARCHITECTURE=HOST -
          /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
@@ -4384,7 +4085,7 @@ $ IF SRCTIME .GTS. OBJTIME
 $ THEN
 $   CXX AlphaSim.cpp -
          /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB,LSM'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
          /STANDARD=GNU -
          /ARCHITECTURE=HOST -
          /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
@@ -4407,7 +4108,7 @@ $ IF SRCTIME .GTS. OBJTIME
 $ THEN
 $   CXX Cirrus.cpp -
          /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB,LSM'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
          /STANDARD=GNU -
          /ARCHITECTURE=HOST -
          /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
@@ -4430,7 +4131,7 @@ $ IF SRCTIME .GTS. OBJTIME
 $ THEN
 $   CXX Configurator.cpp -
          /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB,LSM'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
          /STANDARD=GNU -
          /ARCHITECTURE=HOST -
          /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
@@ -4453,7 +4154,7 @@ $ IF SRCTIME .GTS. OBJTIME
 $ THEN
 $   CXX DEC21143.cpp -
          /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB,LSM'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
          /STANDARD=GNU -
          /ARCHITECTURE=HOST -
          /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
@@ -4476,7 +4177,7 @@ $ IF SRCTIME .GTS. OBJTIME
 $ THEN
 $   CXX Disk.cpp -
          /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB,LSM'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
          /STANDARD=GNU -
          /ARCHITECTURE=HOST -
          /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
@@ -4499,7 +4200,7 @@ $ IF SRCTIME .GTS. OBJTIME
 $ THEN
 $   CXX DiskController.cpp -
          /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB,LSM'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
          /STANDARD=GNU -
          /ARCHITECTURE=HOST -
          /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
@@ -4522,7 +4223,7 @@ $ IF SRCTIME .GTS. OBJTIME
 $ THEN
 $   CXX DiskDevice.cpp -
          /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB,LSM'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
          /STANDARD=GNU -
          /ARCHITECTURE=HOST -
          /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
@@ -4545,7 +4246,7 @@ $ IF SRCTIME .GTS. OBJTIME
 $ THEN
 $   CXX DiskFile.cpp -
          /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB,LSM'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
          /STANDARD=GNU -
          /ARCHITECTURE=HOST -
          /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
@@ -4568,7 +4269,7 @@ $ IF SRCTIME .GTS. OBJTIME
 $ THEN
 $   CXX DiskRam.cpp -
          /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB,LSM'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
          /STANDARD=GNU -
          /ARCHITECTURE=HOST -
          /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
@@ -4591,7 +4292,7 @@ $ IF SRCTIME .GTS. OBJTIME
 $ THEN
 $   CXX DMA.cpp -
          /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB,LSM'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
          /STANDARD=GNU -
          /ARCHITECTURE=HOST -
          /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
@@ -4614,7 +4315,7 @@ $ IF SRCTIME .GTS. OBJTIME
 $ THEN
 $   CXX DPR.cpp -
          /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB,LSM'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
          /STANDARD=GNU -
          /ARCHITECTURE=HOST -
          /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
@@ -4637,7 +4338,7 @@ $ IF SRCTIME .GTS. OBJTIME
 $ THEN
 $   CXX es40_debug.cpp -
          /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB,LSM'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
          /STANDARD=GNU -
          /ARCHITECTURE=HOST -
          /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
@@ -4660,34 +4361,11 @@ $ IF SRCTIME .GTS. OBJTIME
 $ THEN
 $   CXX Ethernet.cpp -
          /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB,LSM'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
          /STANDARD=GNU -
          /ARCHITECTURE=HOST -
          /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
          /OBJECT=es40_lsm_Ethernet.obj
-$ ENDIF
-$!
-$! Check if es40_lsm_Exception.obj is up-to-date...
-$!
-$ SRCTIME = F$CVTIME(F$FILE_ATTRIBUTES("Exception.cpp","RDT"),"COMPARISON")
-$ OBJFILE = F$SEARCH("es40_lsm_Exception.obj")
-$ IF OBJFILE .NES. ""
-$ THEN
-$   OBJTIME = F$CVTIME(F$FILE_ATTRIBUTES("es40_lsm_Exception.obj","RDT"),"COMPARISON")
-$ ELSE
-$   OBJTIME = F$CVTIME("01-JAN-1970 00:00:00.00","COMPARISON")
-$ ENDIF
-$!
-$! Compile Exception.cpp to es40_lsm_Exception.obj
-$ IF SRCTIME .GTS. OBJTIME
-$ THEN
-$   CXX Exception.cpp -
-         /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB,LSM'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
-         /STANDARD=GNU -
-         /ARCHITECTURE=HOST -
-         /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
-         /OBJECT=es40_lsm_Exception.obj
 $ ENDIF
 $!
 $! Check if es40_lsm_Flash.obj is up-to-date...
@@ -4706,7 +4384,7 @@ $ IF SRCTIME .GTS. OBJTIME
 $ THEN
 $   CXX Flash.cpp -
          /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB,LSM'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
          /STANDARD=GNU -
          /ARCHITECTURE=HOST -
          /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
@@ -4729,7 +4407,7 @@ $ IF SRCTIME .GTS. OBJTIME
 $ THEN
 $   CXX FloppyController.cpp -
          /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB,LSM'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
          /STANDARD=GNU -
          /ARCHITECTURE=HOST -
          /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
@@ -4752,7 +4430,7 @@ $ IF SRCTIME .GTS. OBJTIME
 $ THEN
 $   CXX Keyboard.cpp -
          /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB,LSM'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
          /STANDARD=GNU -
          /ARCHITECTURE=HOST -
          /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
@@ -4775,7 +4453,7 @@ $ IF SRCTIME .GTS. OBJTIME
 $ THEN
 $   CXX lockstep.cpp -
          /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB,LSM'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
          /STANDARD=GNU -
          /ARCHITECTURE=HOST -
          /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
@@ -4798,7 +4476,7 @@ $ IF SRCTIME .GTS. OBJTIME
 $ THEN
 $   CXX PCIDevice.cpp -
          /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB,LSM'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
          /STANDARD=GNU -
          /ARCHITECTURE=HOST -
          /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
@@ -4821,7 +4499,7 @@ $ IF SRCTIME .GTS. OBJTIME
 $ THEN
 $   CXX Port80.cpp -
          /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB,LSM'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
          /STANDARD=GNU -
          /ARCHITECTURE=HOST -
          /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
@@ -4844,7 +4522,7 @@ $ IF SRCTIME .GTS. OBJTIME
 $ THEN
 $   CXX S3Trio64.cpp -
          /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB,LSM'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
          /STANDARD=GNU -
          /ARCHITECTURE=HOST -
          /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
@@ -4867,7 +4545,7 @@ $ IF SRCTIME .GTS. OBJTIME
 $ THEN
 $   CXX SCSIBus.cpp -
          /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB,LSM'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
          /STANDARD=GNU -
          /ARCHITECTURE=HOST -
          /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
@@ -4890,7 +4568,7 @@ $ IF SRCTIME .GTS. OBJTIME
 $ THEN
 $   CXX SCSIDevice.cpp -
          /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB,LSM'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
          /STANDARD=GNU -
          /ARCHITECTURE=HOST -
          /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
@@ -4913,7 +4591,7 @@ $ IF SRCTIME .GTS. OBJTIME
 $ THEN
 $   CXX Serial.cpp -
          /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB,LSM'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
          /STANDARD=GNU -
          /ARCHITECTURE=HOST -
          /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
@@ -4936,7 +4614,7 @@ $ IF SRCTIME .GTS. OBJTIME
 $ THEN
 $   CXX StdAfx.cpp -
          /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB,LSM'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
          /STANDARD=GNU -
          /ARCHITECTURE=HOST -
          /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
@@ -4959,7 +4637,7 @@ $ IF SRCTIME .GTS. OBJTIME
 $ THEN
 $   CXX Sym53C810.cpp -
          /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB,LSM'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
          /STANDARD=GNU -
          /ARCHITECTURE=HOST -
          /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
@@ -4982,7 +4660,7 @@ $ IF SRCTIME .GTS. OBJTIME
 $ THEN
 $   CXX Sym53C895.cpp -
          /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB,LSM'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
          /STANDARD=GNU -
          /ARCHITECTURE=HOST -
          /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
@@ -5005,7 +4683,7 @@ $ IF SRCTIME .GTS. OBJTIME
 $ THEN
 $   CXX SystemComponent.cpp -
          /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB,LSM'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
          /STANDARD=GNU -
          /ARCHITECTURE=HOST -
          /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
@@ -5028,7 +4706,7 @@ $ IF SRCTIME .GTS. OBJTIME
 $ THEN
 $   CXX System.cpp -
          /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB,LSM'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
          /STANDARD=GNU -
          /ARCHITECTURE=HOST -
          /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
@@ -5051,7 +4729,7 @@ $ IF SRCTIME .GTS. OBJTIME
 $ THEN
 $   CXX TraceEngine.cpp -
          /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB,LSM'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
          /STANDARD=GNU -
          /ARCHITECTURE=HOST -
          /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
@@ -5074,7 +4752,7 @@ $ IF SRCTIME .GTS. OBJTIME
 $ THEN
 $   CXX VGA.cpp -
          /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB,LSM'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
          /STANDARD=GNU -
          /ARCHITECTURE=HOST -
          /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
@@ -5097,7 +4775,7 @@ $ IF SRCTIME .GTS. OBJTIME
 $ THEN
 $   CXX [.gui]gui.cpp -
          /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB,LSM'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
          /STANDARD=GNU -
          /ARCHITECTURE=HOST -
          /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
@@ -5120,7 +4798,7 @@ $ IF SRCTIME .GTS. OBJTIME
 $ THEN
 $   CXX [.gui]gui_x11.cpp -
          /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB,LSM'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
          /STANDARD=GNU -
          /ARCHITECTURE=HOST -
          /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
@@ -5143,7 +4821,7 @@ $ IF SRCTIME .GTS. OBJTIME
 $ THEN
 $   CXX [.gui]keymap.cpp -
          /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB,LSM'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
          /STANDARD=GNU -
          /ARCHITECTURE=HOST -
          /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
@@ -5166,18 +4844,340 @@ $ IF SRCTIME .GTS. OBJTIME
 $ THEN
 $   CXX [.gui]scancodes.cpp -
          /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB,LSM'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
          /STANDARD=GNU -
          /ARCHITECTURE=HOST -
          /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
          /OBJECT=es40_lsm_gui_scancodes.obj
 $ ENDIF
 $!
+$! Check if es40_lsm_gui_sdl.obj is up-to-date...
+$!
+$ SRCTIME = F$CVTIME(F$FILE_ATTRIBUTES("[.gui]sdl.cpp","RDT"),"COMPARISON")
+$ OBJFILE = F$SEARCH("es40_lsm_gui_sdl.obj")
+$ IF OBJFILE .NES. ""
+$ THEN
+$   OBJTIME = F$CVTIME(F$FILE_ATTRIBUTES("es40_lsm_gui_sdl.obj","RDT"),"COMPARISON")
+$ ELSE
+$   OBJTIME = F$CVTIME("01-JAN-1970 00:00:00.00","COMPARISON")
+$ ENDIF
+$!
+$! Compile [.gui]sdl.cpp to es40_lsm_gui_sdl.obj
+$ IF SRCTIME .GTS. OBJTIME
+$ THEN
+$   CXX [.gui]sdl.cpp -
+         /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB,LSM'X11_DEF') -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
+         /STANDARD=GNU -
+         /ARCHITECTURE=HOST -
+         /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
+         /OBJECT=es40_lsm_gui_sdl.obj
+$ ENDIF
+$!
+$! Check if es40_lsm_base_Bugcheck.obj is up-to-date...
+$!
+$ SRCTIME = F$CVTIME(F$FILE_ATTRIBUTES("[.base]Bugcheck.cpp","RDT"),"COMPARISON")
+$ OBJFILE = F$SEARCH("es40_lsm_base_Bugcheck.obj")
+$ IF OBJFILE .NES. ""
+$ THEN
+$   OBJTIME = F$CVTIME(F$FILE_ATTRIBUTES("es40_lsm_base_Bugcheck.obj","RDT"),"COMPARISON")
+$ ELSE
+$   OBJTIME = F$CVTIME("01-JAN-1970 00:00:00.00","COMPARISON")
+$ ENDIF
+$!
+$! Compile [.base]Bugcheck.cpp to es40_lsm_base_Bugcheck.obj
+$ IF SRCTIME .GTS. OBJTIME
+$ THEN
+$   CXX [.base]Bugcheck.cpp -
+         /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB,LSM'X11_DEF') -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
+         /STANDARD=GNU -
+         /ARCHITECTURE=HOST -
+         /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
+         /OBJECT=es40_lsm_base_Bugcheck.obj
+$ ENDIF
+$!
+$! Check if es40_lsm_base_ErrorHandler.obj is up-to-date...
+$!
+$ SRCTIME = F$CVTIME(F$FILE_ATTRIBUTES("[.base]ErrorHandler.cpp","RDT"),"COMPARISON")
+$ OBJFILE = F$SEARCH("es40_lsm_base_ErrorHandler.obj")
+$ IF OBJFILE .NES. ""
+$ THEN
+$   OBJTIME = F$CVTIME(F$FILE_ATTRIBUTES("es40_lsm_base_ErrorHandler.obj","RDT"),"COMPARISON")
+$ ELSE
+$   OBJTIME = F$CVTIME("01-JAN-1970 00:00:00.00","COMPARISON")
+$ ENDIF
+$!
+$! Compile [.base]ErrorHandler.cpp to es40_lsm_base_ErrorHandler.obj
+$ IF SRCTIME .GTS. OBJTIME
+$ THEN
+$   CXX [.base]ErrorHandler.cpp -
+         /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB,LSM'X11_DEF') -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
+         /STANDARD=GNU -
+         /ARCHITECTURE=HOST -
+         /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
+         /OBJECT=es40_lsm_base_ErrorHandler.obj
+$ ENDIF
+$!
+$! Check if es40_lsm_base_Event.obj is up-to-date...
+$!
+$ SRCTIME = F$CVTIME(F$FILE_ATTRIBUTES("[.base]Event.cpp","RDT"),"COMPARISON")
+$ OBJFILE = F$SEARCH("es40_lsm_base_Event.obj")
+$ IF OBJFILE .NES. ""
+$ THEN
+$   OBJTIME = F$CVTIME(F$FILE_ATTRIBUTES("es40_lsm_base_Event.obj","RDT"),"COMPARISON")
+$ ELSE
+$   OBJTIME = F$CVTIME("01-JAN-1970 00:00:00.00","COMPARISON")
+$ ENDIF
+$!
+$! Compile [.base]Event.cpp to es40_lsm_base_Event.obj
+$ IF SRCTIME .GTS. OBJTIME
+$ THEN
+$   CXX [.base]Event.cpp -
+         /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB,LSM'X11_DEF') -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
+         /STANDARD=GNU -
+         /ARCHITECTURE=HOST -
+         /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
+         /OBJECT=es40_lsm_base_Event.obj
+$ ENDIF
+$!
+$! Check if es40_lsm_base_Exception.obj is up-to-date...
+$!
+$ SRCTIME = F$CVTIME(F$FILE_ATTRIBUTES("[.base]Exception.cpp","RDT"),"COMPARISON")
+$ OBJFILE = F$SEARCH("es40_lsm_base_Exception.obj")
+$ IF OBJFILE .NES. ""
+$ THEN
+$   OBJTIME = F$CVTIME(F$FILE_ATTRIBUTES("es40_lsm_base_Exception.obj","RDT"),"COMPARISON")
+$ ELSE
+$   OBJTIME = F$CVTIME("01-JAN-1970 00:00:00.00","COMPARISON")
+$ ENDIF
+$!
+$! Compile [.base]Exception.cpp to es40_lsm_base_Exception.obj
+$ IF SRCTIME .GTS. OBJTIME
+$ THEN
+$   CXX [.base]Exception.cpp -
+         /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB,LSM'X11_DEF') -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
+         /STANDARD=GNU -
+         /ARCHITECTURE=HOST -
+         /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
+         /OBJECT=es40_lsm_base_Exception.obj
+$ ENDIF
+$!
+$! Check if es40_lsm_base_Mutex.obj is up-to-date...
+$!
+$ SRCTIME = F$CVTIME(F$FILE_ATTRIBUTES("[.base]Mutex.cpp","RDT"),"COMPARISON")
+$ OBJFILE = F$SEARCH("es40_lsm_base_Mutex.obj")
+$ IF OBJFILE .NES. ""
+$ THEN
+$   OBJTIME = F$CVTIME(F$FILE_ATTRIBUTES("es40_lsm_base_Mutex.obj","RDT"),"COMPARISON")
+$ ELSE
+$   OBJTIME = F$CVTIME("01-JAN-1970 00:00:00.00","COMPARISON")
+$ ENDIF
+$!
+$! Compile [.base]Mutex.cpp to es40_lsm_base_Mutex.obj
+$ IF SRCTIME .GTS. OBJTIME
+$ THEN
+$   CXX [.base]Mutex.cpp -
+         /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB,LSM'X11_DEF') -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
+         /STANDARD=GNU -
+         /ARCHITECTURE=HOST -
+         /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
+         /OBJECT=es40_lsm_base_Mutex.obj
+$ ENDIF
+$!
+$! Check if es40_lsm_base_NumberFormatter.obj is up-to-date...
+$!
+$ SRCTIME = F$CVTIME(F$FILE_ATTRIBUTES("[.base]NumberFormatter.cpp","RDT"),"COMPARISON")
+$ OBJFILE = F$SEARCH("es40_lsm_base_NumberFormatter.obj")
+$ IF OBJFILE .NES. ""
+$ THEN
+$   OBJTIME = F$CVTIME(F$FILE_ATTRIBUTES("es40_lsm_base_NumberFormatter.obj","RDT"),"COMPARISON")
+$ ELSE
+$   OBJTIME = F$CVTIME("01-JAN-1970 00:00:00.00","COMPARISON")
+$ ENDIF
+$!
+$! Compile [.base]NumberFormatter.cpp to es40_lsm_base_NumberFormatter.obj
+$ IF SRCTIME .GTS. OBJTIME
+$ THEN
+$   CXX [.base]NumberFormatter.cpp -
+         /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB,LSM'X11_DEF') -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
+         /STANDARD=GNU -
+         /ARCHITECTURE=HOST -
+         /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
+         /OBJECT=es40_lsm_base_NumberFormatter.obj
+$ ENDIF
+$!
+$! Check if es40_lsm_base_RefCountedObject.obj is up-to-date...
+$!
+$ SRCTIME = F$CVTIME(F$FILE_ATTRIBUTES("[.base]RefCountedObject.cpp","RDT"),"COMPARISON")
+$ OBJFILE = F$SEARCH("es40_lsm_base_RefCountedObject.obj")
+$ IF OBJFILE .NES. ""
+$ THEN
+$   OBJTIME = F$CVTIME(F$FILE_ATTRIBUTES("es40_lsm_base_RefCountedObject.obj","RDT"),"COMPARISON")
+$ ELSE
+$   OBJTIME = F$CVTIME("01-JAN-1970 00:00:00.00","COMPARISON")
+$ ENDIF
+$!
+$! Compile [.base]RefCountedObject.cpp to es40_lsm_base_RefCountedObject.obj
+$ IF SRCTIME .GTS. OBJTIME
+$ THEN
+$   CXX [.base]RefCountedObject.cpp -
+         /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB,LSM'X11_DEF') -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
+         /STANDARD=GNU -
+         /ARCHITECTURE=HOST -
+         /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
+         /OBJECT=es40_lsm_base_RefCountedObject.obj
+$ ENDIF
+$!
+$! Check if es40_lsm_base_Runnable.obj is up-to-date...
+$!
+$ SRCTIME = F$CVTIME(F$FILE_ATTRIBUTES("[.base]Runnable.cpp","RDT"),"COMPARISON")
+$ OBJFILE = F$SEARCH("es40_lsm_base_Runnable.obj")
+$ IF OBJFILE .NES. ""
+$ THEN
+$   OBJTIME = F$CVTIME(F$FILE_ATTRIBUTES("es40_lsm_base_Runnable.obj","RDT"),"COMPARISON")
+$ ELSE
+$   OBJTIME = F$CVTIME("01-JAN-1970 00:00:00.00","COMPARISON")
+$ ENDIF
+$!
+$! Compile [.base]Runnable.cpp to es40_lsm_base_Runnable.obj
+$ IF SRCTIME .GTS. OBJTIME
+$ THEN
+$   CXX [.base]Runnable.cpp -
+         /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB,LSM'X11_DEF') -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
+         /STANDARD=GNU -
+         /ARCHITECTURE=HOST -
+         /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
+         /OBJECT=es40_lsm_base_Runnable.obj
+$ ENDIF
+$!
+$! Check if es40_lsm_base_RWLock.obj is up-to-date...
+$!
+$ SRCTIME = F$CVTIME(F$FILE_ATTRIBUTES("[.base]RWLock.cpp","RDT"),"COMPARISON")
+$ OBJFILE = F$SEARCH("es40_lsm_base_RWLock.obj")
+$ IF OBJFILE .NES. ""
+$ THEN
+$   OBJTIME = F$CVTIME(F$FILE_ATTRIBUTES("es40_lsm_base_RWLock.obj","RDT"),"COMPARISON")
+$ ELSE
+$   OBJTIME = F$CVTIME("01-JAN-1970 00:00:00.00","COMPARISON")
+$ ENDIF
+$!
+$! Compile [.base]RWLock.cpp to es40_lsm_base_RWLock.obj
+$ IF SRCTIME .GTS. OBJTIME
+$ THEN
+$   CXX [.base]RWLock.cpp -
+         /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB,LSM'X11_DEF') -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
+         /STANDARD=GNU -
+         /ARCHITECTURE=HOST -
+         /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
+         /OBJECT=es40_lsm_base_RWLock.obj
+$ ENDIF
+$!
+$! Check if es40_lsm_base_Semaphore.obj is up-to-date...
+$!
+$ SRCTIME = F$CVTIME(F$FILE_ATTRIBUTES("[.base]Semaphore.cpp","RDT"),"COMPARISON")
+$ OBJFILE = F$SEARCH("es40_lsm_base_Semaphore.obj")
+$ IF OBJFILE .NES. ""
+$ THEN
+$   OBJTIME = F$CVTIME(F$FILE_ATTRIBUTES("es40_lsm_base_Semaphore.obj","RDT"),"COMPARISON")
+$ ELSE
+$   OBJTIME = F$CVTIME("01-JAN-1970 00:00:00.00","COMPARISON")
+$ ENDIF
+$!
+$! Compile [.base]Semaphore.cpp to es40_lsm_base_Semaphore.obj
+$ IF SRCTIME .GTS. OBJTIME
+$ THEN
+$   CXX [.base]Semaphore.cpp -
+         /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB,LSM'X11_DEF') -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
+         /STANDARD=GNU -
+         /ARCHITECTURE=HOST -
+         /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
+         /OBJECT=es40_lsm_base_Semaphore.obj
+$ ENDIF
+$!
+$! Check if es40_lsm_base_SignalHandler.obj is up-to-date...
+$!
+$ SRCTIME = F$CVTIME(F$FILE_ATTRIBUTES("[.base]SignalHandler.cpp","RDT"),"COMPARISON")
+$ OBJFILE = F$SEARCH("es40_lsm_base_SignalHandler.obj")
+$ IF OBJFILE .NES. ""
+$ THEN
+$   OBJTIME = F$CVTIME(F$FILE_ATTRIBUTES("es40_lsm_base_SignalHandler.obj","RDT"),"COMPARISON")
+$ ELSE
+$   OBJTIME = F$CVTIME("01-JAN-1970 00:00:00.00","COMPARISON")
+$ ENDIF
+$!
+$! Compile [.base]SignalHandler.cpp to es40_lsm_base_SignalHandler.obj
+$ IF SRCTIME .GTS. OBJTIME
+$ THEN
+$   CXX [.base]SignalHandler.cpp -
+         /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB,LSM'X11_DEF') -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
+         /STANDARD=GNU -
+         /ARCHITECTURE=HOST -
+         /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
+         /OBJECT=es40_lsm_base_SignalHandler.obj
+$ ENDIF
+$!
+$! Check if es40_lsm_base_ThreadLocal.obj is up-to-date...
+$!
+$ SRCTIME = F$CVTIME(F$FILE_ATTRIBUTES("[.base]ThreadLocal.cpp","RDT"),"COMPARISON")
+$ OBJFILE = F$SEARCH("es40_lsm_base_ThreadLocal.obj")
+$ IF OBJFILE .NES. ""
+$ THEN
+$   OBJTIME = F$CVTIME(F$FILE_ATTRIBUTES("es40_lsm_base_ThreadLocal.obj","RDT"),"COMPARISON")
+$ ELSE
+$   OBJTIME = F$CVTIME("01-JAN-1970 00:00:00.00","COMPARISON")
+$ ENDIF
+$!
+$! Compile [.base]ThreadLocal.cpp to es40_lsm_base_ThreadLocal.obj
+$ IF SRCTIME .GTS. OBJTIME
+$ THEN
+$   CXX [.base]ThreadLocal.cpp -
+         /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB,LSM'X11_DEF') -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
+         /STANDARD=GNU -
+         /ARCHITECTURE=HOST -
+         /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
+         /OBJECT=es40_lsm_base_ThreadLocal.obj
+$ ENDIF
+$!
+$! Check if es40_lsm_base_Thread.obj is up-to-date...
+$!
+$ SRCTIME = F$CVTIME(F$FILE_ATTRIBUTES("[.base]Thread.cpp","RDT"),"COMPARISON")
+$ OBJFILE = F$SEARCH("es40_lsm_base_Thread.obj")
+$ IF OBJFILE .NES. ""
+$ THEN
+$   OBJTIME = F$CVTIME(F$FILE_ATTRIBUTES("es40_lsm_base_Thread.obj","RDT"),"COMPARISON")
+$ ELSE
+$   OBJTIME = F$CVTIME("01-JAN-1970 00:00:00.00","COMPARISON")
+$ ENDIF
+$!
+$! Compile [.base]Thread.cpp to es40_lsm_base_Thread.obj
+$ IF SRCTIME .GTS. OBJTIME
+$ THEN
+$   CXX [.base]Thread.cpp -
+         /DEFINE=(ES40,__USE_STD_IOSTREAM,IDB,LSM'X11_DEF') -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
+         /STANDARD=GNU -
+         /ARCHITECTURE=HOST -
+         /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
+         /OBJECT=es40_lsm_base_Thread.obj
+$ ENDIF
+$!
 $! Link es40_lsm
 $!
 $ SAY "Linking es40_lsm..."
 $!
-$ CXXLINK es40_lsm_vms_Event.obj,es40_lsm_vms_Exception.obj,es40_lsm_vms_Mutex.obj,es40_lsm_vms_Runnable.obj,es40_lsm_vms_RWLock.obj,es40_lsm_vms_Semaphore.obj,es40_lsm_vms_Thread.obj,es40_lsm_vms_ErrorHandler.obj,es40_lsm_vms_Bugcheck.obj,es40_lsm_vms_Debugger.obj,es40_lsm_vms_ThreadLocal.obj,es40_lsm_vms_Timestamp.obj,es40_lsm_vms_RefCountedObject.obj,es40_lsm_AliM1543C.obj,es40_lsm_AliM1543C_ide.obj,es40_lsm_AliM1543C_usb.obj,es40_lsm_AlphaCPU.obj,es40_lsm_AlphaCPU_ieeefloat.obj,es40_lsm_AlphaCPU_vaxfloat.obj,es40_lsm_AlphaCPU_vmspal.obj,es40_lsm_AlphaSim.obj,es40_lsm_Cirrus.obj,es40_lsm_Configurator.obj,es40_lsm_DEC21143.obj,es40_lsm_Disk.obj,es40_lsm_DiskController.obj,es40_lsm_DiskDevice.obj,es40_lsm_DiskFile.obj,es40_lsm_DiskRam.obj,es40_lsm_DMA.obj,es40_lsm_DPR.obj,es40_lsm_es40_debug.obj,es40_lsm_Ethernet.obj,es40_lsm_Exception.obj,es40_lsm_Flash.obj,es40_lsm_FloppyController.obj,es40_lsm_Keyboard.obj,es40_lsm_lockstep.obj,es40_lsm_PCIDevice.obj,es40_lsm_Port80.obj,es40_lsm_S3Trio64.obj,es40_lsm_SCSIBus.obj,es40_lsm_SCSIDevice.obj,es40_lsm_Serial.obj,es40_lsm_StdAfx.obj,es40_lsm_Sym53C810.obj,es40_lsm_Sym53C895.obj,es40_lsm_SystemComponent.obj,es40_lsm_System.obj,es40_lsm_TraceEngine.obj,es40_lsm_VGA.obj,es40_lsm_gui_gui.obj,es40_lsm_gui_gui_x11.obj,es40_lsm_gui_keymap.obj,es40_lsm_gui_scancodes.obj'X11_LIB' -
+$ CXXLINK es40_lsm_AliM1543C.obj,es40_lsm_AliM1543C_ide.obj,es40_lsm_AliM1543C_usb.obj,es40_lsm_AlphaCPU.obj,es40_lsm_AlphaCPU_ieeefloat.obj,es40_lsm_AlphaCPU_vaxfloat.obj,es40_lsm_AlphaCPU_vmspal.obj,es40_lsm_AlphaSim.obj,es40_lsm_Cirrus.obj,es40_lsm_Configurator.obj,es40_lsm_DEC21143.obj,es40_lsm_Disk.obj,es40_lsm_DiskController.obj,es40_lsm_DiskDevice.obj,es40_lsm_DiskFile.obj,es40_lsm_DiskRam.obj,es40_lsm_DMA.obj,es40_lsm_DPR.obj,es40_lsm_es40_debug.obj,es40_lsm_Ethernet.obj,es40_lsm_Flash.obj,es40_lsm_FloppyController.obj,es40_lsm_Keyboard.obj,es40_lsm_lockstep.obj,es40_lsm_PCIDevice.obj,es40_lsm_Port80.obj,es40_lsm_S3Trio64.obj,es40_lsm_SCSIBus.obj,es40_lsm_SCSIDevice.obj,es40_lsm_Serial.obj,es40_lsm_StdAfx.obj,es40_lsm_Sym53C810.obj,es40_lsm_Sym53C895.obj,es40_lsm_SystemComponent.obj,es40_lsm_System.obj,es40_lsm_TraceEngine.obj,es40_lsm_VGA.obj,es40_lsm_gui_gui.obj,es40_lsm_gui_gui_x11.obj,es40_lsm_gui_keymap.obj,es40_lsm_gui_scancodes.obj,es40_lsm_gui_sdl.obj,es40_lsm_base_Bugcheck.obj,es40_lsm_base_ErrorHandler.obj,es40_lsm_base_Event.obj,es40_lsm_base_Exception.obj,es40_lsm_base_Mutex.obj,es40_lsm_base_NumberFormatter.obj,es40_lsm_base_RefCountedObject.obj,es40_lsm_base_Runnable.obj,es40_lsm_base_RWLock.obj,es40_lsm_base_Semaphore.obj,es40_lsm_base_SignalHandler.obj,es40_lsm_base_ThreadLocal.obj,es40_lsm_base_Thread.obj'X11_LIB' -
            /EXECUTABLE=es40_lsm.exe
 $!
 $! Compile sources for es40_cfg
@@ -5185,305 +5185,6 @@ $!
 $! Compile with the following defines: ES40,__USE_STD_IOSTREAM
 $!
 $ SAY "Compiling es40_cfg..."
-$!
-$! Check if es40_cfg_vms_Event.obj is up-to-date...
-$!
-$ SRCTIME = F$CVTIME(F$FILE_ATTRIBUTES("[.vms]Event.cpp","RDT"),"COMPARISON")
-$ OBJFILE = F$SEARCH("es40_cfg_vms_Event.obj")
-$ IF OBJFILE .NES. ""
-$ THEN
-$   OBJTIME = F$CVTIME(F$FILE_ATTRIBUTES("es40_cfg_vms_Event.obj","RDT"),"COMPARISON")
-$ ELSE
-$   OBJTIME = F$CVTIME("01-JAN-1970 00:00:00.00","COMPARISON")
-$ ENDIF
-$!
-$! Compile [.vms]Event.cpp to es40_cfg_vms_Event.obj
-$ IF SRCTIME .GTS. OBJTIME
-$ THEN
-$   CXX [.vms]Event.cpp -
-         /DEFINE=(ES40,__USE_STD_IOSTREAM'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
-         /STANDARD=GNU -
-         /ARCHITECTURE=HOST -
-         /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
-         /OBJECT=es40_cfg_vms_Event.obj
-$ ENDIF
-$!
-$! Check if es40_cfg_vms_Exception.obj is up-to-date...
-$!
-$ SRCTIME = F$CVTIME(F$FILE_ATTRIBUTES("[.vms]Exception.cpp","RDT"),"COMPARISON")
-$ OBJFILE = F$SEARCH("es40_cfg_vms_Exception.obj")
-$ IF OBJFILE .NES. ""
-$ THEN
-$   OBJTIME = F$CVTIME(F$FILE_ATTRIBUTES("es40_cfg_vms_Exception.obj","RDT"),"COMPARISON")
-$ ELSE
-$   OBJTIME = F$CVTIME("01-JAN-1970 00:00:00.00","COMPARISON")
-$ ENDIF
-$!
-$! Compile [.vms]Exception.cpp to es40_cfg_vms_Exception.obj
-$ IF SRCTIME .GTS. OBJTIME
-$ THEN
-$   CXX [.vms]Exception.cpp -
-         /DEFINE=(ES40,__USE_STD_IOSTREAM'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
-         /STANDARD=GNU -
-         /ARCHITECTURE=HOST -
-         /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
-         /OBJECT=es40_cfg_vms_Exception.obj
-$ ENDIF
-$!
-$! Check if es40_cfg_vms_Mutex.obj is up-to-date...
-$!
-$ SRCTIME = F$CVTIME(F$FILE_ATTRIBUTES("[.vms]Mutex.cpp","RDT"),"COMPARISON")
-$ OBJFILE = F$SEARCH("es40_cfg_vms_Mutex.obj")
-$ IF OBJFILE .NES. ""
-$ THEN
-$   OBJTIME = F$CVTIME(F$FILE_ATTRIBUTES("es40_cfg_vms_Mutex.obj","RDT"),"COMPARISON")
-$ ELSE
-$   OBJTIME = F$CVTIME("01-JAN-1970 00:00:00.00","COMPARISON")
-$ ENDIF
-$!
-$! Compile [.vms]Mutex.cpp to es40_cfg_vms_Mutex.obj
-$ IF SRCTIME .GTS. OBJTIME
-$ THEN
-$   CXX [.vms]Mutex.cpp -
-         /DEFINE=(ES40,__USE_STD_IOSTREAM'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
-         /STANDARD=GNU -
-         /ARCHITECTURE=HOST -
-         /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
-         /OBJECT=es40_cfg_vms_Mutex.obj
-$ ENDIF
-$!
-$! Check if es40_cfg_vms_Runnable.obj is up-to-date...
-$!
-$ SRCTIME = F$CVTIME(F$FILE_ATTRIBUTES("[.vms]Runnable.cpp","RDT"),"COMPARISON")
-$ OBJFILE = F$SEARCH("es40_cfg_vms_Runnable.obj")
-$ IF OBJFILE .NES. ""
-$ THEN
-$   OBJTIME = F$CVTIME(F$FILE_ATTRIBUTES("es40_cfg_vms_Runnable.obj","RDT"),"COMPARISON")
-$ ELSE
-$   OBJTIME = F$CVTIME("01-JAN-1970 00:00:00.00","COMPARISON")
-$ ENDIF
-$!
-$! Compile [.vms]Runnable.cpp to es40_cfg_vms_Runnable.obj
-$ IF SRCTIME .GTS. OBJTIME
-$ THEN
-$   CXX [.vms]Runnable.cpp -
-         /DEFINE=(ES40,__USE_STD_IOSTREAM'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
-         /STANDARD=GNU -
-         /ARCHITECTURE=HOST -
-         /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
-         /OBJECT=es40_cfg_vms_Runnable.obj
-$ ENDIF
-$!
-$! Check if es40_cfg_vms_RWLock.obj is up-to-date...
-$!
-$ SRCTIME = F$CVTIME(F$FILE_ATTRIBUTES("[.vms]RWLock.cpp","RDT"),"COMPARISON")
-$ OBJFILE = F$SEARCH("es40_cfg_vms_RWLock.obj")
-$ IF OBJFILE .NES. ""
-$ THEN
-$   OBJTIME = F$CVTIME(F$FILE_ATTRIBUTES("es40_cfg_vms_RWLock.obj","RDT"),"COMPARISON")
-$ ELSE
-$   OBJTIME = F$CVTIME("01-JAN-1970 00:00:00.00","COMPARISON")
-$ ENDIF
-$!
-$! Compile [.vms]RWLock.cpp to es40_cfg_vms_RWLock.obj
-$ IF SRCTIME .GTS. OBJTIME
-$ THEN
-$   CXX [.vms]RWLock.cpp -
-         /DEFINE=(ES40,__USE_STD_IOSTREAM'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
-         /STANDARD=GNU -
-         /ARCHITECTURE=HOST -
-         /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
-         /OBJECT=es40_cfg_vms_RWLock.obj
-$ ENDIF
-$!
-$! Check if es40_cfg_vms_Semaphore.obj is up-to-date...
-$!
-$ SRCTIME = F$CVTIME(F$FILE_ATTRIBUTES("[.vms]Semaphore.cpp","RDT"),"COMPARISON")
-$ OBJFILE = F$SEARCH("es40_cfg_vms_Semaphore.obj")
-$ IF OBJFILE .NES. ""
-$ THEN
-$   OBJTIME = F$CVTIME(F$FILE_ATTRIBUTES("es40_cfg_vms_Semaphore.obj","RDT"),"COMPARISON")
-$ ELSE
-$   OBJTIME = F$CVTIME("01-JAN-1970 00:00:00.00","COMPARISON")
-$ ENDIF
-$!
-$! Compile [.vms]Semaphore.cpp to es40_cfg_vms_Semaphore.obj
-$ IF SRCTIME .GTS. OBJTIME
-$ THEN
-$   CXX [.vms]Semaphore.cpp -
-         /DEFINE=(ES40,__USE_STD_IOSTREAM'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
-         /STANDARD=GNU -
-         /ARCHITECTURE=HOST -
-         /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
-         /OBJECT=es40_cfg_vms_Semaphore.obj
-$ ENDIF
-$!
-$! Check if es40_cfg_vms_Thread.obj is up-to-date...
-$!
-$ SRCTIME = F$CVTIME(F$FILE_ATTRIBUTES("[.vms]Thread.cpp","RDT"),"COMPARISON")
-$ OBJFILE = F$SEARCH("es40_cfg_vms_Thread.obj")
-$ IF OBJFILE .NES. ""
-$ THEN
-$   OBJTIME = F$CVTIME(F$FILE_ATTRIBUTES("es40_cfg_vms_Thread.obj","RDT"),"COMPARISON")
-$ ELSE
-$   OBJTIME = F$CVTIME("01-JAN-1970 00:00:00.00","COMPARISON")
-$ ENDIF
-$!
-$! Compile [.vms]Thread.cpp to es40_cfg_vms_Thread.obj
-$ IF SRCTIME .GTS. OBJTIME
-$ THEN
-$   CXX [.vms]Thread.cpp -
-         /DEFINE=(ES40,__USE_STD_IOSTREAM'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
-         /STANDARD=GNU -
-         /ARCHITECTURE=HOST -
-         /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
-         /OBJECT=es40_cfg_vms_Thread.obj
-$ ENDIF
-$!
-$! Check if es40_cfg_vms_ErrorHandler.obj is up-to-date...
-$!
-$ SRCTIME = F$CVTIME(F$FILE_ATTRIBUTES("[.vms]ErrorHandler.cpp","RDT"),"COMPARISON")
-$ OBJFILE = F$SEARCH("es40_cfg_vms_ErrorHandler.obj")
-$ IF OBJFILE .NES. ""
-$ THEN
-$   OBJTIME = F$CVTIME(F$FILE_ATTRIBUTES("es40_cfg_vms_ErrorHandler.obj","RDT"),"COMPARISON")
-$ ELSE
-$   OBJTIME = F$CVTIME("01-JAN-1970 00:00:00.00","COMPARISON")
-$ ENDIF
-$!
-$! Compile [.vms]ErrorHandler.cpp to es40_cfg_vms_ErrorHandler.obj
-$ IF SRCTIME .GTS. OBJTIME
-$ THEN
-$   CXX [.vms]ErrorHandler.cpp -
-         /DEFINE=(ES40,__USE_STD_IOSTREAM'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
-         /STANDARD=GNU -
-         /ARCHITECTURE=HOST -
-         /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
-         /OBJECT=es40_cfg_vms_ErrorHandler.obj
-$ ENDIF
-$!
-$! Check if es40_cfg_vms_Bugcheck.obj is up-to-date...
-$!
-$ SRCTIME = F$CVTIME(F$FILE_ATTRIBUTES("[.vms]Bugcheck.cpp","RDT"),"COMPARISON")
-$ OBJFILE = F$SEARCH("es40_cfg_vms_Bugcheck.obj")
-$ IF OBJFILE .NES. ""
-$ THEN
-$   OBJTIME = F$CVTIME(F$FILE_ATTRIBUTES("es40_cfg_vms_Bugcheck.obj","RDT"),"COMPARISON")
-$ ELSE
-$   OBJTIME = F$CVTIME("01-JAN-1970 00:00:00.00","COMPARISON")
-$ ENDIF
-$!
-$! Compile [.vms]Bugcheck.cpp to es40_cfg_vms_Bugcheck.obj
-$ IF SRCTIME .GTS. OBJTIME
-$ THEN
-$   CXX [.vms]Bugcheck.cpp -
-         /DEFINE=(ES40,__USE_STD_IOSTREAM'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
-         /STANDARD=GNU -
-         /ARCHITECTURE=HOST -
-         /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
-         /OBJECT=es40_cfg_vms_Bugcheck.obj
-$ ENDIF
-$!
-$! Check if es40_cfg_vms_Debugger.obj is up-to-date...
-$!
-$ SRCTIME = F$CVTIME(F$FILE_ATTRIBUTES("[.vms]Debugger.cpp","RDT"),"COMPARISON")
-$ OBJFILE = F$SEARCH("es40_cfg_vms_Debugger.obj")
-$ IF OBJFILE .NES. ""
-$ THEN
-$   OBJTIME = F$CVTIME(F$FILE_ATTRIBUTES("es40_cfg_vms_Debugger.obj","RDT"),"COMPARISON")
-$ ELSE
-$   OBJTIME = F$CVTIME("01-JAN-1970 00:00:00.00","COMPARISON")
-$ ENDIF
-$!
-$! Compile [.vms]Debugger.cpp to es40_cfg_vms_Debugger.obj
-$ IF SRCTIME .GTS. OBJTIME
-$ THEN
-$   CXX [.vms]Debugger.cpp -
-         /DEFINE=(ES40,__USE_STD_IOSTREAM'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
-         /STANDARD=GNU -
-         /ARCHITECTURE=HOST -
-         /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
-         /OBJECT=es40_cfg_vms_Debugger.obj
-$ ENDIF
-$!
-$! Check if es40_cfg_vms_ThreadLocal.obj is up-to-date...
-$!
-$ SRCTIME = F$CVTIME(F$FILE_ATTRIBUTES("[.vms]ThreadLocal.cpp","RDT"),"COMPARISON")
-$ OBJFILE = F$SEARCH("es40_cfg_vms_ThreadLocal.obj")
-$ IF OBJFILE .NES. ""
-$ THEN
-$   OBJTIME = F$CVTIME(F$FILE_ATTRIBUTES("es40_cfg_vms_ThreadLocal.obj","RDT"),"COMPARISON")
-$ ELSE
-$   OBJTIME = F$CVTIME("01-JAN-1970 00:00:00.00","COMPARISON")
-$ ENDIF
-$!
-$! Compile [.vms]ThreadLocal.cpp to es40_cfg_vms_ThreadLocal.obj
-$ IF SRCTIME .GTS. OBJTIME
-$ THEN
-$   CXX [.vms]ThreadLocal.cpp -
-         /DEFINE=(ES40,__USE_STD_IOSTREAM'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
-         /STANDARD=GNU -
-         /ARCHITECTURE=HOST -
-         /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
-         /OBJECT=es40_cfg_vms_ThreadLocal.obj
-$ ENDIF
-$!
-$! Check if es40_cfg_vms_Timestamp.obj is up-to-date...
-$!
-$ SRCTIME = F$CVTIME(F$FILE_ATTRIBUTES("[.vms]Timestamp.cpp","RDT"),"COMPARISON")
-$ OBJFILE = F$SEARCH("es40_cfg_vms_Timestamp.obj")
-$ IF OBJFILE .NES. ""
-$ THEN
-$   OBJTIME = F$CVTIME(F$FILE_ATTRIBUTES("es40_cfg_vms_Timestamp.obj","RDT"),"COMPARISON")
-$ ELSE
-$   OBJTIME = F$CVTIME("01-JAN-1970 00:00:00.00","COMPARISON")
-$ ENDIF
-$!
-$! Compile [.vms]Timestamp.cpp to es40_cfg_vms_Timestamp.obj
-$ IF SRCTIME .GTS. OBJTIME
-$ THEN
-$   CXX [.vms]Timestamp.cpp -
-         /DEFINE=(ES40,__USE_STD_IOSTREAM'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
-         /STANDARD=GNU -
-         /ARCHITECTURE=HOST -
-         /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
-         /OBJECT=es40_cfg_vms_Timestamp.obj
-$ ENDIF
-$!
-$! Check if es40_cfg_vms_RefCountedObject.obj is up-to-date...
-$!
-$ SRCTIME = F$CVTIME(F$FILE_ATTRIBUTES("[.vms]RefCountedObject.cpp","RDT"),"COMPARISON")
-$ OBJFILE = F$SEARCH("es40_cfg_vms_RefCountedObject.obj")
-$ IF OBJFILE .NES. ""
-$ THEN
-$   OBJTIME = F$CVTIME(F$FILE_ATTRIBUTES("es40_cfg_vms_RefCountedObject.obj","RDT"),"COMPARISON")
-$ ELSE
-$   OBJTIME = F$CVTIME("01-JAN-1970 00:00:00.00","COMPARISON")
-$ ENDIF
-$!
-$! Compile [.vms]RefCountedObject.cpp to es40_cfg_vms_RefCountedObject.obj
-$ IF SRCTIME .GTS. OBJTIME
-$ THEN
-$   CXX [.vms]RefCountedObject.cpp -
-         /DEFINE=(ES40,__USE_STD_IOSTREAM'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
-         /STANDARD=GNU -
-         /ARCHITECTURE=HOST -
-         /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
-         /OBJECT=es40_cfg_vms_RefCountedObject.obj
-$ ENDIF
 $!
 $! Check if es40_cfg_es40-cfg.cpp
 .obj is up-to-date...
@@ -5508,7 +5209,7 @@ $ THEN
 $   CXX es40-cfg.cpp
  -
          /DEFINE=(ES40,__USE_STD_IOSTREAM'X11_DEF') -
-         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/VMS'") -
+         /INCLUDE=("''ES40_ROOT'/GUI","''ES40_ROOT'/BASE'") -
          /STANDARD=GNU -
          /ARCHITECTURE=HOST -
          /OPTIMIZE=(LEVEL=4,INLINE=SPEED,TUNE=HOST) -
@@ -5520,7 +5221,7 @@ $! Link es40_cfg
 $!
 $ SAY "Linking es40_cfg..."
 $!
-$ CXXLINK es40_cfg_vms_Event.obj,es40_cfg_vms_Exception.obj,es40_cfg_vms_Mutex.obj,es40_cfg_vms_Runnable.obj,es40_cfg_vms_RWLock.obj,es40_cfg_vms_Semaphore.obj,es40_cfg_vms_Thread.obj,es40_cfg_vms_ErrorHandler.obj,es40_cfg_vms_Bugcheck.obj,es40_cfg_vms_Debugger.obj,es40_cfg_vms_ThreadLocal.obj,es40_cfg_vms_Timestamp.obj,es40_cfg_vms_RefCountedObject.obj,es40_cfg_es40-cfg.cpp
+$ CXXLINK es40_cfg_es40-cfg.cpp
 .obj'X11_LIB' -
            /EXECUTABLE=es40_cfg.exe
 $!

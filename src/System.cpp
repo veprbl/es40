@@ -1,8 +1,8 @@
 /* ES40 emulator.
  * Copyright (C) 2007-2008 by the ES40 Emulator Project
  *
- * Website: http://sourceforge.net/projects/es40
- * E-mail : camiel@camicom.com
+ * Website: http://www.es40.org
+ * E-mail : camiel@es40.org
  * 
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -27,7 +27,10 @@
  * \file 
  * Contains the code for the emulated Typhoon Chipset devices.
  *
- * $Id: System.cpp,v 1.76 2008/04/29 07:37:54 iamcamiel Exp $
+ * $Id: System.cpp,v 1.77 2008/05/31 15:47:14 iamcamiel Exp $
+ *
+ * X-1.77       Camiel Vanderhoeven                             31-MAY-2008
+ *      Changes to include parts of Poco.
  *
  * X-1.76       Brian Wheeler                                   29-APR-2008
  *      Added memory map dumping and checking for overlapping memory ranges
@@ -379,7 +382,7 @@ CSystem::CSystem(CConfigurator* cfg)
 
   cpu_lock_mutex = new CFastMutex("cpu-locking-lock");
 
-  printf("%s(%s): $Id: System.cpp,v 1.76 2008/04/29 07:37:54 iamcamiel Exp $\n",
+  printf("%s(%s): $Id: System.cpp,v 1.77 2008/05/31 15:47:14 iamcamiel Exp $\n",
          cfg->get_myName(), cfg->get_myValue());
 }
 
@@ -554,7 +557,7 @@ void CSystem::Run()
   {
     if(got_sigint)
       FAILURE(Graceful, "CTRL-C detected");
-    Poco::Thread::sleep(100); // 100ms sleep
+    CThread::sleep(100); // 100ms sleep
     for(i = 0; i < iNumComponents; i++)
       acComponents[i]->check_state();
 #if !defined(HIDE_COUNTER)
@@ -1735,7 +1738,7 @@ void CSystem::cchip_csr_write(u32 a, u64 data, CSystemComponent* source)
           printf("*** IP interrupt set for CPU %d from CPU %d(@ %"LL "x)\n", i,
                  cpu->get_cpuid(), cpu->get_pc() - 4);
 
-          //          Poco::Thread::sleep(10);
+          //          CThread::sleep(10);
         }
       }
     }

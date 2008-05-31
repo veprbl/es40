@@ -2,8 +2,8 @@
 # ES40 emulator.
 # Copyright (C) 2007-2008 by the ES40 Emulator Project
 #
-# Website: http://sourceforge.net/projects/es40
-# E-mail : camiel@camicom.com
+# Website: http://www.es40.org
+# E-mail : camiel@es40.org
 # 
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
@@ -26,7 +26,10 @@
 #
 ################################################################################
 #
-# $Id: Makefile.am,v 1.4 2008/04/04 09:07:14 iamcamiel Exp $
+# $Id: Makefile.am,v 1.5 2008/05/31 15:47:10 iamcamiel Exp $
+#
+# X-1.5      Camiel Vanderhoeven                          31-MAY-2008
+#      Add parts of Poco.
 #
 # X-1.4      Camiel Vanderhoeven                      04-APR-2008
 #      Added comments.
@@ -61,7 +64,6 @@ es40_SOURCES = AliM1543C.cpp \
        DPR.cpp \
        es40_debug.cpp \
        Ethernet.cpp \
-       Exception.cpp \
        Flash.cpp \
        FloppyController.cpp \
        Keyboard.cpp \
@@ -83,7 +85,21 @@ es40_SOURCES = AliM1543C.cpp \
        gui/gui_x11.cpp \
        gui/keymap.cpp \
        gui/scancodes.cpp \
-       gui/sdl.cpp
+       gui/sdl.cpp \
+        base/Bugcheck.cpp \
+	base/ErrorHandler.cpp \
+	base/Event.cpp \
+	base/Exception.cpp \
+	base/Mutex.cpp \
+	base/NumberFormatter.cpp \
+	base/RefCountedObject.cpp \
+	base/Runnable.cpp \
+	base/RWLock.cpp \
+	base/Semaphore.cpp \
+	base/SignalHandler.cpp \
+	base/ThreadLocal.cpp \
+	base/Thread.cpp \
+	base/Timestamp.cpp
 
 es40_idb_SOURCES = $(es40_SOURCES)
 es40_lss_SOURCES = $(es40_SOURCES)
@@ -95,4 +111,3 @@ es40_lsm_CXXFLAGS = -DIDB -DLSM
 
 es40_cfg_SOURCES = es40-cfg.cpp
 
-LDADD = -lPocoFoundation

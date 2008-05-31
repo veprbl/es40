@@ -4,8 +4,8 @@
 # ES40 emulator.
 # Copyright (C) 2007-2008 by the ES40 Emulator Project
 #
-# Website: http://sourceforge.net/projects/es40
-# E-mail : camiel@camicom.com
+# Website: http://www.es40.org
+# E-mail : camiel@es40.org
 # 
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
@@ -28,7 +28,13 @@
 #
 ################################################################################
 #
-# $Id: configure_1.sh,v 1.5 2008/04/03 17:22:46 iamcamiel Exp $
+# $Id: configure_1.sh,v 1.6 2008/05/31 15:47:07 iamcamiel Exp $
+#
+# X-1.7      Camiel Vanderhoeven                      31-MAY-2008
+#      Add parts of Poco.
+#
+# X-1.6      Camiel Vanderhoeven                          29-APR-2008
+#     Added CHECK_MEM_RANGES and DUMP_MEMMAP
 #
 # X-1.5      Camiel Vanderhoeven                          03-APR-2008
 #     Fixed typo
@@ -224,6 +230,131 @@ EOF
 
 // Define to 1 if you want to show estimate speed
 #undef MIPS_ESTIMATE
+EOF
+  fi
+
+  # ask a yes/no question, and define/undefine a macro accordingly
+# arg 1: question to follow "Do you want to "
+# arg 2: name of macro
+# arg 3: default value
+# arg 4: pre-determined answer
+# arg 5: explanation
+# arg 6: reverse (yes, no)
+  # ask a question with a response of yes or no
+# arg 1: question
+# arg 2: default value
+# arg 3: action on yes
+# arg 4: action on no
+# arg 5: pre-determined answer (if not "", the answer will be assumed to be this)
+# arg 6: explanation
+  if test "X" = "X"; then
+    if test "$all_default" = "yes"; then
+      answer="no"
+    else
+      while true; do
+        echo -n "Do you want to show memory map? (yes, no) [no]: "
+        read answer
+        if test "X$answer" = "X"; then
+          answer="no"
+        fi
+        if test "$answer" = "y" -o "$answer" = "ye" -o "$answer" = "yes"; then
+          answer="yes"
+          break
+        elif test "$answer" = "n" -o "$answer" = "no"; then
+          answer="no"
+          break
+        fi
+        echo "Invalid value: please answer yes or no"
+      done
+    fi
+  else
+    answer=""
+  fi
+  if test "$answer" = "yes"; then
+    debug="yes"
+  elif test "$answer" = "no"; then
+    debug="no"
+  fi
+
+  if test "" = "yes"; then
+    check_for="no"
+  else
+    check_for="yes"
+  fi
+  if test "$debug" = $check_for; then
+    cat >>src/config_debug.h <<EOF
+
+// Define to 1 if you want to show memory map
+#define DUMP_MEMMAP 1
+EOF
+  else
+    cat >>src/config_debug.h <<EOF
+
+// Define to 1 if you want to show memory map
+#undef DUMP_MEMMAP
+EOF
+  fi
+
+
+  # ask a yes/no question, and define/undefine a macro accordingly
+# arg 1: question to follow "Do you want to "
+# arg 2: name of macro
+# arg 3: default value
+# arg 4: pre-determined answer
+# arg 5: explanation
+# arg 6: reverse (yes, no)
+  # ask a question with a response of yes or no
+# arg 1: question
+# arg 2: default value
+# arg 3: action on yes
+# arg 4: action on no
+# arg 5: pre-determined answer (if not "", the answer will be assumed to be this)
+# arg 6: explanation
+  if test "X" = "X"; then
+    if test "$all_default" = "yes"; then
+      answer="yes"
+    else
+      while true; do
+        echo -n "Do you want to check for overlapping of memory ranges? (yes, no) [yes]: "
+        read answer
+        if test "X$answer" = "X"; then
+          answer="yes"
+        fi
+        if test "$answer" = "y" -o "$answer" = "ye" -o "$answer" = "yes"; then
+          answer="yes"
+          break
+        elif test "$answer" = "n" -o "$answer" = "no"; then
+          answer="no"
+          break
+        fi
+        echo "Invalid value: please answer yes or no"
+      done
+    fi
+  else
+    answer=""
+  fi
+  if test "$answer" = "yes"; then
+    debug="yes"
+  elif test "$answer" = "no"; then
+    debug="no"
+  fi
+
+  if test "" = "yes"; then
+    check_for="no"
+  else
+    check_for="yes"
+  fi
+  if test "$debug" = $check_for; then
+    cat >>src/config_debug.h <<EOF
+
+// Define to 1 if you want to check for overlapping of memory ranges
+#define CHECK_MEM_RANGES 1
+EOF
+  else
+    cat >>src/config_debug.h <<EOF
+
+// Define to 1 if you want to check for overlapping of memory ranges
+#undef CHECK_MEM_RANGES
 EOF
   fi
 

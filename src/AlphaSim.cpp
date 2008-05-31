@@ -1,8 +1,8 @@
 /* ES40 emulator.
  * Copyright (C) 2007-2008 by the ES40 Emulator Project
  *
- * WWW    : http://es40.org
- * E-mail : camiel@camicom.com
+ * WWW    : http://www.es40.org
+ * E-mail : camiel@es40.org
  * 
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -27,7 +27,10 @@
  * \file
  * Defines the entry point for the application.
  *
- * $Id: AlphaSim.cpp,v 1.48 2008/04/10 12:32:24 iamcamiel Exp $
+ * $Id: AlphaSim.cpp,v 1.49 2008/05/31 15:47:09 iamcamiel Exp $
+ *
+ * X-1.49       Camiel Vanderhoeven                             31-MAY-2008
+ *      Changes to include parts of Poco.
  *
  * X-1.48       Martin Borgman                                  10-APR-2008
  *	    Handle SDL support on OS X through OS_X/SDLMain.m.
@@ -403,7 +406,7 @@ int main (int argc, char*argv[])
 #endif
     delete theSystem;
   }
-  catch(Poco::Exception & e)
+  catch(CException & e)
   {
     printf("Emulator Failure: %s\n", e.displayText().c_str());
     if(theSystem)

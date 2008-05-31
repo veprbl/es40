@@ -4,8 +4,8 @@
 # ES40 emulator.
 # Copyright (C) 2007-2008 by the ES40 Emulator Project
 #
-# Website: http://sourceforge.net/projects/es40
-# E-mail : camiel@camicom.com
+# Website: http://www.es40.org
+# E-mail : camiel@es40.org
 # 
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
@@ -28,7 +28,10 @@
 #
 ################################################################################
 #
-# $Id: configure_1.m4,v 1.6 2008/04/29 07:37:54 iamcamiel Exp $
+# $Id: configure_1.m4,v 1.7 2008/05/31 15:47:07 iamcamiel Exp $
+#
+# X-1.7      Camiel Vanderhoeven                      31-MAY-2008
+#      Add parts of Poco.
 #
 # X-1.6      Camiel Vanderhoeven                          29-APR-2008
 #     Added CHECK_MEM_RANGES and DUMP_MEMMAP
