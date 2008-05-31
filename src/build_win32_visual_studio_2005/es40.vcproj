@@ -852,10 +852,10 @@
 				Name="VCCLCompilerTool"
 				Optimization="2"
 				InlineFunctionExpansion="1"
-				AdditionalIncludeDirectories="c:\program files\poco\include,c:\program files\winpcap\include,c:\program files\sdl\include"
+				AdditionalIncludeDirectories="c:\program files\winpcap\include,c:\program files\sdl\include"
 				PreprocessorDefinitions="WIN32;NDEBUG;_CONSOLE;HAVE_PCAP;HAVE_SDL;HAVE_NEW_IDE;HIDE_COUNTER"
 				StringPooling="true"
-				RuntimeLibrary="0"
+				RuntimeLibrary="2"
 				EnableFunctionLevelLinking="true"
 				PrecompiledHeaderFile=".\Release/es40.pch"
 				AssemblerListingLocation=".\Release/"
@@ -877,11 +877,11 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				AdditionalDependencies="odbc32.lib odbccp32.lib ws2_32.lib wpcap.lib sdl.lib sdlmain.lib PocoFoundation.lib"
+				AdditionalDependencies="odbc32.lib odbccp32.lib ws2_32.lib wpcap.lib sdl.lib sdlmain.lib"
 				OutputFile="bin/es40.exe"
 				LinkIncremental="1"
 				SuppressStartupBanner="true"
-				AdditionalLibraryDirectories="c:\program files\poco\lib,c:\program files\sdl\lib,c:\program files\winpcap\lib"
+				AdditionalLibraryDirectories="c:\program files\sdl\lib,c:\program files\winpcap\lib"
 				ProgramDatabaseFile=".\Release/es40.pdb"
 				SubSystem="1"
 				TargetMachine="1"
@@ -2481,6 +2481,10 @@
 				</FileConfiguration>
 			</File>
 			<File
+				RelativePath="..\base\Bugcheck.cpp"
+				>
+			</File>
+			<File
 				RelativePath="..\Cirrus.cpp"
 				>
 				<FileConfiguration
@@ -3870,8 +3874,165 @@
 				>
 			</File>
 			<File
-				RelativePath="..\Exception.cpp"
+				RelativePath="..\base\Event.cpp"
 				>
+			</File>
+			<File
+				RelativePath="..\base\Exception.cpp"
+				>
+				<FileConfiguration
+					Name="Release NS|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						ObjectFile="$(IntDir)\$(InputName)1.obj"
+						XMLDocumentationFileName="$(IntDir)\$(InputName)1.xdc"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Release NN NS LSM|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						ObjectFile="$(IntDir)\$(InputName)1.obj"
+						XMLDocumentationFileName="$(IntDir)\$(InputName)1.xdc"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Release NN LSM|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						ObjectFile="$(IntDir)\$(InputName)1.obj"
+						XMLDocumentationFileName="$(IntDir)\$(InputName)1.xdc"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Release NN NS IDB|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						ObjectFile="$(IntDir)\$(InputName)1.obj"
+						XMLDocumentationFileName="$(IntDir)\$(InputName)1.xdc"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Release NN IDB|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						ObjectFile="$(IntDir)\$(InputName)1.obj"
+						XMLDocumentationFileName="$(IntDir)\$(InputName)1.xdc"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Release LSM|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						ObjectFile="$(IntDir)\$(InputName)1.obj"
+						XMLDocumentationFileName="$(IntDir)\$(InputName)1.xdc"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Release NS LSM|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						ObjectFile="$(IntDir)\$(InputName)1.obj"
+						XMLDocumentationFileName="$(IntDir)\$(InputName)1.xdc"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Release NN NS|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						ObjectFile="$(IntDir)\$(InputName)1.obj"
+						XMLDocumentationFileName="$(IntDir)\$(InputName)1.xdc"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Release IDB|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						ObjectFile="$(IntDir)\$(InputName)1.obj"
+						XMLDocumentationFileName="$(IntDir)\$(InputName)1.xdc"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Release|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						ObjectFile="$(IntDir)\$(InputName)1.obj"
+						XMLDocumentationFileName="$(IntDir)\$(InputName)1.xdc"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Release NS IDB|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						ObjectFile="$(IntDir)\$(InputName)1.obj"
+						XMLDocumentationFileName="$(IntDir)\$(InputName)1.xdc"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Release NN NS LSS|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						ObjectFile="$(IntDir)\$(InputName)1.obj"
+						XMLDocumentationFileName="$(IntDir)\$(InputName)1.xdc"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Release NN LSS|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						ObjectFile="$(IntDir)\$(InputName)1.obj"
+						XMLDocumentationFileName="$(IntDir)\$(InputName)1.xdc"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Release NN|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						ObjectFile="$(IntDir)\$(InputName)1.obj"
+						XMLDocumentationFileName="$(IntDir)\$(InputName)1.xdc"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Release LSS|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						ObjectFile="$(IntDir)\$(InputName)1.obj"
+						XMLDocumentationFileName="$(IntDir)\$(InputName)1.xdc"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Debug|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						ObjectFile="$(IntDir)\$(InputName)1.obj"
+						XMLDocumentationFileName="$(IntDir)\$(InputName)1.xdc"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Release NS LSS|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						ObjectFile="$(IntDir)\$(InputName)1.obj"
+						XMLDocumentationFileName="$(IntDir)\$(InputName)1.xdc"
+					/>
+				</FileConfiguration>
 			</File>
 			<File
 				RelativePath="..\Flash.cpp"
@@ -4647,6 +4808,10 @@
 				</FileConfiguration>
 			</File>
 			<File
+				RelativePath="..\base\Mutex.cpp"
+				>
+			</File>
+			<File
 				RelativePath="..\PCIDevice.cpp"
 				>
 				<FileConfiguration
@@ -4951,6 +5116,18 @@
 						PreprocessorDefinitions=""
 					/>
 				</FileConfiguration>
+			</File>
+			<File
+				RelativePath="..\base\RefCountedObject.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\base\Runnable.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\base\RWLock.cpp"
+				>
 			</File>
 			<File
 				RelativePath="..\S3Trio64.cpp"
@@ -5418,6 +5595,10 @@
 						PreprocessorDefinitions=""
 					/>
 				</FileConfiguration>
+			</File>
+			<File
+				RelativePath="..\base\Semaphore.cpp"
+				>
 			</File>
 			<File
 				RelativePath="..\Serial.cpp"
@@ -6189,6 +6370,18 @@
 				</FileConfiguration>
 			</File>
 			<File
+				RelativePath="..\base\Thread.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\base\ThreadLocal.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\base\Timestamp.cpp"
+				>
+			</File>
+			<File
 				RelativePath="..\TraceEngine.cpp"
 				>
 				<FileConfiguration
@@ -6516,6 +6709,14 @@
 				>
 			</File>
 			<File
+				RelativePath="..\base\AutoPtr.h"
+				>
+			</File>
+			<File
+				RelativePath="..\base\Bugcheck.h"
+				>
+			</File>
+			<File
 				RelativePath="..\Cirrus.h"
 				>
 			</File>
@@ -6644,7 +6845,19 @@
 				>
 			</File>
 			<File
-				RelativePath="..\Exception.h"
+				RelativePath="..\base\Event.h"
+				>
+			</File>
+			<File
+				RelativePath="..\base\Event_POSIX.h"
+				>
+			</File>
+			<File
+				RelativePath="..\base\Event_WIN32.h"
+				>
+			</File>
+			<File
+				RelativePath="..\base\Exception.h"
 				>
 			</File>
 			<File
@@ -6653,6 +6866,10 @@
 			</File>
 			<File
 				RelativePath="..\FloppyController.h"
+				>
+			</File>
+			<File
+				RelativePath="..\base\Foundation.h"
 				>
 			</File>
 			<File
@@ -6680,7 +6897,35 @@
 				>
 			</File>
 			<File
+				RelativePath="..\base\Mutex.h"
+				>
+			</File>
+			<File
+				RelativePath="..\base\Mutex_POSIX.h"
+				>
+			</File>
+			<File
+				RelativePath="..\base\Mutex_WIN32.h"
+				>
+			</File>
+			<File
 				RelativePath="..\PCIDevice.h"
+				>
+			</File>
+			<File
+				RelativePath="..\base\Platform.h"
+				>
+			</File>
+			<File
+				RelativePath="..\base\Platform_POSIX.h"
+				>
+			</File>
+			<File
+				RelativePath="..\base\Platform_VMS.h"
+				>
+			</File>
+			<File
+				RelativePath="..\base\Platform_WIN32.h"
 				>
 			</File>
 			<File
@@ -6688,7 +6933,31 @@
 				>
 			</File>
 			<File
+				RelativePath="..\base\Poco.h"
+				>
+			</File>
+			<File
 				RelativePath="..\Port80.h"
+				>
+			</File>
+			<File
+				RelativePath="..\base\RefCountedObject.h"
+				>
+			</File>
+			<File
+				RelativePath="..\base\Runnable.h"
+				>
+			</File>
+			<File
+				RelativePath="..\base\RWLock.h"
+				>
+			</File>
+			<File
+				RelativePath="..\base\RWLock_POSIX.h"
+				>
+			</File>
+			<File
+				RelativePath="..\base\RWLock_WIN32.h"
 				>
 			</File>
 			<File
@@ -6700,6 +6969,10 @@
 				>
 			</File>
 			<File
+				RelativePath="..\base\ScopedLock.h"
+				>
+			</File>
+			<File
 				RelativePath="..\gui\sdl_fonts.h"
 				>
 			</File>
@@ -6708,7 +6981,23 @@
 				>
 			</File>
 			<File
+				RelativePath="..\base\Semaphore.h"
+				>
+			</File>
+			<File
+				RelativePath="..\base\Semaphore_POSIX.h"
+				>
+			</File>
+			<File
+				RelativePath="..\base\Semaphore_WIN32.h"
+				>
+			</File>
+			<File
 				RelativePath="..\Serial.h"
+				>
+			</File>
+			<File
+				RelativePath="..\base\SingletonHolder.h"
 				>
 			</File>
 			<File
@@ -6736,7 +7025,35 @@
 				>
 			</File>
 			<File
+				RelativePath="..\base\Thread.h"
+				>
+			</File>
+			<File
+				RelativePath="..\base\Thread_POSIX.h"
+				>
+			</File>
+			<File
+				RelativePath="..\base\Thread_WIN32.h"
+				>
+			</File>
+			<File
+				RelativePath="..\base\ThreadLocal.h"
+				>
+			</File>
+			<File
+				RelativePath="..\base\Timestamp.h"
+				>
+			</File>
+			<File
 				RelativePath="..\TraceEngine.h"
+				>
+			</File>
+			<File
+				RelativePath="..\base\Types.h"
+				>
+			</File>
+			<File
+				RelativePath="..\base\UnWindows.h"
 				>
 			</File>
 			<File
