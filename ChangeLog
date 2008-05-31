@@ -3,6 +3,7 @@
 
 \section c019 version 0.18 -> 0.18+
 
+ - Removed dependency on Poco by including parts of it. (31-may-2008, Camiel Vanderhoeven)
  - Fixed a bug in the SDL configuration script (checking for "true" rather than "yes" in the
    final test). (09-may-2008, Caolán McNamarra)
  - Floppy controller implementation. (29-apr-2008, Brian Wheeler)
