@@ -27,9 +27,12 @@
  * \file
  * Contains the code for the emulated Serial Port devices.
  *
- * $Id: Serial.cpp,v 1.49 2008/05/31 15:47:12 iamcamiel Exp $
+ * $Id: Serial.cpp,v 1.50 2008/06/01 12:26:24 iamcamiel Exp $
  *
- * X-1.48       Camiel Vanderhoeven                             31-MAY-2008
+ * X-1.50       Camiel Vanderhoeven                             01-JUN-2008
+ *      Error message if execution of 'action' fails on Windows.
+ *
+ * X-1.49       Camiel Vanderhoeven                             31-MAY-2008
  *      Changes to include parts of Poco.
  *
  * X-1.47       Camiel Vanderhoeven                             31-MAR-2008
@@ -282,7 +285,7 @@ void CSerial::init()
   state.irq_active = false;
   myThread = 0;
 
-  printf("%s: $Id: Serial.cpp,v 1.49 2008/05/31 15:47:12 iamcamiel Exp $\n",
+  printf("%s: $Id: Serial.cpp,v 1.50 2008/06/01 12:26:24 iamcamiel Exp $\n",
          devid_string);
 }
 
@@ -840,7 +843,8 @@ void CSerial::WaitForConnection()
 
     //printf("%s: Starting %s\n", devid_string,nargv);
 #if defined(_WIN32)
-    _spawnvp(_P_NOWAIT, nargv, argv);
+    if (_spawnvp(_P_NOWAIT, nargv, argv) < 0);
+        FAILURE_1(Runtime,"Exec of '%s' has failed.\n", argv[0]);
 #elif !defined(__VMS)
     pid_t child;
     int   status;
