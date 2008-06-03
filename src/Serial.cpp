@@ -27,7 +27,10 @@
  * \file
  * Contains the code for the emulated Serial Port devices.
  *
- * $Id: Serial.cpp,v 1.50 2008/06/01 12:26:24 iamcamiel Exp $
+ * $Id: Serial.cpp,v 1.51 2008/06/03 09:07:56 iamcamiel Exp $
+ *
+ * X-1.51       Camiel Vanderhoeven                             03-JUN-2008
+ *      Fixed misplaced semicolon.
  *
  * X-1.50       Camiel Vanderhoeven                             01-JUN-2008
  *      Error message if execution of 'action' fails on Windows.
@@ -285,7 +288,7 @@ void CSerial::init()
   state.irq_active = false;
   myThread = 0;
 
-  printf("%s: $Id: Serial.cpp,v 1.50 2008/06/01 12:26:24 iamcamiel Exp $\n",
+  printf("%s: $Id: Serial.cpp,v 1.51 2008/06/03 09:07:56 iamcamiel Exp $\n",
          devid_string);
 }
 
@@ -843,7 +846,7 @@ void CSerial::WaitForConnection()
 
     //printf("%s: Starting %s\n", devid_string,nargv);
 #if defined(_WIN32)
-    if (_spawnvp(_P_NOWAIT, nargv, argv) < 0);
+    if (_spawnvp(_P_NOWAIT, nargv, argv) < 0)
         FAILURE_1(Runtime,"Exec of '%s' has failed.\n", argv[0]);
 #elif !defined(__VMS)
     pid_t child;
