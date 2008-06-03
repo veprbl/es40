@@ -27,7 +27,10 @@
  * \file 
  * Contains the code for the emulated Typhoon Chipset devices.
  *
- * $Id: System.cpp,v 1.77 2008/05/31 15:47:14 iamcamiel Exp $
+ * $Id: System.cpp,v 1.78 2008/06/03 09:29:56 iamcamiel Exp $
+ *
+ * X-1.78       Camiel Vanderhoeven                             02-JUN-2008
+ *      Remove hard references to CPU 1 from decompression routine.
  *
  * X-1.77       Camiel Vanderhoeven                             31-MAY-2008
  *      Changes to include parts of Poco.
@@ -382,7 +385,7 @@ CSystem::CSystem(CConfigurator* cfg)
 
   cpu_lock_mutex = new CFastMutex("cpu-locking-lock");
 
-  printf("%s(%s): $Id: System.cpp,v 1.77 2008/05/31 15:47:14 iamcamiel Exp $\n",
+  printf("%s(%s): $Id: System.cpp,v 1.78 2008/06/03 09:29:56 iamcamiel Exp $\n",
          cfg->get_myName(), cfg->get_myValue());
 }
 
@@ -1905,9 +1908,6 @@ int CSystem::LoadROM()
     acCPUs[0]->set_pc(0x900001);
     acCPUs[0]->set_PAL_BASE(0x900000);
     acCPUs[0]->enable_icache();
-    acCPUs[1]->set_pc(0x900001);
-    acCPUs[1]->set_PAL_BASE(0x900000);
-    acCPUs[1]->enable_icache();
 
     j = 0;
     while(acCPUs[0]->get_clean_pc() > 0x200000)
@@ -1929,8 +1929,6 @@ int CSystem::LoadROM()
 
     printf("100%%\n");
     acCPUs[0]->restore_icache();
-    acCPUs[1]->restore_icache();
-    printf("PC %"LL "x, %"LL "x.   \n", acCPUs[0]->get_pc(), acCPUs[1]->get_pc());
 
     f = fopen(myCfg->get_text_value("rom.decompressed", "decompressed.rom"),
               "wb");
