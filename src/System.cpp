@@ -27,7 +27,10 @@
  * \file 
  * Contains the code for the emulated Typhoon Chipset devices.
  *
- * $Id: System.cpp,v 1.78 2008/06/03 09:29:56 iamcamiel Exp $
+ * $Id: System.cpp,v 1.79 2008/06/12 07:29:44 iamcamiel Exp $
+ *
+ * X-1.81       Camiel Vanderhoeven                             12-JUN-2008
+ *      Support to keep secondary CPUs waiting until activated from primary.
  *
  * X-1.78       Camiel Vanderhoeven                             02-JUN-2008
  *      Remove hard references to CPU 1 from decompression routine.
@@ -385,7 +388,7 @@ CSystem::CSystem(CConfigurator* cfg)
 
   cpu_lock_mutex = new CFastMutex("cpu-locking-lock");
 
-  printf("%s(%s): $Id: System.cpp,v 1.78 2008/06/03 09:29:56 iamcamiel Exp $\n",
+  printf("%s(%s): $Id: System.cpp,v 1.79 2008/06/12 07:29:44 iamcamiel Exp $\n",
          cfg->get_myName(), cfg->get_myValue());
 }
 
@@ -587,6 +590,7 @@ int CSystem::SingleStep()
   int result;
 
   for(i = 0; i < iNumCPUs; i++)
+    if (!acCPUs[i]->get_waiting())
     acCPUs[i]->execute();
 
   //  iSingleStep++;

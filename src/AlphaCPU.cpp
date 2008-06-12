@@ -27,7 +27,12 @@
  * \file 
  * Contains the code for the emulated DecChip 21264CB EV68 Alpha processor.
  *
- * $Id: AlphaCPU.cpp,v 1.80 2008/05/31 15:47:08 iamcamiel Exp $
+ * $Id: AlphaCPU.cpp,v 1.81 2008/06/12 07:29:44 iamcamiel Exp $
+ *
+ * X-1.81       Camiel Vanderhoeven                             12-JUN-2008
+ *   a) Support to keep secondary CPUs waiting until activated from primary.
+ *   b) New unaligned memory access handling.
+ *   c) Fixed support for current_pc_physical handling with new icache.
  *
  * X-1.80       Camiel Vanderhoeven                             31-MAY-2008
  *      Changes to include parts of Poco.
@@ -353,6 +358,13 @@ void CAlphaCPU::run()
   try
   {
     mySemaphore.wait();
+    while (state.wait_for_start)
+    {
+      if(StopThread)
+        return;
+      CThread::sleep(1);
+    }
+    printf("*** CPU%d *** STARTING ***\n", get_cpuid());
     for(;;)
     {
       if(StopThread)
@@ -386,6 +398,7 @@ void CAlphaCPU::init()
 
   state.iProcNum = cSystem->RegisterCPU(this);
 
+  state.wait_for_start = (state.iProcNum == 0) ? false : true;
   icache_enabled = true;
   flush_icache();
   icache_enabled = myCfg->get_bool_value("icache", false);
@@ -419,7 +432,7 @@ void CAlphaCPU::init()
 
   state.r[22] = state.r[22 + 32] = state.iProcNum;
 
-  printf("%s(%d): $Id: AlphaCPU.cpp,v 1.80 2008/05/31 15:47:08 iamcamiel Exp $\n",
+  printf("%s(%d): $Id: AlphaCPU.cpp,v 1.81 2008/06/12 07:29:44 iamcamiel Exp $\n",
          devid_string, state.iProcNum);
 }
 
@@ -508,6 +521,8 @@ void CAlphaCPU::check_state()
   if(myThread && !myThread->isRunning())
     FAILURE(Thread, "CPU thread has died");
 
+  if (state.instruction_count>0)
+  {
   // correct CPU timing loop...
   u64 icount = state.instruction_count;
   u64 cc = cc_large;
@@ -536,11 +551,13 @@ void CAlphaCPU::check_state()
     //    printf("ce %12" LL "d | aim %12" LL "d | diff %12" LL "d | new  %12" LL "d  \n",ce,ce_aim,ce_diff,ce_new);
     //    printf("==========================================================================  \n");
     cc_per_instruction = ce_new;
+//    printf("cpu %d speed factor: %d\n",get_cpuid(),ce_new);
   }
 
   prev_cc = cc;
   prev_icount = icount;
   prev_time = time;
+  }
   return;
 }
 
@@ -563,6 +580,8 @@ void CAlphaCPU::execute()
   u64 temp_64_2;
   UFP ufp1;
   UFP ufp2;
+
+  bool pbc;
 
   int opcode;
   int function;
@@ -713,6 +732,9 @@ void CAlphaCPU::execute()
     // Get the next instruction from the instruction cache.
     if(get_icache(state.pc, &ins))
       return;
+#if defined(IDB)
+    current_pc_physical = state.pc_phys;
+#endif
   }           // if (DO_ACTION)
   else
   {

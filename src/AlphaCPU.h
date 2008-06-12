@@ -28,7 +28,11 @@
  * \file
  * Contains the definitions for the emulated DecChip 21264CB EV68 Alpha processor.
  *
- * $Id: AlphaCPU.h,v 1.58 2008/05/31 15:47:08 iamcamiel Exp $
+ * $Id: AlphaCPU.h,v 1.59 2008/06/12 07:29:44 iamcamiel Exp $
+ *
+ * X-1.59       Camiel Vanderhoeven                             12-JUN-2008
+ *   a) Support to keep secondary CPUs waiting until activated from primary.
+ *   b) Support for last written and last read memory locations.
  *
  * X-1.58       Camiel Vanderhoeven                             31-MAY-2008
  *      Changes to include parts of Poco.
@@ -273,10 +277,14 @@ class CAlphaCPU : public CSystemComponent, public CRunnable
     void          enable_icache();
     void          restore_icache();
 
+    bool          get_waiting() { return state.wait_for_start; };
+    void          stop_waiting() { state.wait_for_start = false; };
 #ifdef IDB
     u64           get_current_pc_physical();
     u64           get_instruction_count();
     u32           get_last_instruction();
+    u64           get_last_read_loc() { return last_read_loc; }
+    u64           get_last_write_loc() { return last_write_loc; }
 #endif
     u64           get_clean_pc();
     void          next_pc();
@@ -429,6 +437,7 @@ class CAlphaCPU : public CSystemComponent, public CRunnable
     /// The state structure contains all elements that need to be saved to the statefile
     struct SCPU_state
     {
+      bool  wait_for_start;
       u64   pal_base;       /**< IPR PAL_BASE [HRM: p 5-15] */
       u64   pc;             /**< Program counter */
       u64   cc;             /**< IPR CC: Cycle counter [HRM p 5-3] */
@@ -531,6 +540,8 @@ class CAlphaCPU : public CSystemComponent, public CRunnable
 #ifdef IDB
     u64 current_pc_physical;  /**< Physical address of current instruction */
     u32 last_instruction;
+    u64 last_read_loc;
+    u64 last_write_loc;
 #endif
 };
 

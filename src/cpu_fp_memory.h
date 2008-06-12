@@ -1,8 +1,8 @@
 /* ES40 emulator.
  * Copyright (C) 2007-2008 by the ES40 Emulator Project
  *
- * WWW    : http://sourceforge.net/projects/es40
- * E-mail : camiel@camicom.com
+ * WWW    : http://www.es40.org
+ * E-mail : camiel@es40.org
  * 
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -27,6 +27,14 @@
  * \file 
  * Contains code macros for the processor floating-point load/store instructions.
  * Based on ARM chapter 4.8.
+ *
+ * $Id: cpu_fp_memory.h,v 1.15 2008/06/12 07:29:44 iamcamiel Exp $
+ *
+ * X-1.15       Camiel Vanderhoeven                             12-JUN-2008
+ *      Support for last written and last read memory locations.
+ *
+ * X-1.14       Camiel Vanderhoeven                             14-MAR-2008
+ *      Formatting.
  *
  * X-1.13       Brian Wheeler                                   27-FEB-2008
  *      Avoid compiler warnings.
@@ -71,92 +79,76 @@
  *      File created. Contains code previously found in AlphaCPU.h
  **/
 #if defined(HAVE_NEW_FP)
-#define DO_LDF  FPSTART;                                 \
-  if(FREG_1 != 31)                                       \
-  {                                                      \
-    DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_READ, 3); \
-    state.f[FREG_1] = vax_ldf((u32) READ_PHYS(32));      \
+#define DO_LDF  FPSTART;                                  \
+  if(FREG_1 != 31)                                        \
+  {                                                       \
+    READ_VIRT_F(state.r[REG_2] + DISP_16, 32, state.f[FREG_1], vax_ldf);          \
   }
 
-#define DO_LDG  FPSTART;                                 \
-  if(FREG_1 != 31)                                       \
-  {                                                      \
-    DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_READ, 7); \
-    state.f[FREG_1] = vax_ldg(READ_PHYS(64));            \
+#define DO_LDG  FPSTART;                                  \
+  if(FREG_1 != 31)                                        \
+  {                                                       \
+    READ_VIRT_F(state.r[REG_2] + DISP_16, 64, state.f[FREG_1], vax_ldg);          \
   }
 
-#define DO_LDS  FPSTART;                                 \
-  if(FREG_1 != 31)                                       \
-  {                                                      \
-    DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_READ, 3); \
-    state.f[FREG_1] = ieee_lds((u32) READ_PHYS(32));     \
+#define DO_LDS  FPSTART;                                  \
+  if(FREG_1 != 31)                                        \
+  {                                                       \
+    READ_VIRT_F(state.r[REG_2] + DISP_16, 32, state.f[FREG_1], ieee_lds);          \
   }
 
-#define DO_LDT  FPSTART;                                 \
-  if(FREG_1 != 31)                                       \
-  {                                                      \
-    DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_READ, 7); \
-    state.f[FREG_1] = READ_PHYS(64);                     \
+#define DO_LDT  FPSTART;                                      \
+  if(FREG_1 != 31)                                            \
+  {                                                           \
+    READ_VIRT(state.r[REG_2] + DISP_16, 64, state.r[FREG_1]); \
   }
 
 #define DO_STF  FPSTART;                                \
-  DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_WRITE, 3); \
-  WRITE_PHYS(vax_stf(state.f[FREG_1]), 32);
+  WRITE_VIRT(state.r[REG_2] + DISP_16, 32, vax_stf(state.f[FREG_1]));
 
 #define DO_STG  FPSTART;                                \
-  DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_WRITE, 7); \
-  WRITE_PHYS(vax_stg(state.f[FREG_1]), 64);
+  WRITE_VIRT(state.r[REG_2] + DISP_16, 64, vax_stg(state.f[FREG_1]));
 
 #define DO_STS  FPSTART;                                \
-  DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_WRITE, 3); \
-  WRITE_PHYS(ieee_sts(state.f[FREG_1]), 32);
+  WRITE_VIRT(state.r[REG_2] + DISP_16, 32, ieee_sts(state.f[FREG_1]));
 
 #define DO_STT  FPSTART;                                \
-  DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_WRITE, 7); \
-  WRITE_PHYS(state.f[FREG_1], 64);
+  WRITE_VIRT(state.r[REG_2] + DISP_16, 64, state.f[FREG_1]);
 
 #else
-#define DO_LDF  FPSTART;                                 \
-  if(FREG_1 != 31)                                       \
-  {                                                      \
-    DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_READ, 3); \
-    state.f[FREG_1] = load_f((u32) READ_PHYS(32));       \
+#define DO_LDF  FPSTART;                                  \
+  if(FREG_1 != 31)                                        \
+  {                                                       \
+    READ_VIRT_F(state.r[REG_2] + DISP_16, 32, state.f[FREG_1], load_f);          \
   }
 
-#define DO_LDG  FPSTART;                                 \
-  if(FREG_1 != 31)                                       \
-  {                                                      \
-    DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_READ, 7); \
-    state.f[FREG_1] = load_g(READ_PHYS(64));             \
+#define DO_LDG  FPSTART;                                  \
+  if(FREG_1 != 31)                                        \
+  {                                                       \
+    READ_VIRT_F(state.r[REG_2] + DISP_16, 64, state.f[FREG_1], load_g);          \
   }
 
-#define DO_LDS  FPSTART;                                 \
-  if(FREG_1 != 31)                                       \
-  {                                                      \
-    DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_READ, 3); \
-    state.f[FREG_1] = load_s((u32) READ_PHYS(32));       \
+#define DO_LDS  FPSTART;                                  \
+  if(FREG_1 != 31)                                        \
+  {                                                       \
+    READ_VIRT_F(state.r[REG_2] + DISP_16, 32, state.f[FREG_1], load_s);          \
   }
 
-#define DO_LDT  FPSTART;                                 \
-  if(FREG_1 != 31)                                       \
-  {                                                      \
-    DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_READ, 7); \
-    state.f[FREG_1] = READ_PHYS(64);                     \
+#define DO_LDT  FPSTART;                                      \
+  if(FREG_1 != 31)                                            \
+  {                                                           \
+    READ_VIRT(state.r[REG_2] + DISP_16, 64, state.f[FREG_1]); \
   }
 
 #define DO_STF  FPSTART;                                \
-  DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_WRITE, 3); \
-  WRITE_PHYS(store_f(state.f[FREG_1]), 32);
+  WRITE_VIRT(state.r[REG_2] + DISP_16, 32, store_f(state.f[FREG_1]));
 
 #define DO_STG  FPSTART;                                \
-  DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_WRITE, 7); \
-  WRITE_PHYS(store_g(state.f[FREG_1]), 64);
+  WRITE_VIRT(state.r[REG_2] + DISP_16, 64, store_g(state.f[FREG_1]));
 
 #define DO_STS  FPSTART;                                \
-  DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_WRITE, 3); \
-  WRITE_PHYS(store_s(state.f[FREG_1]), 32);
+  WRITE_VIRT(state.r[REG_2] + DISP_16, 32, store_s(state.f[FREG_1]));
 
 #define DO_STT  FPSTART;                                \
-  DATA_PHYS(state.r[REG_2] + DISP_16, ACCESS_WRITE, 7); \
-  WRITE_PHYS(state.f[FREG_1], 64);
+  WRITE_VIRT(state.r[REG_2] + DISP_16, 64, state.f[FREG_1]);
 #endif

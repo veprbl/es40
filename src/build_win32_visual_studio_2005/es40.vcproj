@@ -1394,7 +1394,7 @@
 				Name="VCCLCompilerTool"
 				Optimization="0"
 				AdditionalIncludeDirectories="c:\program files\winpcap\include,c:\program files\sdl\include"
-				PreprocessorDefinitions="WIN32;_DEBUG;_CONSOLE;HAVE_NEW_IDE"
+				PreprocessorDefinitions="WIN32;_DEBUG;_CONSOLE;HAVE_NEW_IDE;IDB"
 				MinimalRebuild="true"
 				BasicRuntimeChecks="3"
 				RuntimeLibrary="1"
@@ -7057,11 +7057,11 @@
 				>
 			</File>
 			<File
-				RelativePath="..\VGA.h"
+				RelativePath="..\gui\vga.h"
 				>
 			</File>
 			<File
-				RelativePath="..\gui\vga.h"
+				RelativePath="..\VGA.h"
 				>
 			</File>
 		</Filter>

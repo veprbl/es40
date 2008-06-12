@@ -3,6 +3,11 @@
 
 \section c019 version 0.18 -> 0.18+
 
+ - New BREAKPOINT READ, WRITE and ACCESS commands in the debugger allow breakpoint to be set
+   on data access. (12-jun-2008, Camiel Vanderhoeven)
+ - Support for SRM/DPR mechanism for starting secondary CPUs. Not working correctly, although
+   we seem to be on to something. (12-jun-2008, Camiel Vanderhoeven)
+ - Fixed unaligned memory access handling.  (12-jun-2008, Camiel Vanderhoeven)
  - Fixed compilation on Fedora 9 / gcc 4.3.0, and probably other configurations as well.
    (12-jun-2008, Caolan McNamara)
  - Removed dependency on Poco by including parts of it. (31-may-2008, Camiel Vanderhoeven)

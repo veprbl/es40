@@ -1,8 +1,8 @@
 /* ES40 emulator.
  * Copyright (C) 2007-2008 by the ES40 Emulator Project
  *
- * WWW    : http://sourceforge.net/projects/es40
- * E-mail : camiel@camicom.com
+ * WWW    : http://www.es40.org
+ * E-mail : camiel@es40.org
  * 
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -27,7 +27,13 @@
  * \file 
  * Contains some macro definitions and some inline functions for the Alpha CPU.
  *
- * $Id: cpu_defs.h,v 1.13 2008/03/14 15:30:52 iamcamiel Exp $
+ * $Id: cpu_defs.h,v 1.14 2008/06/12 07:29:44 iamcamiel Exp $
+ *
+ * X-1.14       Camiel Vanderhoeven                             12-JUN-2008
+ *      Support for last written and last read memory locations.
+ *
+ * X-1.13       Camiel Vanderhoeven                             14-MAR-2008
+ *      Formatting.
  *
  * X-1.12       Camiel Vanderhoeven                             14-MAR-2008
  *   1. More meaningful exceptions replace throwing (int) 1.
@@ -453,37 +459,23 @@ inline u64 fsqrt64(u64 asig, s32 exp)
 #define DISP_13   (sext_u64_13(ins))
 #define DISP_16   (sext_u64_16(ins))
 #define DISP_21   (sext_u64_21(ins))
+
+#define DATA_PHYS_NT(addr, flags)                      \
+  if(virt2phys(addr, &phys_address, flags, NULL, ins)) \
+    return;
+
+#define ALIGN_PHYS(a)                 (phys_address &~((u64) ((a) - 1)))
+
 #define DATA_PHYS(addr, flags, align)                                            \
   if((addr) & (align))                                                           \
   {                                                                              \
     u64 a1 = (addr);                                                             \
     u64 a2 = (addr) + (align);                                                   \
     if((a1 ^ a2) &~U64(0xfff))  /*page boundary crossed*/                        \
-    {                                                                            \
-      state.fault_va = addr;                                                     \
-      state.exc_sum = ((REG_1 & 0x1f) << 8);                                     \
-      state.mm_stat = I_GETOP(ins) << 4 | ((flags & ACCESS_WRITE) ? 1 : 0);      \
-      printf("data_phys %"LL "x, %d, %d -> trap!\n", addr, flags, align);        \
-      printf("exc_sum = %"LL "x, fault_va = %"LL "x, mm_stat = %"LL "x.\n",      \
-             state.exc_sum, state.fault_va, state.mm_stat);                      \
-      printf("datfx_qword = %016"LL "x.\n", cSystem->ReadMem(                    \
-               cSystem->ReadMem(state.r[32 + 21] + 0x10, 64, this) + 0x38, 64)); \
-      if(cSystem->ReadMem(state.r[32 + 21] + 0x170, 64, this) == 0)              \
-        printf("ignored; no OS!\n");                                             \
-      else                                                                       \
-        GO_PAL(UNALIGN);                                                         \
-    }                                                                            \
+      pbc = true;                                                                \
   }                                                                              \
   if(virt2phys(addr, &phys_address, flags, NULL, ins))                           \
     return;
-
-#define DATA_PHYS_NT(addr, flags)                      \
-  if(virt2phys(addr, &phys_address, flags, NULL, ins)) \
-    return;
-
-#undef DATA_PHYS
-#define DATA_PHYS(addr, flags, align) DATA_PHYS_NT(addr, flags)
-#define ALIGN_PHYS(a)                 (phys_address &~((u64) ((a) - 1)))
 
 /**
  * Normal variant of read action
@@ -491,7 +483,81 @@ inline u64 fsqrt64(u64 asig, s32 exp)
  * handler would put things straight. Instead, to speed things up, we'll
  * just perform the read as requested using the unaligned address.
  **/
-#define READ_PHYS(size) cSystem->ReadMem(phys_address, size, this)
+#if defined(IDB)
+#define LLR last_read_loc = phys_address
+#define LWR last_write_loc = phys_address
+#else
+#define LLR
+#define LWR
+#endif
+
+#define READ_PHYS(size)                       \
+  cSystem->ReadMem(phys_address, size, this); \
+  LLR
+
+#define READ_VIRT(va, size, dest)                       \
+  pbc = false;                                          \
+  DATA_PHYS(va, ACCESS_READ, (size/8)-1);               \
+  LLR;                         \
+  if (pbc) {                                            \
+    dest = 0;                                           \
+    for (int ii=0; ii<(size/8); ii++) {                 \
+      DATA_PHYS(va+ii, ACCESS_READ,0);                  \
+      dest <<= 8;                                       \
+      dest |= cSystem->ReadMem(phys_address, 8, this);  \
+    }                                                   \
+  } else {                                              \
+    dest = cSystem->ReadMem(phys_address, size, this);  \
+  }
+
+#define READ_VIRT_LOCK(va, size, dest)                  \
+  pbc = false;                                          \
+  DATA_PHYS(va, ACCESS_READ, (size/8)-1);               \
+  LLR;                         \
+  cSystem->cpu_lock(state.iProcNum, phys_address);      \
+  if (pbc) {                                            \
+    dest = 0;                                           \
+    for (int ii=0; ii<(size/8); ii++) {                 \
+      DATA_PHYS(va+ii, ACCESS_READ,0);                  \
+      dest <<= 8;                                       \
+      dest |= cSystem->ReadMem(phys_address, 8, this);  \
+    }                                                   \
+  } else {                                              \
+    dest = cSystem->ReadMem(phys_address, size, this);  \
+  }
+
+#define READ_VIRT_F(va, size, dest, f)                    \
+  pbc = false;                                            \
+  DATA_PHYS(va, ACCESS_READ, (size/8)-1);                 \
+  LLR;                           \
+  if (pbc) {                                              \
+    u64 aa = 0;                                           \
+    for (int ii=0; ii<(size/8); ii++) {                   \
+      DATA_PHYS(va+ii, ACCESS_READ,0);                    \
+      aa <<= 8;                                           \
+      aa |= cSystem->ReadMem(phys_address, 8, this);      \
+    }                                                     \
+    dest = f(aa);                                         \
+  } else {                                                \
+    dest = f(cSystem->ReadMem(phys_address, size, this)); \
+  }                                                       \
+
+#define READ_VIRT_LOCK_F(va, size, dest, f)               \
+  pbc = false;                                            \
+  DATA_PHYS(va, ACCESS_READ, (size/8)-1);                 \
+  LLR;                           \
+  cSystem->cpu_lock(state.iProcNum, phys_address);        \
+  if (pbc) {                                              \
+    u64 aa = 0;                                           \
+    for (int ii=0; ii<(size/8); ii++) {                   \
+      DATA_PHYS(va+ii, ACCESS_READ,0);                    \
+      aa <<= 8;                                           \
+      aa |= cSystem->ReadMem(phys_address, 8, this);      \
+    }                                                     \
+    dest = f(aa);                                         \
+  } else {                                                \
+    dest = f(cSystem->ReadMem(phys_address, size, this)); \
+  }                                                       \
 
 /**
  * Normal variant of write action
@@ -499,7 +565,24 @@ inline u64 fsqrt64(u64 asig, s32 exp)
  * handler would put things straight. Instead, to speed things up, we'll
  * just perform the write as requested using the unaligned address.
  **/
-#define WRITE_PHYS(data, size)  cSystem->WriteMem(phys_address, size, data, this)
+#define WRITE_PHYS(data, size)                        \
+  cSystem->WriteMem(phys_address, size, data, this);  \
+  LWR
+
+#define WRITE_VIRT(va, size, src)                     \
+  pbc = false;                                        \
+  DATA_PHYS(va, ACCESS_WRITE, (size/8)-1);            \
+  LWR;                                                \
+  if (pbc) {                                          \
+    u64 aa = src;                                     \
+    for (int ii=0; ii<(size/8); ii++) {               \
+      DATA_PHYS(va+ii, ACCESS_WRITE, 0);              \
+      cSystem->WriteMem(phys_address, 8, aa, this);   \
+      aa >>= 8;                                       \
+    }                                                 \
+  } else {                                            \
+    cSystem->WriteMem(phys_address, size, src, this); \
+  }
 
 /**
  * NO-TRAP (NT) variants of read action.
@@ -507,7 +590,9 @@ inline u64 fsqrt64(u64 asig, s32 exp)
  * inhibited. We'll align the adress and read using the aligned
  * address.
  **/
-#define READ_PHYS_NT(size)  cSystem->ReadMem(ALIGN_PHYS((size) / 8), size, this)
+#define READ_PHYS_NT(size)                                \
+  cSystem->ReadMem(ALIGN_PHYS((size) / 8), size, this);   \
+  LLR;
 
 /**
  * NO-TRAP (NT) variants of write action.
@@ -515,8 +600,15 @@ inline u64 fsqrt64(u64 asig, s32 exp)
  * inhibited. We'll align the adress and write using the aligned
  * address.
  **/
+#if defined(IDB)
+#define WRITE_PHYS_NT(data, size)                               \
+  cSystem->WriteMem(ALIGN_PHYS((size) / 8), size, data, this);  \
+  LWR
+#else
 #define WRITE_PHYS_NT(data, size) \
   cSystem->WriteMem(ALIGN_PHYS((size) / 8), size, data, this)
+#endif
+
 #define REG_1         RREG(I_GETRA(ins))
 #define REG_2         RREG(I_GETRB(ins))
 #define REG_3         RREG(I_GETRC(ins))

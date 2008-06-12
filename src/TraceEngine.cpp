@@ -1,8 +1,8 @@
 /* ES40 emulator.
  * Copyright (C) 2007-2008 by the ES40 Emulator Project
  *
- * Website: http://sourceforge.net/projects/es40
- * E-mail : camiel@camicom.com
+ * Website: http://www.es40.org
+ * E-mail : camiel@es40.org
  * 
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -28,7 +28,11 @@
  * Contains the code for the CPU tracing engine.
  * This will become the debugging engine (interactive debugger) soon.
  *
- * $Id: TraceEngine.cpp,v 1.37 2008/03/26 19:15:05 iamcamiel Exp $
+ * $Id: TraceEngine.cpp,v 1.38 2008/06/12 07:29:44 iamcamiel Exp $
+ *
+ * X-1.38       Camiel Vanderhoeven                             12-JUN-2008
+ *      New BREAKPOINT READ, WRITE and ACCESS commands allow breakpoint to
+ *      be set on data access.
  *
  * X-1.37       Camiel Vanderhoeven                             26-MAR-2008
  *      Fix compiler warnings.
@@ -917,10 +921,11 @@ int CTraceEngine::parse(char command[100][100])
       printf("  STEP                                                               \n");
       printf("  TRACE [ ON | OFF ]                                                 \n");
       printf("  HASHING [ ON | OFF ]                                               \n");
-      printf("  BREAKPOINT [ OFF | [ > | < | = | INSTRUCTION ] <hex value> ]                         \n");
+      printf("  BREAKPOINT [ OFF | [ > | < | = | INSTRUCTION                       \n");
+      printf("                         | WRITE | READ | ACCESS ] <hex value> ]     \n");
       printf("  DISASSEMBLE [ON | OFF ]	                                           \n");
 #if defined(DEBUG_TB)
-      printf("  TBDEBUG [ON | OFF ]	                                           \n");
+      printf("  TBDEBUG [ON | OFF ]	                                               \n");
 #endif
       printf("  LIST [ ALL |<hex address> - <hex address> ]                        \n");
       printf("  RUN [ <max cycles> ]                                               \n");
@@ -1099,6 +1104,57 @@ int CTraceEngine::parse(char command[100][100])
         }
 
         got_sigint = 0;
+        break;
+
+      case 3: // access
+        for(i = 0;; i++)
+        {
+          if(theSystem->SingleStep())
+          {
+            printf("%%IDB-I-ABORT : Abort run requested (probably from serial port)\n");
+            break;
+          }
+
+          if(theSystem->get_cpu(0)->get_last_read_loc() == iBreakPoint || theSystem->get_cpu(0)->get_last_write_loc() == iBreakPoint)
+          {
+            printf("%%IDB-I-BRKPT : Breakpoint encountered.\n");
+            break;
+          }
+        }
+        break;
+
+      case 4: // read
+        for(i = 0;; i++)
+        {
+          if(theSystem->SingleStep())
+          {
+            printf("%%IDB-I-ABORT : Abort run requested (probably from serial port)\n");
+            break;
+          }
+
+          if(theSystem->get_cpu(0)->get_last_read_loc() == iBreakPoint)
+          {
+            printf("%%IDB-I-BRKPT : Breakpoint encountered.\n");
+            break;
+          }
+        }
+        break;
+
+      case 5: // write
+        for(i = 0;; i++)
+        {
+          if(theSystem->SingleStep())
+          {
+            printf("%%IDB-I-ABORT : Abort run requested (probably from serial port)\n");
+            break;
+          }
+
+          if(theSystem->get_cpu(0)->get_last_write_loc() == iBreakPoint)
+          {
+            printf("%%IDB-I-BRKPT : Breakpoint encountered.\n");
+            break;
+          }
+        }
         break;
 
       default:
@@ -1305,6 +1361,57 @@ int CTraceEngine::parse(char command[100][100])
           }
           break;
 
+        case 3: // access
+          for(i = 0; i < RunCycles; i++)
+          {
+            if(theSystem->SingleStep())
+            {
+              printf("%%IDB-I-ABORT : Abort run requested (probably from serial port)\n");
+              break;
+            }
+
+            if(theSystem->get_cpu(0)->get_last_read_loc() == iBreakPoint || theSystem->get_cpu(0)->get_last_write_loc() == iBreakPoint)
+            {
+              printf("%%IDB-I-BRKPT : Breakpoint encountered.\n");
+              break;
+            }
+          }
+          break;
+
+        case 4: // read
+          for(i = 0; i < RunCycles; i++)
+          {
+            if(theSystem->SingleStep())
+            {
+              printf("%%IDB-I-ABORT : Abort run requested (probably from serial port)\n");
+              break;
+            }
+
+            if(theSystem->get_cpu(0)->get_last_read_loc() == iBreakPoint)
+            {
+              printf("%%IDB-I-BRKPT : Breakpoint encountered.\n");
+              break;
+            }
+          }
+          break;
+
+        case 5: // write
+          for(i = 0; i < RunCycles; i++)
+          {
+            if(theSystem->SingleStep())
+            {
+              printf("%%IDB-I-ABORT : Abort run requested (probably from serial port)\n");
+              break;
+            }
+
+            if(theSystem->get_cpu(0)->get_last_write_loc() == iBreakPoint)
+            {
+              printf("%%IDB-I-BRKPT : Breakpoint encountered.\n");
+              break;
+            }
+          }
+          break;
+
         default:
           break;
         }
@@ -1405,6 +1512,54 @@ int CTraceEngine::parse(char command[100][100])
                iBreakPointInstruction);
           bBreakPoint = true;
           iBreakPointMode = 2;
+          return 0;
+        }
+        else if(!strncasecmp(command[1], "ACCESS", strlen(command[1])))
+        {
+          result = sscanf(command[2], "%"LL "x", &iBreakPoint);
+          if(result != 1)
+          {
+            printf("%%IDB-F-INVVAL: Invalid hexadecimal value.\n");
+            bBreakPoint = false;
+            return 0;
+          }
+
+          printf("%%IDB-I-BRKSET: Breakpoint set when data is read/written at %016"LL"x.\n",
+               iBreakPoint);
+          bBreakPoint = true;
+          iBreakPointMode = 3;
+          return 0;
+        }
+        else if(!strncasecmp(command[1], "READ", strlen(command[1])))
+        {
+          result = sscanf(command[2], "%"LL "x", &iBreakPoint);
+          if(result != 1)
+          {
+            printf("%%IDB-F-INVVAL: Invalid hexadecimal value.\n");
+            bBreakPoint = false;
+            return 0;
+          }
+
+          printf("%%IDB-I-BRKSET: Breakpoint set when data is read at %016"LL"x.\n",
+               iBreakPoint);
+          bBreakPoint = true;
+          iBreakPointMode = 4;
+          return 0;
+        }
+        else if(!strncasecmp(command[1], "WRITE", strlen(command[1])))
+        {
+          result = sscanf(command[2], "%"LL "x", &iBreakPoint);
+          if(result != 1)
+          {
+            printf("%%IDB-F-INVVAL: Invalid hexadecimal value.\n");
+            bBreakPoint = false;
+            return 0;
+          }
+
+          printf("%%IDB-I-BRKSET: Breakpoint set when data is written at %016"LL"x.\n",
+               iBreakPoint);
+          bBreakPoint = true;
+          iBreakPointMode = 5;
           return 0;
         }
       }

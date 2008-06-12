@@ -1,8 +1,8 @@
 /* ES40 emulator.
  * Copyright (C) 2007-2008 by the ES40 Emulator Project
  *
- * Website: http://sourceforge.net/projects/es40
- * E-mail : camiel@camicom.com
+ * Website: http://www.es40.org
+ * E-mail : camiel@es40.org
  * 
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -27,7 +27,10 @@
  * \file
  * Contains the code for the emulated Dual Port Ram and RMC devices.
  *
- * $Id: DPR.cpp,v 1.22 2008/04/09 12:59:42 iamcamiel Exp $
+ * $Id: DPR.cpp,v 1.23 2008/06/12 07:29:44 iamcamiel Exp $
+ *
+ * X-1.23       Camiel Vanderhoeven                             12-JUN-2008
+ *      Implement DPR mechanism for starting secondary cpu's.
  *
  * X-1.22       Brian Wheeler                                   09-APR-2008
  *      Correct RMC ROM versions.
@@ -357,15 +360,20 @@ void CDPR::init()
   state.ram[0x3400] = 8;
 
   //3401 SROM Flash SROM is valid flag; 8 = valid,0 = invalid
-  state.ram[0x3401] = 1;
+    state.ram[0x3401] = 8;
 
   //3402 SROM System's errors determined by SROM
   state.ram[0x3402] = 0;
 
+  for (i=0; i<cSystem->get_cpu_num(); i++)
+  {
+    state.ram[0x3418 + 0x10*i] = 0xff;
   //3410:3417 SROM/SRM Jump to address for CPU0
   //3418 SROM/SRM Waiting to jump to flag for CPU0
   //3419 SROM Shadow of value written to EV6 DC_CTL register.
   //341A:341E SROM Shadow of most recent writes to EV6 CBOX "Write-many" chain.
+  }
+
   //34A0:34A7 SROM Array 0 to DIMM ID translation
   //                                                                            Bits<4:0>
   //            Bits<7:5>
@@ -386,7 +394,7 @@ void CDPR::init()
   //    3600:36FF 3600 SRM Reserved
   //    3700:37FF SRM Reserved
   //    3800:3AFF RMC RMC scratch space
-  printf("%s: $Id: DPR.cpp,v 1.22 2008/04/09 12:59:42 iamcamiel Exp $\n",
+  printf("%s: $Id: DPR.cpp,v 1.23 2008/06/12 07:29:44 iamcamiel Exp $\n",
          devid_string);
 }
 
@@ -584,6 +592,37 @@ void CDPR::WriteMem(int index, u64 address, int dsize, u64 data)
 
     // end of command
     state.ram[0xff] = state.ram[0xfd];
+    break;
+
+  case 0x3428:
+    // start cpu 1
+    if (cSystem->get_cpu_num()>1)
+    {
+      printf("*** DPR *** Starting CPU 1 ***\n");
+      cSystem->get_cpu(1)->set_pc(0x8001); // should come from dpr...
+      cSystem->get_cpu(1)->stop_waiting();
+    }
+    break;
+
+  case 0x3438:
+    // start cpu 2
+    if (cSystem->get_cpu_num()>2)
+    {
+      printf("*** DPR *** Starting CPU 2 ***\n");
+      cSystem->get_cpu(2)->set_pc(0x8001); // should come from dpr...
+      cSystem->get_cpu(2)->stop_waiting();
+    }
+    break;
+
+  case 0x3448:
+    // start cpu 3
+    if (cSystem->get_cpu_num()>3)
+    {
+      printf("*** DPR *** Starting CPU 3 ***\n");
+      cSystem->get_cpu(3)->set_pc(0x8001); // should come from dpr...
+      cSystem->get_cpu(3)->stop_waiting();
+    }
+    break;
   }
 
   return;
