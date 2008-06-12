@@ -27,7 +27,10 @@
  */
 
 /**
- * $Id: Mutex.cpp,v 1.1 2008/05/31 15:47:23 iamcamiel Exp $
+ * $Id: Mutex.cpp,v 1.2 2008/06/12 06:52:33 iamcamiel Exp $
+ *
+ * X-1.2        Caolan McNamara                                 12-JUN-2008
+ *      Fixes to build on Fedora 9 / gcc 4.3.0.
  *
  * X-1.1        Camiel Vanderhoeven                             31-MAY-2008
  *      Initial version for ES40 emulator.
@@ -36,7 +39,7 @@
 //
 // Mutex.cpp
 //
-// $Id: Mutex.cpp,v 1.1 2008/05/31 15:47:23 iamcamiel Exp $
+// $Id: Mutex.cpp,v 1.2 2008/06/12 06:52:33 iamcamiel Exp $
 //
 // Library: Foundation
 // Package: Threading
@@ -69,6 +72,7 @@
 //
 
 #include "Mutex.h"
+#include <string.h>
 
 #if defined(POCO_OS_FAMILY_WINDOWS)
 #include "Mutex_WIN32.cpp"

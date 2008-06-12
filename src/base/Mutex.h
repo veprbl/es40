@@ -27,7 +27,10 @@
  */
 
 /**
- * $Id: Mutex.h,v 1.1 2008/05/31 15:47:23 iamcamiel Exp $
+ * $Id: Mutex.h,v 1.2 2008/06/12 06:52:33 iamcamiel Exp $
+ *
+ * X-1.2        Caolan McNamara                                 12-JUN-2008
+ *      Fixes to build on Fedora 9 / gcc 4.3.0.
  *
  * X-1.1        Camiel Vanderhoeven                             31-MAY-2008
  *      Initial version for ES40 emulator.
@@ -36,7 +39,7 @@
 //
 // Mutex.h
 //
-// $Id: Mutex.h,v 1.1 2008/05/31 15:47:23 iamcamiel Exp $
+// $Id: Mutex.h,v 1.2 2008/06/12 06:52:33 iamcamiel Exp $
 //
 // Library: Foundation
 // Package: Threading
@@ -110,8 +113,8 @@ class CMutex: private CMutexImpl
 	/// Using the ScopedLock class is the preferred way to automatically
 	/// lock and unlock a mutex.
 {
-public:
-	typedef CScopedLock<CMutex> CScopedLock;
+  public:
+    typedef ::CScopedLock<CMutex> CScopedLock;
 
     CMutex(const char* lName);
 
@@ -171,8 +174,8 @@ class CFastMutex: private CFastMutexImpl
 	/// Using the ScopedLock class is the preferred way to automatically
 	/// lock and unlock a mutex.
 {
-public:
-	typedef CScopedLock<CFastMutex> CScopedLock;
+  public:
+    typedef ::CScopedLock<CFastMutex> CScopedLock;
 
 
     CFastMutex(const char* lName);
