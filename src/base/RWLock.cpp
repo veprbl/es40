@@ -27,7 +27,7 @@
  */
 
 /**
- * $Id: RWLock.cpp,v 1.2 2008/06/12 06:52:33 iamcamiel Exp $
+ * $Id: RWLock.cpp,v 1.3 2008/06/12 06:58:24 iamcamiel Exp $
  *
  * X-1.2        Caolan McNamara                                 12-JUN-2008
  *      Fixes to build on Fedora 9 / gcc 4.3.0.
@@ -39,7 +39,7 @@
 //
 // RWLock.cpp
 //
-// $Id: RWLock.cpp,v 1.2 2008/06/12 06:52:33 iamcamiel Exp $
+// $Id: RWLock.cpp,v 1.3 2008/06/12 06:58:24 iamcamiel Exp $
 //
 // Library: Foundation
 // Package: Threading
@@ -73,7 +73,7 @@
 
 
 #include "RWLock.h"
-#include <string.cpp>
+#include <string.h>
 
 #if defined(POCO_OS_FAMILY_WINDOWS)
 #include "RWLock_WIN32.cpp"
