@@ -27,7 +27,7 @@
  * \file
  * Defines the entry point for the application.
  *
- * $Id: AlphaSim.cpp,v 1.49 2008/05/31 15:47:09 iamcamiel Exp $
+ * $Id: AlphaSim.cpp,v 1.50 2008/06/12 07:13:30 iamcamiel Exp $
  *
  * X-1.49       Camiel Vanderhoeven                             31-MAY-2008
  *      Changes to include parts of Poco.
@@ -342,6 +342,7 @@ int main (int argc, char*argv[])
     trc = new CTraceEngine(theSystem);
 #endif
     theSystem->LoadROM();
+    theDPR->init();
 
 #if defined(PROFILE)
     {
