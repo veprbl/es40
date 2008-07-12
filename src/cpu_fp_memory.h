@@ -28,7 +28,10 @@
  * Contains code macros for the processor floating-point load/store instructions.
  * Based on ARM chapter 4.8.
  *
- * $Id: cpu_fp_memory.h,v 1.15 2008/06/12 07:29:44 iamcamiel Exp $
+ * $Id: cpu_fp_memory.h,v 1.16 2008/07/12 15:05:32 iamcamiel Exp $
+ *
+ * X-1.16       Camiel Vanderhoeven                             12-JUL-2008
+ *      Fixed typo in new fp DO_LDT implementation.
  *
  * X-1.15       Camiel Vanderhoeven                             12-JUN-2008
  *      Support for last written and last read memory locations.
@@ -100,7 +103,7 @@
 #define DO_LDT  FPSTART;                                      \
   if(FREG_1 != 31)                                            \
   {                                                           \
-    READ_VIRT(state.r[REG_2] + DISP_16, 64, state.r[FREG_1]); \
+    READ_VIRT(state.r[REG_2] + DISP_16, 64, state.f[FREG_1]); \
   }
 
 #define DO_STF  FPSTART;                                \
