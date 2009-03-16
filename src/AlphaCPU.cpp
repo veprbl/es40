@@ -23,11 +23,17 @@
  * the general public.
  */
 
+//#define CONSTANT_TIME_FACTOR 100
+
 /**
  * \file 
  * Contains the code for the emulated DecChip 21264CB EV68 Alpha processor.
  *
- * $Id: AlphaCPU.cpp,v 1.81 2008/06/12 07:29:44 iamcamiel Exp $
+ * $Id: AlphaCPU.cpp,v 1.82 2009/03/16 01:33:27 iamcamiel Exp $
+ *
+ * X-1.82       Camiel Vanderhoeven                             15-MAR-2008
+ *   a) Added CONSTANT_TIME_FACTOR define to lock the CPU timing.
+ *   b) Fixed a bug in SPE0 handling, spotted by David Hittner.
  *
  * X-1.81       Camiel Vanderhoeven                             12-JUN-2008
  *   a) Support to keep secondary CPUs waiting until activated from primary.
@@ -426,13 +432,17 @@ void CAlphaCPU::init()
   prev_icount = 0;
   start_icount = 0;
 
+#if defined(CONSTANT_TIME_FACTOR)
+  cc_per_instruction = CONSTANT_TIME_FACTOR;
+#else
   cc_per_instruction = 70;
+#endif
   ins_per_timer_int = cpu_hz / 1024;
   next_timer_int = state.iProcNum ? U64(0xFFFFFFFFFFFFFFFF) : ins_per_timer_int;  /* only on CPU 0 */
 
   state.r[22] = state.r[22 + 32] = state.iProcNum;
 
-  printf("%s(%d): $Id: AlphaCPU.cpp,v 1.81 2008/06/12 07:29:44 iamcamiel Exp $\n",
+  printf("%s(%d): $Id: AlphaCPU.cpp,v 1.82 2009/03/16 01:33:27 iamcamiel Exp $\n",
          devid_string, state.iProcNum);
 }
 
@@ -521,6 +531,7 @@ void CAlphaCPU::check_state()
   if(myThread && !myThread->isRunning())
     FAILURE(Thread, "CPU thread has died");
 
+#if !defined(CONSTANT_TIME_FACTOR)
   if (state.instruction_count>0)
   {
   // correct CPU timing loop...
@@ -558,6 +569,7 @@ void CAlphaCPU::check_state()
   prev_icount = icount;
   prev_time = time;
   }
+#endif
   return;
 }
 
@@ -1603,7 +1615,7 @@ int CAlphaCPU::virt2phys(u64 virt, u64* phys, int flags, bool* asm_bit, u32 ins)
     // SPE[0], when set, enables superpage mapping when VA[47:30] = 3FFFE.
     // In this mode, VA[29:13] are mapped directly to PA[29:13] and PA[43:30] are
     // cleared.
-    else if(((virt & SPE_0_MASK) == SPE_0_MATCH) && (spe & 4))
+    else if(((virt & SPE_0_MASK) == SPE_0_MATCH) && (spe & 1))
     {
       *phys = virt & SPE_0_MAP;
       if(asm_bit)
