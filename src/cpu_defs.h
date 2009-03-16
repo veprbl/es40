@@ -27,7 +27,11 @@
  * \file 
  * Contains some macro definitions and some inline functions for the Alpha CPU.
  *
- * $Id: cpu_defs.h,v 1.14 2008/06/12 07:29:44 iamcamiel Exp $
+ * $Id: cpu_defs.h,v 1.15 2009/03/16 01:32:54 iamcamiel Exp $
+ *
+ * X-1.15       Camiel Vanderhoeven                             15-MAR-2009
+ *      Fixed a bug in unaligned memory accesses crossing a page boundary,
+ *      discovered by Volker Halle.
  *
  * X-1.14       Camiel Vanderhoeven                             12-JUN-2008
  *      Support for last written and last read memory locations.
@@ -471,7 +475,7 @@ inline u64 fsqrt64(u64 asig, s32 exp)
   {                                                                              \
     u64 a1 = (addr);                                                             \
     u64 a2 = (addr) + (align);                                                   \
-    if((a1 ^ a2) &~U64(0xfff))  /*page boundary crossed*/                        \
+    if((a1 ^ a2) &~U64(0x1fff))  /*page boundary crossed*/                       \
       pbc = true;                                                                \
   }                                                                              \
   if(virt2phys(addr, &phys_address, flags, NULL, ins))                           \
@@ -503,8 +507,7 @@ inline u64 fsqrt64(u64 asig, s32 exp)
     dest = 0;                                           \
     for (int ii=0; ii<(size/8); ii++) {                 \
       DATA_PHYS(va+ii, ACCESS_READ,0);                  \
-      dest <<= 8;                                       \
-      dest |= cSystem->ReadMem(phys_address, 8, this);  \
+      dest |= (cSystem->ReadMem(phys_address, 8, this) << (ii*8));  \
     }                                                   \
   } else {                                              \
     dest = cSystem->ReadMem(phys_address, size, this);  \
@@ -519,8 +522,7 @@ inline u64 fsqrt64(u64 asig, s32 exp)
     dest = 0;                                           \
     for (int ii=0; ii<(size/8); ii++) {                 \
       DATA_PHYS(va+ii, ACCESS_READ,0);                  \
-      dest <<= 8;                                       \
-      dest |= cSystem->ReadMem(phys_address, 8, this);  \
+      dest |= (cSystem->ReadMem(phys_address, 8, this) << (ii*8));  \
     }                                                   \
   } else {                                              \
     dest = cSystem->ReadMem(phys_address, size, this);  \
@@ -534,8 +536,7 @@ inline u64 fsqrt64(u64 asig, s32 exp)
     u64 aa = 0;                                           \
     for (int ii=0; ii<(size/8); ii++) {                   \
       DATA_PHYS(va+ii, ACCESS_READ,0);                    \
-      aa <<= 8;                                           \
-      aa |= cSystem->ReadMem(phys_address, 8, this);      \
+      aa |= (cSystem->ReadMem(phys_address, 8, this) << (ii*8));  \
     }                                                     \
     dest = f(aa);                                         \
   } else {                                                \
@@ -551,8 +552,7 @@ inline u64 fsqrt64(u64 asig, s32 exp)
     u64 aa = 0;                                           \
     for (int ii=0; ii<(size/8); ii++) {                   \
       DATA_PHYS(va+ii, ACCESS_READ,0);                    \
-      aa <<= 8;                                           \
-      aa |= cSystem->ReadMem(phys_address, 8, this);      \
+      aa |= (cSystem->ReadMem(phys_address, 8, this) << (ii*8));  \
     }                                                     \
     dest = f(aa);                                         \
   } else {                                                \
