@@ -603,11 +603,11 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				AdditionalDependencies="pocofoundation.lib wpcap.lib ws2_32.lib sdl.lib sdlmain.lib"
+				AdditionalDependencies="wpcap.lib ws2_32.lib sdl.lib sdlmain.lib"
 				OutputFile="bin/es40.exe"
 				LinkIncremental="1"
 				SuppressStartupBanner="true"
-				AdditionalLibraryDirectories="c:\Program Files\poco\lib;c:\Program Files\sdl\lib;c:\Program Files\winpcap\lib"
+				AdditionalLibraryDirectories="c:\Program Files\sdl\lib;c:\Program Files\winpcap\lib"
 				GenerateDebugInformation="true"
 				ProgramDatabaseFile=".\Release/es40.pdb"
 				SubSystem="1"
@@ -1645,11 +1645,11 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				AdditionalDependencies="pocofoundation.lib ws2_32.lib sdl.lib sdlmain.lib"
+				AdditionalDependencies="ws2_32.lib sdl.lib sdlmain.lib"
 				OutputFile="bin/es40_nn.exe"
 				LinkIncremental="1"
 				SuppressStartupBanner="true"
-				AdditionalLibraryDirectories="c:\Program Files\poco\lib;c:\Program Files\sdl\lib"
+				AdditionalLibraryDirectories="c:\Program Files\sdl\lib"
 				GenerateDebugInformation="true"
 				ProgramDatabaseFile=".\Release NN/es40_nn.pdb"
 				SubSystem="1"
@@ -2475,11 +2475,11 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				AdditionalDependencies="pocofoundation.lib ws2_32.lib"
+				AdditionalDependencies="ws2_32.lib"
 				OutputFile="bin/es40_nn_ns.exe"
 				LinkIncremental="1"
 				SuppressStartupBanner="true"
-				AdditionalLibraryDirectories="c:\Program Files\poco\lib"
+				AdditionalLibraryDirectories=""
 				GenerateDebugInformation="true"
 				ProgramDatabaseFile=".\Release NN NS/es40_nn_ns.pdb"
 				SubSystem="1"
@@ -3305,11 +3305,11 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				AdditionalDependencies="pocofoundation.lib wpcap.lib ws2_32.lib"
+				AdditionalDependencies="wpcap.lib ws2_32.lib"
 				OutputFile="bin/es40_ns.exe"
 				LinkIncremental="1"
 				SuppressStartupBanner="true"
-				AdditionalLibraryDirectories="c:\Program Files\poco\lib;c:\Program Files\winpcap\lib"
+				AdditionalLibraryDirectories="c:\Program Files\winpcap\lib"
 				GenerateDebugInformation="true"
 				ProgramDatabaseFile=".\Release NS/es40_ns.pdb"
 				SubSystem="1"
@@ -3808,6 +3808,10 @@
 				>
 			</File>
 			<File
+				RelativePath="..\base\Bugcheck.cpp"
+				>
+			</File>
+			<File
 				RelativePath="..\Cirrus.cpp"
 				>
 			</File>
@@ -3856,7 +3860,7 @@
 				>
 			</File>
 			<File
-				RelativePath="..\Exception.cpp"
+				RelativePath="..\base\Exception.cpp"
 				>
 			</File>
 			<File
@@ -3888,11 +3892,23 @@
 				>
 			</File>
 			<File
+				RelativePath="..\base\Mutex.cpp"
+				>
+			</File>
+			<File
 				RelativePath="..\PCIDevice.cpp"
 				>
 			</File>
 			<File
 				RelativePath="..\Port80.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\base\Runnable.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\base\RWLock.cpp"
 				>
 			</File>
 			<File
@@ -3913,6 +3929,10 @@
 			</File>
 			<File
 				RelativePath="..\gui\sdl.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\base\Semaphore.cpp"
 				>
 			</File>
 			<File
@@ -3937,6 +3957,18 @@
 			</File>
 			<File
 				RelativePath="..\SystemComponent.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\base\Thread.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\base\ThreadLocal.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\base\Timestamp.cpp"
 				>
 			</File>
 			<File
@@ -4089,10 +4121,6 @@
 				>
 			</File>
 			<File
-				RelativePath="..\Exception.h"
-				>
-			</File>
-			<File
 				RelativePath="..\Flash.h"
 				>
 			</File>
@@ -4185,11 +4213,11 @@
 				>
 			</File>
 			<File
-				RelativePath="..\VGA.h"
+				RelativePath="..\gui\vga.h"
 				>
 			</File>
 			<File
-				RelativePath="..\gui\vga.h"
+				RelativePath="..\VGA.h"
 				>
 			</File>
 		</Filter>
