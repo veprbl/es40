@@ -1216,11 +1216,11 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				AdditionalDependencies="pocofoundation.lib ws2_32.lib"
+				AdditionalDependencies="ws2_32.lib"
 				OutputFile="bin/es40_nn_ns.exe"
 				LinkIncremental="1"
 				SuppressStartupBanner="true"
-				AdditionalLibraryDirectories="c:\program files\poco\lib"
+				AdditionalLibraryDirectories=""
 				GenerateDebugInformation="true"
 				ProgramDatabaseFile=".\Release NN NS/es40_nn_ns.pdb"
 				SubSystem="1"
@@ -1812,6 +1812,10 @@
 				>
 			</File>
 			<File
+				RelativePath="..\base\Bugcheck.cpp"
+				>
+			</File>
+			<File
 				RelativePath="..\Cirrus.cpp"
 				>
 			</File>
@@ -1860,7 +1864,7 @@
 				>
 			</File>
 			<File
-				RelativePath="..\Exception.cpp"
+				RelativePath="..\base\Exception.cpp"
 				>
 			</File>
 			<File
@@ -1892,11 +1896,23 @@
 				>
 			</File>
 			<File
+				RelativePath="..\base\Mutex.cpp"
+				>
+			</File>
+			<File
 				RelativePath="..\PCIDevice.cpp"
 				>
 			</File>
 			<File
 				RelativePath="..\Port80.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\base\Runnable.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\base\RWLock.cpp"
 				>
 			</File>
 			<File
@@ -1917,6 +1933,10 @@
 			</File>
 			<File
 				RelativePath="..\gui\sdl.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\base\Semaphore.cpp"
 				>
 			</File>
 			<File
@@ -1941,6 +1961,18 @@
 			</File>
 			<File
 				RelativePath="..\SystemComponent.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\base\Thread.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\base\ThreadLocal.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\base\Timestamp.cpp"
 				>
 			</File>
 			<File
@@ -2185,11 +2217,11 @@
 				>
 			</File>
 			<File
-				RelativePath="..\gui\vga.h"
+				RelativePath="..\VGA.h"
 				>
 			</File>
 			<File
-				RelativePath="..\VGA.h"
+				RelativePath="..\gui\vga.h"
 				>
 			</File>
 		</Filter>
