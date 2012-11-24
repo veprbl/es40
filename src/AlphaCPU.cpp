@@ -860,7 +860,7 @@ void CAlphaCPU::execute()
 #endif
 #endif
 
-  next_ins(ins, opcode);
+  NEXT;
 
   // Decode and dispatch opcode. This is kept very compact using the OP-macro defined in
   // cpu_debug.h. For the normal emulator, this simply calls the DO_<mnemonic> macro defined
