@@ -785,6 +785,73 @@ void CAlphaCPU::execute()
   int opcode;
   int function;
 
+  static void* op_vec[0x40] = {
+      op_00,
+      unknown,
+      unknown,
+      unknown,
+      unknown,
+      unknown,
+      unknown,
+      unknown,
+      op_08,
+      op_09,
+      op_0a,
+      op_0b,
+      op_0c,
+      op_0d,
+      op_0e,
+      op_0f,
+      op_10,
+      op_11,
+      op_12,
+      op_13,
+      op_14,
+      op_15,
+      op_16,
+      op_17,
+      op_18,
+      op_19,
+      op_1a,
+      op_1b,
+      op_1c,
+      op_1d,
+      op_1e,
+      op_1f,
+      op_20,
+      op_21,
+      op_22,
+      op_23,
+      op_24,
+      op_25,
+      op_26,
+      op_27,
+      op_28,
+      op_29,
+      op_2a,
+      op_2b,
+      op_2c,
+      op_2d,
+      op_2e,
+      op_2f,
+      op_30,
+      op_31,
+      op_32,
+      op_33,
+      op_34,
+      op_35,
+      op_36,
+      op_37,
+      op_38,
+      op_39,
+      op_3a,
+      op_3b,
+      op_3c,
+      op_3d,
+      op_3e,
+      op_3f
+  };
+
 #if defined(IDB)
   char*   funcname = 0;
   dbg_string[0] = '\0';
@@ -800,42 +867,41 @@ void CAlphaCPU::execute()
   // in one of the other cpu_*.h files; but for the interactive debugger, it will also do
   // disassembly, where the second parameter to the macro (e.g. R12_R3) determines the
   // formatting applied to the operands. The macro ends with "return 0;".
-  switch(opcode)
-  {
-  case 0x00:  // CALL_PAL
-    function = ins & 0x1fffffff;
-    OP(CALL_PAL, PAL);
+
+op_00:  // CALL_PAL
+  function = ins & 0x1fffffff;
+  OP(CALL_PAL, PAL);
 
   //    switch (function)
   //    {
   //      case 0x123401: OP_FNC(vmspal_int_read_ide, NOP);
   //      default: OP(CALL_PAL,PAL);
   //    }
-  case 0x08:
+op_08:
     OP(LDA, MEM);
 
-  case 0x09:
+op_09:
     OP(LDAH, MEM);
 
-  case 0x0a:
+op_0a:
     OP(LDBU, MEM);
 
-  case 0x0b:
+op_0b:
     OP(LDQ_U, MEM);
 
-  case 0x0c:
+op_0c:
     OP(LDWU, MEM);
 
-  case 0x0d:
+op_0d:
     OP(STW, MEM);
 
-  case 0x0e:
+op_0e:
     OP(STB, MEM);
 
-  case 0x0f:
+op_0f:
     OP(STQ_U, MEM);
 
-  case 0x10:  // INTA* instructions
+op_10:  // INTA* instructions
     function = (ins >> 5) & 0x7f;
     switch(function)
     {
@@ -865,7 +931,7 @@ void CAlphaCPU::execute()
     }
     break;
 
-  case 0x11:  // INTL* instructions
+op_11:  // INTL* instructions
     function = (ins >> 5) & 0x7f;
     switch(function)
     {
@@ -889,7 +955,7 @@ void CAlphaCPU::execute()
     }
     break;
 
-  case 0x12:  // INTS* instructions
+op_12:  // INTS* instructions
     function = (ins >> 5) & 0x7f;
     switch(function)
     {
@@ -923,7 +989,7 @@ void CAlphaCPU::execute()
     }
     break;
 
-  case 0x13:  // INTM* instructions
+op_13:  // INTM* instructions
     function = (ins >> 5) & 0x7f;
     switch(function)  // ignore /V for now
     {
@@ -936,7 +1002,7 @@ void CAlphaCPU::execute()
     }
     break;
 
-  case 0x14:          // ITFP* instructions
+op_14:          // ITFP* instructions
     function = (ins >> 5) & 0x7ff;
     switch(function)
     {
@@ -1010,7 +1076,7 @@ void CAlphaCPU::execute()
     }
     break;
 
-  case 0x15:          // FLTV* instructions
+op_15:          // FLTV* instructions
     function = (ins >> 5) & 0x7ff;
     switch(function)
     {
@@ -1060,7 +1126,7 @@ void CAlphaCPU::execute()
     }
     break;
 
-  case 0x16:          // FLTI* instructions
+op_16:          // FLTI* instructions
     function = (ins >> 5) & 0x7ff;
     switch(function)
     {
@@ -1110,7 +1176,7 @@ void CAlphaCPU::execute()
     }
     break;
 
-  case 0x17:          // FLTL* instructions
+op_17:          // FLTL* instructions
     function = (ins >> 5) & 0x7ff;
     switch(function)
     {
@@ -1160,7 +1226,7 @@ void CAlphaCPU::execute()
     }
     break;
 
-  case 0x18:          // MISC* instructions
+op_18:          // MISC* instructions
     function = (ins & 0xffff);
     switch(function)
     {
@@ -1180,14 +1246,14 @@ void CAlphaCPU::execute()
     }
     break;
 
-  case 0x19:          // HW_MFPR
+op_19:          // HW_MFPR
     function = (ins >> 8) & 0xff;
     OP(HW_MFPR, MFPR);
 
-  case 0x1a:          // JSR* instructions
+op_1a:          // JSR* instructions
     OP(JMP, JMP);
 
-  case 0x1b:          // PAL reserved - HW_LD
+op_1b:          // PAL reserved - HW_LD
     function = (ins >> 12) & 0xf;
     if(function & 1)
     {
@@ -1198,7 +1264,7 @@ void CAlphaCPU::execute()
       OP(HW_LDL, HW_LD);
     }
 
-  case 0x1c:          // FPTI* instructions
+op_1c:          // FPTI* instructions
     function = (ins >> 5) & 0x7f;
     switch(function)
     {
@@ -1226,14 +1292,14 @@ void CAlphaCPU::execute()
     }
     break;
 
-  case 0x1d:          // HW_MTPR
+op_1d:          // HW_MTPR
     function = (ins >> 8) & 0xff;
     OP(HW_MTPR, MTPR);
 
-  case 0x1e:
+op_1e:
     OP(HW_RET, RET);
 
-  case 0x1f:          // HW_ST
+op_1f:          // HW_ST
     function = (ins >> 12) & 0xf;
     if(function & 1)
     {
@@ -1244,105 +1310,104 @@ void CAlphaCPU::execute()
       OP(HW_STL, HW_ST);
     }
 
-  case 0x20:
+op_20:
     OP(LDF, FMEM);
 
-  case 0x21:
+op_21:
     OP(LDG, FMEM);
 
-  case 0x22:
+op_22:
     OP(LDS, FMEM);
 
-  case 0x23:
+op_23:
     OP(LDT, FMEM);
 
-  case 0x24:
+op_24:
     OP(STF, FMEM);
 
-  case 0x25:
+op_25:
     OP(STG, FMEM);
 
-  case 0x26:
+op_26:
     OP(STS, FMEM);
 
-  case 0x27:
+op_27:
     OP(STT, FMEM);
 
-  case 0x28:
+op_28:
     OP(LDL, MEM);
 
-  case 0x29:
+op_29:
     OP(LDQ, MEM);
 
-  case 0x2a:
+op_2a:
     OP(LDL_L, MEM);
 
-  case 0x2b:
+op_2b:
     OP(LDQ_L, MEM);
 
-  case 0x2c:
+op_2c:
     OP(STL, MEM);
 
-  case 0x2d:
+op_2d:
     OP(STQ, MEM);
 
-  case 0x2e:
+op_2e:
     OP(STL_C, MEM);
 
-  case 0x2f:
+op_2f:
     OP(STQ_C, MEM);
 
-  case 0x30:
+op_30:
     OP(BR, BR);
 
-  case 0x31:
+op_31:
     OP(FBEQ, FCOND);
 
-  case 0x32:
+op_32:
     OP(FBLT, FCOND);
 
-  case 0x33:
+op_33:
     OP(FBLE, FCOND);
 
-  case 0x34:
+op_34:
     OP(BSR, BSR);
 
-  case 0x35:
+op_35:
     OP(FBNE, FCOND);
 
-  case 0x36:
+op_36:
     OP(FBGE, FCOND);
 
-  case 0x37:
+op_37:
     OP(FBGT, FCOND);
 
-  case 0x38:
+op_38:
     OP(BLBC, COND);
 
-  case 0x39:
+op_39:
     OP(BEQ, COND);
 
-  case 0x3a:
+op_3a:
     OP(BLT, COND);
 
-  case 0x3b:
+op_3b:
     OP(BLE, COND);
 
-  case 0x3c:
+op_3c:
     OP(BLBS, COND);
 
-  case 0x3d:
+op_3d:
     OP(BNE, COND);
 
-  case 0x3e:
+op_3e:
     OP(BGE, COND);
 
-  case 0x3f:
+op_3f:
     OP(BGT, COND);
 
-  default:
+unknown:
     UNKNOWN1;
-  }
 
   return;
 }
