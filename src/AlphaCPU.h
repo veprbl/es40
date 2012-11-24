@@ -236,8 +236,8 @@
 /// Number of entries in each Translation Buffer
 #define TB_ENTRIES        16
 
-#define NEXT                       \
-  next_ins(ins, opcode);           \
+#define NEXT                        \
+  while(!next_ins(ins, opcode)) {}; \
   goto *op_vec[opcode];
 
 /**
@@ -266,7 +266,7 @@ class CAlphaCPU : public CSystemComponent, public CRunnable
     inline void   inc_cc();
     inline void   handle_timer();
     inline void   handle_interrupt();
-    inline void   next_ins(u32 &ins, int &opcode);
+    inline bool   next_ins(u32 &ins, int &opcode);
     void          execute();
     void          release_threads();
 

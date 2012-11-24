@@ -711,7 +711,7 @@ inline void CAlphaCPU::handle_interrupt()
   }
 }
 
-inline void CAlphaCPU::next_ins(u32 &ins, int &opcode)
+inline bool CAlphaCPU::next_ins(u32 &ins, int &opcode)
 {
   mips_estimate();
 
@@ -731,7 +731,9 @@ inline void CAlphaCPU::next_ins(u32 &ins, int &opcode)
 
     // Get the next instruction from the instruction cache.
     if(get_icache(state.pc, &ins))
-      return;
+    {
+        return false;
+    }
 #if defined(IDB)
     current_pc_physical = state.pc_phys;
 #endif
@@ -758,6 +760,8 @@ inline void CAlphaCPU::next_ins(u32 &ins, int &opcode)
 #endif
 
   opcode = ins >> 26;
+
+  return true;
 }
 
 /**
