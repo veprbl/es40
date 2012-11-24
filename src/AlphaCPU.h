@@ -236,6 +236,10 @@
 /// Number of entries in each Translation Buffer
 #define TB_ENTRIES        16
 
+#define NEXT                        \
+  while(!next_ins(ins, opcode)) {}; \
+  goto *op_vec[opcode];
+
 /**
  * \brief Emulated CPU.
  *
@@ -258,6 +262,12 @@ class CAlphaCPU : public CSystemComponent, public CRunnable
     void          flush_icache();
 
     virtual void  run();    // Poco Thread entry point
+    inline void   mips_estimate();
+    inline void   skip_memtest();
+    inline void   inc_cc();
+    inline void   handle_timer();
+    inline void   handle_interrupt();
+    inline bool   next_ins(u32 &ins, int &opcode);
     void          execute();
     void          release_threads();
 

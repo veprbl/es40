@@ -714,11 +714,12 @@ void          handle_debug_string(char* s);
 
 #else
 #define UNKNOWN1  printf("Unknown opcode: %02x   \n", opcode); \
-  return;
+  NEXT;
 
 #define UNKNOWN2  printf("Unknown opcode: %02x.%02x   \n", opcode, function); \
-  return;
+  NEXT;
 #endif
+
 #if defined(IDB)
 
 // Debugging version of the OP macro:
@@ -732,7 +733,7 @@ void          handle_debug_string(char* s);
     DO_##mnemonic;                 \
   } POST_##format;                 \
   handle_debug_string(dbg_string); \
-  return;
+  NEXT;
 
 // Execute a function rather than a DO_<mnemonic> macro for an instruction
 #define OP_FNC(mnemonic, format)   \
@@ -742,7 +743,7 @@ void          handle_debug_string(char* s);
     mnemonic();                    \
   } POST_##format;                 \
   handle_debug_string(dbg_string); \
-  return;
+  NEXT;
 
 #else //defined(IDB)
 
@@ -751,10 +752,10 @@ void          handle_debug_string(char* s);
 // Execute the DO_<mnemonic> macro for an instruction.
 #define OP(mnemonic, format) \
   DO_##mnemonic;             \
-  return;
+  NEXT;
 
 // Execute a function rather than a DO_<mnemonic> macro for an instruction
 #define OP_FNC(mnemonic, format) \
   mnemonic();                    \
-  return;
+  NEXT;
 #endif //defined(IDB)
