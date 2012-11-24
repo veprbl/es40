@@ -258,6 +258,11 @@ class CAlphaCPU : public CSystemComponent, public CRunnable
     void          flush_icache();
 
     virtual void  run();    // Poco Thread entry point
+    inline void   mips_estimate();
+    inline void   inc_cc();
+    inline void   handle_timer();
+    inline void   handle_interrupt();
+    inline void   next_ins(u32 &ins, int &opcode);
     void          execute();
     void          release_threads();
 

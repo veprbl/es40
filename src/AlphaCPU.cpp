@@ -573,31 +573,8 @@ void CAlphaCPU::check_state()
   return;
 }
 
-/**
- * \brief Called each clock-cycle.
- *
- * This is where the actual CPU emulation takes place. Each clocktick, one instruction
- * is processed by the processor. The instruction pipeline is not emulated, things are
- * complicated enough as it is. The one exception is the instruction cache, which is
- * implemented, to accomodate self-modifying code. The instruction cache can be disabled
- * if self-modifying code is not expected.
- **/
-void CAlphaCPU::execute()
+inline void CAlphaCPU::mips_estimate()
 {
-  u32 ins;
-  int i;
-  u64 phys_address;
-  u64 temp_64;
-  u64 temp_64_1;
-  u64 temp_64_2;
-  UFP ufp1;
-  UFP ufp2;
-
-  bool pbc;
-
-  int opcode;
-  int function;
-
 #if defined(MIPS_ESTIMATE)
 
   // Calculate simulated performance statistics
@@ -622,119 +599,130 @@ void CAlphaCPU::execute()
     count = 0;
   }
 #endif
-#if defined(IDB)
-  char*   funcname = 0;
-  dbg_string[0] = '\0';
-#if !defined(LS_MASTER) && !defined(LS_SLAVE)
-  dbg_strptr = dbg_string;
-#endif
-#endif
+}
+
+inline void CAlphaCPU::inc_cc()
+{
+  // We're actually executing code. Cycle counter should be updated, interrupt and interrupt
+  // timer status needs to be checked, and the next instruction should be fetched from the
+  // instruction cache.
+  // Increase the cycle counter if it is currently enabled.
+  state.instruction_count++;
+  cc_large += cc_per_instruction;
+
+  if(cc_large > next_timer_int)
+  {
+    next_timer_int += ins_per_timer_int;
+    cSystem->interrupt(-1, true);
+  }
+
+  if(state.cc_ena)
+  {
+    state.cc += cc_per_instruction;
+  }
+}
+
+inline void CAlphaCPU::handle_timer()
+{
+  if(state.check_timers)
+  {
+
+    // There are one or more active delayed irq_h interrupts. Go through the 6
+    // irq_h timers, decrease them as needed, and set the interrupt if the timer
+    // reaches 0.
+    state.check_timers = false;
+    for(int i = 0; i < 6; i++)
+    {
+      if(state.irq_h_timer[i])
+      {
+
+        // This timer is active. Decrease it, and check if it reached 0.
+        state.irq_h_timer[i]--;
+        if(state.irq_h_timer[i])
+        {
+
+          // The timer hasn't reached 0 yet; check on the timers again next clock tick.
+          state.check_timers = true;
+        }
+        else
+        {
+
+          // The timer has reached 0. Set the interrupt status, and set the flag that we
+          // need to check the interrupt status
+          state.eir |= (U64(0x1) << i);
+          state.check_int = true;
+        }
+      }
+    }
+  }
+}
+
+inline void CAlphaCPU::handle_interrupt()
+{
+  if(state.check_int && !(state.pc & 1))
+  {
+
+    // One or more of the variables that affect interrupt status have changed, and we are not
+    // currently inside PALmode. It is not certain that this means we hava an interrupt to
+    // service, but we might have. This needs to be checked.
+
+    /*      
+    if (state.pal_vms) {
+      // PALcode base is set to 0x8000; meaning OpenVMS PALcode is currently active. In this
+      // case, our VMS PALcode replacement routines are valid, and should be used as it is
+      // faster than using the original PALcode.
+        
+      if (state.eir & state.eien & 6)
+        if (vmspal_ent_ext_int(state.eir&state.eien & 6))
+          return;
+
+      if (state.sir & state.sien & 0xfffc)
+        if (vmspal_ent_sw_int(state.sir&state.sien))
+          return;
+
+      if (state.asten && (state.aster & state.astrr & ((1<<(state.cm+1))-1) ))
+        if (vmspal_ent_ast_int(state.aster & state.astrr & ((1<<(state.cm+1))-1) ))
+          return;
+
+      if (state.sir & state.sien)
+        if (vmspal_ent_sw_int(state.sir&state.sien))
+          return;
+    } else 
+*/
+    {
+
+      // PALcode base is set to an unsupported value. We have no choice but to transfer control
+      // to PALmode at the PALcode interrupt entry point.
+      //        if (state.eir & 8)
+      //        {
+      //          printf("%s: IP interrupt received%s...\n",devid_string, (state.eien&8)?"(enabled)":"(masked)");
+      //        }
+      if((state.eien & state.eir) || (state.sien & state.sir) || (state.asten
+       && (state.aster & state.astrr & ((1 << (state.cm + 1)) - 1))))
+      {
+        GO_PAL(INTERRUPT);
+        return;
+      }
+    }
+
+    // This point is reached only if there are no more active interrupts. We can safely set
+    // check_int to false now to save time on the next CPU clock ticks.
+    state.check_int = false;
+  }
+}
+
+inline void CAlphaCPU::next_ins(u32 &ins, int &opcode)
+{
+  mips_estimate();
+
   state.current_pc = state.pc;
 
   // Service interrupts
   if(DO_ACTION)
   {
-
-    // We're actually executing code. Cycle counter should be updated, interrupt and interrupt
-    // timer status needs to be checked, and the next instruction should be fetched from the
-    // instruction cache.
-    // Increase the cycle counter if it is currently enabled.
-    state.instruction_count++;
-    cc_large += cc_per_instruction;
-
-    if(cc_large > next_timer_int)
-    {
-      next_timer_int += ins_per_timer_int;
-      cSystem->interrupt(-1, true);
-    }
-
-    if(state.cc_ena)
-    {
-      state.cc += cc_per_instruction;
-    }
-
-    if(state.check_timers)
-    {
-
-      // There are one or more active delayed irq_h interrupts. Go through the 6
-      // irq_h timers, decrease them as needed, and set the interrupt if the timer
-      // reaches 0.
-      state.check_timers = false;
-      for(int i = 0; i < 6; i++)
-      {
-        if(state.irq_h_timer[i])
-        {
-
-          // This timer is active. Decrease it, and check if it reached 0.
-          state.irq_h_timer[i]--;
-          if(state.irq_h_timer[i])
-          {
-
-            // The timer hasn't reached 0 yet; check on the timers again next clock tick.
-            state.check_timers = true;
-          }
-          else
-          {
-
-            // The timer has reached 0. Set the interrupt status, and set the flag that we
-            // need to check the interrupt status
-            state.eir |= (U64(0x1) << i);
-            state.check_int = true;
-          }
-        }
-      }
-    }
-
-    if(state.check_int && !(state.pc & 1))
-    {
-
-      // One or more of the variables that affect interrupt status have changed, and we are not
-      // currently inside PALmode. It is not certain that this means we hava an interrupt to
-      // service, but we might have. This needs to be checked.
-
-      /*      
-      if (state.pal_vms) {
-        // PALcode base is set to 0x8000; meaning OpenVMS PALcode is currently active. In this
-        // case, our VMS PALcode replacement routines are valid, and should be used as it is
-        // faster than using the original PALcode.
-        
-        if (state.eir & state.eien & 6)
-          if (vmspal_ent_ext_int(state.eir&state.eien & 6))
-            return;
-
-        if (state.sir & state.sien & 0xfffc)
-          if (vmspal_ent_sw_int(state.sir&state.sien))
-            return;
-
-        if (state.asten && (state.aster & state.astrr & ((1<<(state.cm+1))-1) ))
-          if (vmspal_ent_ast_int(state.aster & state.astrr & ((1<<(state.cm+1))-1) ))
-            return;
-
-        if (state.sir & state.sien)
-          if (vmspal_ent_sw_int(state.sir&state.sien))
-            return;
-      } else 
-*/
-      {
-
-        // PALcode base is set to an unsupported value. We have no choice but to transfer control
-        // to PALmode at the PALcode interrupt entry point.
-        //        if (state.eir & 8)
-        //        {
-        //          printf("%s: IP interrupt received%s...\n",devid_string, (state.eien&8)?"(enabled)":"(masked)");
-        //        }
-        if((state.eien & state.eir) || (state.sien & state.sir) || (state.asten
-         && (state.aster & state.astrr & ((1 << (state.cm + 1)) - 1))))
-        {
-          GO_PAL(INTERRUPT);
-          return;
-        }
-      }
-
-      // This point is reached only if there are no more active interrupts. We can safely set
-      // check_int to false now to save time on the next CPU clock ticks.
-      state.check_int = false;
-    }
+    inc_cc();
+    handle_timer();
+    handle_interrupt();
 
     // If profiling is enabled, increase the profiling counter for the current block of addresses.
 #if defined(PROFILE)
@@ -765,15 +753,53 @@ void CAlphaCPU::execute()
   state.r[31] = 0;
   state.f[31] = 0;
 
+#if defined(IDB)
+  last_instruction = ins;
+#endif
+
+  opcode = ins >> 26;
+}
+
+/**
+ * \brief Called each clock-cycle.
+ *
+ * This is where the actual CPU emulation takes place. Each clocktick, one instruction
+ * is processed by the processor. The instruction pipeline is not emulated, things are
+ * complicated enough as it is. The one exception is the instruction cache, which is
+ * implemented, to accomodate self-modifying code. The instruction cache can be disabled
+ * if self-modifying code is not expected.
+ **/
+void CAlphaCPU::execute()
+{
+  u32 ins;
+  int i;
+  u64 phys_address;
+  u64 temp_64;
+  u64 temp_64_1;
+  u64 temp_64_2;
+  UFP ufp1;
+  UFP ufp2;
+
+  bool pbc;
+
+  int opcode;
+  int function;
+
+#if defined(IDB)
+  char*   funcname = 0;
+  dbg_string[0] = '\0';
+#if !defined(LS_MASTER) && !defined(LS_SLAVE)
+  dbg_strptr = dbg_string;
+#endif
+#endif
+
+  next_ins(ins, opcode);
+
   // Decode and dispatch opcode. This is kept very compact using the OP-macro defined in
   // cpu_debug.h. For the normal emulator, this simply calls the DO_<mnemonic> macro defined
   // in one of the other cpu_*.h files; but for the interactive debugger, it will also do
   // disassembly, where the second parameter to the macro (e.g. R12_R3) determines the
   // formatting applied to the operands. The macro ends with "return 0;".
-#if defined(IDB)
-  last_instruction = ins;
-#endif
-  opcode = ins >> 26;
   switch(opcode)
   {
   case 0x00:  // CALL_PAL
