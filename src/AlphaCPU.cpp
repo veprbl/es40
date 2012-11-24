@@ -929,7 +929,6 @@ op_10:  // INTA* instructions
   case 0x6d:  OP(CMPLE, R12_R3);
   default:    UNKNOWN2;
   }
-  break;
 
 op_11:  // INTL* instructions
   function = (ins >> 5) & 0x7f;
@@ -953,7 +952,6 @@ op_11:  // INTL* instructions
   case 0x6c:  OP(IMPLVER, X_R3);
   default:    UNKNOWN2;
   }
-  break;
 
 op_12:  // INTS* instructions
   function = (ins >> 5) & 0x7f;
@@ -987,7 +985,6 @@ op_12:  // INTS* instructions
   case 0x7a:  OP(EXTQH, R12_R3);
   default:    UNKNOWN2;
   }
-  break;
 
 op_13:  // INTM* instructions
   function = (ins >> 5) & 0x7f;
@@ -1000,7 +997,6 @@ op_13:  // INTM* instructions
   case 0x30:  OP(UMULH, R12_R3);
   default:    UNKNOWN2;
   }
-  break;
 
 op_14:          // ITFP* instructions
   function = (ins >> 5) & 0x7ff;
@@ -1074,7 +1070,6 @@ op_14:          // ITFP* instructions
   default:
     UNKNOWN2;
   }
-  break;
 
 op_15:          // FLTV* instructions
   function = (ins >> 5) & 0x7ff;
@@ -1124,7 +1119,6 @@ op_15:          // FLTV* instructions
     }
     break;
   }
-  break;
 
 op_16:          // FLTI* instructions
   function = (ins >> 5) & 0x7ff;
@@ -1174,7 +1168,6 @@ op_16:          // FLTI* instructions
     }
     break;
   }
-  break;
 
 op_17:          // FLTL* instructions
   function = (ins >> 5) & 0x7ff;
@@ -1224,7 +1217,6 @@ op_17:          // FLTL* instructions
   default:
     UNKNOWN2;
   }
-  break;
 
 op_18:          // MISC* instructions
   function = (ins & 0xffff);
@@ -1244,7 +1236,6 @@ op_18:          // MISC* instructions
   case 0xFC00:  OP(WH64EN, NOP);
   default:      UNKNOWN2;
   }
-  break;
 
 op_19:          // HW_MFPR
   function = (ins >> 8) & 0xff;
@@ -1290,7 +1281,6 @@ op_1c:          // FPTI* instructions
   case 0x78:  OP(FTOIS, F1_R3);
   default:    UNKNOWN2;
   }
-  break;
 
 op_1d:          // HW_MTPR
   function = (ins >> 8) & 0xff;
