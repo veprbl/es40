@@ -714,15 +714,11 @@ void          handle_debug_string(char* s);
 
 #else
 #define UNKNOWN1  printf("Unknown opcode: %02x   \n", opcode); \
-  return;
+  NEXT;
 
 #define UNKNOWN2  printf("Unknown opcode: %02x.%02x   \n", opcode, function); \
-  return;
+  NEXT;
 #endif
-
-#define NEXT                       \
-  next_ins(ins, opcode);           \
-  goto *op_vec[opcode];
 
 #if defined(IDB)
 

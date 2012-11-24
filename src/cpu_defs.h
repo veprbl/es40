@@ -638,7 +638,7 @@ inline u64 fsqrt64(u64 asig, s32 exp)
 #define FPSTART       if(state.fpen == 0) /* flt point disabled? */ \
   {                                                                 \
     GO_PAL(FEN);            /* set trap */                          \
-    break;                  /* and stop current instruction */      \
+    NEXT;                                                           \
   }                                                                 \
   state.exc_sum = 0;
 

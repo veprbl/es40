@@ -236,6 +236,10 @@
 /// Number of entries in each Translation Buffer
 #define TB_ENTRIES        16
 
+#define NEXT                       \
+  next_ins(ins, opcode);           \
+  goto *op_vec[opcode];
+
 /**
  * \brief Emulated CPU.
  *
