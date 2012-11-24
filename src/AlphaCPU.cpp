@@ -603,6 +603,11 @@ inline void CAlphaCPU::mips_estimate()
 
 inline void CAlphaCPU::skip_memtest()
 {
+  if (!(state.current_pc & U64(0x8b000)))
+  {
+      return;
+  }
+
   if (state.current_pc == U64(0x8bb90))
   {
     if (state.r[5] != U64(0xaaaaaaaaaaaaaaaa))
