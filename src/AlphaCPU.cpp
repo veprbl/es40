@@ -631,6 +631,8 @@ void CAlphaCPU::execute()
 #endif
   state.current_pc = state.pc;
 
+  if (state.current_pc & U64(0x8b000))
+  {
   if (state.current_pc == U64(0x8bb90))
   {
     if (state.r[5] != U64(0xaaaaaaaaaaaaaaaa))
@@ -689,6 +691,7 @@ void CAlphaCPU::execute()
     {
       state.r[3] = state.r[4];
     }
+  }
   }
 
   // Service interrupts
