@@ -519,6 +519,7 @@ static time_t saved = 0;
 static u64    count;
 static double min_mips = 999999999999999.0;
 static double max_mips = 0.0;
+#include <time.h>
 #endif
 
 /**
@@ -603,11 +604,10 @@ void CAlphaCPU::execute()
   // Calculate simulated performance statistics
   if(++count >= MIPS_INTERVAL)
   {
-    time_t  current;
-    time(&current);
+    clock_t  current = clock();
     if(saved > 0)
     {
-      double  secs = difftime(current, saved);
+      double  secs = (current - saved) / (double)CLOCKS_PER_SEC;
       double  ips = MIPS_INTERVAL / secs;
       double  mips = ips / 1000000.0;
       if(max_mips < mips)
